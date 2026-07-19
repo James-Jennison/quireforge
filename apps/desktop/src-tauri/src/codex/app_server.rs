@@ -1,4 +1,9 @@
-use std::{collections::HashSet, ffi::OsString, process::Stdio, time::Duration};
+use std::{
+    collections::{HashSet, VecDeque},
+    ffi::OsString,
+    process::Stdio,
+    time::Duration,
+};
 
 use serde::Deserialize;
 use serde_json::{json, Value};
@@ -21,6 +26,7 @@ const MAX_REASONING_EFFORTS: usize = 12;
 const MAX_REASONING_EFFORT_BYTES: usize = 32;
 const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(1);
 
+#[derive(Clone)]
 pub(crate) struct AppServerCommand {
     program: OsString,
     args: Vec<OsString>,
@@ -35,7 +41,7 @@ impl AppServerCommand {
     }
 
     #[cfg(test)]
-    fn test(program: &str, args: &[&str]) -> Self {
+    pub(crate) fn test(program: &str, args: &[&str]) -> Self {
         Self {
             program: program.into(),
             args: args.iter().map(OsString::from).collect(),
@@ -49,6 +55,16 @@ pub(crate) struct AppServerProcess {
     lines: Lines<BufReader<ChildStdout>>,
     next_request_id: u64,
     request_timeout: Duration,
+    notifications: VecDeque<AppServerNotification>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) enum AppServerNotification {
+    AccountLoginCompleted {
+        login_id: Option<String>,
+        success: bool,
+    },
+    AccountUpdated,
 }
 
 impl AppServerProcess {
@@ -56,7 +72,7 @@ impl AppServerProcess {
         Self::spawn_with_timeout(command, Duration::from_secs(5))
     }
 
-    fn spawn_with_timeout(
+    pub(crate) fn spawn_with_timeout(
         command: AppServerCommand,
         request_timeout: Duration,
     ) -> Result<Self, CodexAdapterError> {
@@ -84,14 +100,12 @@ impl AppServerProcess {
             lines: BufReader::new(stdout).lines(),
             next_request_id: 1,
             request_timeout,
+            notifications: VecDeque::new(),
         })
     }
 
-    pub(crate) async fn discover_models(
-        &mut self,
-    ) -> Result<(Vec<CodexModel>, Vec<NormalizedCodexEvent>), CodexAdapterError> {
-        let mut events = Vec::new();
-        let initialize = self
+    pub(crate) async fn initialize(&mut self) -> Result<(), CodexAdapterError> {
+        let result = self
             .request(
                 "initialize",
                 json!({
@@ -104,9 +118,18 @@ impl AppServerProcess {
             )
             .await?;
 
-        if !initialize.is_object() {
+        if !result.is_object() {
             return Err(CodexAdapterError::InvalidProtocolMessage);
         }
+
+        Ok(())
+    }
+
+    pub(crate) async fn discover_models(
+        &mut self,
+    ) -> Result<(Vec<CodexModel>, Vec<NormalizedCodexEvent>), CodexAdapterError> {
+        let mut events = Vec::new();
+        self.initialize().await?;
         events.push(NormalizedCodexEvent::ProtocolReady);
 
         let model_result = self.request("model/list", json!({})).await?;
@@ -118,7 +141,11 @@ impl AppServerProcess {
         Ok((models, events))
     }
 
-    async fn request(&mut self, method: &str, params: Value) -> Result<Value, CodexAdapterError> {
+    pub(crate) async fn request(
+        &mut self,
+        method: &str,
+        params: Value,
+    ) -> Result<Value, CodexAdapterError> {
         let request_id = self.next_request_id;
         self.next_request_id = self
             .next_request_id
@@ -178,14 +205,51 @@ impl AppServerProcess {
                     .ok_or(CodexAdapterError::InvalidProtocolMessage);
             }
 
-            if message.get("method").and_then(Value::as_str).is_some() {
-                if message.get("id").is_some_and(|id| !id.is_null()) {
-                    return Err(CodexAdapterError::UnexpectedServerRequest);
-                }
+            if let Some(notification) = parse_notification(&message)? {
+                self.notifications.push_back(notification);
+                continue;
+            }
 
-                // Notifications are deliberately reduced to no retained payload here. The
-                // probe needs only its correlated responses and must not keep account,
-                // installation, path, or remote-control metadata from unrelated events.
+            if message.get("method").and_then(Value::as_str).is_some() {
+                // Unrelated notifications are deliberately discarded without retaining
+                // account, installation, path, or remote-control metadata.
+                continue;
+            }
+
+            return Err(CodexAdapterError::InvalidProtocolMessage);
+        }
+    }
+
+    pub(crate) fn take_notification(&mut self) -> Option<AppServerNotification> {
+        self.notifications.pop_front()
+    }
+
+    pub(crate) async fn next_notification(
+        &mut self,
+    ) -> Result<AppServerNotification, CodexAdapterError> {
+        if let Some(notification) = self.take_notification() {
+            return Ok(notification);
+        }
+
+        loop {
+            let line = self
+                .lines
+                .next_line()
+                .await
+                .map_err(|_| CodexAdapterError::TransportClosed)?
+                .ok_or(CodexAdapterError::ProcessExited)?;
+
+            if line.len() > MAX_PROTOCOL_LINE_BYTES {
+                return Err(CodexAdapterError::MessageTooLarge);
+            }
+
+            let message: Value = serde_json::from_str(&line)
+                .map_err(|_| CodexAdapterError::InvalidProtocolMessage)?;
+            if let Some(notification) = parse_notification(&message)? {
+                return Ok(notification);
+            }
+
+            if message.get("method").and_then(Value::as_str).is_some() {
                 continue;
             }
 
@@ -212,6 +276,71 @@ impl AppServerProcess {
             }
         }
     }
+}
+
+fn parse_notification(message: &Value) -> Result<Option<AppServerNotification>, CodexAdapterError> {
+    let Some(method) = message.get("method").and_then(Value::as_str) else {
+        return Ok(None);
+    };
+    if message.get("id").is_some_and(|id| !id.is_null()) {
+        return Err(CodexAdapterError::UnexpectedServerRequest);
+    }
+
+    match method {
+        "account/login/completed" => {
+            #[derive(Deserialize)]
+            #[serde(rename_all = "camelCase")]
+            struct LoginCompleted {
+                login_id: Option<String>,
+                success: bool,
+                #[serde(default)]
+                error: Option<Value>,
+            }
+
+            let params: LoginCompleted = serde_json::from_value(
+                message
+                    .get("params")
+                    .cloned()
+                    .ok_or(CodexAdapterError::InvalidProtocolMessage)?,
+            )
+            .map_err(|_| CodexAdapterError::InvalidProtocolMessage)?;
+            if let Some(login_id) = params.login_id.as_deref() {
+                validate_protocol_identifier(login_id, 128)?;
+            }
+            // The error payload is intentionally observed only for shape validation and
+            // immediately discarded. Frontend diagnostics use stable local codes.
+            if params
+                .error
+                .as_ref()
+                .is_some_and(|error| !error.is_null() && !error.is_string())
+            {
+                return Err(CodexAdapterError::InvalidProtocolMessage);
+            }
+
+            Ok(Some(AppServerNotification::AccountLoginCompleted {
+                login_id: params.login_id,
+                success: params.success,
+            }))
+        }
+        "account/updated" => Ok(Some(AppServerNotification::AccountUpdated)),
+        _ => Ok(None),
+    }
+}
+
+pub(crate) fn validate_protocol_identifier(
+    value: &str,
+    max_bytes: usize,
+) -> Result<(), CodexAdapterError> {
+    if value.is_empty()
+        || value.len() > max_bytes
+        || !value.bytes().all(|byte| {
+            byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'-' | b'_' | b':' | b'/')
+        })
+    {
+        return Err(CodexAdapterError::InvalidProtocolMessage);
+    }
+
+    Ok(())
 }
 
 impl Drop for AppServerProcess {

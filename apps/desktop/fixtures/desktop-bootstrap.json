@@ -22,6 +22,12 @@
       "milestone": 4
     },
     {
+      "id": "codex-auth",
+      "label": "Codex authentication",
+      "state": "ready",
+      "milestone": 5
+    },
+    {
       "id": "project-attachments",
       "label": "Local project attachments",
       "state": "planned",

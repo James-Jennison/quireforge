@@ -61,6 +61,12 @@ impl DesktopBootstrap {
                     milestone: 4,
                 },
                 CapabilitySummary {
+                    id: "codex-auth",
+                    label: "Codex authentication",
+                    state: CapabilityState::Ready,
+                    milestone: 5,
+                },
+                CapabilitySummary {
                     id: "project-attachments",
                     label: "Local project attachments",
                     state: CapabilityState::Planned,

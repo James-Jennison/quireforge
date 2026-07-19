@@ -15,6 +15,15 @@ OUTPUT_ROOT = ROOT / "apps/desktop/fixtures/codex-schema"
 SELECTED_SCHEMAS = (
     "v1/InitializeParams.json",
     "v1/InitializeResponse.json",
+    "v2/AccountLoginCompletedNotification.json",
+    "v2/AccountUpdatedNotification.json",
+    "v2/CancelLoginAccountParams.json",
+    "v2/CancelLoginAccountResponse.json",
+    "v2/GetAccountParams.json",
+    "v2/GetAccountResponse.json",
+    "v2/LoginAccountParams.json",
+    "v2/LoginAccountResponse.json",
+    "v2/LogoutAccountResponse.json",
     "v2/ModelListParams.json",
     "v2/ModelListResponse.json",
 )
@@ -88,7 +97,7 @@ def main() -> None:
             "schemaVersion": 1,
             "codexCliVersion": version,
             "generator": "codex app-server generate-json-schema --experimental",
-            "selection": "initialize and model/list only",
+            "selection": "initialize, model/list, and stable account lifecycle only",
             "files": manifest_files,
         }
         destination.mkdir(parents=True, exist_ok=True)
