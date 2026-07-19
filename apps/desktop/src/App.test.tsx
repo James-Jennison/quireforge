@@ -32,7 +32,8 @@ describe("QuireForge desktop shell", () => {
     expect(
       await screen.findByRole("button", { name: "Continue in browser" }),
     ).toBeInTheDocument();
-    expect(screen.getAllByText("planned")).toHaveLength(1);
+    expect(screen.getAllByText("ready")).toHaveLength(4);
+    expect(screen.queryByText("planned")).not.toBeInTheDocument();
     expect(
       screen.getByText(
         /not made, endorsed, supported, or distributed by OpenAI/u,

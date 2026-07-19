@@ -72,6 +72,10 @@ REQUIRED_PATHS = (
     "apps/desktop/src-tauri/src/codex/auth/types.rs",
     "apps/desktop/src-tauri/src/codex/backend.rs",
     "apps/desktop/src-tauri/src/codex/probe.rs",
+    "apps/desktop/src-tauri/src/project/identity.rs",
+    "apps/desktop/src-tauri/src/project/mod.rs",
+    "apps/desktop/src-tauri/src/project/storage.rs",
+    "apps/desktop/src-tauri/src/project/types.rs",
     "docs/ARCHITECTURE.md",
     "docs/BUILDING.md",
     "docs/LOCAL-BUILD-PERFORMANCE.md",
@@ -80,6 +84,7 @@ REQUIRED_PATHS = (
     "docs/TESTING.md",
     "docs/THREAT-MODEL.md",
     "docs/WEBSITE.md",
+    "docs/DECISIONS/0007-quireforge-metadata-sqlite.md",
     "scripts/generate_codex_schema_fixtures.py",
 )
 
@@ -109,7 +114,8 @@ IDENTITY_EXPECTATIONS = {
         '"name": "QuireForge"',
         '"executable": "quireforge"',
         '"identifier": "io.github.codeframe78.QuireForge"',
-        '"state": "planned"',
+        '"id": "project-attachments"',
+        '"state": "ready"',
     ),
     "apps/desktop/fixtures/codex-runtime.json": (
         '"schemaVersion": 1',
@@ -125,6 +131,10 @@ IDENTITY_EXPECTATIONS = {
         "codex_auth_cancel",
         "codex_auth_logout",
         "CodexAuthService::default()",
+        "project_workspace_status",
+        "project_pick_directory",
+        "project_preflight",
+        "ProjectService::open",
     ),
 }
 

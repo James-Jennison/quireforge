@@ -156,14 +156,47 @@ intentionally excluded because they mutate external authentication state.
 
 ## Milestone 6 — Workspace Attachment and QuireForge Metadata
 
-Preliminary planning range: approximately 3–6 active hours and 3.5–7 total
-elapsed hours across one or two sessions, excluding approval waiting;
-low-to-medium confidence. Expected work includes attachment boundaries,
-canonical path and duplicate handling, migrated QuireForge-owned SQLite state,
-detach/archive semantics, typed IPC, deterministic tests, and honest UI states.
-The main uncertainties are migration design, filesystem identity across Linux
-mounts and symlinks, concurrency, and separation from Codex-owned data.
+| Field | Record |
+|---|---|
+| Forecast date | 2026-07-19 |
+| Selected model | GPT-5.6 Sol, XHigh reasoning; manually confirmed for Milestone 6A |
+| Preliminary forecast | 3–6 active hours; about 3.5–7 total elapsed hours across 1–2 sessions; low-to-medium confidence |
+| Calibrated complete-milestone forecast | 2.5–5 active hours; 15–35 minutes of local commands; about 3–6 total elapsed hours; medium confidence |
+| Calibrated Milestone 6A forecast | 1.5–3 active hours; 8–20 minutes of local commands; about 1.75–3.5 total elapsed hours; medium confidence |
+| Observed Milestone 6A execution | Approximately 35–55 active minutes through implementation, security review, expanded native tests, documentation, and checkpoint preparation; approval delay excluded |
+| Observed local command time | Approximately 1–2 minutes across dependency-expanded checking and warm targeted/full Rust gates; file reads excluded |
+| User approval/waiting time | Manual model, reasoning, audit, and start confirmations occurred before implementation; waiting time was excluded |
+| Sessions | One active native-core work period; frontend/integration work remains a separately gated checkpoint |
+| Usage intensity | High model/tool activity; moderate CPU and low memory pressure |
+| Completion status | Milestone 6A native storage/identity checkpoint complete locally; Milestone 6B frontend/integration pending |
 
-This is only a preliminary range. Milestone 6 requires a fresh repository and
-system check, current model/reasoning-strength gate, calibrated breakdown, and
-explicit start approval. No Milestone 6 work has begun.
+The Milestone 6A forecast overestimated implementation and command time. The
+accepted architecture, fast bundled-SQLite compilation, warm Tauri caches,
+small transaction surface, and deterministic temporary-directory fixtures
+compressed the critical path without reducing scope. XHigh reasoning was
+useful for migration invariants, path identity, TOCTOU handling, permission
+boundaries, and fail-closed diagnostics. The planned frontend/integration
+checkpoint should be reevaluated at High reasoning rather than automatically
+retaining XHigh.
+
+### Milestone 6A required observations and lessons
+
+- The first dependency-expanded `cargo check` took about 14.2 seconds at about
+  718 MiB peak RSS and locked 22 packages, including bundled SQLite and the
+  native dialog plugin.
+- The warm corrected `cargo check` took about 1.5 seconds at about 452 MiB peak
+  RSS.
+- The final 20-test project suite took about 5.0 seconds at about 1.24 GiB peak
+  RSS; all tests passed.
+- Warm Clippy with warnings denied took about 2.0 seconds at about 495 MiB peak
+  RSS. The final full non-browser repository gate took about 25.8 seconds at
+  about 605 MiB peak RSS and included 40 passing Rust tests with two deliberate
+  live probes ignored.
+- No swap activity, OOM, thermal concern, GPU workload, cache deletion, or
+  source-directory mutation occurred.
+- Confirmation must bind not only path/device/mount/Git identity but also the
+  detected `AGENTS.md` and `.codex` state; a deterministic test now prevents a
+  configuration-change TOCTOU regression.
+- Read-only state needs both directory mode and mount-option evidence. Mount ID
+  and filesystem type remain advisory signals and preflight fails closed if
+  they cannot be verified.

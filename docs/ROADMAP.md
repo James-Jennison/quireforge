@@ -49,7 +49,7 @@ packages and external provider settings remain milestone- and approval-gated.
 | 3 | Desktop scaffold consolidation | Large | Complete; merged to `main`; not packaged |
 | 4 | Codex process adapter and contracts | Very large | Complete; merged to `main` |
 | 5 | Authentication and onboarding | Medium | Complete; merged to `main` |
-| 6 | Projects and direct local-directory attachment | Very large | Current; not begun |
+| 6 | Projects and direct local-directory attachment | Very large | Current; native core verified locally, UI pending |
 | 7 | Conversation MVP | Very large | Planned |
 | 8 | Session lifecycle and crash recovery | Large | Planned |
 | 9 | Approvals and command presentation | Large | Planned |
@@ -147,6 +147,15 @@ Implement the persistent multi-root-ready project schema, native picker,
 selected/resolved identity, Git/worktree and project-instruction detection,
 confirmation, missing/read-only/mount states, detach, relink, and per-task cwd
 preflight.
+
+In progress locally: the native core now owns a migrated SQLite metadata store,
+UUIDv7 project/association IDs, selected and resolved path identity, mount and
+Git/worktree evidence, project-instruction detection, confirmation-time change
+detection, detach/archive/relink metadata operations, and fail-closed cwd
+preflight. Deterministic Rust tests cover symlink retargeting, linked worktrees,
+read-only and missing directories, duplicate roots, storage permissions, and
+the no-source-deletion boundary. The typed frontend bridge, project workspace
+UI, visual verification, and final milestone gate remain pending.
 
 ### 7 — Conversation MVP
 

@@ -1,8 +1,9 @@
 # Testing QuireForge
 
 Status: Milestones 2–5 establish repository, website, desktop frontend, native
-contract, Codex adapter, authentication, and Tauri build checks. PTY, Git
-fixture, directory attachment, database migration, and conversation suites
+contract, Codex adapter, authentication, and Tauri build checks. Milestone 6A
+adds native directory-attachment and database-migration suites; its frontend
+checks remain in progress. PTY, broader Git fixtures, and conversation suites
 arrive with the milestones that introduce those systems.
 
 ## Repository, website, and desktop checks
@@ -35,6 +36,10 @@ compilation against the locked Cargo graph. Codex adapter tests cover CLI
 version validation, deterministic mock snapshots, selected generated schemas,
 response correlation, notification-payload discard, catalog normalization,
 duplicate/default rejection, early exit, timeout, and child reaping.
+Project-core tests cover transactional schema migration, forward-schema
+refusal, app-data permissions, selected/resolved path identity, mount state,
+Git repositories and linked worktrees, duplicate roots, confirmation-time
+changes, relink/detach/archive behavior, and fail-closed cwd preflight.
 
 ## Responsive browser and accessibility checks
 
@@ -104,6 +109,23 @@ cargo test --locked --workspace \
 Confirm either test leaves no additional `codex app-server` process. It must
 not start a thread or turn, write configuration, inspect session content, or
 print the account-visible catalog.
+
+## Manual Milestone 6A checklist
+
+- Confirm the folder picker is native and no command accepts a frontend path.
+- Preview and cancel an attachment without writing project metadata.
+- Confirm an attachment only after reviewing selected/resolved paths,
+  read-only state, Git/worktree state, and project-instruction indicators.
+- Retarget a selected symlink or change `AGENTS.md`/`.codex` after preview and
+  confirm that save fails closed.
+- Detach, archive, and relink temporary fixture directories; confirm none of
+  those metadata actions delete or modify source content.
+- Move or remove a fixture directory and confirm cwd preflight never falls back
+  to home, the application directory, or another project.
+- Inspect the temporary metadata schema and permissions; confirm it contains no
+  Codex authentication, session, connector, or project-file content.
+- Do not use a personal source directory for destructive validation. The
+  automated suite uses only temporary or in-memory fixtures.
 
 ## Manual Milestone 5 checklist
 

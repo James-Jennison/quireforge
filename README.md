@@ -22,10 +22,12 @@ foundation are complete. The Tauri desktop foundation also builds and launches
 locally, and its versioned Rust adapter detects the installed Codex CLI and
 normalizes the supported app-server model catalog and Codex-owned account
 state. Browser/device onboarding, cancellation, logout, and redacted recovery
-are implemented locally without storing credentials. Projects and conversation
-workflows remain later milestones. Cloudflare Pages is the selected production
-host, but the site has not been deployed. There is no application package to
-install yet.
+are implemented locally without storing credentials. Milestone 6's native
+project-metadata, directory-identity, lifecycle, and cwd-preflight core is
+implemented on its working branch; its frontend workflow remains in progress.
+Conversation workflows remain later milestones. Cloudflare Pages is the
+selected production host, but the site has not been deployed. There is no
+application package to install yet.
 
 ## Project status
 
@@ -37,16 +39,18 @@ install yet.
   0.144.6; account status and Codex-managed authentication are implemented,
   while integration workflows remain planned.
 - Desktop: the Tauri 2, React, TypeScript, and Rust shell builds and launches
-  locally with narrow typed IPC and a supervised, non-billable Codex runtime
-  and account-status probe; project and conversation workflows remain planned.
+  locally with narrow typed IPC, a supervised non-billable Codex runtime and
+  account-status probe, and a verified native project-attachment core; the
+  project UI and conversation workflows are not complete.
 - CI status: repository, website, and desktop quality gates are configured for
   pull requests and `main` pushes; deployment remains separately gated.
 - Completed milestone: Milestone 5 — authentication and onboarding.
 - Current milestone: Milestone 6 — projects and direct local-directory
-  attachment (not begun; fresh reasoning/model confirmation required).
+  attachment (native storage/identity checkpoint complete; UI pending).
 - Upcoming milestone: Milestone 7 — conversation MVP.
-- Known limitations: no project attachment, conversation execution, packages,
-  releases, public deployment, or production Lighthouse evidence exists yet.
+- Known limitations: no complete user-facing project attachment, conversation
+  execution, packages, releases, public deployment, or production Lighthouse
+  evidence exists yet.
 
 ## Discovery documents
 

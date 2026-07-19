@@ -1,6 +1,6 @@
 # Local Build Performance
 
-Status: generalized baseline captured from required Milestones 3–5 work on
+Status: generalized baseline captured from required Milestones 3–6A work on
 2026-07-19. These measurements guide local forecasts; they are not release
 performance claims or a supported-hardware baseline.
 
@@ -101,6 +101,28 @@ tests remained sequential to avoid the previously measured shared-`dist` race.
 Approximately 46 GiB of system memory remained available during the final
 native smoke test. No OOM, heavy swapping, throttling, orphaned app-server, or
 disk pressure was observed. GPU computation remained unused.
+
+## Milestone 6A measurements
+
+The native project core reused existing Rust/Tauri caches. Adding bundled
+SQLite, UUIDv7 generation, and the native dialog plugin locked 22 packages. No
+cache was deleted and no clean or release build was run solely for timing.
+
+| Operation | Observed wall time | Approximate peak RSS | Result |
+|---|---:|---:|---|
+| First dependency-expanded `cargo check` | about 14.2 seconds | about 718 MiB | Reached six ordinary compile errors after resolving dependencies |
+| Warm corrected `cargo check` | about 1.5 seconds | about 452 MiB | Passed |
+| Initial 10-test project suite | about 5.5 seconds | about 1.24 GiB | Passed |
+| Expanded 18-test project suite | about 6.4 seconds | about 1.24 GiB | Passed |
+| Final 20-test project suite | about 5.0 seconds | about 1.24 GiB | Passed |
+| Warm Clippy, warnings denied | about 2.0 seconds | about 495 MiB | Passed |
+| Full locked Rust suite | about 5.7 seconds | about 1.24 GiB | Passed, 38 tests; 2 deliberate live probes ignored |
+| Final full non-browser repository gate | about 25.8 seconds | about 605 MiB | Passed, including 40 Rust tests; 2 deliberate live probes ignored |
+
+Four Cargo workers preserved desktop responsiveness and were sufficient for
+the small native graph. The test linker, not SQLite execution, produced the
+peak memory use. No swap activity, OOM, throttling, material disk pressure, or
+competing QuireForge build was observed. The RTX 3050 was correctly unused.
 
 ## Current execution guidance
 
