@@ -20,6 +20,8 @@ node_modules/
 dist/
 target/
 apps/desktop/src-tauri/target/
+apps/desktop/src-tauri/gen/schemas/
+*.tsbuildinfo
 
 # Test and tool output
 coverage/

@@ -10,16 +10,22 @@
     "pnpm": ">=11.0.0 <12"
   },
   "scripts": {
-    "build": "pnpm --filter @quireforge/website build",
-    "check": "pnpm --filter @quireforge/website check",
+    "build": "pnpm -r --if-present build",
+    "check": "pnpm -r --if-present check",
+    "desktop:build": "pnpm --filter @quireforge/desktop tauri build --no-bundle",
+    "desktop:dev": "pnpm --filter @quireforge/desktop tauri dev",
+    "desktop:preview": "pnpm --filter @quireforge/desktop preview",
     "dev": "pnpm --filter @quireforge/website dev",
-    "format": "pnpm --filter @quireforge/website format",
-    "format:check": "pnpm --filter @quireforge/website format:check",
-    "lint": "pnpm --filter @quireforge/website lint",
+    "format": "pnpm -r --if-present format && cargo fmt --all",
+    "format:check": "pnpm -r --if-present format:check && cargo fmt --all --check",
+    "lint": "pnpm -r --if-present lint",
     "preview": "pnpm --filter @quireforge/website preview",
-    "test": "pnpm --filter @quireforge/website test",
-    "test:e2e": "pnpm --filter @quireforge/website test:e2e",
-    "validate": "python3 scripts/validate_repository.py && pnpm check && pnpm lint && pnpm format:check && pnpm test && pnpm build && pnpm validate:dist",
+    "rust:check": "cargo check --locked --workspace",
+    "rust:clippy": "cargo clippy --locked --workspace --all-targets -- -D warnings",
+    "rust:test": "cargo test --locked --workspace",
+    "test": "pnpm -r --if-present test",
+    "test:e2e": "pnpm -r --if-present test:e2e",
+    "validate": "python3 scripts/validate_repository.py && pnpm check && pnpm lint && pnpm format:check && pnpm test && pnpm build && pnpm validate:dist && pnpm rust:check && pnpm rust:clippy && pnpm rust:test",
     "validate:dist": "pnpm --filter @quireforge/website validate:dist"
   }
 }
