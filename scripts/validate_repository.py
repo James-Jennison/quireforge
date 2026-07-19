@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 import subprocess
 import sys
@@ -28,6 +29,8 @@ REQUIRED_PATHS = (
     ".github/dependabot.yml",
     ".github/workflows/repository-checks.yml",
     ".npmrc",
+    "Cargo.lock",
+    "Cargo.toml",
     "package.json",
     "pnpm-lock.yaml",
     "pnpm-workspace.yaml",
@@ -37,8 +40,17 @@ REQUIRED_PATHS = (
     "apps/website/src/data/site.ts",
     "apps/website/src/pages/404.astro",
     "apps/website/src/pages/index.astro",
+    "apps/desktop/fixtures/desktop-bootstrap.json",
+    "apps/desktop/package.json",
+    "apps/desktop/src/App.tsx",
+    "apps/desktop/src/lib/bridge.ts",
+    "apps/desktop/src-tauri/Cargo.toml",
+    "apps/desktop/src-tauri/capabilities/main.json",
+    "apps/desktop/src-tauri/tauri.conf.json",
     "docs/ARCHITECTURE.md",
     "docs/BUILDING.md",
+    "docs/LOCAL-BUILD-PERFORMANCE.md",
+    "docs/MILESTONE-FORECASTS.md",
     "docs/ROADMAP.md",
     "docs/TESTING.md",
     "docs/THREAT-MODEL.md",
@@ -59,6 +71,19 @@ IDENTITY_EXPECTATIONS = {
         "~/.local/share/quireforge",
         "~/.cache/quireforge",
         "~/.local/state/quireforge",
+    ),
+    "apps/desktop/src-tauri/tauri.conf.json": (
+        '"productName": "QuireForge"',
+        '"mainBinaryName": "quireforge"',
+        '"identifier": "io.github.codeframe78.QuireForge"',
+        '"enableGTKAppId": true',
+        '"capabilities": ["main"]',
+    ),
+    "apps/desktop/fixtures/desktop-bootstrap.json": (
+        '"name": "QuireForge"',
+        '"executable": "quireforge"',
+        '"identifier": "io.github.codeframe78.QuireForge"',
+        '"state": "planned"',
     ),
 }
 
@@ -163,6 +188,25 @@ def validate() -> list[str]:
         for value in expected_values:
             if value not in text:
                 errors.append(f"missing identity value in {relative}: {value}")
+
+    capability_path = ROOT / "apps/desktop/src-tauri/capabilities/main.json"
+    if capability_path.is_file():
+        capability = json.loads(capability_path.read_text(encoding="utf-8"))
+        if capability.get("windows") != ["main"]:
+            errors.append("desktop capability must target only the main window")
+        if capability.get("platforms") != ["linux"]:
+            errors.append("desktop capability must target only Linux")
+        if capability.get("permissions") != []:
+            errors.append("Milestone 3 desktop capability must grant no plugin permissions")
+
+    tauri_path = ROOT / "apps/desktop/src-tauri/tauri.conf.json"
+    if tauri_path.is_file():
+        tauri_config = json.loads(tauri_path.read_text(encoding="utf-8"))
+        security = tauri_config.get("app", {}).get("security", {})
+        if not security.get("csp"):
+            errors.append("desktop production CSP must be explicit")
+        if tauri_config.get("bundle", {}).get("active") is not False:
+            errors.append("desktop packaging must remain disabled before Milestone 19")
 
     return errors
 

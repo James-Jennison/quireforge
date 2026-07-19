@@ -1,7 +1,8 @@
 # Threat Model
 
-Status: initial Milestone 0 model. It must be revisited before authentication,
-directory attachment, integrations, packaging, and release milestones.
+Status: initial Milestone 0 model with the Milestone 3 frontend/native boundary
+applied. It must be revisited before authentication, directory attachment,
+integrations, packaging, and release milestones.
 
 ## Assets
 
@@ -21,6 +22,11 @@ directory attachment, integrations, packaging, and release milestones.
 5. Integration metadata to executable plugin/MCP/hook behavior.
 6. Local app to browser/OAuth/remote connector services.
 7. Source repository to GitHub Actions runners and published artifacts.
+
+The Milestone 3 shell exposes one versioned bootstrap command and grants the
+main window no Tauri plugin permissions. Its shared Rust/TypeScript fixture and
+runtime schema reject identity or shape drift before native data reaches UI
+state. No command currently accepts a path, process, credential, or user input.
 
 ## Principal threats and controls
 

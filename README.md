@@ -18,8 +18,10 @@ Codex workspace for Linux. It works toward a direct, local-first project model:
 user-selected directories remain in place and Codex operates against those
 original directories through supported interfaces. The original Codex
 discovery, QuireForge identity, governance, and the local static website
-foundation are complete. Cloudflare Pages is the selected production host, but
-the site has not been deployed. There is no application package to install yet.
+foundation are complete. The Tauri desktop foundation also builds and launches
+locally, but it does not implement Codex workflows yet. Cloudflare Pages is the
+selected production host, but the site has not been deployed. There is no
+application package to install yet.
 
 ## Project status
 
@@ -28,15 +30,17 @@ the site has not been deployed. There is no application package to install yet.
 - Website: the Astro site builds and passes local responsive/accessibility
   checks for `https://quireforge.jamesjennison.net`; it is not deployed.
 - Integration support: under validation against supported Codex interfaces.
-- CI status: repository and website quality gates are configured locally but
-  will not run on GitHub until the branch is approved and pushed.
-- Completed milestone: Milestone 2 — brand and Cloudflare Pages website
-  foundation.
-- Current milestone: Milestone 3 — desktop scaffold consolidation (not begun;
-  model confirmation required).
-- Upcoming milestone: Milestone 4 — Codex process adapter and contracts.
-- Known limitations: no desktop implementation, packages, releases, public
-  deployment, or production Lighthouse evidence exists yet.
+- Desktop: the Tauri 2, React, TypeScript, and Rust shell builds and launches
+  locally with a narrow typed IPC contract; Codex and project workflows remain
+  planned.
+- CI status: repository, website, and desktop quality gates are configured
+  locally but will not run on GitHub until the branch is approved and pushed.
+- Completed milestone: Milestone 3 — desktop scaffold consolidation.
+- Current milestone: Milestone 4 — Codex process adapter and contracts (not
+  begun; model confirmation required).
+- Upcoming milestone: Milestone 5 — authentication and onboarding.
+- Known limitations: no Codex runtime adapter, project attachment, packages,
+  releases, public deployment, or production Lighthouse evidence exists yet.
 
 ## Discovery documents
 
@@ -52,6 +56,8 @@ the site has not been deployed. There is no application package to install yet.
 - [Website architecture](docs/WEBSITE.md)
 - [Building](docs/BUILDING.md)
 - [Testing](docs/TESTING.md)
+- [Local build performance](docs/LOCAL-BUILD-PERFORMANCE.md)
+- [Milestone forecasts](docs/MILESTONE-FORECASTS.md)
 - [Superseded GitHub Pages plan](docs/GITHUB-PAGES.md)
 - [Permanent identity decision](docs/DECISIONS/0003-permanent-quireforge-identity.md)
 - [Brand sources and usage](assets/brand/README.md)
@@ -96,6 +102,19 @@ pnpm test:e2e
 See [Building](docs/BUILDING.md) and [Testing](docs/TESTING.md) for the complete
 local workflow and a fallback when an older distribution Corepack cannot launch
 the pinned pnpm release.
+
+## Desktop development
+
+With Rust 1.88 or newer and the documented Tauri Linux development packages:
+
+```bash
+pnpm desktop:dev
+pnpm desktop:build
+```
+
+The first command launches the local development shell. The second produces an
+unbundled local executable for verification; it does not create or publish an
+installable package. See [Building](docs/BUILDING.md) for prerequisites.
 
 Application-owned files will use the XDG locations `~/.config/quireforge`,
 `~/.local/share/quireforge`, `~/.cache/quireforge`, and, where needed,

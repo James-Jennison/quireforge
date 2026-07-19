@@ -1,10 +1,11 @@
 # Testing QuireForge
 
-Status: Milestone 2 establishes repository and website tests. Desktop, Rust,
-Tauri, PTY, Git fixture, directory attachment, database migration, and Codex
-adapter suites arrive with the milestones that introduce those systems.
+Status: Milestones 2 and 3 establish repository, website, desktop frontend,
+native contract, and Tauri build checks. PTY, Git fixture, directory attachment,
+database migration, and Codex adapter suites arrive with the milestones that
+introduce those systems.
 
-## Repository and website checks
+## Repository, website, and desktop checks
 
 Run these commands from the repository root after installing locked
 dependencies:
@@ -17,6 +18,9 @@ pnpm format:check
 pnpm test
 pnpm build
 pnpm validate:dist
+pnpm rust:check
+pnpm rust:clippy
+pnpm rust:test
 ```
 
 `pnpm validate` runs that non-browser sequence as one command. The checks cover
@@ -24,7 +28,10 @@ required repository files, secret-like tracked files, local documentation
 links, QuireForge identity values, Astro and TypeScript correctness, linting,
 formatting, content-model unit tests, the production build, routes, generated
 assets, internal links, canonical URLs, the unofficial disclaimer, inline-code
-restrictions, and version-controlled security headers.
+restrictions, and version-controlled security headers. Desktop checks cover
+strict TypeScript, linting, shared Rust/TypeScript IPC fixtures, frontend
+behavior, Rust formatting, Clippy with warnings denied, native tests, and
+compilation against the locked Cargo graph.
 
 ## Responsive browser and accessibility checks
 
@@ -42,14 +49,50 @@ download by setting its executable only for the test command:
 PLAYWRIGHT_CHROMIUM_EXECUTABLE=/path/to/chromium pnpm test:e2e
 ```
 
-The suite exercises desktop and mobile viewports, every public route,
+The website suite exercises desktop and mobile viewports, every public route,
 horizontal overflow, semantic page structure, light/dark theme persistence,
-and axe-core checks on the home and integration pages. Automated accessibility
-checks complement rather than replace keyboard, screen-reader, zoom, and visual
-review.
+and axe-core checks on the home and integration pages. The desktop browser suite
+exercises its responsive semantic shell, honest browser-preview state, theme
+persistence, overflow, and axe-core baseline in both viewports. Automated
+accessibility checks complement rather than replace keyboard, screen-reader,
+zoom, and visual review.
 
 GitHub Actions installs its own isolated Chromium and runs the same suite. It
 does not deploy the site and receives no Cloudflare credentials.
+
+## Native desktop validation
+
+With the Linux prerequisites from [Building](BUILDING.md) installed:
+
+```bash
+cargo fmt --all --check
+cargo clippy --locked --workspace --all-targets -- -D warnings
+cargo test --locked --workspace
+pnpm desktop:build
+pnpm desktop:dev
+```
+
+The automated Rust test serializes the native bootstrap contract and compares
+it with the exact JSON fixture parsed by TypeScript. The final command remains a
+manual launch check: verify the QuireForge title and icon, light/dark themes,
+keyboard focus, native bridge status, resizing, and clean exit. On Linux the
+running application must own `io.github.codeframe78.QuireForge` on the session
+bus. An unbundled launch does not validate package installation or desktop-file
+naming; those remain packaging-milestone obligations.
+
+## Manual Milestone 3 checklist
+
+- Launch the release or development binary on GNOME Wayland.
+- Confirm the application registers `io.github.codeframe78.QuireForge` and
+  releases it on exit.
+- Confirm the shell says that no project is attached and future capabilities
+  remain labeled by milestone.
+- Confirm the native IPC status changes to verified without enabling broad
+  Tauri plugin permissions.
+- Inspect light and dark themes, keyboard focus, reduced motion, resizing, and
+  narrow browser fallback behavior.
+- Confirm no package, Codex session, project, credential, configuration, or
+  integration state is created.
 
 ## Manual Milestone 2 checklist
 

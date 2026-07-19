@@ -1,8 +1,9 @@
 # Architecture
 
-Status: Milestone 0 application proposal with a Milestone 2 implemented website
-foundation. Desktop interfaces remain subject to contract validation in their
-implementation milestones.
+Status: Milestone 0 application proposal with the Milestone 2 website foundation
+and Milestone 3 desktop scaffold implemented locally. Codex, persistence,
+project, Git, terminal, and integration interfaces remain subject to validation
+in their implementation milestones.
 
 QuireForge is an unofficial native Linux workspace for Codex. It is not made,
 endorsed, supported, or distributed by OpenAI.
@@ -50,6 +51,21 @@ Rust application core
 
 The frontend never executes arbitrary shell commands or consumes raw Codex
 protocol messages. Tauri capabilities expose a small, typed command surface.
+
+### Milestone 3 implementation boundary
+
+The initial desktop package lives under `apps/desktop`. React and strict
+TypeScript render the shell; Rust and Tauri own the native process. One command,
+`desktop_bootstrap`, returns a versioned product/capability snapshot. The Rust
+serializer and TypeScript runtime schema consume the same sanitized JSON
+fixture in their contract tests.
+
+The main-window capability grants no plugin permissions. No filesystem, shell,
+opener, process, Codex, project, Git, database, or integration command exists in
+the scaffold. Browser preview mode reports that native IPC is unavailable
+instead of simulating success. The window enables the accepted GTK application
+ID, and a local GNOME Wayland launch verified ownership of
+`io.github.codeframe78.QuireForge` on the session bus.
 
 ## Application layers
 

@@ -208,7 +208,7 @@ export const sitePages: SitePage[] = [
     eyebrow: "Installation",
     title: "Installation guidance will follow verified packages.",
     description:
-      "There is no supported QuireForge installation today. Website development is documented; desktop setup will follow the Tauri scaffold.",
+      "There is no supported QuireForge installation today. Website and desktop development are documented, but the verified scaffold is not a package or release.",
     status: "Not yet installable",
     sections: [
       {
@@ -299,7 +299,7 @@ export const sitePages: SitePage[] = [
     title: "Twenty-one gated milestones, one reviewable step at a time.",
     description:
       "QuireForge is built milestone by milestone, with model selection, acceptance criteria, tests, documentation, review, and explicit approval for external actions.",
-    status: "Milestone 2 complete locally · Milestone 3 next",
+    status: "Milestone 3 complete locally · Milestone 4 next",
     sections: [
       {
         heading: "Completed locally",
@@ -307,18 +307,19 @@ export const sitePages: SitePage[] = [
           "Milestone 0: project, Codex, GitHub, hosting, DNS, and feasibility discovery",
           "Milestone 1: permanent identity reconciliation and open-source governance",
           "Milestone 2: brand consumption, Astro foundation, responsive layout, accessibility, and Cloudflare-compatible static output",
+          "Milestone 3: Tauri, React, TypeScript, and Rust desktop scaffold with typed IPC and local Wayland verification",
         ],
       },
       {
         heading: "Next gated milestone",
         items: [
-          "Milestone 3: Tauri, React, TypeScript, and Rust desktop scaffold",
+          "Milestone 4: versioned Codex process adapter and normalized event contracts",
         ],
       },
       {
         heading: "Later",
         items: [
-          "Milestone 4: versioned Codex process adapter and normalized event contracts",
+          "Milestone 5: Codex-managed authentication and onboarding",
           "Milestone 6: direct local-directory attachment",
           "Milestones 13–14: integration discovery and management",
           "Milestones 19–20: packages, approved deployment, and beta release",
@@ -443,7 +444,7 @@ export const sitePages: SitePage[] = [
       {
         heading: "Can I install it today?",
         paragraphs: [
-          "Not yet. The project is building its website foundation before the desktop scaffold. The downloads page will remain explicit until verified packages exist.",
+          "Not yet. The website and desktop scaffold are locally verified, but neither an AppImage nor a Debian package has been produced. The downloads page will remain explicit until verified packages exist.",
         ],
       },
       {

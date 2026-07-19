@@ -29,8 +29,10 @@ repository guidance, contribution/security/conduct/support policies, issue and
 pull-request templates, dependency automation, and initial repository CI. The
 work has not been pushed or merged. Milestone 2 added the local static website,
 production web exports, and automated website quality gates without creating a
-Cloudflare project or deployment. Application exports and external provider
-settings remain milestone- and approval-gated.
+Cloudflare project or deployment. Milestone 3 added the locally verified Tauri
+desktop foundation, narrow typed IPC contract, Linux app icons, and desktop
+quality gates without producing an installable package. Application packages
+and external provider settings remain milestone- and approval-gated.
 
 ## Status
 
@@ -39,8 +41,8 @@ settings remain milestone- and approval-gated.
 | 0 | Existing project, hosting capability audit, and feasibility | Very large | Complete locally; not pushed |
 | 1 | QuireForge rename, move, GitHub migration, and governance closure | Medium | Complete locally; not pushed |
 | 2 | QuireForge brand and Cloudflare website foundation | Large | Complete locally; not pushed or deployed |
-| 3 | Desktop scaffold consolidation | Large | Current; not begun |
-| 4 | Codex process adapter and contracts | Very large | Planned |
+| 3 | Desktop scaffold consolidation | Large | Complete locally; not pushed or packaged |
+| 4 | Codex process adapter and contracts | Very large | Current; not begun |
 | 5 | Authentication and onboarding | Medium | Planned |
 | 6 | Projects and direct local-directory attachment | Very large | Planned |
 | 7 | Conversation MVP | Very large | Planned |
@@ -97,6 +99,14 @@ or production deployment was created.
 Install/verify prerequisites, scaffold Tauri 2 + React + TypeScript + Rust,
 establish typed frontend/native IPC, shell layout, lint/format/test commands,
 and CI.
+
+Completed locally: the Tauri/React desktop package, exact executable and runtime
+application identities, Linux icon exports, responsive light/dark shell, one
+versioned bootstrap command, shared Rust/TypeScript contract fixture, empty
+plugin-permission capability, strict frontend/native checks, desktop/mobile
+axe-core coverage, unbundled release build, and GNOME Wayland launch. No Codex
+process, directory attachment, persistence, package, push, or release was
+created.
 
 ### 4 — Codex Process Adapter
 

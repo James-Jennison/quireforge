@@ -45,6 +45,15 @@ released a usable application.
   HSTS remains intentionally deferred until live HTTPS is verified.
 - Website build and testing documentation with an explicit no-deployment
   boundary.
+- A pinned Tauri 2, React 19, TypeScript, Vite, and Rust desktop package under
+  `apps/desktop`, with the accepted Linux application identity and original
+  QuireForge icon exports.
+- Generalized local build-performance and milestone-forecast histories for
+  system-calibrated planning.
+- A responsive, accessible light/dark desktop shell and one versioned
+  `desktop_bootstrap` command validated against a shared Rust/TypeScript fixture.
+- Desktop type, lint, format, unit, native contract, Clippy, build, responsive,
+  theme, overflow, and axe-core accessibility gates in local scripts and CI.
 
 ### Changed
 
@@ -80,6 +89,9 @@ released a usable application.
   locally without pushing or changing repository settings.
 - Completed the Milestone 2 brand and static website foundation locally without
   creating a Cloudflare project, changing DNS, deploying, pushing, or merging.
+- Completed the Milestone 3 desktop scaffold locally, including an unbundled
+  Wayland launch and runtime application-identity check, without implementing
+  Codex workflows, packaging, pushing, or merging.
 
 ### Migration note
 
@@ -95,7 +107,7 @@ released a usable application.
 
 ### Known limitations
 
-- No desktop application, website deployment, package, or release exists; the
-  website is a locally verified static artifact only.
+- The desktop scaffold and website are locally verified, but no Codex runtime
+  workflow, installable package, website deployment, or release exists.
 - Integration compatibility is based on Codex CLI 0.144.6 and must be probed at
   runtime.

@@ -1,6 +1,7 @@
 # Compatibility
 
-Status: Milestone 0 discovery; implementation has not started.
+Status: Milestone 0 discovery with the Milestone 3 desktop scaffold implemented
+and verified on the discovery host.
 
 ## Identity compatibility contract
 
@@ -9,19 +10,19 @@ the real toolchain rather than inferred from documentation alone:
 
 | Surface | Target identity | Current validation state |
 |---|---|---|
-| Product/window/desktop display | `QuireForge` | Valid Tauri product/display name |
-| Executable and Debian package | `quireforge` | Valid Linux binary and Debian package form |
-| Desktop entry filename | `io.github.codeframe78.QuireForge.desktop` | Valid and reverse-DNS aligned; replaces the initial short-name proposal |
+| Product/window/desktop display | `QuireForge` | Verified in Tauri configuration and local Wayland launch |
+| Executable and Debian package | `quireforge` | Unbundled executable verified; Debian package pending Milestone 19 |
+| Desktop entry filename | `io.github.codeframe78.QuireForge.desktop` | Reverse-DNS contract retained; installed package output not yet validated |
 | AppImage release basename | `QuireForge` | Project release policy; verify the final workflow-renamed artifact |
-| Application identifier | `io.github.codeframe78.QuireForge` | Valid Tauri and freedesktop identifier form; functional wiring pending |
-| XDG directory leaf | `quireforge` | Valid; honor XDG environment overrides |
+| Application identifier | `io.github.codeframe78.QuireForge` | Verified as the running GTK/D-Bus application identity on Wayland |
+| XDG directory leaf | `quireforge` | Reserved; no persistent application data exists yet |
 | GitHub repository | `codeframe78/quireforge` | Connected and renamed in place |
 | Production website | `https://quireforge.jamesjennison.net` | Confirmed target; DNS/TLS present, site not deployed |
 | Website host | Cloudflare Pages | Public and owner-mediated account capabilities reviewed; project setup pending |
 
-No Tauri, Cargo, JavaScript, Astro, package, or desktop-entry configuration
-exists yet, so this table is a future implementation contract rather than a
-claim that those artifacts have already been migrated.
+Tauri, Cargo, React, TypeScript, Vite, and Astro configuration now consume the
+applicable identity contracts. Package installation, desktop-entry output,
+AppImage naming, and XDG persistence remain future validation obligations.
 
 Validation sources:
 
@@ -60,15 +61,16 @@ identity.
 | Active/default model | GPT-5.6 Sol | Discovered from app-server |
 | Node.js / npm | 22.22.1 / 9.2.0 | Available |
 | Git / GitHub CLI | 2.53.0 / 2.46.0 | Available |
-| Rust / Cargo | Not installed | Blocking desktop builds |
-| pnpm | Not installed | Tooling decision pending |
-| Tauri WebKitGTK development package | Not installed | Blocking desktop builds |
-| Tauri Linux development packages | Partially installed | Blocking desktop builds |
+| pnpm | 11.15.0 | Available and pinned by the workspace |
+| Rust / Cargo | 1.97.1 / 1.97.1 | Available; project minimum is Rust 1.88 |
+| Tauri / CLI | Rust 2.11.5 / JavaScript 2.11.4 | Locked and locally built |
+| WebKitGTK development package | 2.52.3, API 4.1 | Available and locally built against |
+| GTK / GLib development packages | GTK 3.24.52 / GLib 2.88.0 | Available and locally built against |
 | XDG desktop portal / GTK portal | Installed | Native picker feasible |
 
 The portal executables live under the distribution's libexec directory rather
-than the interactive shell `PATH`. Runtime packages are installed, but the
-development headers required to compile Tauri are not.
+than the interactive shell `PATH`. The Milestone 3 shell does not request a
+directory or invoke a portal yet.
 
 The host is newer than the intended packaging baseline. Tauri recommends
 building AppImages on the oldest supported compatible distribution to avoid
@@ -137,7 +139,7 @@ safety, and MCP transport support.
 
 ## Linux desktop compatibility policy
 
-Initial target, subject to Milestone 3 and packaging validation:
+Initial target, subject to packaging validation:
 
 - Primary development/QA: current Ubuntu LTS on GNOME Wayland and X11.
 - Packaging baseline: the oldest Ubuntu release selected after WebKitGTK and
@@ -146,7 +148,8 @@ Initial target, subject to Milestone 3 and packaging validation:
   desktop tests are available.
 - Package formats: AppImage and Debian package in the release milestone.
 
-No distribution is currently supported because no application build exists.
+No distribution is currently supported because the unbundled scaffold has been
+verified on only one development host and no installation package exists.
 
 ## Native directory picker
 

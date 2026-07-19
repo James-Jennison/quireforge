@@ -20,16 +20,19 @@ official ownership.
 
 ## Local checks
 
-The current documentation-only repository requires Python 3 and Git:
+The repository uses Python, Node/pnpm, and Rust/Tauri quality gates:
 
 ```bash
 python3 scripts/validate_repository.py
+pnpm validate
+pnpm test:e2e
 git diff --check
 git status --short --branch
 ```
 
-Later application and website milestones will add their own pinned toolchains
-and checks. Run every check documented for the subsystem you change.
+Install the website and desktop prerequisites from [Building](docs/BUILDING.md)
+first. Run every check documented for the subsystem you change; browser and
+native launch checks remain separate from the non-interactive validation suite.
 
 ## Pull requests
 
