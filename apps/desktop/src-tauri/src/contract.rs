@@ -57,7 +57,7 @@ impl DesktopBootstrap {
                 CapabilitySummary {
                     id: "codex-runtime",
                     label: "Codex runtime adapter",
-                    state: CapabilityState::Planned,
+                    state: CapabilityState::Ready,
                     milestone: 4,
                 },
                 CapabilitySummary {

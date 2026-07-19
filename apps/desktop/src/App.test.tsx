@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import App from "./App";
+import { scaffoldCodexRuntime } from "./lib/codex";
 import { scaffoldBootstrap } from "./lib/contract";
 
 describe("QuireForge desktop shell", () => {
@@ -11,7 +12,12 @@ describe("QuireForge desktop shell", () => {
   });
 
   it("renders the honest scaffold state and verifies native data", async () => {
-    render(<App loadBootstrap={() => Promise.resolve(scaffoldBootstrap)} />);
+    render(
+      <App
+        loadBootstrap={() => Promise.resolve(scaffoldBootstrap)}
+        loadRuntime={() => Promise.resolve(scaffoldCodexRuntime)}
+      />,
+    );
 
     expect(
       screen.getByRole("heading", {
@@ -19,8 +25,9 @@ describe("QuireForge desktop shell", () => {
       }),
     ).toBeInTheDocument();
     expect(await screen.findByText("Native IPC verified")).toBeInTheDocument();
+    expect(await screen.findAllByText("Codex adapter ready")).toHaveLength(2);
     expect(screen.getByText("No project attached")).toBeInTheDocument();
-    expect(screen.getAllByText("planned")).toHaveLength(2);
+    expect(screen.getAllByText("planned")).toHaveLength(1);
     expect(
       screen.getByText(
         /not made, endorsed, supported, or distributed by OpenAI/u,
@@ -29,14 +36,27 @@ describe("QuireForge desktop shell", () => {
   });
 
   it("labels a browser-only render without simulating native success", async () => {
-    render(<App loadBootstrap={() => Promise.reject(new Error("no IPC"))} />);
+    render(
+      <App
+        loadBootstrap={() => Promise.reject(new Error("no IPC"))}
+        loadRuntime={() => Promise.reject(new Error("no IPC"))}
+      />,
+    );
 
     expect(await screen.findByText("Browser preview")).toBeInTheDocument();
+    expect(await screen.findAllByText("Native probe unavailable")).toHaveLength(
+      2,
+    );
     expect(screen.queryByText("Native IPC verified")).not.toBeInTheDocument();
   });
 
   it("persists the explicit theme choice", () => {
-    render(<App loadBootstrap={() => Promise.resolve(scaffoldBootstrap)} />);
+    render(
+      <App
+        loadBootstrap={() => Promise.resolve(scaffoldBootstrap)}
+        loadRuntime={() => Promise.resolve(scaffoldCodexRuntime)}
+      />,
+    );
 
     const button = screen.getByRole("button", { name: /theme/u });
     fireEvent.click(button);

@@ -1,6 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { DESKTOP_BOOTSTRAP_COMMAND, loadDesktopBootstrap } from "./bridge";
+import { scaffoldCodexRuntime } from "./codex";
+import {
+  CODEX_RUNTIME_PROBE_COMMAND,
+  DESKTOP_BOOTSTRAP_COMMAND,
+  loadCodexRuntime,
+  loadDesktopBootstrap,
+} from "./bridge";
 import { scaffoldBootstrap } from "./contract";
 
 describe("desktop bridge", () => {
@@ -17,5 +23,14 @@ describe("desktop bridge", () => {
     const invokeFunction = vi.fn().mockResolvedValue({ schemaVersion: 1 });
 
     await expect(loadDesktopBootstrap(invokeFunction)).rejects.toThrow();
+  });
+
+  it("invokes and validates the normalized Codex runtime probe", async () => {
+    const invoke = vi.fn().mockResolvedValue(scaffoldCodexRuntime);
+
+    await expect(loadCodexRuntime(invoke)).resolves.toEqual(
+      scaffoldCodexRuntime,
+    );
+    expect(invoke).toHaveBeenCalledWith(CODEX_RUNTIME_PROBE_COMMAND);
   });
 });

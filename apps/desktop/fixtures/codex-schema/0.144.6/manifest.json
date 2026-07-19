@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "codexCliVersion": "0.144.6",
+  "generator": "codex app-server generate-json-schema --experimental",
+  "selection": "initialize and model/list only",
+  "files": [
+    {
+      "path": "v1/InitializeParams.json",
+      "sha256": "049471f470f79af52083db0bf41e93cbb4628ae2cc5524bbcc7e06fcc9695630"
+    },
+    {
+      "path": "v1/InitializeResponse.json",
+      "sha256": "993c2fffce99dc5f8f4c5d4df1cdaa1de287ae3fb4b861dcc1329e408ed86601"
+    },
+    {
+      "path": "v2/ModelListParams.json",
+      "sha256": "ff939a2a557d960e0ab76dc15b4221cca2ab7d747192110372be5379368fd028"
+    },
+    {
+      "path": "v2/ModelListResponse.json",
+      "sha256": "24baefddffde93794981495043ad6f7cd74b8220055e8b372ad58c075c856d9b"
+    }
+  ]
+}

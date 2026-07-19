@@ -18,7 +18,7 @@
     {
       "id": "codex-runtime",
       "label": "Codex runtime adapter",
-      "state": "planned",
+      "state": "ready",
       "milestone": 4
     },
     {

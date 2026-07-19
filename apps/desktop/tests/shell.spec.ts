@@ -10,6 +10,9 @@ test("desktop preview renders the honest semantic shell", async ({ page }) => {
   ).toBeVisible();
   await expect(page.getByText("No project attached")).toBeAttached();
   await expect(page.getByText("Browser preview")).toBeAttached();
+  await expect(
+    page.getByText("Native probe unavailable").first(),
+  ).toBeAttached();
   await expect(page.locator("main h1")).toHaveCount(1);
 
   const overflow = await page.evaluate(

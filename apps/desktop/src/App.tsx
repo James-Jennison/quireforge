@@ -1,16 +1,20 @@
 import { useEffect, useState, type ReactNode } from "react";
 
 import brandMark from "../../../assets/brand/quireforge-app-icon.svg";
-import { loadDesktopBootstrap } from "./lib/bridge";
+import { loadCodexRuntime, loadDesktopBootstrap } from "./lib/bridge";
+import { scaffoldCodexRuntime, type CodexRuntimeSnapshot } from "./lib/codex";
 import { scaffoldBootstrap, type DesktopBootstrap } from "./lib/contract";
 
 import "./styles.css";
 
 type BridgeState = "connecting" | "native" | "preview";
+type RuntimeState =
+  "checking" | "ready" | "degraded" | "unavailable" | "preview";
 type Theme = "light" | "dark";
 
 interface AppProps {
   loadBootstrap?: () => Promise<DesktopBootstrap>;
+  loadRuntime?: () => Promise<CodexRuntimeSnapshot>;
 }
 
 const navigation = [
@@ -93,10 +97,14 @@ function StatusDot({ state }: { state: BridgeState }) {
 
 export default function App({
   loadBootstrap = loadDesktopBootstrap,
+  loadRuntime = loadCodexRuntime,
 }: AppProps) {
   const [bootstrap, setBootstrap] =
     useState<DesktopBootstrap>(scaffoldBootstrap);
   const [bridgeState, setBridgeState] = useState<BridgeState>("connecting");
+  const [runtime, setRuntime] =
+    useState<CodexRuntimeSnapshot>(scaffoldCodexRuntime);
+  const [runtimeState, setRuntimeState] = useState<RuntimeState>("checking");
   const [theme, setTheme] = useState<Theme>(initialTheme);
 
   useEffect(() => {
@@ -117,6 +125,23 @@ export default function App({
   }, [loadBootstrap]);
 
   useEffect(() => {
+    let active = true;
+    void loadRuntime()
+      .then((result) => {
+        if (!active) return;
+        setRuntime(result);
+        setRuntimeState(result.availability);
+      })
+      .catch(() => {
+        if (active) setRuntimeState("preview");
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [loadRuntime]);
+
+  useEffect(() => {
     document.documentElement.dataset.theme = theme;
     window.localStorage.setItem("quireforge-theme", theme);
   }, [theme]);
@@ -126,6 +151,14 @@ export default function App({
     native: "Native IPC verified",
     preview: "Browser preview",
   }[bridgeState];
+
+  const runtimeLabel = {
+    checking: "Checking Codex adapter",
+    ready: "Codex adapter ready",
+    degraded: "CLI fallback only",
+    unavailable: "Codex unavailable",
+    preview: "Native probe unavailable",
+  }[runtimeState];
 
   return (
     <div className="app-shell">
@@ -192,7 +225,7 @@ export default function App({
           <div className="topbar-actions">
             <span className="foundation-badge">
               <Glyph name="shield" />
-              Milestone 3 foundation
+              Milestone 4 adapter
             </span>
             <button
               className="theme-toggle"
@@ -215,9 +248,9 @@ export default function App({
               </p>
               <h1 id="workspace-title">A quiet place for ambitious work.</h1>
               <p className="hero-description">
-                The QuireForge desktop shell is wired to a small, validated Rust
-                boundary. Codex sessions and local projects will arrive through
-                their documented interfaces in the milestones ahead.
+                The QuireForge desktop shell now probes Codex through a
+                versioned, supervised Rust adapter. Sessions and local projects
+                remain gated behind their later milestones.
               </p>
               <div className="hero-actions">
                 <button className="secondary-action" type="button" disabled>
@@ -267,13 +300,23 @@ export default function App({
                     </div>
                     <em>verified</em>
                   </div>
-                  <div className="verification-line verification-line--planned">
-                    <span className="planned-ring" />
+                  <div
+                    className={`verification-line ${runtimeState === "ready" ? "" : "verification-line--planned"}`}
+                  >
+                    {runtimeState === "ready" ? (
+                      <Glyph name="check" />
+                    ) : (
+                      <span className="planned-ring" />
+                    )}
                     <div>
                       <strong>Codex process adapter</strong>
-                      <span>supported app-server interface</span>
+                      <span>
+                        {runtimeState === "ready"
+                          ? `${runtime.adapterVersion} · ${runtime.models.length} models`
+                          : "Supported native interfaces only"}
+                      </span>
                     </div>
-                    <em>Milestone 4</em>
+                    <em>{runtimeLabel}</em>
                   </div>
                 </div>
               </div>
@@ -314,10 +357,10 @@ export default function App({
                   </div>
                   <h3>{capability.label}</h3>
                   <p>
-                    {capability.state === "ready"
-                      ? "Tauri, React, strict TypeScript, and a validated native contract."
-                      : capability.id === "codex-runtime"
-                        ? "Version probing, process lifecycle, and normalized events through supported Codex interfaces."
+                    {capability.id === "codex-runtime"
+                      ? "Version probing, supervised stdio, normalized models, and bounded failure states."
+                      : capability.state === "ready"
+                        ? "Tauri, React, strict TypeScript, and a validated native contract."
                         : "Explicit directory selection, identity verification, and in-place local work."}
                   </p>
                   <footer>
@@ -344,7 +387,7 @@ export default function App({
                 authorization.
               </p>
             </div>
-            <span>0 broad plugin permissions</span>
+            <span>{runtimeLabel}</span>
           </section>
 
           <footer className="product-footer">
