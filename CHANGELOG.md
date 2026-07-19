@@ -47,6 +47,8 @@ released a usable application.
   zone; no DNS record was created by Codex.
 - Recorded owner confirmation that Cloudflare two-factor authentication is now
   enabled without retaining factor or recovery details.
+- Recorded revocation of the dedicated A2 audit key and removal of its local
+  private/public files from `~/.ssh` after the read-only audit.
 - Completed Milestone 0 feasibility documentation locally; no hosting project,
   DNS record, deployment, push, or release was created by Codex.
 - Refreshed account-scoped Codex discovery without publishing catalog entries

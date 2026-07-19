@@ -3,8 +3,9 @@
 - Audit date: 2026-07-19
 - Production target: `https://quireforge.jamesjennison.net`
 - Status: public, local, and authenticated read-only inspection complete
-- Hosting changes made: a dedicated audit public key was authorized; no site,
-  DNS, SSL, repository, deployment, or content setting changed
+- Hosting changes made: a dedicated audit public key was authorized for the
+  inspection and subsequently revoked; no site, DNS, SSL, repository,
+  deployment, or content setting changed
 - Production disposition: superseded by Cloudflare Pages; A2 remains the
   main-site/mail origin and a recoverable prior QuireForge origin
 
@@ -52,8 +53,10 @@ migration timing a material production risk.
 
 The audit established that GitHub Actions plus SSH/`rsync` was viable but
 required custom release and rollback machinery. The owner subsequently selected
-Cloudflare Pages as the production host in ADR 0006. The audit key is not a
-deployment key, and no A2 deployment is authorized.
+Cloudflare Pages as the production host in ADR 0006. The audit key was never a
+deployment key; the owner revoked it in cPanel after the audit, and its local
+private/public key files were removed from `~/.ssh`. No A2 deployment is
+authorized.
 
 ## Preserved project and GitHub baseline
 
@@ -176,7 +179,7 @@ No existing-site content was downloaded into the repository.
 | Backup / Backup Wizard | Available | Feature enabled; no downloadable backups listed and provider retention unknown |
 | Git Version Control | Available | Feature and read-only API work; no repositories configured |
 | Terminal / SSH Access | Available | Bash over key-authenticated SSH on the provider port |
-| SSH key management | Available | Dedicated audit key imported and authorized |
+| SSH key management | Available | Dedicated audit key was imported for the audit and revoked afterward |
 | Cron Jobs | Available | UI feature enabled; this server lacks the current Cron UAPI module |
 | Application Manager / Node.js | Provider-disabled / degraded | Passenger disabled; Node selector shown but Node/npm absent from shell |
 | SSL/TLS Status / AutoSSL | Available | Let's Encrypt AutoSSL active for QuireForge and its `www` alias |
@@ -242,7 +245,8 @@ read-only phase.
 - TLS 1.2 and 1.3 work; TLS 1.0 and 1.1 do not.
 - A dedicated passphrase-protected audit SSH key was created locally and its
   public key authorized; no password, API token, or deployment credential was
-  accessed or created.
+  accessed or created. The owner revoked the key in cPanel after the audit, and
+  its local private/public files were unloaded and removed from `~/.ssh`.
 - ModSecurity is enabled for QuireForge; the account malware scanner is
   disabled. Account directories are owner-restricted and the document roots
   use the provider's expected shared-web-group permissions.
@@ -299,8 +303,11 @@ consistent trust-on-first-use observations; independent A2 confirmation remains
 desirable. The private key and passphrase were never displayed or committed.
 Only read-only version, quota, feature, filesystem-metadata, and configuration
 commands ran. No directory, permission, `.htaccess`, package, content, DNS,
-deployment, mail, or database change occurred. The key should be revoked after
-the owner approves audit-access cleanup.
+deployment, mail, or database change occurred. The owner subsequently revoked
+the public key in cPanel. The key was unloaded from the local SSH agent, and its
+private/public files were removed from `~/.ssh` to the local system Trash. The
+dedicated known-hosts file contains only public server identity data and remains
+available as audit evidence.
 
 ## Authoritative sources
 
