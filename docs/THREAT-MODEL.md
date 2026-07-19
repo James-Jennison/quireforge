@@ -176,6 +176,28 @@ Controls:
 - Build Linux artifacts on the selected oldest compatible baseline.
 - Review website content so local integrations and account data never publish.
 
+### Identity and local-data migration
+
+Threats include overwriting newer QuireForge data, treating Codex-owned data as
+application-owned, running concurrently from old and new paths, stale desktop
+entries, ambiguous repository redirects, and a partial rename that launches
+against the wrong working directory.
+
+Controls:
+
+- Version all application-owned schema changes and make identity migrations
+  idempotent.
+- Never overwrite an existing newer QuireForge data store or delete the old
+  store automatically.
+- Detect and migrate only application-owned settings, project associations, and
+  non-secret preferences; never migrate Codex authentication or session data.
+- Close or reopen processes before moving an active working copy, then verify
+  its Git identity and exact path.
+- Update canonical repository and Pages links instead of relying indefinitely
+  on redirects.
+- Keep repository rename, local move, Pages deployment, and package cleanup as
+  separate approval-gated actions.
+
 ## Privacy posture
 
 - The application does not upload attached directories on its own.

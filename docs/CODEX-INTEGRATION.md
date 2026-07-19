@@ -9,6 +9,30 @@ This document records observed interfaces. It is not a promise that every
 capability remains available in other Codex versions, accounts, regions, or
 workspaces.
 
+## QuireForge client identity
+
+QuireForge is the intended client display name wherever an official Codex or
+MCP interface accepts client metadata. A versioned adapter may send a truthful,
+minimal identity such as `QuireForge` and its application version only when the
+installed interface documents that field. It must not impersonate an official
+OpenAI client or claim OpenAI verification.
+
+Integration-facing identifiers follow these rules:
+
+- Human-facing client name: `QuireForge`.
+- Product-owned user-agent token, when a supported interface needs one:
+  `quireforge/<version>`.
+- Official plugin, connector, marketplace, MCP tool, Codex protocol, and API
+  identifiers remain unchanged.
+- Connector authorization uses only official returned URLs and callback
+  behavior; the rename does not invent or rewrite callback contracts.
+- Enterprise registration, allowlisting, or compliance metadata must describe
+  QuireForge as an unofficial third-party client and may require future
+  coordination with the relevant administrator or OpenAI-supported process.
+
+Client metadata and logs must not contain local paths, account identifiers,
+tokens, or repository contents.
+
 ## Evidence sources
 
 - Installed CLI help and redacted diagnostics.

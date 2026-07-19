@@ -4,6 +4,9 @@ The objective is comparable workflow coverage, not pixel-level imitation or
 access to proprietary implementation details. Windows/ChatGPT behavior below is
 based only on public documentation and observable supported concepts.
 
+QuireForge is an unofficial client. Product identity does not alter official
+Codex commands, protocol types, integration IDs, or compatibility boundaries.
+
 | Product capability | Public desktop behavior | Supported official interface | Local project responsibility | Milestone/status |
 |---|---|---|---|---|
 | Projects linked to local folders | Local project gives chats one or more folders | Absolute `cwd`, `--cd`, sandbox roots | Project DB, native picker, identity checks | M6 / feasible |

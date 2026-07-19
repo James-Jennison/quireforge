@@ -10,6 +10,28 @@ released a usable application.
 - Dedicated public repository and an explicit unofficial-project disclaimer.
 - Milestone 0 Codex integration, compatibility, feature-parity, architecture,
   threat-model, GitHub Pages, roadmap, and architecture-decision documentation.
+- Permanent QuireForge identity contract covering application, package,
+  repository, GitHub Pages, integration-client, and XDG storage identifiers.
+
+### Changed
+
+- Adopted **QuireForge** as the permanent product name, with the tagline
+  “Build boldly. Work locally.” The former “Codex Linux Workbench” name was a
+  temporary discovery-stage label.
+- Updated the planned repository-project website to
+  `https://codeframe78.github.io/quireforge/` with base path `/quireforge/`.
+
+### Migration note
+
+- The existing Git history and discovery work are being migrated in place; no
+  replacement project or rewritten history is involved.
+- The GitHub repository rename and local working-copy move are separate,
+  approval-gated operations and are not part of the tracked-documentation
+  change.
+- No released or development application data was detected under the temporary
+  identity, so there is currently no user configuration to move. Future
+  releases must preserve old data and never modify Codex-owned authentication
+  or sessions.
 
 ### Known limitations
 

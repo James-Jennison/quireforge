@@ -3,6 +3,9 @@
 Status: Milestone 0 proposal. Interfaces are subject to contract validation in
 their implementation milestones.
 
+QuireForge is an unofficial native Linux workspace for Codex. It is not made,
+endorsed, supported, or distributed by OpenAI.
+
 ## Goals
 
 - Provide a native Linux graphical client around supported Codex interfaces.
@@ -12,6 +15,23 @@ their implementation milestones.
 - Degrade honestly when capabilities are absent, experimental, or policy-blocked.
 - Make security boundaries visible in the product rather than hiding them in a
   generic permissions toggle.
+
+## Product identity and owned paths
+
+The permanent display identity is **QuireForge**, with the tagline “Build
+boldly. Work locally.” Technical components use the identity map in
+[ADR 0003](DECISIONS/0003-permanent-quireforge-identity.md).
+
+Application-owned configuration, data, cache, and state follow the XDG base
+directories with the `quireforge` leaf name. The application must resolve XDG
+environment overrides through platform APIs rather than hardcoding `$HOME`.
+The documented home-relative paths describe defaults, not an instruction to
+ignore `XDG_CONFIG_HOME`, `XDG_DATA_HOME`, `XDG_CACHE_HOME`, or
+`XDG_STATE_HOME`.
+
+Codex remains the owner of Codex authentication, configuration, integrations,
+and session data. A QuireForge rename or uninstall must not move, copy, or
+delete those locations.
 
 ## Process layout
 
@@ -253,4 +273,5 @@ Most tests require neither model calls nor third-party authorization.
 - Exact frontend state/query libraries.
 - Whether repository-scoped integration settings should be edited directly or
   only through Codex-supported configuration RPCs.
-- Brand and final repository/application name.
+- Final validation of the application identifier against the selected Tauri,
+  desktop-entry, D-Bus, and packaging toolchain versions.

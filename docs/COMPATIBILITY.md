@@ -2,6 +2,26 @@
 
 Status: Milestone 0 discovery; implementation has not started.
 
+## Identity compatibility contract
+
+The following values are reserved for implementation and must be validated in
+the real toolchain rather than inferred from documentation alone:
+
+| Surface | Target identity | Current validation state |
+|---|---|---|
+| Product/window/desktop display | `QuireForge` | Valid display name |
+| Executable and Debian package | `quireforge` | Valid Linux package/binary form |
+| Desktop entry filename | `quireforge.desktop` | Valid filename form |
+| AppImage basename | `QuireForge` | Valid artifact basename |
+| Application identifier | `io.github.codeframe78.QuireForge` | Candidate; verify with Tauri, D-Bus, desktop, and packaging tools |
+| XDG directory leaf | `quireforge` | Valid; honor XDG environment overrides |
+| GitHub repository | `codeframe78/quireforge` | Target available at identity audit; rename separately gated |
+| GitHub Pages project base | `/quireforge/` | Valid repository-project path; site not deployed |
+
+No Tauri, Cargo, JavaScript, Astro, package, or desktop-entry configuration
+exists yet, so this table is a future implementation contract rather than a
+claim that those artifacts have already been migrated.
+
 ## Validated discovery environment
 
 | Component | Observed value | Readiness |

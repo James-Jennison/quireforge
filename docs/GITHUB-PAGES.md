@@ -5,8 +5,10 @@ been deployed.
 
 ## Production target
 
-- Repository: `codeframe78/codex-linux-workbench`.
-- Initial URL: `https://codeframe78.github.io/codex-linux-workbench/`.
+- Product: QuireForge.
+- Repository: `codeframe78/quireforge` (target; repository rename is separately
+  approval-gated).
+- Initial URL: `https://codeframe78.github.io/quireforge/`.
 - Source: `apps/website/` in the monorepo.
 - Generator: Astro with TypeScript and static output.
 - Host: GitHub Pages only.
@@ -33,7 +35,7 @@ For this project site, Astro will use:
 
 ```text
 site = https://codeframe78.github.io
-base = /codex-linux-workbench
+base = /quireforge
 ```
 
 All navigation, assets, fonts, canonical URLs, social metadata, sitemap entries,
@@ -42,6 +44,10 @@ path. No root-relative path may accidentally omit the repository prefix.
 
 The built artifact must contain the entry page at its root, not nested inside an
 extra `dist` directory layer.
+
+The repository currently has no Astro source, workflow, or deployed Pages
+site. This identity update establishes the production contract; it does not
+enable Pages, change repository settings, or deploy anything.
 
 ## Workflow design
 

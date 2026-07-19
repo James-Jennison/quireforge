@@ -1,22 +1,27 @@
-# Codex Linux Workbench
+# QuireForge
+
+> **Build boldly. Work locally.**
 
 > [!IMPORTANT]
 > This is an unofficial community project. It is not made, endorsed, supported,
-> or distributed by OpenAI. “Codex Linux Workbench” is a temporary repository
-> name pending branding review.
+> or distributed by OpenAI. QuireForge is an unofficial native Linux workspace
+> for Codex.
 
-An early-stage open-source project exploring a native graphical Codex client for
-Linux. **Milestone 0: discovery and feasibility is complete**; there is no
-application package to install yet.
+QuireForge is an early-stage open-source project building a native graphical
+Codex workspace for Linux. It works toward a direct, local-first project model:
+user-selected directories remain in place and Codex operates against those
+original directories through supported interfaces. **Milestone 0: discovery
+and feasibility is complete**; there is no application package to install yet.
 
 ## Project status
 
 - Supported distributions: none yet; Ubuntu support is being evaluated.
 - Installation: not available during discovery.
-- Website: planned for GitHub Pages; not deployed.
+- Website: planned at `https://codeframe78.github.io/quireforge/`; not deployed.
 - Integration support: under validation against supported Codex interfaces.
 - Completed milestone: Milestone 0 — Discovery and Feasibility.
-- Current milestone: awaiting the model-selection gate for Milestone 1.
+- Current milestone: permanent QuireForge identity migration, with external
+  repository and local-path changes separately approval-gated.
 - Upcoming milestone: Milestone 1 — Repository and Governance.
 - Known limitations: no desktop implementation, packages, releases, or public
   website exist yet.
@@ -29,6 +34,7 @@ application package to install yet.
 - [Feature parity](docs/FEATURE-PARITY.md)
 - [Threat model](docs/THREAT-MODEL.md)
 - [GitHub Pages plan](docs/GITHUB-PAGES.md)
+- [Permanent identity decision](docs/DECISIONS/0003-permanent-quireforge-identity.md)
 - [Roadmap](docs/ROADMAP.md)
 - [Changelog](CHANGELOG.md)
 
@@ -36,3 +42,16 @@ The application will use only supported Codex and ChatGPT integration
 mechanisms. It will not scrape ChatGPT, copy browser tokens, reverse engineer a
 proprietary desktop application, or present account-specific integrations as a
 guaranteed public catalog.
+
+## Permanent identity
+
+The target repository is `codeframe78/quireforge`. Future application and
+packaging work must use `quireforge` for the executable and Debian package,
+`QuireForge` for the desktop display name and AppImage basename, and
+`io.github.codeframe78.QuireForge` as the application-identifier candidate
+pending validation in the actual Tauri and Linux packaging toolchains.
+
+Application-owned files will use the XDG locations `~/.config/quireforge`,
+`~/.local/share/quireforge`, `~/.cache/quireforge`, and, where needed,
+`~/.local/state/quireforge`. Codex-owned authentication, configuration, and
+session storage are outside this identity migration.

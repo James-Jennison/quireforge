@@ -8,13 +8,26 @@ and wait for manual confirmation.
 No milestone may merge, deploy, publish a release, enable GitHub Pages, install
 an integration, or authorize a connector without its required approval.
 
+## Permanent identity migration
+
+The discovery-stage name “Codex Linux Workbench” has been replaced by the
+permanent product identity **QuireForge**: “Build boldly. Work locally.” The
+migration preserves the repository and its history. Tracked documentation,
+GitHub repository identity, original local working-copy path, and branding
+assets are handled as separately verified and approval-gated migration steps.
+
+The target local path is `/mnt/faststorage/quireforge`, but moving the active
+working copy requires a controlled Codex-session handoff. The target repository
+is `codeframe78/quireforge`; renaming it does not authorize a push, merge,
+Pages deployment, or release.
+
 ## Status
 
 | Milestone | Scope | Size | Status |
 |---:|---|---|---|
 | 0 | Discovery and feasibility | Large | Complete |
 | 1 | Dedicated repository and governance | Medium | Next; repository prerequisite initialized |
-| 2 | Brand identity and GitHub Pages foundation | Large | Planned |
+| 2 | QuireForge design system and GitHub Pages foundation | Large | Planned |
 | 3 | Tauri/React/Rust desktop scaffold | Large | Planned |
 | 4 | Codex process adapter and contracts | Very large | Planned |
 | 5 | Authentication and onboarding | Medium | Planned |
@@ -50,11 +63,12 @@ security policy, conduct/support documents, issue and PR templates, dependency
 automation, initial CI, and repository status. Review the already-created
 dedicated repository rather than creating another one.
 
-### 2 — Brand Identity and GitHub Pages Foundation
+### 2 — QuireForge Design System and GitHub Pages Foundation
 
-Choose an original, non-misleading identity after conflict and brand review.
-Scaffold the Astro site, design tokens, themes, navigation, metadata,
-accessibility foundation, and repository-subpath behavior. Do not deploy.
+Develop the approved QuireForge identity into production vector assets and
+scaffold the Astro site, design tokens, themes, navigation, metadata,
+accessibility foundation, and `/quireforge/` repository-subpath behavior. Do
+not deploy.
 
 ### 3 — Desktop Application Scaffold
 
