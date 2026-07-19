@@ -17,14 +17,14 @@ free and paid plans.
 ## Public DNS migration state
 
 The `.net` registry delegates `jamesjennison.net` to the assigned Cloudflare
-nameservers. Independent recursive resolvers showed mixed A2/Cloudflare
+nameservers. Independent recursive resolvers showed mixed legacy and Cloudflare
 answers during normal delegation propagation. Both Cloudflare authoritative
 servers agree on the new zone: apex, `www`, and mail-routing records exist,
 but `quireforge.jamesjennison.net` has no A, AAAA, or CNAME record.
 
-The QuireForge hostname will stop resolving as older A2 answers expire. Because
-no production site exists, the correct remediation is not to restore the old
-A2 origin automatically. Create and validate the Pages project and associate
+The QuireForge hostname will stop resolving as older cached answers expire.
+Because no production site exists, do not restore a previous origin
+automatically. Create and validate the Pages project and associate
 the custom domain first; then add the exact Pages CNAME under a separate DNS
 approval. Existing mail records must remain untouched.
 
@@ -91,8 +91,8 @@ narrow read-only API token stored in an approved local credential facility.
   GitHub integration, token issuance, and QuireForge DNS changes.
 - Add the Pages custom domain before creating its currently absent DNS record.
 - Verify domain ownership and prevent dangling-CNAME takeover risk.
-- Preserve the former A2 QuireForge origin value privately for rollback until
-  Pages TLS and live behavior pass verification.
+- Preserve the prior production state privately for rollback until Pages TLS
+  and live behavior pass verification.
 - Do not alter mail records or the main-site origin while completing Pages.
 - Keep production and preview configuration separate; preview output is
   public unless protected and must remain `noindex`.

@@ -330,8 +330,7 @@ and account data never enter the site build.
 
 Production is `https://quireforge.jamesjennison.net` on Cloudflare Pages.
 GitHub owns source, validation, issues, and release binaries; GitHub Pages
-remains disabled. Cloudflare is authoritative DNS while A2 retains the
-main-site and mail origins unless separately changed. The deployment adapter
+remains disabled. Cloudflare is authoritative DNS. The deployment adapter
 builds a static artifact, creates isolated previews, applies version-controlled
 headers/redirects, and promotes only an approved production-branch deployment.
 DNS cutover is independently approval-gated and recoverable. The generated

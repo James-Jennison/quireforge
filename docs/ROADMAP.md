@@ -27,9 +27,9 @@ in-place GitHub repository rename, local working-copy handoff, and core vector
 brand sources are complete. Milestone 1 also established the Apache-2.0 license,
 repository guidance, contribution/security/conduct/support policies, issue and
 pull-request templates, dependency automation, and initial repository CI. The
-work has not been pushed or merged. Milestone 2 added the local static website,
-production web exports, and automated website quality gates without creating a
-Cloudflare project or deployment. Milestone 3 added the locally verified Tauri
+work through Milestone 5 is merged on `main`. Milestone 2 added the local static
+website, production web exports, and automated website quality gates without
+creating a Cloudflare project or deployment. Milestone 3 added the locally verified Tauri
 desktop foundation, narrow typed IPC contract, Linux app icons, and desktop
 quality gates without producing an installable package. Milestone 4 added the
 versioned Codex boundary, supervised app-server probe, normalized model catalog,
@@ -43,12 +43,12 @@ packages and external provider settings remain milestone- and approval-gated.
 
 | Milestone | Scope | Size | Status |
 |---:|---|---|---|
-| 0 | Existing project, hosting capability audit, and feasibility | Very large | Complete locally; not pushed |
-| 1 | QuireForge rename, move, GitHub migration, and governance closure | Medium | Complete locally; not pushed |
-| 2 | QuireForge brand and Cloudflare website foundation | Large | Complete locally; not pushed or deployed |
-| 3 | Desktop scaffold consolidation | Large | Complete locally; not pushed or packaged |
-| 4 | Codex process adapter and contracts | Very large | Complete locally; not pushed |
-| 5 | Authentication and onboarding | Medium | Complete locally; not pushed |
+| 0 | Existing project and feasibility discovery | Very large | Complete; merged to `main` |
+| 1 | QuireForge rename, move, GitHub migration, and governance closure | Medium | Complete; merged to `main` |
+| 2 | QuireForge brand and Cloudflare website foundation | Large | Complete; merged to `main`; not deployed |
+| 3 | Desktop scaffold consolidation | Large | Complete; merged to `main`; not packaged |
+| 4 | Codex process adapter and contracts | Very large | Complete; merged to `main` |
+| 5 | Authentication and onboarding | Medium | Complete; merged to `main` |
 | 6 | Projects and direct local-directory attachment | Very large | Current; not begun |
 | 7 | Conversation MVP | Very large | Planned |
 | 8 | Session lifecycle and crash recovery | Large | Planned |
@@ -67,15 +67,14 @@ packages and external provider settings remain milestone- and approval-gated.
 
 ## Milestone definitions
 
-### 0 — Existing Project Audit, Hosting Capability Audit, and Feasibility
+### 0 — Existing Project Audit and Feasibility
 
 Inspect the installed Codex CLI, app-server, plugins, marketplaces, skills,
 MCP, apps/connectors, policy, authentication, local cwd behavior, Linux/Tauri
-prerequisites, GitHub, public DNS/TLS/site behavior, and—with separate access
-approval—the A2/cPanel account. Preserve that completed evidence, audit the
-selected Cloudflare Pages account through a separately approved method, and
-document production constraints, previews, security, cutover, and rollback.
-Make no hosting, DNS, repository-setting, or production change.
+prerequisites, GitHub, public DNS/TLS/site behavior, and the selected Cloudflare
+Pages account through a separately approved method. Document production
+constraints, previews, security, cutover, and rollback. Make no hosting, DNS,
+repository-setting, or production change.
 
 ### 1 — QuireForge Rename, Move, and GitHub Migration
 

@@ -39,8 +39,8 @@ install yet.
 - Desktop: the Tauri 2, React, TypeScript, and Rust shell builds and launches
   locally with narrow typed IPC and a supervised, non-billable Codex runtime
   and account-status probe; project and conversation workflows remain planned.
-- CI status: repository, website, and desktop quality gates are configured
-  locally but will not run on GitHub until the branch is approved and pushed.
+- CI status: repository, website, and desktop quality gates are configured for
+  pull requests and `main` pushes; deployment remains separately gated.
 - Completed milestone: Milestone 5 — authentication and onboarding.
 - Current milestone: Milestone 6 — projects and direct local-directory
   attachment (not begun; fresh reasoning/model confirmation required).
@@ -55,10 +55,8 @@ install yet.
 - [Compatibility](docs/COMPATIBILITY.md)
 - [Feature parity](docs/FEATURE-PARITY.md)
 - [Threat model](docs/THREAT-MODEL.md)
-- [A2 Hosting capability audit](docs/A2-HOSTING-CAPABILITY-AUDIT.md)
 - [Cloudflare Pages capability audit](docs/CLOUDFLARE-PAGES-CAPABILITY-AUDIT.md)
 - [Cloudflare Pages deployment](docs/CLOUDFLARE-PAGES-DEPLOYMENT.md)
-- [Superseded cPanel deployment architecture](docs/CPANEL-DEPLOYMENT.md)
 - [Website architecture](docs/WEBSITE.md)
 - [Building](docs/BUILDING.md)
 - [Testing](docs/TESTING.md)
@@ -90,11 +88,10 @@ The canonical desktop entry is
 
 The production website target is
 `https://quireforge.jamesjennison.net`, hosted as a static Astro site on
-Cloudflare Pages. Cloudflare is authoritative DNS; A2 retains the main-site and
-mail origins unless separately changed. GitHub remains the source, CI, issue,
-and release host. GitHub Pages is disabled and is not the production host. The
-website source is under `apps/website/`; project creation, DNS, and deployment
-remain separately approval-gated.
+Cloudflare Pages. Cloudflare is authoritative DNS. GitHub remains the source,
+CI, issue, and release host. GitHub Pages is disabled and is not the production
+host. The website source is under `apps/website/`; project creation, DNS, and
+deployment remain separately approval-gated.
 
 ## Website development
 
