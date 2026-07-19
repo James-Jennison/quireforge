@@ -14,16 +14,11 @@ released a usable application.
   repository, GitHub Pages, integration-client, and XDG storage identifiers.
 - Original path-based QuireForge mark, wordmark, light/dark lockups, favicon,
   application-icon source, social card, palette, and brand usage guidance.
-- Public/local A2 Hosting capability audit, preliminary cPanel deployment
-  architecture, and an explicit authenticated-access boundary.
-- ADR 0005 selecting the dedicated A2-hosted production subdomain while
-  retaining the earlier GitHub Pages plan as superseded history.
-- Authenticated A2/cPanel capability findings and a Cloudflare Pages capability
-  and deployment plan.
+- Cloudflare Pages capability findings and a deployment plan.
 - Sanitized owner-mediated Cloudflare account audit covering the Free plan,
   Workers & Pages availability, DNS, managed TLS, and security settings.
 - ADR 0006 selecting Cloudflare Pages as the production website host and
-  authoritative DNS while A2 retains main-site and mail origins.
+  authoritative DNS.
 - Apache License 2.0 and repository-wide contributor guidance.
 - Security, contribution, conduct, support, issue, and pull-request policies.
 - GitHub Actions dependency updates and a minimum-permission repository-checks
@@ -84,16 +79,15 @@ released a usable application.
   `clientInfo.title = "QuireForge"`, and the real application version.
 - Selected `https://quireforge.jamesjennison.net` as the production website;
   GitHub remains the source, CI, issue, and release host.
-- Replaced A2/cPanel production hosting with Cloudflare Pages after the A2
-  audit identified greater deployment and lifecycle overhead. Codex changed no
-  provider, DNS, project, or production setting as part of that decision.
+- Selected Cloudflare Pages as the production host. Codex changed no provider,
+  DNS, project, or production setting as part of that decision.
 - Recorded the owner's separately completed move of authoritative DNS to
   Cloudflare and the temporary absence of the QuireForge hostname in the new
   zone; no DNS record was created by Codex.
 - Recorded owner confirmation that Cloudflare two-factor authentication is now
   enabled without retaining factor or recovery details.
-- Recorded revocation of the dedicated A2 audit key and removal of its local
-  private/public files from `~/.ssh` after the read-only audit.
+- Removed obsolete provider-specific hosting audits and deployment plans from
+  the current project tree.
 - Completed Milestone 0 feasibility documentation locally; no hosting project,
   DNS record, deployment, push, or release was created by Codex.
 - Refreshed account-scoped Codex discovery without publishing catalog entries

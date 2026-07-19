@@ -174,14 +174,8 @@ selected sandbox before saving an association or starting a task.
 
 The static Astro design is compatible with Cloudflare Pages static output,
 preview deployments, custom domains, headers, and redirects. Account-level
-inspection is complete; project-specific GitHub integration remains pending. The earlier
-A2/cPanel design was compatible with ordinary cPanel static hosting. Its
-authenticated audit confirmed an isolated document root, TLS 1.2/1.3,
-LiteSpeed, SSH/`rsync`, Git, AutoSSL, ModSecurity, and account resource limits;
-the empty endpoint currently returns the expected no-index 403. Atomic release
-switching and staging were not tested before that design was superseded. See the
-[Cloudflare audit](CLOUDFLARE-PAGES-CAPABILITY-AUDIT.md) and historical
-[A2 audit](A2-HOSTING-CAPABILITY-AUDIT.md).
+inspection is complete; project-specific GitHub integration remains pending.
+See the [Cloudflare audit](CLOUDFLARE-PAGES-CAPABILITY-AUDIT.md).
 
 GitHub Pages remains disabled and is not a production fallback.
 

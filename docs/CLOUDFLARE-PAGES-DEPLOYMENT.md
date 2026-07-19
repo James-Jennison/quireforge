@@ -44,8 +44,7 @@ account-specific audit. In either case:
    approval.
 10. Verify TLS, canonical host, headers, routes, assets, and the unaffected main
    site.
-11. Retain the previous successful Pages deployment for rollback. A2 is not a
-    QuireForge deployment target.
+11. Retain the previous successful Pages deployment for rollback.
 
 ## Rollback
 

@@ -210,7 +210,7 @@ Controls:
 - For Cloudflare Pages, constrain GitHub/app or API-token permissions, prevent
   fork previews from receiving secrets, verify the custom domain before DNS
   cutover, and avoid dangling CNAME takeover risk.
-- Keep the prior A2 origin value recoverable until Pages TLS, headers,
+- Keep the prior production state recoverable until Pages TLS, headers,
   redirects, assets, and rollback have been verified.
 - Require two-factor authentication on the Cloudflare owner account before
   Pages project creation, GitHub integration, token issuance, or DNS cutover.

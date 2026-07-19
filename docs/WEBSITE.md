@@ -26,9 +26,9 @@ Contributing, FAQ, Troubleshooting, About, and a custom 404. The production
 artifact is not yet public.
 
 GitHub Pages remains disabled and is not a fallback production host. Cloudflare
-is authoritative DNS; A2 keeps the main-site and mail origins unless separately
-changed. The currently absent QuireForge record will use Cloudflare's supported
-Pages CNAME flow after separately approved project setup and validation.
+is authoritative DNS. The currently absent QuireForge record will use
+Cloudflare's supported Pages CNAME flow after separately approved project setup
+and validation.
 
 ## Information architecture
 
@@ -98,5 +98,4 @@ integrations, credentials, and unsanitized diagnostics are prohibited.
 
 See [the Cloudflare Pages capability audit](CLOUDFLARE-PAGES-CAPABILITY-AUDIT.md),
 [deployment architecture](CLOUDFLARE-PAGES-DEPLOYMENT.md), and
-[ADR 0006](DECISIONS/0006-cloudflare-pages-production-hosting.md). The
-[A2 audit](A2-HOSTING-CAPABILITY-AUDIT.md) is retained as migration evidence.
+[ADR 0006](DECISIONS/0006-cloudflare-pages-production-hosting.md).
