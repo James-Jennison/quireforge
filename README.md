@@ -17,26 +17,26 @@ QuireForge is an early-stage open-source project building a native graphical
 Codex workspace for Linux. It works toward a direct, local-first project model:
 user-selected directories remain in place and Codex operates against those
 original directories through supported interfaces. The original Codex
-discovery and QuireForge identity foundation are complete; production-hosting
-feasibility is complete and Cloudflare Pages is the selected production host.
-There is no application package to install yet.
+discovery, QuireForge identity, governance, and the local static website
+foundation are complete. Cloudflare Pages is the selected production host, but
+the site has not been deployed. There is no application package to install yet.
 
 ## Project status
 
 - Supported distributions: none yet; Ubuntu support is being evaluated.
-- Installation: not available during discovery.
-- Website: planned at `https://quireforge.jamesjennison.net` on Cloudflare
-  Pages; not deployed.
+- Installation: not available before the desktop and packaging milestones.
+- Website: the Astro site builds and passes local responsive/accessibility
+  checks for `https://quireforge.jamesjennison.net`; it is not deployed.
 - Integration support: under validation against supported Codex interfaces.
-- CI status: repository validation is configured locally but will not run on
-  GitHub until the branch is approved and published.
-- Completed milestone: Milestone 1 — QuireForge migration reconciliation and
-  open-source governance baseline.
-- Current milestone: Milestone 2 — brand and Cloudflare Pages website
+- CI status: repository and website quality gates are configured locally but
+  will not run on GitHub until the branch is approved and pushed.
+- Completed milestone: Milestone 2 — brand and Cloudflare Pages website
   foundation.
-- Upcoming milestone: Milestone 3 — desktop scaffold consolidation.
-- Known limitations: no desktop implementation, packages, releases, or public
-  website exist yet.
+- Current milestone: Milestone 3 — desktop scaffold consolidation (not begun;
+  model confirmation required).
+- Upcoming milestone: Milestone 4 — Codex process adapter and contracts.
+- Known limitations: no desktop implementation, packages, releases, public
+  deployment, or production Lighthouse evidence exists yet.
 
 ## Discovery documents
 
@@ -50,6 +50,8 @@ There is no application package to install yet.
 - [Cloudflare Pages deployment](docs/CLOUDFLARE-PAGES-DEPLOYMENT.md)
 - [Superseded cPanel deployment architecture](docs/CPANEL-DEPLOYMENT.md)
 - [Website architecture](docs/WEBSITE.md)
+- [Building](docs/BUILDING.md)
+- [Testing](docs/TESTING.md)
 - [Superseded GitHub Pages plan](docs/GITHUB-PAGES.md)
 - [Permanent identity decision](docs/DECISIONS/0003-permanent-quireforge-identity.md)
 - [Brand sources and usage](assets/brand/README.md)
@@ -77,7 +79,23 @@ The production website target is
 `https://quireforge.jamesjennison.net`, hosted as a static Astro site on
 Cloudflare Pages. Cloudflare is authoritative DNS; A2 retains the main-site and
 mail origins unless separately changed. GitHub remains the source, CI, issue,
-and release host. GitHub Pages is disabled and is not the production host.
+and release host. GitHub Pages is disabled and is not the production host. The
+website source is under `apps/website/`; project creation, DNS, and deployment
+remain separately approval-gated.
+
+## Website development
+
+With Node 22 and pnpm 11.15.0 available:
+
+```bash
+pnpm install --frozen-lockfile
+pnpm validate
+pnpm test:e2e
+```
+
+See [Building](docs/BUILDING.md) and [Testing](docs/TESTING.md) for the complete
+local workflow and a fallback when an older distribution Corepack cannot launch
+the pinned pnpm release.
 
 Application-owned files will use the XDG locations `~/.config/quireforge`,
 `~/.local/share/quireforge`, `~/.cache/quireforge`, and, where needed,

@@ -1,7 +1,7 @@
 # Website
 
-Status: architecture and hosting target established; Astro source and public
-deployment do not exist yet.
+Status: Milestone 2 static Astro foundation implemented and verified locally;
+Cloudflare project creation and public deployment remain approval-gated.
 
 ## Purpose
 
@@ -19,6 +19,11 @@ and must not imply OpenAI ownership or endorsement.
 - Production base: `/` on the dedicated subdomain.
 - Application downloads: GitHub Releases.
 - Runtime services: none.
+
+The source currently generates Home, Features, Integrations, Downloads,
+Installation, Documentation, Compatibility, Roadmap, Releases, Security,
+Contributing, FAQ, Troubleshooting, About, and a custom 404. The production
+artifact is not yet public.
 
 GitHub Pages remains disabled and is not a fallback production host. Cloudflare
 is authoritative DNS; A2 keeps the main-site and mail origins unless separately
@@ -62,6 +67,28 @@ guaranteed catalog.
 
 Targets are Lighthouse Performance 90+, Accessibility 95+, Best Practices 95+,
 and SEO 95+. Any miss requires recorded evidence and remediation.
+
+## Implemented foundation
+
+- Astro static output with strict TypeScript and a committed pnpm lockfile.
+- Central content and identity data, reusable layout/header/footer/hero/status
+  components, and layered design tokens.
+- System-aware light and dark themes with a persistent user toggle.
+- Responsive navigation, visible focus, skip navigation, reduced-motion
+  handling, semantic landmarks, and an axe-tested baseline.
+- Canonical and social metadata, sitemap, robots policy, manifest, favicon,
+  responsive brand treatment, and a root custom 404.
+- A version-controlled Cloudflare `_headers` policy with no HSTS until the live
+  hostname and redirects are verified.
+- Deterministic unit, route, link, asset, content, responsive, theme, and
+  accessibility checks.
+
+No analytics, telemetry, external font request, server runtime, Pages Function,
+or Cloudflare credential is present. Downloads and installation pages state
+that no package or release exists.
+
+Local commands and prerequisites are in [Building](BUILDING.md); validation is
+in [Testing](TESTING.md).
 
 ## Content and privacy boundary
 

@@ -120,6 +120,6 @@ tested in the desktop, website, and packaging milestones.
 - Treat the social-card copy as public website content; never inject local
   paths, integration state, account data, or release claims automatically.
 
-The repository does not yet contain its final project `LICENSE`; Milestone 1
-must establish repository licensing before the assets are represented as a
-released open-source brand package.
+The repository is licensed under Apache-2.0. Brand sources remain part of the
+project source distribution; trademark or endorsement rights are not implied
+by accurate use of the names Codex, ChatGPT, or OpenAI.

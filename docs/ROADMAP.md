@@ -27,8 +27,10 @@ in-place GitHub repository rename, local working-copy handoff, and core vector
 brand sources are complete. Milestone 1 also established the Apache-2.0 license,
 repository guidance, contribution/security/conduct/support policies, issue and
 pull-request templates, dependency automation, and initial repository CI. The
-work has not been pushed or merged. Production application/website exports and
-external GitHub branding settings remain milestone- and approval-gated.
+work has not been pushed or merged. Milestone 2 added the local static website,
+production web exports, and automated website quality gates without creating a
+Cloudflare project or deployment. Application exports and external provider
+settings remain milestone- and approval-gated.
 
 ## Status
 
@@ -36,8 +38,8 @@ external GitHub branding settings remain milestone- and approval-gated.
 |---:|---|---|---|
 | 0 | Existing project, hosting capability audit, and feasibility | Very large | Complete locally; not pushed |
 | 1 | QuireForge rename, move, GitHub migration, and governance closure | Medium | Complete locally; not pushed |
-| 2 | QuireForge brand and Cloudflare website foundation | Large | Current; brand sources complete, Astro/hosting foundation pending |
-| 3 | Desktop scaffold consolidation | Large | Planned |
+| 2 | QuireForge brand and Cloudflare website foundation | Large | Complete locally; not pushed or deployed |
+| 3 | Desktop scaffold consolidation | Large | Current; not begun |
 | 4 | Codex process adapter and contracts | Very large | Planned |
 | 5 | Authentication and onboarding | Medium | Planned |
 | 6 | Projects and direct local-directory attachment | Very large | Planned |
@@ -83,6 +85,12 @@ Develop the approved QuireForge vectors into consuming assets and scaffold the
 Astro site, design tokens, themes, navigation, metadata, responsive layout, and
 accessibility foundation. Confirm the audited document-root/deployment design.
 Do not touch staging or production without separate approval.
+
+Completed locally: the Astro static package, 15-page information architecture,
+design tokens, original brand exports, themes, navigation, metadata, custom
+404, Cloudflare headers, deterministic artifact validation, and desktop/mobile
+accessibility checks. No Cloudflare project, custom domain, DNS record, preview,
+or production deployment was created.
 
 ### 3 — Desktop Scaffold Consolidation
 

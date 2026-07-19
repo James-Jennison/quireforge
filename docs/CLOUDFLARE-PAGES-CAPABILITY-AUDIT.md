@@ -59,7 +59,7 @@ files, and must not be reproduced in support material.
 | Capability | Status | Finding |
 |---|---|---|
 | Static Astro output | Available | Git integration or direct upload can deploy prebuilt static assets |
-| Custom subdomain with external DNS | Available | A CNAME can be managed at A2 without moving nameservers |
+| Custom subdomain on Cloudflare DNS | Available | Pages can activate the dedicated hostname in the authoritative Cloudflare zone |
 | TLS | Available | Managed for an activated custom domain |
 | Preview deployments | Available | Branch and same-repository pull-request previews receive immutable URLs |
 | Rollback | Available | Earlier successful production deployments can be restored immediately |

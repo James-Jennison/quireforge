@@ -31,6 +31,20 @@ released a usable application.
 - A dependency-free repository validator for required files, local links,
   QuireForge identity contracts, SVG XML, text encoding, and high-confidence
   secret patterns.
+- A pinned pnpm monorepo and Astro 7 static website under `apps/website` with
+  15 public pages, a custom 404, sitemap, robots policy, manifest, and canonical
+  and social metadata.
+- Reusable QuireForge website components, centralized light/dark design tokens,
+  responsive navigation, visible keyboard focus, reduced-motion support, and
+  generated favicon, application-touch, and social-card assets derived from the
+  approved vector sources.
+- Deterministic website type, lint, format, unit, artifact, route, responsive,
+  theme, and axe-core accessibility checks in local scripts and minimum-
+  permission GitHub Actions.
+- Cloudflare Pages security headers with a strict static-site content policy;
+  HSTS remains intentionally deferred until live HTTPS is verified.
+- Website build and testing documentation with an explicit no-deployment
+  boundary.
 
 ### Changed
 
@@ -64,6 +78,8 @@ released a usable application.
   remaining former-name references as intentional history, confirmed that no
   pre-release application data requires migration, and completed Milestone 1
   locally without pushing or changing repository settings.
+- Completed the Milestone 2 brand and static website foundation locally without
+  creating a Cloudflare project, changing DNS, deploying, pushing, or merging.
 
 ### Migration note
 
@@ -79,7 +95,7 @@ released a usable application.
 
 ### Known limitations
 
-- Discovery only: no desktop application, website deployment, package, or
-  release exists.
+- No desktop application, website deployment, package, or release exists; the
+  website is a locally verified static artifact only.
 - Integration compatibility is based on Codex CLI 0.144.6 and must be probed at
   runtime.

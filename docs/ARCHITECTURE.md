@@ -1,7 +1,8 @@
 # Architecture
 
-Status: Milestone 0 proposal. Interfaces are subject to contract validation in
-their implementation milestones.
+Status: Milestone 0 application proposal with a Milestone 2 implemented website
+foundation. Desktop interfaces remain subject to contract validation in their
+implementation milestones.
 
 QuireForge is an unofficial native Linux workspace for Codex. It is not made,
 endorsed, supported, or distributed by OpenAI.
@@ -247,10 +248,12 @@ detaching a directory or deleting app metadata.
 
 ## Website
 
-The Astro static site is isolated under `apps/website`. It has no runtime
-backend and receives only version-controlled public content. Screenshots and
-compatibility data are curated release assets; local project, connector, and
-account data never enter the site build.
+The Astro static site is isolated under `apps/website` in the root pnpm
+workspace. It has no runtime backend and receives only version-controlled public
+content. Central typed content drives static routes; reusable Astro components
+consume layered CSS tokens and approved vector/raster brand exports. Screenshots
+and compatibility data are curated release assets; local project, connector,
+and account data never enter the site build.
 
 Production is `https://quireforge.jamesjennison.net` on Cloudflare Pages.
 GitHub owns source, validation, issues, and release binaries; GitHub Pages
@@ -258,7 +261,10 @@ remains disabled. Cloudflare is authoritative DNS while A2 retains the
 main-site and mail origins unless separately changed. The deployment adapter
 builds a static artifact, creates isolated previews, applies version-controlled
 headers/redirects, and promotes only an approved production-branch deployment.
-DNS cutover is independently approval-gated and recoverable.
+DNS cutover is independently approval-gated and recoverable. The generated
+artifact is checked for routes, links, assets, canonical metadata, disclaimers,
+inline code, and version-controlled headers before browser tests exercise its
+desktop/mobile structure, themes, overflow, and accessibility baseline.
 
 ## Testing seams
 
