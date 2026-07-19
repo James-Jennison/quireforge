@@ -108,11 +108,62 @@ compressed the critical path without reducing the accepted milestone scope.
 
 ## Milestone 5 — Authentication and Onboarding
 
-Preliminary planning range: approximately 2–4 active hours and 2.25–4.5 total
+| Field | Record |
+|---|---|
+| Forecast date | 2026-07-19 |
+| Selected model | GPT-5.6 Sol, High reasoning; manually confirmed |
+| Preliminary forecast | 2–4 active hours; about 2.25–4.5 total elapsed hours across 1–2 sessions; low-to-medium confidence |
+| Calibrated forecast | 2–4 active hours; about 2.25–4.5 total elapsed hours across 1–2 sessions; medium confidence |
+| Calibration basis | Stable installed authentication schemas, ample current memory, warm Milestone 4 caches, six Cargo workers, and two Playwright workers |
+| Observed active execution | Approximately 25–40 minutes from branch creation through implementation, required validation, visual checks, documentation, and commit preparation; approval delay excluded |
+| Local command time | Approximately 5–8 minutes across schema inspection, dependency resolution, compile, test, browser-cache restoration, release build, smoke test, and validation commands |
+| User approval/waiting time | Manual model, reasoning-strength, audit, and start confirmations occurred before branch creation; waiting time was not included |
+| Sessions | One active implementation session with recoverable native-service, UI, validation, and documentation checkpoints |
+| Usage intensity | High model/tool activity; moderate local CPU use and low memory pressure during cold native builds |
+| Completion status | Complete locally; not pushed, merged, logged in, logged out, packaged, deployed, or released |
+
+The forecast overestimated model-driven implementation and debugging time. The
+stable installed protocol schemas, existing owned-process adapter, strict shared
+fixture pattern, fast local builds, and deterministic mocked login flows reduced
+the critical path without reducing the accepted scope. The live compatibility
+check remained read-only; real browser/device authentication and logout were
+intentionally excluded because they mutate external authentication state.
+
+### Required build and test observations
+
+- Stable schema calibration completed in about 0.43 seconds, and generation of
+  the 13 reviewed schemas completed in about 0.98 seconds.
+- The first dependency-expanded native check took about 39.4 seconds; the first
+  authentication test build took about 55.6 seconds.
+- The read-only live `account/read` probe took about 0.57 seconds and left no
+  app-server process.
+- The release build took about 1 minute 18 seconds at roughly 1.37 GiB peak RSS.
+- Full non-browser validation took about 24.3–25.7 seconds; the final combined
+  browser suites took about 8.4 seconds after the pinned cache was restored.
+
+### Unexpected work and lessons
+
+- The native browser opener added a cold dependency path, returning release
+  timing to the Milestone 3 cold baseline; subsequent native gates were warm.
+- The pinned Playwright Chromium revision was absent. Restoring only that
+  project cache was sufficient; no system package or persistent configuration
+  change was required.
+- Authentication callback ownership belongs in the native service: exact login
+  correlation, cancellation races, raw error reduction, and process shutdown
+  are easier to enforce before any value reaches IPC.
+- A fixed native browser command with no URL parameter keeps the untrusted
+  webview from becoming an arbitrary URL opener.
+
+## Milestone 6 — Workspace Attachment and QuireForge Metadata
+
+Preliminary planning range: approximately 3–6 active hours and 3.5–7 total
 elapsed hours across one or two sessions, excluding approval waiting;
-low-to-medium confidence. Primary uncertainty is the Codex-managed browser and
-device-login lifecycle, cancellation, redaction, account events, and honest
-unauthenticated recovery. Before implementation, refresh current model guidance,
-inspect the relevant installed schemas and system state, recommend the model and
-reasoning level, produce the full preliminary/calibrated breakdown, request
-manual model confirmation, and obtain separate start approval.
+low-to-medium confidence. Expected work includes attachment boundaries,
+canonical path and duplicate handling, migrated QuireForge-owned SQLite state,
+detach/archive semantics, typed IPC, deterministic tests, and honest UI states.
+The main uncertainties are migration design, filesystem identity across Linux
+mounts and symlinks, concurrency, and separation from Codex-owned data.
+
+This is only a preliminary range. Milestone 6 requires a fresh repository and
+system check, current model/reasoning-strength gate, calibrated breakdown, and
+explicit start approval. No Milestone 6 work has begun.

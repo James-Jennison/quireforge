@@ -63,6 +63,12 @@ released a usable application.
 - A narrow `codex_runtime_probe` Tauri command and strict TypeScript runtime
   schema that prevent raw app-server, account, installation, path, or user-agent
   fields from reaching React.
+- A Codex-owned authentication service with normalized account status,
+  allowlisted browser/device handoffs, exact login correlation, cancellation,
+  explicit two-step logout, stable redacted diagnostics, and deterministic
+  lifecycle/failure tests.
+- An accessible Milestone 5 onboarding panel that never displays or persists
+  email, account IDs, tokens, raw errors, or completed sign-in URLs.
 
 ### Changed
 
@@ -105,6 +111,10 @@ released a usable application.
   non-billable live app-server probe, bounded failure recovery, exact process
   cleanup, and normalized desktop status without login, conversation turns,
   configuration writes, packaging, pushing, or merging.
+- Completed Milestone 5 authentication and onboarding locally. A non-mutating
+  live `account/read` probe verified normalized state and exact child cleanup;
+  no login, browser authorization, logout, model turn, push, package, or
+  deployment was performed by Codex.
 
 ### Migration note
 
@@ -120,8 +130,8 @@ released a usable application.
 
 ### Known limitations
 
-- The desktop adapter and website are locally verified, but no authentication,
-  project, conversation, installable package, website deployment, or release
-  workflow exists.
+- The desktop adapter, Codex-owned authentication workflow, and website are
+  locally verified, but no project, conversation, installable package, website
+  deployment, or release workflow exists.
 - Integration compatibility is based on Codex CLI 0.144.6 and must be probed at
   runtime.

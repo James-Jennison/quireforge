@@ -1,9 +1,10 @@
 # Architecture
 
 Status: Milestone 0 application proposal with the Milestone 2 website foundation
-and Milestones 3–4 desktop scaffold and Codex process adapter implemented
-locally. Authentication, persistence, project, Git, terminal, and integration
-interfaces remain subject to validation in their implementation milestones.
+and Milestones 3–5 desktop scaffold, Codex process adapter, and authentication
+boundary implemented locally. Persistence, project, Git, terminal, and
+integration interfaces remain subject to validation in their implementation
+milestones.
 
 QuireForge is an unofficial native Linux workspace for Codex. It is not made,
 endorsed, supported, or distributed by OpenAI.
@@ -83,12 +84,38 @@ installation, remote-control, and raw error payloads are never retained or
 returned to the frontend. Closing or killing the owned child is followed by a
 wait, including timeout and early-exit paths.
 
-Only the initialize and `model/list` portions of the installed CLI's generated
-schema are committed with hashes. Runtime models and reasoning efforts always
-come from the live supported catalog; the sanitized fixture is a deterministic
-test contract, not a hardcoded production catalog. Authentication, threads,
-turns, approvals, project working directories, Codex configuration writes, and
-session persistence remain excluded.
+Milestone 4 committed only initialize and `model/list` portions of the installed
+CLI's generated schema with hashes; Milestone 5 adds the stable account
+lifecycle subset. Runtime models and reasoning efforts always come from the live
+supported catalog; sanitized fixtures are deterministic test contracts, not
+hardcoded production state. Threads, turns, approvals, project working
+directories, Codex configuration writes, and session persistence remain
+excluded.
+
+### Milestone 5 implementation boundary
+
+The native core adds fixed-purpose account status/refresh, browser or device
+login start, active-login cancellation, explicit logout, and native browser
+handoff commands. Only login method is accepted as frontend input; it is a
+closed enum. The browser command accepts no URL from React and opens only the
+current native-owned handoff after Rust and TypeScript independently require
+HTTPS, no embedded credentials, bounded length, and an OpenAI or ChatGPT host.
+The Tauri main-window capability still grants no direct plugin permission.
+
+`CodexAuthService` caches normalized status to prevent duplicate development
+probes. A pending login moves its app-server process into one background owner
+task, which correlates the exact bounded `loginId`, handles account/completion
+notifications, serializes cancellation, clears handoff data at terminal state,
+and shuts down and waits for the child on every ordinary path. Dropping the
+service closes the control channel so the owner also performs shutdown; process
+drop retains kill-on-drop as a final fallback.
+
+Account email, plan, IDs, raw RPC errors, tokens, API keys, and Codex credential
+storage never enter the normalized snapshot. A browser/device URL and optional
+one-time code exist only in the in-memory pending snapshot because they are
+required for user handoff; they disappear after completion or cancellation.
+Logout requires a second explicit UI action. QuireForge does not read Codex
+credential files or browser storage and creates no authentication database.
 
 ## Application layers
 
@@ -107,7 +134,7 @@ processes. Long-running work is cancelable and keyed by stable IDs.
 
 ### Codex compatibility layer
 
-The Milestone 4 compatibility boundary consists of:
+The implemented compatibility boundary consists of:
 
 - `CodexBackend`: the versioned asynchronous normalized-snapshot contract.
 - `SystemCodexBackend`: fixed CLI detection followed by local app-server JSONL
@@ -115,10 +142,14 @@ The Milestone 4 compatibility boundary consists of:
 - `MockCodexBackend`: deterministic fixture-backed test behavior.
 - `CodexRuntimeSnapshot::unavailable`: structured diagnostics with no simulated
   success when the CLI is missing or invalid.
+- `CodexAuthService`: serialized status cache plus one owned pending-login task
+  with bounded handoff data and stable diagnostics.
+- `CodexAuthSnapshot`: strict account-kind and lifecycle state without account
+  identity or secret fields.
 
-Later milestones extend the boundary with conversation/authentication methods
-without bypassing this normalization layer. Generated schemas and sanitized
-fixtures drive contract tests.
+Later milestones extend the boundary with conversation methods without
+bypassing this normalization layer. Generated schemas and sanitized fixtures
+drive contract tests.
 
 ## Required service boundaries
 

@@ -1,8 +1,8 @@
 # Compatibility
 
-Status: Milestone 0 discovery with the Milestones 3–4 desktop scaffold and
-versioned Codex runtime-probe adapter implemented and verified on the discovery
-host.
+Status: Milestone 0 discovery with the Milestones 3–5 desktop scaffold,
+versioned Codex runtime-probe adapter, and authentication boundary implemented
+and verified on the discovery host.
 
 ## Identity compatibility contract
 
@@ -90,7 +90,7 @@ baseline examples in the [official AppImage guidance](https://v2.tauri.app/distr
 | Approve commands/file changes | Yes | app-server server requests | Stable methods on experimental server |
 | Resume/fork/archive/restore | Yes | app-server; CLI fallback | Stable official |
 | Search/list conversations | Partial | stable thread title/cwd filters; experimental deeper paging | Mixed |
-| Codex-managed ChatGPT login | Yes | app-server browser/device flow; CLI fallback | Stable official |
+| Codex-managed ChatGPT login | Implemented | Bounded app-server browser/device flow, cancel, logout, and normalized events | Stable official |
 | List skills by cwd | Yes | `skills/list` | Stable method on experimental server |
 | Enable/disable skills | Yes | `skills/config/write` | Stable method on experimental server |
 | List apps/connectors | Yes | `app/list` | Stable method on experimental server |
@@ -118,12 +118,12 @@ marketplace, available/installed plugin, and configured MCP collections. No
 managed configuration requirements were returned. Counts, names, endpoints,
 paths, and account metadata are intentionally omitted.
 
-Milestone 4 commits only the CLI 0.144.6 initialize and `model/list` generated
-schemas, their hashes, and sanitized deterministic fixtures. The production
-adapter never treats fixture model names as account availability. A live
-non-billable probe completed initialization and catalog normalization, then
-exited with no additional app-server process. Authentication and turn execution
-were not invoked.
+Milestones 4–5 commit only the CLI 0.144.6 initialize, `model/list`, and stable
+account-lifecycle generated schemas, their hashes, and sanitized deterministic
+fixtures. The production adapter never treats fixture model names as account
+availability. Live non-billable probes completed catalog normalization and a
+non-mutating account read, then exited with no additional app-server process.
+Login, browser authorization, logout, and turn execution were not invoked.
 
 ## Integration compatibility states
 

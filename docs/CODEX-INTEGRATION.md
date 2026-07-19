@@ -1,7 +1,7 @@
 # Codex Integration Findings
 
-Status: Milestone 0 discovery with the Milestone 4 versioned runtime-probe
-subset implemented and validated locally
+Status: Milestone 0 discovery with the Milestones 4–5 versioned runtime-probe
+and authentication subsets implemented and validated locally
 Observed: 2026-07-19
 Installed CLI: `codex-cli 0.144.6`
 Platform: Ubuntu 26.04 LTS, x86_64, GNOME Wayland
@@ -118,6 +118,28 @@ remote-control, and RPC error payloads are discarded. Authentication, thread,
 turn, approval, command, filesystem, integration, and configuration methods
 remain unavailable through QuireForge until their milestones.
 
+### Implemented Milestone 5 subset
+
+Authentication extends the same adapter without exposing raw account protocol:
+
+- cached `account/read` with `refreshToken: false`, normalized to connection
+  state and coarse account kind without email, plan, or identifiers;
+- `account/login/start` for only `chatgpt` and `chatgptDeviceCode`;
+- one native-held pending login ID and one owner task for completion,
+  cancellation, shutdown, and exact child reaping;
+- bounded HTTPS handoffs restricted to OpenAI/ChatGPT hosts with no embedded
+  URL credentials, plus a bounded device code when required;
+- `account/login/cancel`, `account/login/completed`, `account/updated`, and
+  explicit `account/logout` handling with stable local diagnostic codes;
+- a native browser command that accepts no frontend URL and an opener plugin
+  that receives no direct webview permission; and
+- strict Rust/TypeScript fixtures and deterministic success, failure, stale-ID,
+  cancellation, URL, redaction, and UI tests.
+
+The external-token and API-key login variants are deliberately not offered. A
+live validation invoked only `account/read`; real login, browser handoff, and
+logout remain user-driven and were not exercised by Codex.
+
 ## Local working-directory behavior
 
 Both the interactive CLI and `codex exec` expose `--cd <DIR>` and
@@ -225,6 +247,11 @@ The project will not use the experimental external-token mode, inspect browser
 storage, or persist ChatGPT/OAuth tokens. It will not store API keys or
 connector credentials in application SQLite. Diagnostic output must be
 redacted before logging or display.
+
+The implemented UI shows a login URL and optional one-time device code only
+while the exact attempt is pending. Completion or cancellation clears both.
+Email, plan, login ID, and raw completion errors never cross the native
+boundary. Logout requires a second explicit action.
 
 ## Apps and connectors
 

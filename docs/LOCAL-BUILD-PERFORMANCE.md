@@ -1,6 +1,6 @@
 # Local Build Performance
 
-Status: generalized baseline captured from required Milestones 3–4 work on
+Status: generalized baseline captured from required Milestones 3–5 work on
 2026-07-19. These measurements guide local forecasts; they are not release
 performance claims or a supported-hardware baseline.
 
@@ -68,6 +68,38 @@ required an async state-borrowing command to return `Result`; the corrected
 build passed without repeating unchanged work. Running a production build and
 its preview test concurrently also demonstrated a stale-`dist` race, so those
 steps are now kept sequential. No OOM, heavy swapping, throttling, or material
+disk pressure was observed. GPU computation remained unused.
+
+## Milestone 5 measurements
+
+Authentication work reused the existing Rust, pnpm, and browser caches. The
+new native opener dependency required one lockfile-respecting dependency
+resolution; no cache was deleted and no clean build was run.
+
+| Operation | Observed wall time | Approximate peak RSS | Result |
+|---|---:|---:|---|
+| Stable authentication-schema calibration | about 0.43 seconds | about 45 MiB | Passed, 267 generated files / about 2.72 MB inspected in temporary storage |
+| Reviewed authentication-schema generation | about 0.98 seconds | about 141 MiB | Passed, 13 selected schemas; repeat run was idempotent |
+| First `cargo check` after opener dependencies | about 39.4 seconds | about 1.17 GiB | Passed; 39 locked transitive packages resolved |
+| First authentication test-profile build and tests | about 55.6 seconds | about 1.36 GiB | Passed |
+| Read-only live `account/read` compatibility probe | about 0.57 seconds | about 104 MiB | Passed; no private account data printed and no child remained |
+| Unbundled Tauri release build | about 1 minute 18 seconds | about 1.37 GiB | Passed |
+| Full non-browser `pnpm validate` gate | about 24.3–25.7 seconds | about 601–604 MiB | Passed, including 21 unit/integration tests and 20 Rust tests with 2 live tests ignored |
+| Desktop browser suite after cache restoration | about 5.3 seconds | about 239 MiB | Passed, 6 tests with two workers |
+| Final combined desktop and website browser suites | about 8.4 seconds | about 254 MiB | Passed, 14 tests with two workers per package |
+| Desktop Vite production build | about 0.12–0.14 seconds | Included above | Passed |
+
+The release build was more than 25% slower than the Milestone 4 warm baseline
+because the opener integration introduced a cold native dependency path. It
+matched the earlier cold Milestone 3 release baseline. After compilation, warm
+`cargo check`, Clippy, and Rust tests completed in about 0.85, 1.84, and 0.22
+seconds respectively.
+
+The pinned Playwright browser revision was absent and was restored to the
+project cache without installing system packages. Production builds and preview
+tests remained sequential to avoid the previously measured shared-`dist` race.
+Approximately 46 GiB of system memory remained available during the final
+native smoke test. No OOM, heavy swapping, throttling, orphaned app-server, or
 disk pressure was observed. GPU computation remained unused.
 
 ## Current execution guidance

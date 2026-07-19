@@ -299,7 +299,7 @@ export const sitePages: SitePage[] = [
     title: "Twenty-one gated milestones, one reviewable step at a time.",
     description:
       "QuireForge is built milestone by milestone, with model selection, acceptance criteria, tests, documentation, review, and explicit approval for external actions.",
-    status: "Milestone 4 complete locally · Milestone 5 next",
+    status: "Milestone 5 complete locally · Milestone 6 next",
     sections: [
       {
         heading: "Completed locally",
@@ -309,16 +309,17 @@ export const sitePages: SitePage[] = [
           "Milestone 2: brand consumption, Astro foundation, responsive layout, accessibility, and Cloudflare-compatible static output",
           "Milestone 3: Tauri, React, TypeScript, and Rust desktop scaffold with typed IPC and local Wayland verification",
           "Milestone 4: supervised Codex app-server probe, normalized runtime contracts, deterministic mocks, and bounded failure recovery",
+          "Milestone 5: Codex-owned browser/device authentication, normalized account state, cancellation, logout confirmation, and redacted recovery",
         ],
       },
       {
         heading: "Next gated milestone",
-        items: ["Milestone 5: Codex-managed authentication and onboarding"],
+        items: ["Milestone 6: direct local-directory attachment"],
       },
       {
         heading: "Later",
         items: [
-          "Milestone 6: direct local-directory attachment",
+          "Milestone 7: conversation MVP in the verified attached directory",
           "Milestones 13–14: integration discovery and management",
           "Milestones 19–20: packages, approved deployment, and beta release",
         ],

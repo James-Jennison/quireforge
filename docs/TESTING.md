@@ -1,9 +1,9 @@
 # Testing QuireForge
 
-Status: Milestones 2–4 establish repository, website, desktop frontend, native
-contract, Codex adapter, and Tauri build checks. PTY, Git fixture, directory
-attachment, database migration, authentication, and conversation suites arrive
-with the milestones that introduce those systems.
+Status: Milestones 2–5 establish repository, website, desktop frontend, native
+contract, Codex adapter, authentication, and Tauri build checks. PTY, Git
+fixture, directory attachment, database migration, and conversation suites
+arrive with the milestones that introduce those systems.
 
 ## Repository, website, and desktop checks
 
@@ -92,9 +92,36 @@ cargo test --locked --workspace \
   live_probe_uses_the_supported_local_app_server -- --ignored
 ```
 
-Run it deliberately when validating a Codex version. Confirm the test leaves no
-additional `codex app-server` process. It must not start a thread or turn, write
-configuration, inspect session content, or print the account-visible catalog.
+Run it deliberately when validating a Codex version. A second ignored probe
+performs only `account/read` with proactive refresh disabled and asserts that
+the serialized result has no identity/secret fields:
+
+```bash
+cargo test --locked --workspace \
+  live_status_returns_only_normalized_account_state -- --ignored
+```
+
+Confirm either test leaves no additional `codex app-server` process. It must
+not start a thread or turn, write configuration, inspect session content, or
+print the account-visible catalog.
+
+## Manual Milestone 5 checklist
+
+- Run the non-mutating live account-status probe against the intended CLI and
+  confirm it prints no account data and leaves no app-server child.
+- Exercise authenticated, unauthenticated, not-required, unavailable, browser
+  pending, device pending, completion, failure, cancellation, stale-ID, and
+  invalid-URL fixtures.
+- Confirm raw email, plan, login ID, tokens, API keys, and completion error text
+  cannot enter the frontend snapshot.
+- Confirm the browser command accepts no URL argument and only native-validated
+  HTTPS OpenAI/ChatGPT handoffs are accepted.
+- Confirm browser preview never simulates native account state and the onboarding
+  panel passes desktop/mobile axe-core checks.
+- Confirm logout requires a second explicit action. Do not exercise live login,
+  browser authorization, or logout without separate approval.
+- Confirm native launch owns the exact application identity, all account probes
+  finish, and no app-server child remains after exit.
 
 ## Manual Milestone 4 checklist
 

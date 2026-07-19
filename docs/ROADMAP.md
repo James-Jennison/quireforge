@@ -34,8 +34,10 @@ desktop foundation, narrow typed IPC contract, Linux app icons, and desktop
 quality gates without producing an installable package. Milestone 4 added the
 versioned Codex boundary, supervised app-server probe, normalized model catalog,
 mock/failure tests, and selected generated schemas without starting a model
-turn or modifying Codex state. Application packages and external provider
-settings remain milestone- and approval-gated.
+turn or modifying Codex state. Milestone 5 added normalized account status,
+Codex-owned browser/device onboarding, exact cancellation/completion handling,
+explicit logout, and redacted recovery without retaining secrets. Application
+packages and external provider settings remain milestone- and approval-gated.
 
 ## Status
 
@@ -46,8 +48,8 @@ settings remain milestone- and approval-gated.
 | 2 | QuireForge brand and Cloudflare website foundation | Large | Complete locally; not pushed or deployed |
 | 3 | Desktop scaffold consolidation | Large | Complete locally; not pushed or packaged |
 | 4 | Codex process adapter and contracts | Very large | Complete locally; not pushed |
-| 5 | Authentication and onboarding | Medium | Current; not begun |
-| 6 | Projects and direct local-directory attachment | Very large | Planned |
+| 5 | Authentication and onboarding | Medium | Complete locally; not pushed |
+| 6 | Projects and direct local-directory attachment | Very large | Current; not begun |
 | 7 | Conversation MVP | Very large | Planned |
 | 8 | Session lifecycle and crash recovery | Large | Planned |
 | 9 | Approvals and command presentation | Large | Planned |
@@ -130,6 +132,15 @@ persistence, configuration writes, package, push, and release remain absent.
 
 Implement Codex detection, account status, Codex-managed browser/device login,
 logout, diagnostics, redaction, and failure recovery without owning secrets.
+
+Completed locally: stable generated account schemas, normalized read-only
+status, a single-owner pending-login process, allowlisted browser/device
+handoffs, exact completion correlation, cancellation races, explicit two-step
+logout, stable redacted errors, strict Rust/TypeScript fixtures, accessible
+onboarding UI, and deterministic failure tests. A live non-mutating
+`account/read` probe returned only normalized state and left no child process.
+No real login, browser authorization, logout, token handling, project,
+conversation, package, push, deployment, or release occurred.
 
 ### 6 — Projects and Direct Local-Directory Attachment
 

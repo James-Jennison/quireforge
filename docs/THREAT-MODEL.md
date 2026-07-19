@@ -1,9 +1,9 @@
 # Threat Model
 
-Status: initial Milestone 0 model with the Milestone 3 frontend/native boundary
-and Milestone 4 Codex process adapter controls applied. It must be revisited
-before authentication, directory attachment, integrations, packaging, and
-release milestones.
+Status: initial Milestone 0 model with the Milestone 3 frontend/native boundary,
+Milestone 4 Codex process adapter, and Milestone 5 authentication controls
+applied. It must be revisited before directory attachment, integrations,
+packaging, and release milestones.
 
 ## Assets
 
@@ -38,6 +38,16 @@ necessary. The React schema is strict and accepts only normalized capability,
 model, version, backend, and diagnostic fields. No command currently accepts a
 path, prompt, arbitrary process, credential, configuration value, or other user
 input.
+
+Milestone 5 adds a closed login-method enum and otherwise argument-free account
+commands. Rust alone retains the active login ID, filters account results to a
+coarse account kind, reduces raw completion errors to stable codes, and accepts
+only bounded HTTPS OpenAI/ChatGPT handoff URLs without embedded credentials.
+React receives a short-lived URL and optional device code only while the exact
+login is pending. A single owner task serializes completion/cancellation and
+reaps its app-server child; logout requires an explicit confirmation step. The
+native opener plugin is not granted direct webview permission, so React cannot
+submit an arbitrary URL to it.
 
 ## Principal threats and controls
 
@@ -100,6 +110,11 @@ Controls:
 - Field-aware redaction before persistence, UI, clipboard, or support export.
 - Never render raw auth URLs after completion or include them in logs.
 - Treat local home paths and account identifiers as sensitive export metadata.
+- Correlate completion to the exact native-held login ID; fail closed for stale
+  or missing IDs.
+- Allow only bounded HTTPS OpenAI/ChatGPT handoffs without URL credentials.
+- Require an explicit second action before logout and never exercise it in
+  routine validation.
 
 ### Untrusted integrations and marketplaces
 

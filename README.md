@@ -20,10 +20,12 @@ original directories through supported interfaces. The original Codex
 discovery, QuireForge identity, governance, and the local static website
 foundation are complete. The Tauri desktop foundation also builds and launches
 locally, and its versioned Rust adapter detects the installed Codex CLI and
-normalizes the supported app-server model catalog. Authentication, projects,
-and conversation workflows remain later milestones. Cloudflare Pages is the
-selected production host, but the site has not been deployed. There is no
-application package to install yet.
+normalizes the supported app-server model catalog and Codex-owned account
+state. Browser/device onboarding, cancellation, logout, and redacted recovery
+are implemented locally without storing credentials. Projects and conversation
+workflows remain later milestones. Cloudflare Pages is the selected production
+host, but the site has not been deployed. There is no application package to
+install yet.
 
 ## Project status
 
@@ -32,20 +34,19 @@ application package to install yet.
 - Website: the Astro site builds and passes local responsive/accessibility
   checks for `https://quireforge.jamesjennison.net`; it is not deployed.
 - Integration support: the local adapter is validated against Codex CLI
-  0.144.6; authentication and integration workflows remain planned.
+  0.144.6; account status and Codex-managed authentication are implemented,
+  while integration workflows remain planned.
 - Desktop: the Tauri 2, React, TypeScript, and Rust shell builds and launches
   locally with narrow typed IPC and a supervised, non-billable Codex runtime
-  probe; project and conversation workflows remain planned.
+  and account-status probe; project and conversation workflows remain planned.
 - CI status: repository, website, and desktop quality gates are configured
   locally but will not run on GitHub until the branch is approved and pushed.
-- Completed milestone: Milestone 4 — Codex process adapter and contracts.
-- Current milestone: Milestone 5 — authentication and onboarding (not begun;
-  model confirmation required).
-- Upcoming milestone: Milestone 6 — projects and direct local-directory
-  attachment.
-- Known limitations: no authentication workflow, project attachment,
-  conversation execution, packages, releases, public deployment, or production
-  Lighthouse evidence exists yet.
+- Completed milestone: Milestone 5 — authentication and onboarding.
+- Current milestone: Milestone 6 — projects and direct local-directory
+  attachment (not begun; fresh reasoning/model confirmation required).
+- Upcoming milestone: Milestone 7 — conversation MVP.
+- Known limitations: no project attachment, conversation execution, packages,
+  releases, public deployment, or production Lighthouse evidence exists yet.
 
 ## Discovery documents
 
