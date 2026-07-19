@@ -27,9 +27,22 @@ REQUIRED_PATHS = (
     ".github/PULL_REQUEST_TEMPLATE.md",
     ".github/dependabot.yml",
     ".github/workflows/repository-checks.yml",
+    ".npmrc",
+    "package.json",
+    "pnpm-lock.yaml",
+    "pnpm-workspace.yaml",
+    "apps/website/astro.config.mjs",
+    "apps/website/package.json",
+    "apps/website/public/_headers",
+    "apps/website/src/data/site.ts",
+    "apps/website/src/pages/404.astro",
+    "apps/website/src/pages/index.astro",
     "docs/ARCHITECTURE.md",
+    "docs/BUILDING.md",
     "docs/ROADMAP.md",
+    "docs/TESTING.md",
     "docs/THREAT-MODEL.md",
+    "docs/WEBSITE.md",
 )
 
 IDENTITY_EXPECTATIONS = {
