@@ -1,6 +1,6 @@
 use std::{
     collections::HashMap,
-    fs::{self, OpenOptions},
+    fs::{self, File, OpenOptions},
     io::Write,
     os::unix::fs::{MetadataExt, OpenOptionsExt, PermissionsExt},
     path::{Path, PathBuf},
@@ -147,6 +147,7 @@ struct IndexLock {
     path: PathBuf,
     device: u64,
     inode: u64,
+    _file: File,
 }
 
 impl Drop for IndexLock {
@@ -1624,6 +1625,7 @@ impl IndexLock {
             path,
             device: metadata.dev(),
             inode: metadata.ino(),
+            _file: file,
         })
     }
 }

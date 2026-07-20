@@ -404,6 +404,7 @@ The Balanced profile kept four Cargo workers and two Playwright workers.
 | Warm unbundled native release build                  |                                       34.56 seconds |       about 1.77 GiB | Passed, including 30.45-second release compile/link                                                                   |
 | Isolated native release launch                       |                           3-second bounded launch | Low runtime pressure | Schema migrations 1–3, final `0700`/`0600` metadata, and no remaining QuireForge/Codex child                          |
 | Desktop/mobile rendered-state inspection             |                       Focused full-page captures | Low runtime pressure | Confirmation target and applied mutation state remained legible in two-column desktop and stacked mobile layouts      |
+| Post-merge index-lock correction gate                 |                                  11.35 seconds |     Not instrumented | Focused replacement-lock regression, all 88 native tests, rustfmt, and Clippy passed                                   |
 
 The complete gate was 36% slower than 10A's 31.72-second baseline and crossed
 the 25% measurement threshold. The changed assumption was that the final native
@@ -418,6 +419,15 @@ The first full gate stopped in 0.73 seconds when the repository validator found
 an intentionally secret-shaped test literal. Building the synthetic value from
 non-secret fragments kept the scanner test effective without adding an
 exception. The rerun passed without a clean build or cache reset.
+
+PR #20's hosted desktop gate passed in 9 minutes 41 seconds. The identical merge
+commit's first `main` desktop job failed after 4 minutes 16 seconds when its
+ephemeral filesystem immediately reused the unlinked lock inode, exposing a
+real cleanup race that the previous runner did not reproduce. Keeping the
+original lock file handle open until `IndexLock` cleanup prevents inode reuse;
+the focused regression and complete local native gate passed before the
+corrective publication. This added hosted waiting and diagnosis but no product
+scope, dependency, clean build, or execution-profile change.
 
 Approximately 42 GiB RAM and 725 GiB NVMe remained available after the gates.
 Swap stayed near 176 MiB, all timed commands reported zero swaps, and there was

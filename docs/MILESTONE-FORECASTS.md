@@ -647,12 +647,12 @@ have materially improved this closed read-only contract.
 | Preliminary forecast        | Approximately 4–7 active hours; 15–35 minutes of local commands; about 5–8.5 total elapsed hours across one or two sessions; medium confidence                                                                                                                                                                                                                                  |
 | Calibrated forecast         | Approximately 5–8 active hours; 20–45 minutes of local commands; about 6–10 total elapsed hours across one or two sessions; medium-low confidence                                                                                                                                                                                                                                |
 | Calibration basis           | Clean synchronized Milestone 10A `main`, Git 2.53.0, about 43 GiB available RAM, low initial host load, 726 GiB free NVMe, warm 13 GiB Cargo target and pnpm/browser caches, no dependency change, four Cargo workers, two Playwright workers, and CPU/system-memory execution with no GPU workload                                                                                |
-| Observed active execution   | Approximately 50–75 minutes through Git-plumbing and recovery design, native implementation, strict contracts, React confirmation UI, disposable-repository tests, security hardening, documentation, complete gates, release/native verification, visual inspection, and commit preparation; pre-gate approval and hosted publication waiting excluded                           |
-| Observed local command time | Approximately 6–10 minutes across incremental compile/test cycles, disposable Git probes, the 43.16-second final repository gate, 12.31-second combined browser gate, 34.56-second release build, a three-second isolated launch, visual captures, formatting, and focused checks                                                                                                      |
+| Observed active execution   | Approximately 65–90 minutes through Git-plumbing and recovery design, native implementation, strict contracts, React confirmation UI, disposable-repository tests, security hardening, documentation, complete gates, release/native verification, publication, post-merge CI diagnosis, and the lock-ownership correction; pre-gate approval and hosted waiting excluded               |
+| Observed local command time | Approximately 7–11 minutes across incremental compile/test cycles, disposable Git probes, the 43.16-second final repository gate, 12.31-second combined browser gate, 34.56-second release build, a three-second isolated launch, visual captures, formatting, focused checks, and the 11.35-second post-merge native correction gate                                                        |
 | User approval/waiting time  | Manual model/reasoning and milestone-start confirmations occurred before implementation and are excluded; publication and hosted-runner waiting are tracked separately                                                                                                                                                                                                         |
 | Sessions                    | One logical implementation session with native-design, contract/UI, deterministic-test, documentation, validation, and publication checkpoints                                                                                                                                                                                                                                  |
 | Usage intensity             | XHigh model/tool activity; moderate local CPU and low memory pressure                                                                                                                                                                                                                                                                                                             |
-| Completion status           | Complete and verified; implementation publication is tracked by this milestone change                                                                                                                                                                                                                                                                                           |
+| Completion status           | Complete and published through PR #20; the post-merge lock-ownership correction is tracked by the follow-up milestone change                                                                                                                                                                                                                                                     |
 
 The forecast substantially overestimated implementation time. The Milestone
 10A Git runner, status parser, attachment identity, project reservation,
@@ -674,8 +674,9 @@ porcelain commit hooks or overstating recovery guarantees.
 - `write-tree` needs its own index lock. Commit therefore writes the candidate
   tree before acquiring QuireForge's exact index lock, then revalidates all
   evidence and verifies cached index equality with that tree under the lock.
-  Lock cleanup records device/inode identity and never removes a replacement
-  lock.
+  Lock cleanup records device/inode identity and retains the owned open file
+  handle until cleanup, preventing inode reuse from making a replacement lock
+  appear owned.
 - Confirmation does not accept paths or messages. A five-minute native UUIDv7
   identifies one exact plan and is consumed before execution. New preview
   attempts invalidate older pending intent for the same project.
@@ -710,6 +711,12 @@ porcelain commit hooks or overstating recovery guarantees.
   Constructing the value from non-secret fragments preserved the test without
   weakening validation; no cache, configuration, or repository state was
   reset.
+- PR #20 passed all three hosted jobs, including the 9-minute-41-second desktop
+  gate. The identical merge commit's first `main` run then exposed immediate
+  inode reuse in the replacement-lock test on a different ephemeral runner.
+  Retaining the original open lock handle fixed the real cleanup race; the
+  focused regression, all 88 native tests, rustfmt, and Clippy passed locally
+  in 11.35 seconds before the corrective publication.
 - About 42 GiB RAM and 725 GiB NVMe remained available after the gates. Swap
   stayed near 176 MiB, timed commands reported zero swaps, and there was no OOM,
   throttling, dependency download, clean build, user-repository mutation, live
