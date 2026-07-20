@@ -5,7 +5,10 @@ import { ConversationWorkspace } from "./ConversationWorkspace";
 import { GitWorkspace } from "./GitWorkspace";
 import { ProjectWorkspace } from "./ProjectWorkspace";
 import { SessionWorkspace } from "./SessionWorkspace";
-import { WorktreeWorkspace } from "./WorktreeWorkspace";
+import {
+  WorktreeWorkspace,
+  type WorktreeExecutionView,
+} from "./WorktreeWorkspace";
 import {
   archiveConversation,
   archiveProject,
@@ -16,6 +19,7 @@ import {
   decideConversationApproval,
   detachProject,
   interruptConversation,
+  loadActiveConversations,
   loadCodexAuth,
   loadConversationStatus,
   loadConversationSessions,
@@ -56,6 +60,7 @@ import {
   scaffoldConversation,
   type ConversationApprovalDecisionRequest,
   type ConversationEvent,
+  type ConversationRegistrySnapshot,
   type ConversationSnapshot,
   type ConversationStartRequest,
 } from "./lib/conversation";
@@ -154,6 +159,7 @@ interface AppProps {
     request: GitRecoveryRequest,
   ) => Promise<GitMutationResultSnapshot>;
   loadConversation?: () => Promise<ConversationSnapshot>;
+  loadActiveConversationTasks?: () => Promise<ConversationRegistrySnapshot>;
   startConversationTask?: (
     request: ConversationStartRequest,
   ) => Promise<ConversationSnapshot>;
@@ -181,6 +187,11 @@ interface AppProps {
   restoreConversationTask?: (
     conversationId: string,
   ) => Promise<SessionLifecycleSnapshot>;
+}
+
+interface TrackedConversation {
+  snapshot: ConversationSnapshot;
+  events: ConversationEvent[];
 }
 
 const navigation = [
@@ -343,6 +354,7 @@ export default function App({
   confirmGitMutationTask = confirmGitMutation,
   recoverGitMutationTask = recoverGitMutation,
   loadConversation = loadConversationStatus,
+  loadActiveConversationTasks = loadActiveConversations,
   startConversationTask = startConversation,
   pollConversationTask = pollConversation,
   interruptConversationTask = interruptConversation,
@@ -397,16 +409,22 @@ export default function App({
     useState<GitMutationPreviewSnapshot | null>(null);
   const [gitMutationResult, setGitMutationResult] =
     useState<GitMutationResultSnapshot | null>(null);
+  const [taskGitSnapshots, setTaskGitSnapshots] = useState<
+    Record<string, GitWorkspaceSnapshot>
+  >({});
   const [conversation, setConversation] =
     useState<ConversationSnapshot>(scaffoldConversation);
   const [conversationEvents, setConversationEvents] = useState<
     ConversationEvent[]
   >([]);
+  const [trackedConversations, setTrackedConversations] = useState<
+    Record<string, TrackedConversation>
+  >({});
   const [conversationState, setConversationState] =
     useState<ConversationViewState>("checking");
   const [conversationBusy, setConversationBusy] = useState(false);
   const [conversationActionError, setConversationActionError] = useState(false);
-  const conversationActionGeneration = useRef(0);
+  const conversationActionGenerations = useRef<Record<string, number>>({});
   const [sessions, setSessions] = useState<SessionLifecycleSnapshot>(
     scaffoldSessionLifecycle,
   );
@@ -497,6 +515,12 @@ export default function App({
         if (!active) return;
         setConversation(result);
         setConversationEvents(result.events);
+        if (result.projectId && result.conversationId) {
+          setTrackedConversations((current) => ({
+            ...current,
+            [result.projectId!]: { snapshot: result, events: result.events },
+          }));
+        }
         setConversationState("native");
       })
       .catch(() => {
@@ -507,6 +531,30 @@ export default function App({
       active = false;
     };
   }, [loadConversation]);
+
+  useEffect(() => {
+    let active = true;
+    void loadActiveConversationTasks()
+      .then((registry) => {
+        if (!active) return;
+        setTrackedConversations(
+          Object.fromEntries(
+            registry.conversations.flatMap((snapshot) =>
+              snapshot.projectId
+                ? [[snapshot.projectId, { snapshot, events: snapshot.events }]]
+                : [],
+            ),
+          ),
+        );
+      })
+      .catch(() => {
+        // Older/preview bridges have no active native process registry.
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [loadActiveConversationTasks]);
 
   useEffect(() => {
     if (projectState === "checking") return;
@@ -661,49 +709,115 @@ export default function App({
     };
   }, [authState, loadAuth]);
 
+  const activeConversationIds = Object.values(trackedConversations)
+    .map((tracked) => tracked.snapshot)
+    .filter((snapshot) =>
+      ["running", "waiting-for-approval", "stopping"].includes(snapshot.state),
+    )
+    .flatMap((snapshot) =>
+      snapshot.conversationId ? [snapshot.conversationId] : [],
+    )
+    .sort();
+  const activeConversationKey = activeConversationIds.join(",");
+  const activeTaskProjectIds = Object.values(trackedConversations)
+    .map((tracked) => tracked.snapshot)
+    .filter((snapshot) =>
+      ["running", "waiting-for-approval", "stopping"].includes(snapshot.state),
+    )
+    .flatMap((snapshot) => (snapshot.projectId ? [snapshot.projectId] : []))
+    .sort();
+  const activeTaskProjectKey = activeTaskProjectIds.join(",");
+
   useEffect(() => {
-    if (
-      conversationBusy ||
-      !conversation.conversationId ||
-      !["running", "waiting-for-approval", "stopping"].includes(
-        conversation.state,
-      )
-    ) {
-      return;
-    }
+    if (!activeConversationKey) return;
 
     let active = true;
     let timer: number | undefined;
-    const conversationId = conversation.conversationId;
-    const actionGeneration = conversationActionGeneration.current;
+    const ids = activeConversationKey.split(",");
 
     async function poll() {
-      try {
-        const result = await pollConversationTask(conversationId);
-        if (
-          !active ||
-          actionGeneration !== conversationActionGeneration.current
-        )
-          return;
-        setConversation(result);
-        setConversationEvents((current) =>
-          mergeConversationEvents(current, result.events),
-        );
-        if (
-          ["running", "waiting-for-approval", "stopping"].includes(result.state)
-        ) {
-          timer = window.setTimeout(() => void poll(), 250);
-        } else {
-          void loadSessions({
-            projectId: null,
-            searchTerm: sessionSearchTerm,
-          })
-            .then((sessionResult) => setSessions(sessionResult))
-            .catch(() => setSessionActionError(true));
+      const pollGenerations = Object.fromEntries(
+        ids.map((conversationId) => [
+          conversationId,
+          conversationActionGenerations.current[conversationId] ?? 0,
+        ]),
+      );
+      const settled = await Promise.allSettled(
+        ids.map((conversationId) => pollConversationTask(conversationId)),
+      );
+      if (!active) return;
+      const results = settled.flatMap((result, index) =>
+        result.status === "fulfilled" &&
+        pollGenerations[ids[index]!] ===
+          (conversationActionGenerations.current[ids[index]!] ?? 0)
+          ? [result.value]
+          : [],
+      );
+      if (settled.some((result) => result.status === "rejected"))
+        setConversationActionError(true);
+
+      setTrackedConversations((current) => {
+        const next = { ...current };
+        for (const result of results) {
+          if (!result.projectId || !result.conversationId) continue;
+          const previous = current[result.projectId];
+          if (
+            previous &&
+            previous.snapshot.conversationId !== result.conversationId
+          )
+            continue;
+          next[result.projectId] = {
+            snapshot: result,
+            events: mergeConversationEvents(
+              previous?.events ?? [],
+              result.events,
+            ),
+          };
         }
-      } catch {
-        if (active) setConversationActionError(true);
+        return next;
+      });
+
+      const displayed = results.find(
+        (result) => result.conversationId === conversation.conversationId,
+      );
+      if (displayed) {
+        setConversation(displayed);
+        setConversationEvents((current) =>
+          mergeConversationEvents(current, displayed.events),
+        );
       }
+      if (
+        results.some(
+          (result) =>
+            !["running", "waiting-for-approval", "stopping"].includes(
+              result.state,
+            ),
+        )
+      ) {
+        void loadSessions({ projectId: null, searchTerm: sessionSearchTerm })
+          .then((sessionResult) => setSessions(sessionResult))
+          .catch(() => setSessionActionError(true));
+        for (const result of results) {
+          if (
+            result.projectId &&
+            !["running", "waiting-for-approval", "stopping"].includes(
+              result.state,
+            )
+          ) {
+            void loadGitStatusTask(result.projectId)
+              .then((gitResult) => {
+                if (gitResult.projectId) {
+                  setTaskGitSnapshots((current) => ({
+                    ...current,
+                    [gitResult.projectId!]: gitResult,
+                  }));
+                }
+              })
+              .catch(() => setGitActionError(true));
+          }
+        }
+      }
+      timer = window.setTimeout(() => void poll(), 250);
     }
 
     timer = window.setTimeout(() => void poll(), 250);
@@ -712,13 +826,44 @@ export default function App({
       if (timer !== undefined) window.clearTimeout(timer);
     };
   }, [
+    activeConversationKey,
     conversation.conversationId,
-    conversation.state,
-    conversationBusy,
+    loadGitStatusTask,
     loadSessions,
     pollConversationTask,
     sessionSearchTerm,
   ]);
+
+  useEffect(() => {
+    if (!activeTaskProjectKey) return;
+    let active = true;
+    const projectIds = activeTaskProjectKey.split(",");
+
+    async function refreshTaskGit() {
+      const settled = await Promise.allSettled(
+        projectIds.map((projectId) => loadGitStatusTask(projectId)),
+      );
+      if (!active) return;
+      setTaskGitSnapshots((current) => {
+        const next = { ...current };
+        for (const [index, result] of settled.entries()) {
+          if (result.status === "fulfilled" && result.value.projectId) {
+            next[result.value.projectId] = result.value;
+          } else if (result.status === "rejected") {
+            delete next[projectIds[index]!];
+          }
+        }
+        return next;
+      });
+    }
+
+    void refreshTaskGit();
+    const interval = window.setInterval(() => void refreshTaskGit(), 2000);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+    };
+  }, [activeTaskProjectKey, loadGitStatusTask]);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -869,7 +1014,7 @@ export default function App({
       if (result.state === "applied") {
         const projectResult = await loadProjects();
         setProjects(projectResult);
-        if (result.projectId) setSelectedProjectId(result.projectId);
+        if (result.projectId) selectProject(result.projectId);
       }
     } catch {
       setWorktreeActionError(true);
@@ -988,6 +1133,34 @@ export default function App({
     }
   }
 
+  function trackConversation(
+    snapshot: ConversationSnapshot,
+    replaceEvents: boolean,
+  ) {
+    if (!snapshot.projectId || !snapshot.conversationId) return;
+    const projectId = snapshot.projectId;
+    setTrackedConversations((current) => {
+      const previous = current[projectId];
+      return {
+        ...current,
+        [projectId]: {
+          snapshot,
+          events: replaceEvents
+            ? snapshot.events
+            : mergeConversationEvents(previous?.events ?? [], snapshot.events),
+        },
+      };
+    });
+  }
+
+  function selectProject(projectId: string) {
+    setSelectedProjectId(projectId);
+    const tracked = trackedConversations[projectId];
+    setConversation(tracked?.snapshot ?? scaffoldConversation);
+    setConversationEvents(tracked?.events ?? []);
+    setConversationActionError(false);
+  }
+
   async function beginConversation(
     request: ConversationStartRequest,
   ): Promise<ConversationSnapshot> {
@@ -997,6 +1170,7 @@ export default function App({
       const result = await startConversationTask(request);
       setConversation(result);
       setConversationEvents(result.events);
+      trackConversation(result, true);
       return result;
     } catch (error) {
       setConversationActionError(true);
@@ -1009,6 +1183,8 @@ export default function App({
   async function stopConversation(
     conversationId: string,
   ): Promise<ConversationSnapshot> {
+    conversationActionGenerations.current[conversationId] =
+      (conversationActionGenerations.current[conversationId] ?? 0) + 1;
     setConversationBusy(true);
     setConversationActionError(false);
     try {
@@ -1017,6 +1193,7 @@ export default function App({
       setConversationEvents((current) =>
         mergeConversationEvents(current, result.events),
       );
+      trackConversation(result, false);
       return result;
     } catch (error) {
       setConversationActionError(true);
@@ -1029,7 +1206,8 @@ export default function App({
   async function applyConversationApproval(
     request: ConversationApprovalDecisionRequest,
   ): Promise<ConversationSnapshot> {
-    conversationActionGeneration.current += 1;
+    conversationActionGenerations.current[request.conversationId] =
+      (conversationActionGenerations.current[request.conversationId] ?? 0) + 1;
     setConversationBusy(true);
     setConversationActionError(false);
     try {
@@ -1038,6 +1216,7 @@ export default function App({
       setConversationEvents((current) =>
         mergeConversationEvents(current, result.events),
       );
+      trackConversation(result, false);
       return result;
     } catch (error) {
       setConversationActionError(true);
@@ -1082,10 +1261,11 @@ export default function App({
       const source = sessions.sessions.find(
         (session) => session.conversationId === request.conversationId,
       );
-      if (source) setSelectedProjectId(source.projectId);
+      if (source) selectProject(source.projectId);
       const result = await action(request);
       setConversation(result);
       setConversationEvents(result.events);
+      trackConversation(result, true);
       if (result.state === "unavailable") setSessionActionError(true);
       return result;
     } catch (error) {
@@ -1128,11 +1308,46 @@ export default function App({
     ) ??
     projects.projects.find((project) => !project.archived) ??
     projects.projects[0];
+
   const conversationActive = [
     "running",
     "waiting-for-approval",
     "stopping",
   ].includes(conversation.state);
+  const visibleWorktreeProjects = new Set(
+    worktrees.worktrees.flatMap((worktree) =>
+      worktree.projectId ? [worktree.projectId] : [],
+    ),
+  );
+  const worktreeExecutions = Object.values(trackedConversations)
+    .flatMap(({ snapshot }) => {
+      if (
+        !snapshot.projectId ||
+        !snapshot.conversationId ||
+        !visibleWorktreeProjects.has(snapshot.projectId) ||
+        snapshot.state === "empty" ||
+        snapshot.state === "unavailable"
+      )
+        return [];
+      const project = projects.projects.find(
+        (candidate) => candidate.id === snapshot.projectId,
+      );
+      const git = taskGitSnapshots[snapshot.projectId];
+      const gitReady = git && git.state !== "unavailable";
+      return [
+        {
+          projectId: snapshot.projectId,
+          projectName: project?.displayName ?? "Attached worktree",
+          conversationId: snapshot.conversationId,
+          state: snapshot.state,
+          changeCount: gitReady ? git.changes.length : null,
+          conflictCount: gitReady
+            ? git.changes.filter((change) => change.conflict).length
+            : null,
+        } satisfies WorktreeExecutionView,
+      ];
+    })
+    .sort((left, right) => left.projectName.localeCompare(right.projectName));
 
   return (
     <div className="app-shell">
@@ -1219,7 +1434,7 @@ export default function App({
           <div className="topbar-actions">
             <span className="foundation-badge">
               <Glyph name="shield" />
-              Milestone 11 managed worktree foundation
+              Milestone 11 parallel worktrees
             </span>
             <button
               className="theme-toggle"
@@ -1354,13 +1569,25 @@ export default function App({
             preview={worktreePreview}
             result={worktreeResult}
             busy={worktreeBusy || conversationActive || gitBusy}
+            selectionBusy={worktreeBusy}
             actionError={worktreeActionError}
+            executions={worktreeExecutions}
             onRefresh={refreshWorktrees}
             onCreate={beginWorktreeCreate}
             onPickAttach={beginWorktreeAttach}
             onConfirm={applyWorktree}
             onCancel={cancelWorktreePreview}
-            onSelectProject={setSelectedProjectId}
+            onSelectProject={selectProject}
+            onOpenExecution={(projectId) => {
+              selectProject(projectId);
+              window.setTimeout(
+                () =>
+                  document.getElementById("conversation")?.scrollIntoView({
+                    behavior: "smooth",
+                  }),
+                0,
+              );
+            }}
           />
 
           <GitWorkspace
@@ -1392,7 +1619,7 @@ export default function App({
             searchTerm={sessionSearchTerm}
             onSearch={refreshSessions}
             onRefresh={() => refreshSessions()}
-            onSelect={(session) => setSelectedProjectId(session.projectId)}
+            onSelect={(session) => selectProject(session.projectId)}
             onResume={(request) =>
               continueHistoricalConversation(resumeConversationTask, request)
             }

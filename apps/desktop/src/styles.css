@@ -828,6 +828,94 @@ button:disabled {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
+.worktree-executions {
+  margin-top: 22px;
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border));
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--accent-soft) 28%, var(--surface-raised));
+}
+
+.worktree-executions__heading,
+.worktree-execution-card > div:first-child,
+.worktree-execution-card__git {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.worktree-executions__heading h3 {
+  margin: 3px 0 0;
+  font-size: 14px;
+}
+
+.worktree-executions__heading > span,
+.worktree-task-state,
+.worktree-execution-card__git {
+  color: var(--text-subtle);
+  font-size: 8px;
+  font-weight: 700;
+}
+
+.worktree-execution-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+  margin-top: 13px;
+}
+
+.worktree-execution-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px 14px;
+  padding: 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 9px;
+  background: var(--surface);
+}
+
+.worktree-execution-card > div:first-child {
+  grid-column: 1 / -1;
+}
+
+.worktree-execution-card__git {
+  justify-content: flex-start;
+}
+
+.worktree-execution-card__git strong {
+  color: #dc8e86;
+}
+
+:root[data-theme="light"] .worktree-execution-card__git strong {
+  color: #9d3027;
+}
+
+.worktree-task-state {
+  padding: 4px 6px;
+  border-radius: 999px;
+  background: var(--green-soft);
+  color: var(--green);
+}
+
+.worktree-task-state--waiting-for-approval,
+.worktree-task-state--stopping {
+  background: var(--accent-soft);
+  color: var(--accent-bright);
+}
+
+.worktree-task-state--blocked,
+.worktree-task-state--failed {
+  background: color-mix(in srgb, #b84b42 13%, transparent);
+  color: #dc8e86;
+}
+
+.worktree-task-state--completed,
+.worktree-task-state--interrupted {
+  background: var(--surface-soft);
+  color: var(--text-subtle);
+}
+
 .worktree-controls {
   display: grid;
   grid-template-columns: minmax(0, 1.6fr) minmax(210px, 0.6fr);
@@ -2370,6 +2458,12 @@ button:disabled {
   color: #20150b;
 }
 
+:root[data-theme="light"]
+  .conversation-approval__actions
+  button[data-decision="approve"] {
+  color: #fffaf3;
+}
+
 .conversation-approval__actions button[data-decision="cancel"] {
   color: #dc8e86;
 }
@@ -3046,6 +3140,10 @@ button:disabled {
   }
 
   .worktree-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .worktree-execution-list {
     grid-template-columns: 1fr;
   }
 

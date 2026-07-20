@@ -1,8 +1,8 @@
 # Architecture
 
 Status: Milestone 0 application proposal with the website foundation, desktop
-work through Milestone 10, and the Milestone 11A managed-worktree foundation
-implemented locally. Parallel worktree execution, cleanup, terminal, packaging,
+work through Milestone 10, and Milestone 11A–11B managed-worktree and bounded
+parallel-execution work implemented locally. Cleanup, terminal, packaging,
 deployment, and integration interfaces remain subject to separately gated
 milestones.
 
@@ -129,7 +129,8 @@ source content or Codex-owned state.
 
 ### Milestone 7A implementation boundary
 
-`ConversationService` is the serialized native owner of one MVP conversation.
+`ConversationService` was introduced as the serialized native owner of one MVP
+conversation.
 It reserves the project against detach, archive, and relink races, revalidates
 the attached directory immediately before execution, discovers the live model
 catalog on the owned app-server process, and sends fixed `thread/start` and
@@ -298,6 +299,41 @@ No remove, prune, filesystem cleanup, concurrent execution, or conflict action
 exists in 11A. See
 [ADR 0014](DECISIONS/0014-managed-worktree-foundation.md).
 
+### Milestone 11B bounded parallel-execution boundary
+
+`ConversationService` now owns a registry of at most four active or starting
+tasks keyed by app-owned conversation UUIDv7. A short-lived registry mutex
+protects capacity and membership; each active process has a separate mutex, so
+polling or approval I/O for one task does not serialize unrelated worktree
+tasks. Project reservations continue to reject duplicate execution in one
+project and block metadata or reviewed Git mutation races.
+
+Start and resume reserve capacity before process creation. Poll, approval, and
+interrupt first resolve the exact app conversation ID to its native slot. Each
+terminal path marks the slot finished once, closes and waits for its child,
+releases its exact project, removes only the same registered slot, and retains
+only a bounded event-free recent snapshot. Active-task app-server I/O never
+holds the registry lock; existing all-session reconciliation remains serialized
+only while no task is active.
+
+The fixed `conversation_active` command returns schema version 1, literal
+capacity four, and at most four active normalized `ConversationSnapshot`
+records with empty event batches. Codex thread/turn/request IDs, cwd, process
+identity, arguments, environment, and raw protocol messages remain native.
+Startup recovery remains conservative: process ownership is not reconstructable
+after application exit, so persisted stale active rows become interrupted.
+
+React stores bounded events independently per project, recovers the active
+registry after webview refresh, and polls each task by its app conversation ID.
+Per-task action generations discard a stale response only for the task whose
+approval or interruption changed. The worktree monitor filters tasks through
+the current native inventory and combines their normalized lifecycle with
+read-only `GitService` changed-file and conflict counts. Selecting a monitor
+row opens the existing expandable live activity view. No raw Git output,
+automatic conflict resolution, Git mutation, worktree cleanup, or durable task
+recovery was added. See
+[ADR 0015](DECISIONS/0015-bounded-parallel-worktree-execution.md).
+
 ## Application layers
 
 ### Frontend
@@ -333,9 +369,12 @@ The implemented compatibility boundary consists of:
 - `CodexAuthSnapshot`: strict account-kind and lifecycle state without account
   identity or secret fields.
 - `ConversationService`: serialized app-server ownership, project reservation,
-  exact turn correlation and interruption, and reference-only persistence.
+  four-task bounded registry, exact process routing and interruption, project
+  reservation, and reference-only persistence.
 - `ConversationSnapshot`: strict application-ID state plus bounded normalized
   events; native Codex IDs and cwd never cross IPC.
+- `ConversationRegistrySnapshot`: strict active-only capacity/task projection
+  with no event replay or native identity.
 
 Later milestones extend recovery, approvals, and presentation without bypassing
 this normalization layer. Generated schemas and sanitized fixtures drive
@@ -356,8 +395,9 @@ contract tests.
   handoff, stage, unstage, bounded revert/recovery, and commit; remote
   operations remain later work.
 - `WorktreeService`: implemented bounded inventory, managed creation, native-
-  picker attachment, expiring confirmation, and project registration; parallel
-  execution and cleanup remain later gated work.
+  picker attachment, expiring confirmation, and project registration; React
+  composes its inventory with bounded conversation/Git snapshots, while cleanup
+  remains later gated work.
 - `TerminalService`: independent PTY sessions rooted in verified directories.
 - `ApprovalService`: request correlation, scope, decision validation, expiry.
 - `PreviewService`: bounded MIME/type-aware previews.
@@ -534,7 +574,10 @@ Milestone 11A admits only one advanced branch operation: creating a new branch
 as part of an app-managed worktree. The native plan binds source identity and
 HEAD, owns the destination, disables checkout hooks/configured filters, and
 revalidates every effect at confirmation. Existing-worktree paths come only
-from the native picker. Cleanup remains a separate unavailable operation.
+from the native picker. Milestone 11B adds no Git mutation: it runs independently
+reserved Codex processes in up to four verified worktree projects and reads
+only normalized Git status counts for the aggregate monitor. Cleanup and
+conflict resolution remain separate unavailable operations.
 
 Codex-managed sessions and user worktrees are never removed as a side effect of
 detaching a directory or deleting app metadata.

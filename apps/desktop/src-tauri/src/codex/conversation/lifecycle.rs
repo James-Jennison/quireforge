@@ -1,10 +1,12 @@
 use std::{
     collections::{BTreeSet, HashMap},
     path::Path,
+    sync::Arc,
 };
 
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use tokio::sync::Mutex;
 use uuid::Uuid;
 
 use crate::project::{
@@ -142,7 +144,7 @@ impl ConversationService {
         if references.is_empty() {
             return SessionLifecycleSnapshot::empty();
         }
-        if state.active.is_some() {
+        if !state.active.is_empty() {
             return snapshot_from_references(references, None, None);
         }
 
@@ -210,12 +212,6 @@ impl ConversationService {
             return ConversationSnapshot::unavailable(ConversationDiagnosticCode::InvalidRequest);
         }
 
-        let mut state = self.state.lock().await;
-        if state.active.is_some() {
-            return ConversationSnapshot::unavailable(
-                ConversationDiagnosticCode::ConversationActive,
-            );
-        }
         let reference = match projects.conversation_reference(&request.conversation_id) {
             Ok(reference) => reference,
             Err(error) => return ConversationSnapshot::unavailable(map_reference_error(error)),
@@ -230,13 +226,27 @@ impl ConversationService {
             Err(code) => return ConversationSnapshot::unavailable(code),
         };
 
+        {
+            let mut state = self.state.lock().await;
+            if state.active.contains_key(&request.conversation_id) {
+                return ConversationSnapshot::unavailable(
+                    ConversationDiagnosticCode::ConversationActive,
+                );
+            }
+            if let Err(code) = state.begin_start(&reference.project_id) {
+                return ConversationSnapshot::unavailable(code);
+            }
+        }
+
         if let Err(error) = projects.reserve_execution(&reference.project_id) {
+            self.state.lock().await.finish_start(&reference.project_id);
             return ConversationSnapshot::unavailable(map_project_error(error));
         }
         let cwd = match projects.execution_cwd(&reference.project_id) {
             Ok(cwd) => cwd,
             Err(error) => {
                 projects.release_execution(&reference.project_id);
+                self.state.lock().await.finish_start(&reference.project_id);
                 return ConversationSnapshot::unavailable(map_project_error(error));
             }
         };
@@ -257,14 +267,21 @@ impl ConversationService {
                     },
                 ];
                 let snapshot = active.snapshot(events, None);
-                state.active = Some(active);
-                state.last = snapshot.clone();
+                let conversation_id = active.conversation_id.clone();
+                let mut state = self.state.lock().await;
+                state.finish_start(&reference.project_id);
+                state
+                    .active
+                    .insert(conversation_id, Arc::new(Mutex::new(active)));
+                state.remember(snapshot.clone());
                 snapshot
             }
             Err(code) => {
                 projects.release_execution(&reference.project_id);
                 let snapshot = ConversationSnapshot::unavailable(code);
-                state.last = snapshot.clone();
+                let mut state = self.state.lock().await;
+                state.finish_start(&reference.project_id);
+                state.remember(snapshot.clone());
                 snapshot
             }
         }
@@ -307,6 +324,7 @@ impl ConversationService {
                 activities: HashMap::new(),
                 pending_approval: None,
                 process,
+                finished: false,
             }),
             Err(code) => {
                 let _ = process.shutdown().await;
@@ -327,11 +345,12 @@ impl ConversationService {
             );
         }
         let state = self.state.lock().await;
-        if state.active.is_some() {
+        if state.active.contains_key(&conversation_id) {
             return SessionLifecycleSnapshot::unavailable(
                 ConversationDiagnosticCode::ConversationActive,
             );
         }
+        drop(state);
         let reference = match projects.conversation_reference(&conversation_id) {
             Ok(reference) => reference,
             Err(error) => return SessionLifecycleSnapshot::unavailable(map_reference_error(error)),

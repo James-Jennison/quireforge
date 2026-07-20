@@ -250,6 +250,11 @@ const nativeResponses = {
     events: [],
     diagnosticCode: null,
   },
+  conversation_active: {
+    schemaVersion: 1,
+    capacity: 4,
+    conversations: [],
+  },
   conversation_sessions: {
     schemaVersion: 2,
     state: "ready",
@@ -521,6 +526,54 @@ test("native worktree fixture previews an isolated checkout without cleanup cont
   ).toHaveCount(0);
   await page.getByRole("button", { name: "Cancel" }).click();
   await expect(page.getByText("Create feature/isolated")).toHaveCount(0);
+
+  const results = await new AxeBuilder({ page }).analyze();
+  expect(results.violations).toEqual([]);
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - window.innerWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(1);
+});
+
+test("parallel worktree monitor opens live activity and reports conflicts", async ({
+  page,
+}) => {
+  const conflictedGit = {
+    ...nativeResponses.git_status,
+    changes: [
+      {
+        path: "src/conflicted.ts",
+        previousPath: null,
+        staged: "unmerged",
+        worktree: "unmerged",
+        conflict: true,
+        submodule: false,
+        reviewable: false,
+      },
+    ],
+  };
+  await installNativeFixture(page, {
+    ...nativeResponses,
+    conversation_status: approvalConversation,
+    conversation_active: {
+      schemaVersion: 1,
+      capacity: 4,
+      conversations: [{ ...approvalConversation, events: [] }],
+    },
+    conversation_poll: approvalConversation,
+    git_status: conflictedGit,
+  });
+  await page.goto("/");
+
+  await expect(page.getByText("1 of 4 active")).toBeVisible();
+  await expect(page.getByText("Approval needed")).toBeVisible();
+  await expect(page.getByText("1 conflict")).toBeVisible();
+  await page.getByRole("button", { name: "View live activity" }).click();
+  await expect(page.getByText("Codex is waiting for approval")).toBeVisible();
+  const activity = page.getByRole("button", { name: /Run command/u });
+  await expect(activity).toBeVisible();
+  await activity.click();
+  await expect(page.getByText("Checking the desktop contract…")).toBeVisible();
 
   const results = await new AxeBuilder({ page }).analyze();
   expect(results.violations).toEqual([]);

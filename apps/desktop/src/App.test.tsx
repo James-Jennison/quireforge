@@ -6,6 +6,7 @@ import { codexAuthSchema, scaffoldCodexAuth } from "./lib/auth";
 import { scaffoldCodexRuntime } from "./lib/codex";
 import { scaffoldBootstrap } from "./lib/contract";
 import {
+  type ConversationSnapshot,
   conversationSnapshotSchema,
   scaffoldConversation,
 } from "./lib/conversation";
@@ -14,6 +15,7 @@ import {
   scaffoldProjectWorkspace,
 } from "./lib/project";
 import { sessionLifecycleSchema } from "./lib/session";
+import { worktreeWorkspaceSchema } from "./lib/worktree";
 
 const projectId = "018f0000-0000-7000-8000-000000000001";
 const associationId = "018f0000-0000-7000-8000-000000000002";
@@ -507,6 +509,116 @@ describe("QuireForge desktop shell", () => {
     await new Promise((resolve) => window.setTimeout(resolve, 0));
     expect(screen.getByText("Task completed")).toBeInTheDocument();
     expect(screen.queryByText("Run checks?")).toBeNull();
+  });
+
+  it("polls distinct worktree tasks independently and aggregates their state", async () => {
+    const secondProjectId = "018f0000-0000-7000-8000-000000000003";
+    const secondAssociationId = "018f0000-0000-7000-8000-000000000004";
+    const projects = projectWorkspaceSchema.parse({
+      ...attachedProject,
+      projects: [
+        ...attachedProject.projects,
+        {
+          id: secondProjectId,
+          displayName: "QuireForge parallel",
+          archived: false,
+          directory: {
+            associationId: secondAssociationId,
+            displayPath: "~/work/quireforge-parallel",
+            resolvedDisplayPath: "/mnt/work/quireforge-parallel",
+            state: "connected-accessible",
+            expectedAccess: "read-write",
+            isPrimary: true,
+            git: { isRepository: true, isLinkedWorktree: true },
+            hasAgentsGuidance: true,
+            hasCodexConfig: false,
+          },
+        },
+      ],
+    });
+    const worktrees = worktreeWorkspaceSchema.parse({
+      schemaVersion: 1,
+      state: "ready",
+      sourceProjectId: projectId,
+      worktrees: [
+        {
+          projectId,
+          displayName: "QuireForge",
+          displayPath: "~/work/quireforge-link",
+          branchName: "main",
+          ownership: "source",
+          state: "ready",
+          current: true,
+        },
+        {
+          projectId: secondProjectId,
+          displayName: "QuireForge parallel",
+          displayPath: "~/work/quireforge-parallel",
+          branchName: "feature/parallel",
+          ownership: "managed",
+          state: "ready",
+          current: false,
+        },
+      ],
+      truncated: false,
+      diagnosticCode: null,
+    });
+    const task = (conversationId: string, taskProjectId: string) =>
+      conversationSnapshotSchema.parse({
+        schemaVersion: 2,
+        state: "running",
+        conversationId,
+        projectId: taskProjectId,
+        modelId: "gpt-5.6-sol",
+        reasoningEffort: "high",
+        sandboxMode: "workspace-write",
+        approvalPolicy: "on-request",
+        pendingApproval: null,
+        events: [],
+        diagnosticCode: null,
+      });
+    const first = task("018f0000-0000-7000-8000-000000000010", projectId);
+    const second = task(
+      "018f0000-0000-7000-8000-000000000020",
+      secondProjectId,
+    );
+    const pollConversationTask = vi.fn((conversationId: string) =>
+      Promise.resolve(conversationId === first.conversationId ? first : second),
+    );
+    let resolveLegacyStatus:
+      ((snapshot: ConversationSnapshot) => void) | undefined;
+    const legacyStatus = new Promise<ConversationSnapshot>((resolve) => {
+      resolveLegacyStatus = resolve;
+    });
+    const { unmount } = render(
+      <App
+        loadBootstrap={() => Promise.resolve(scaffoldBootstrap)}
+        loadRuntime={() => Promise.resolve(scaffoldCodexRuntime)}
+        loadAuth={() => Promise.resolve(scaffoldCodexAuth)}
+        loadProjects={() => Promise.resolve(projects)}
+        loadWorktreesTask={() => Promise.resolve(worktrees)}
+        loadConversation={() => legacyStatus}
+        loadActiveConversationTasks={() =>
+          Promise.resolve({
+            schemaVersion: 1,
+            capacity: 4,
+            conversations: [first, second],
+          })
+        }
+        pollConversationTask={pollConversationTask}
+      />,
+    );
+
+    expect(await screen.findByText("2 of 4 active")).toBeInTheDocument();
+    resolveLegacyStatus?.(first);
+    await waitFor(() =>
+      expect(screen.getByText("2 of 4 active")).toBeInTheDocument(),
+    );
+    await waitFor(() => {
+      expect(pollConversationTask).toHaveBeenCalledWith(first.conversationId);
+      expect(pollConversationTask).toHaveBeenCalledWith(second.conversationId);
+    });
+    unmount();
   });
 
   it("wires session search and resume through app-owned references", async () => {

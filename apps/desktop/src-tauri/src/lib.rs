@@ -7,7 +7,8 @@ mod worktree;
 use codex::{
     types::CodexRuntimeSnapshot, AuthLoginMethod, CodexAuthService, CodexAuthSnapshot,
     CodexRuntimeService, ConversationApprovalDecisionRequest, ConversationContinueRequest,
-    ConversationService, ConversationSnapshot, ConversationStartRequest, SessionLifecycleSnapshot,
+    ConversationRegistrySnapshot, ConversationService, ConversationSnapshot,
+    ConversationStartRequest, SessionLifecycleSnapshot,
 };
 use contract::DesktopBootstrap;
 use git::{
@@ -297,6 +298,13 @@ async fn conversation_status(
 }
 
 #[tauri::command]
+async fn conversation_active(
+    service: tauri::State<'_, ConversationService>,
+) -> Result<ConversationRegistrySnapshot, ()> {
+    Ok(service.active().await)
+}
+
+#[tauri::command]
 async fn conversation_start(
     request: ConversationStartRequest,
     service: tauri::State<'_, ConversationService>,
@@ -428,6 +436,7 @@ pub fn run() {
             git_mutation_confirm,
             git_mutation_recover,
             conversation_status,
+            conversation_active,
             conversation_start,
             conversation_poll,
             conversation_interrupt,

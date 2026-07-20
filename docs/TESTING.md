@@ -1,9 +1,9 @@
 # Testing QuireForge
 
-Status: Milestones 2–11A establish repository, website, desktop frontend,
+Status: Milestones 2–11B establish repository, website, desktop frontend,
 native contract, Codex adapter, authentication, project attachment,
 conversation/runtime lifecycle, approvals, reviewed Git read/write checks, and
-the managed-worktree foundation. Parallel execution, cleanup, and PTY fixtures
+managed worktrees with bounded parallel execution. Cleanup and PTY fixtures
 arrive with their separately gated milestones.
 
 ## Repository, website, and desktop checks
@@ -48,6 +48,10 @@ control combinations, UUIDv7 correlation, bounded normalized events, exact
 interrupt, project reservation, exact approval correlation and decisions,
 pending-approval cancellation, detailed activity identity, split-secret
 redaction, protocol mismatch, child reaping, and reference-only persistence.
+Milestone 11B fixtures additionally start independent mock app-server children
+for distinct worktree projects, prove exact per-app-ID interruption, reject a
+second task in the same project, enforce the four-task capacity while starts
+are provisional, and reap every child without a live or billable model call.
 TypeScript tests reject cwd,
 Codex thread/turn IDs, unknown fields, raw protocol payloads, and path-bearing
 bridge input before native invocation.
@@ -77,6 +81,38 @@ recoverable-worktree path after a forced metadata failure. Frontend and browser
 tests cover strict schemas, fixed bridge payloads, honest preview behavior,
 responsive inventory/create/attach controls, absence of cleanup actions,
 overflow, and axe-core.
+Parallel-registry contract tests share one empty fixture with Rust, require
+active-only unique project/conversation IDs, and reject unknown or over-capacity
+state. App/component/browser tests recover and poll multiple task IDs
+independently, show normalized changed-file/conflict counts, open the selected
+task's expandable activity, and verify both configured viewports with axe-core
+and overflow analysis.
+
+## Manual Milestone 11B checklist
+
+- Use deterministic mock app-server processes and disposable repositories only;
+  do not start a live or billable model turn.
+- Start tasks in distinct attached worktree projects and confirm up to four run
+  independently. A fifth start and a second start in the same project must fail
+  closed without spawning another child.
+- Interrupt one exact app conversation ID while another continues. Exercise
+  independent poll and approval routing, then confirm every terminal path
+  closes and waits for only its owned child and releases only its project.
+- Refresh the webview with multiple native tasks active. Confirm the strict
+  registry restores each active task with no Codex ID, cwd, process metadata,
+  arguments, environment, raw output, or replayed event batch.
+- Select each worktree task from the aggregate monitor and expand its live
+  normalized activity. Confirm changed-file and conflict counts come from the
+  read-only Git snapshot and never trigger conflict resolution or mutation.
+- Exercise terminal, capacity, unavailable-Git, stale-poll, desktop/mobile,
+  keyboard, axe-core, and overflow states. Confirm no task's late response can
+  overwrite another task or a newer action on the same task.
+- Restart against a fixture database with stale running rows and confirm the
+  existing crash recovery marks them interrupted; do not claim native process
+  ownership survives application exit.
+- Confirm there is no remove, prune, cleanup, conflict-resolution, generic Git,
+  cwd, executable, or argument-vector control. Run the complete repository and
+  browser gates, warm release build, isolated launch, and visual inspection.
 
 ## Manual Milestone 11A checklist
 

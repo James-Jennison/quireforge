@@ -59,6 +59,10 @@ project concurrency, attachment scope, and secret review.
 Milestone 11A adds the native managed-worktree foundation, strict inventory and
 preview contracts, app-generated destinations, native-picker attachment, and
 ordinary project registration without adding cleanup or concurrent execution.
+Milestone 11B adds a four-task native conversation registry, independent
+worktree execution and interruption, refresh recovery from normalized active
+state, and aggregate activity/changed-file/conflict presentation without
+adding destructive cleanup or automatic conflict resolution.
 
 ## Status
 
@@ -75,7 +79,7 @@ ordinary project registration without adding cleanup or concurrent execution.
 |         8 | Session lifecycle and crash recovery                              | Large        | Complete; merged to `main`                                                     |
 |         9 | Approvals and command presentation                                | Large        | Complete and verified; publication recorded in repository history              |
 |        10 | Git status, diff review, and controlled mutations                  | Large        | Complete and verified; publication tracked by this milestone change             |
-|        11 | Worktrees and parallel work                                       | Very large   | In progress; 11A implemented and verified locally                             |
+|        11 | Worktrees and parallel work                                       | Very large   | In progress; 11A–11B implemented and verified locally                         |
 |        12 | Integrated terminal                                               | Large        | Planned                                                                        |
 |        13 | Integration discovery and compatibility                           | Very large   | Planned                                                                        |
 |        14 | Integration Center and installation workflows                     | Very large   | Planned                                                                        |
@@ -330,12 +334,26 @@ destination, then uses one fixed shell-free `git worktree add` workflow.
 Metadata registration is transactional. If Git succeeds and registration
 fails, the worktree is reported as recoverable and deliberately left in place.
 
-Milestone 11A has no remove, prune, cleanup, generic checkout, arbitrary ref,
-frontend path, cwd, executable, or argument-vector command. Milestone 11B must
-receive a fresh gate before adding parallel Codex execution and aggregated
-status/conflict presentation. Milestone 11C must receive its own data-loss-
-sensitive gate before any cleanup or recovery workflow. See
-[ADR 0014](DECISIONS/0014-managed-worktree-foundation.md).
+Milestone 11B replaces the single active-process slot with a bounded registry
+of at most four independently locked conversations. Starts reserve their exact
+project before process creation, duplicate work in one project fails closed,
+and poll, approval, and interruption route only through an app-owned
+conversation ID. A strict normalized registry lets the webview recover active
+tasks after refresh without receiving Codex IDs, cwd, commands, process
+metadata, or raw protocol messages.
+
+React polls each active task independently and presents one aggregate worktree
+monitor. Selecting a row opens the existing expandable live activity stream;
+read-only Git snapshots supply only normalized changed-file and conflict
+counts. Process ownership does not survive an application restart, so stale
+active records follow the existing interrupted-state recovery rule. Milestone
+11B performs no conflict resolution or Git mutation.
+
+Milestone 11A–11B have no remove, prune, cleanup, generic checkout, arbitrary
+ref, frontend path, cwd, executable, or argument-vector command. Milestone 11C
+must receive its own data-loss-sensitive gate before any cleanup or recovery
+workflow. See [ADR 0014](DECISIONS/0014-managed-worktree-foundation.md) and
+[ADR 0015](DECISIONS/0015-bounded-parallel-worktree-execution.md).
 
 ### 12 — Integrated Terminal
 
