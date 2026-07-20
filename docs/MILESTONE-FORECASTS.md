@@ -454,7 +454,7 @@ the predominantly bounded integration work.
 | User approval/waiting time | Manual model/reasoning, system-audit, milestone-start, and publication approvals occurred outside execution time; GitHub-hosted queue time is tracked separately |
 | Sessions | One logical implementation session with a compacted handoff and recoverable parser, state-machine, frontend-contract, documentation, validation, and publication checkpoints |
 | Usage intensity | Very high model/tool activity; moderate local CPU and low memory pressure |
-| Completion status | Complete and verified locally; publication is recorded in repository history |
+| Completion status | Milestone 9A complete; merged to `main` in PR #9 |
 
 The forecast substantially overestimated implementation time. The existing
 serialized process owner, app-reference model, strict fixtures, conservative
@@ -484,6 +484,11 @@ handling, and the final native/webview security review.
   passed 59 JavaScript tests plus 68 Rust tests, with two deliberate live probes
   ignored. The warm unbundled release build took 32.03 seconds at about 1.55 GiB
   peak RSS.
+- PR #9 and the merge commit's `main` workflow both passed all repository,
+  website, desktop, browser, native-test, and unbundled-release checks. Their
+  cold hosted desktop jobs took 9 minutes 3 seconds and 9 minutes 38 seconds,
+  respectively; preserving each active run avoided discarding compilation
+  progress.
 - Desktop/mobile activity-fixture checks passed accessibility and overflow
   analysis. Visual inspection confirmed readable waiting, command detail,
   progress, and approval-request presentation; the selectable expanded and
