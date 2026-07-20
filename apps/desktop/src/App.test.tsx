@@ -1,10 +1,14 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import App from "./App";
 import { codexAuthSchema, scaffoldCodexAuth } from "./lib/auth";
 import { scaffoldCodexRuntime } from "./lib/codex";
 import { scaffoldBootstrap } from "./lib/contract";
+import {
+  conversationSnapshotSchema,
+  scaffoldConversation,
+} from "./lib/conversation";
 import {
   projectWorkspaceSchema,
   scaffoldProjectWorkspace,
@@ -316,5 +320,103 @@ describe("QuireForge desktop shell", () => {
       screen.getByText(/refuse it as a writable task directory/iu),
     ).toBeInTheDocument();
     expect(pickRelink).toHaveBeenCalledWith(projectId);
+  });
+
+  it("starts, polls, deduplicates, and completes a native conversation", async () => {
+    const conversationId = "018f0000-0000-7000-8000-000000000010";
+    const running = conversationSnapshotSchema.parse({
+      schemaVersion: 1,
+      state: "running",
+      conversationId,
+      projectId,
+      modelId: "gpt-5.6-sol",
+      reasoningEffort: "high",
+      sandboxMode: "workspace-write",
+      approvalPolicy: "on-request",
+      events: [
+        {
+          type: "agent-message-delta",
+          sequence: 1,
+          delta: "Reviewing the task.",
+        },
+      ],
+      diagnosticCode: null,
+    });
+    const completed = conversationSnapshotSchema.parse({
+      ...running,
+      state: "completed",
+      events: [
+        ...running.events,
+        { type: "lifecycle", sequence: 2, phase: "completed" },
+      ],
+    });
+    const startConversationTask = vi.fn().mockResolvedValue(running);
+    const pollConversationTask = vi.fn().mockResolvedValue(completed);
+
+    render(
+      <App
+        loadBootstrap={() => Promise.resolve(scaffoldBootstrap)}
+        loadRuntime={() => Promise.resolve(scaffoldCodexRuntime)}
+        loadAuth={() => Promise.resolve(scaffoldCodexAuth)}
+        loadProjects={() => Promise.resolve(attachedProject)}
+        loadConversation={() => Promise.resolve(scaffoldConversation)}
+        startConversationTask={startConversationTask}
+        pollConversationTask={pollConversationTask}
+      />,
+    );
+
+    const start = await screen.findByRole("button", { name: "Start task" });
+    fireEvent.change(screen.getByLabelText("Task"), {
+      target: { value: "Review the shell wiring." },
+    });
+    fireEvent.change(screen.getByLabelText("Reasoning"), {
+      target: { value: "high" },
+    });
+    await waitFor(() => expect(start).toBeEnabled());
+    fireEvent.click(start);
+
+    await waitFor(() =>
+      expect(startConversationTask).toHaveBeenCalledWith(
+        expect.objectContaining({ projectId, reasoningEffort: "high" }),
+      ),
+    );
+    await waitFor(() =>
+      expect(pollConversationTask).toHaveBeenCalledWith(conversationId),
+    );
+    expect(await screen.findByText("Task completed")).toBeInTheDocument();
+    expect(screen.getAllByText("Reviewing the task.")).toHaveLength(1);
+  });
+
+  it("cancels pending conversation polling when the shell unmounts", async () => {
+    const running = conversationSnapshotSchema.parse({
+      schemaVersion: 1,
+      state: "running",
+      conversationId: "018f0000-0000-7000-8000-000000000010",
+      projectId,
+      modelId: "gpt-5.6-sol",
+      reasoningEffort: "high",
+      sandboxMode: "workspace-write",
+      approvalPolicy: "on-request",
+      events: [],
+      diagnosticCode: null,
+    });
+    const pollConversationTask = vi.fn().mockResolvedValue(running);
+    const { unmount } = render(
+      <App
+        loadBootstrap={() => Promise.resolve(scaffoldBootstrap)}
+        loadRuntime={() => Promise.resolve(scaffoldCodexRuntime)}
+        loadAuth={() => Promise.resolve(scaffoldCodexAuth)}
+        loadProjects={() => Promise.resolve(attachedProject)}
+        loadConversation={() => Promise.resolve(running)}
+        pollConversationTask={pollConversationTask}
+      />,
+    );
+
+    expect(
+      await screen.findByRole("button", { name: "Stop task" }),
+    ).toBeInTheDocument();
+    unmount();
+    await new Promise((resolve) => window.setTimeout(resolve, 300));
+    expect(pollConversationTask).not.toHaveBeenCalled();
   });
 });

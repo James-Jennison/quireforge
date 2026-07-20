@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 
 import brandMark from "../../../assets/brand/quireforge-app-icon.svg";
+import { ConversationWorkspace } from "./ConversationWorkspace";
 import { ProjectWorkspace } from "./ProjectWorkspace";
 import {
   archiveProject,
@@ -8,7 +9,9 @@ import {
   cancelProjectAttachment,
   confirmProjectAttachment,
   detachProject,
+  interruptConversation,
   loadCodexAuth,
+  loadConversationStatus,
   loadCodexRuntime,
   loadDesktopBootstrap,
   loadProjectWorkspace,
@@ -17,7 +20,9 @@ import {
   pickProjectDirectory,
   pickProjectRelink,
   preflightProject,
+  pollConversation,
   refreshCodexAuth,
+  startConversation,
   startCodexAuth,
 } from "./lib/bridge";
 import {
@@ -27,6 +32,13 @@ import {
 } from "./lib/auth";
 import { scaffoldCodexRuntime, type CodexRuntimeSnapshot } from "./lib/codex";
 import { scaffoldBootstrap, type DesktopBootstrap } from "./lib/contract";
+import {
+  scaffoldConversation,
+  type ConversationEvent,
+  type ConversationSnapshot,
+  type ConversationStartRequest,
+} from "./lib/conversation";
+import { mergeConversationEvents } from "./lib/conversationView";
 import {
   scaffoldProjectWorkspace,
   type ProjectPreflightSnapshot,
@@ -40,6 +52,7 @@ type RuntimeState =
   "checking" | "ready" | "degraded" | "unavailable" | "preview";
 type AuthViewState = CodexAuthSnapshot["state"] | "checking" | "preview";
 type ProjectViewState = "checking" | "native" | "preview";
+type ConversationViewState = "checking" | "native" | "preview";
 type Theme = "light" | "dark";
 
 interface AppProps {
@@ -65,6 +78,16 @@ interface AppProps {
   preflightProjectDirectory?: (
     projectId: string,
   ) => Promise<ProjectPreflightSnapshot>;
+  loadConversation?: () => Promise<ConversationSnapshot>;
+  startConversationTask?: (
+    request: ConversationStartRequest,
+  ) => Promise<ConversationSnapshot>;
+  pollConversationTask?: (
+    conversationId: string,
+  ) => Promise<ConversationSnapshot>;
+  interruptConversationTask?: (
+    conversationId: string,
+  ) => Promise<ConversationSnapshot>;
 }
 
 const navigation = [
@@ -175,6 +198,10 @@ export default function App({
   detachProjectDirectory = detachProject,
   archiveProjectMetadata = archiveProject,
   preflightProjectDirectory = preflightProject,
+  loadConversation = loadConversationStatus,
+  startConversationTask = startConversation,
+  pollConversationTask = pollConversation,
+  interruptConversationTask = interruptConversation,
 }: AppProps) {
   const [bootstrap, setBootstrap] =
     useState<DesktopBootstrap>(scaffoldBootstrap);
@@ -197,6 +224,15 @@ export default function App({
   const [projectPreflights, setProjectPreflights] = useState<
     Record<string, ProjectPreflightSnapshot>
   >({});
+  const [conversation, setConversation] =
+    useState<ConversationSnapshot>(scaffoldConversation);
+  const [conversationEvents, setConversationEvents] = useState<
+    ConversationEvent[]
+  >([]);
+  const [conversationState, setConversationState] =
+    useState<ConversationViewState>("checking");
+  const [conversationBusy, setConversationBusy] = useState(false);
+  const [conversationActionError, setConversationActionError] = useState(false);
   const [theme, setTheme] = useState<Theme>(initialTheme);
 
   useEffect(() => {
@@ -268,6 +304,24 @@ export default function App({
   }, [loadProjects]);
 
   useEffect(() => {
+    let active = true;
+    void loadConversation()
+      .then((result) => {
+        if (!active) return;
+        setConversation(result);
+        setConversationEvents(result.events);
+        setConversationState("native");
+      })
+      .catch(() => {
+        if (active) setConversationState("preview");
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [loadConversation]);
+
+  useEffect(() => {
     if (authState !== "login-pending") return;
     let active = true;
     const poll = window.setInterval(() => {
@@ -287,6 +341,41 @@ export default function App({
       window.clearInterval(poll);
     };
   }, [authState, loadAuth]);
+
+  useEffect(() => {
+    if (
+      !conversation.conversationId ||
+      !["running", "stopping"].includes(conversation.state)
+    ) {
+      return;
+    }
+
+    let active = true;
+    let timer: number | undefined;
+    const conversationId = conversation.conversationId;
+
+    async function poll() {
+      try {
+        const result = await pollConversationTask(conversationId);
+        if (!active) return;
+        setConversation(result);
+        setConversationEvents((current) =>
+          mergeConversationEvents(current, result.events),
+        );
+        if (["running", "stopping"].includes(result.state)) {
+          timer = window.setTimeout(() => void poll(), 250);
+        }
+      } catch {
+        if (active) setConversationActionError(true);
+      }
+    }
+
+    timer = window.setTimeout(() => void poll(), 250);
+    return () => {
+      active = false;
+      if (timer !== undefined) window.clearTimeout(timer);
+    };
+  }, [conversation.conversationId, conversation.state, pollConversationTask]);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -370,6 +459,44 @@ export default function App({
     }
   }
 
+  async function beginConversation(
+    request: ConversationStartRequest,
+  ): Promise<ConversationSnapshot> {
+    setConversationBusy(true);
+    setConversationActionError(false);
+    try {
+      const result = await startConversationTask(request);
+      setConversation(result);
+      setConversationEvents(result.events);
+      return result;
+    } catch (error) {
+      setConversationActionError(true);
+      throw error;
+    } finally {
+      setConversationBusy(false);
+    }
+  }
+
+  async function stopConversation(
+    conversationId: string,
+  ): Promise<ConversationSnapshot> {
+    setConversationBusy(true);
+    setConversationActionError(false);
+    try {
+      const result = await interruptConversationTask(conversationId);
+      setConversation(result);
+      setConversationEvents((current) =>
+        mergeConversationEvents(current, result.events),
+      );
+      return result;
+    } catch (error) {
+      setConversationActionError(true);
+      throw error;
+    } finally {
+      setConversationBusy(false);
+    }
+  }
+
   const currentProject =
     projects.projects.find((project) => !project.archived) ??
     projects.projects[0];
@@ -385,10 +512,18 @@ export default function App({
           </div>
         </div>
 
-        <button className="primary-action" type="button" disabled>
+        <button
+          className="primary-action"
+          type="button"
+          disabled={conversationState !== "native"}
+          onClick={() =>
+            document.getElementById("conversation")?.scrollIntoView({
+              behavior: "smooth",
+            })
+          }
+        >
           <Glyph name="plus" />
           New thread
-          <span className="button-milestone">M7</span>
         </button>
 
         <nav className="primary-nav" aria-label="Primary navigation">
@@ -446,7 +581,7 @@ export default function App({
           <div className="topbar-actions">
             <span className="foundation-badge">
               <Glyph name="shield" />
-              Milestone 6 local projects
+              Milestone 7 native conversation
             </span>
             <button
               className="theme-toggle"
@@ -572,6 +707,18 @@ export default function App({
               applyProjectAction(() => archiveProjectMetadata(projectId))
             }
             onPreflight={verifyProject}
+          />
+
+          <ConversationWorkspace
+            availability={conversationState}
+            snapshot={conversation}
+            events={conversationEvents}
+            runtime={runtime}
+            project={currentProject}
+            busy={conversationBusy}
+            actionError={conversationActionError}
+            onStart={beginConversation}
+            onInterrupt={stopConversation}
           />
 
           <section className="auth-onboarding" aria-labelledby="auth-title">

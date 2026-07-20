@@ -84,6 +84,13 @@ released a usable application.
   reservation, reviewed Codex 0.144.6 thread/turn schemas, strict Rust and
   TypeScript contracts, and deterministic lifecycle, cancellation, policy,
   mismatch, path-boundary, and redaction tests.
+- A responsive Milestone 7B conversation workspace with a bounded task
+  composer, runtime-derived model/reasoning choices, explicit filesystem and
+  approval controls, normalized progress and response rendering, stable
+  diagnostics, and exact app-owned stop behavior.
+- Deterministic conversation UI tests for prerequisite gating, unsafe-policy
+  rejection, start/poll/terminal transitions, event deduplication and bounds,
+  browser-preview honesty, responsive layout, and accessibility.
 
 ### Changed
 
@@ -135,8 +142,10 @@ released a usable application.
   directory, Codex state, package, deployment, or release was changed.
 - Completed the Milestone 7A native conversation-runtime checkpoint locally.
   No live model turn, approval decision, Codex-owned session mutation, package,
-  deployment, or release was performed; the user-facing conversation UI remains
-  Milestone 7B.
+  deployment, or release was performed.
+- Completed the Milestone 7B conversation UI and native-shell integration
+  locally. No live model call, approval decision, deployment, package, or
+  release was performed; session lifecycle remains Milestone 8.
 
 ### Migration note
 
@@ -153,8 +162,8 @@ released a usable application.
 ### Known limitations
 
 - The desktop adapter, Codex-owned authentication workflow, project attachment,
-  native conversation runtime, and website are locally verified, but no
-  user-facing conversation workflow, installable package, website deployment,
-  or release workflow exists.
+  conversation MVP, and website are locally verified, but session
+  resume/history, installable packages, website deployment, and a release
+  workflow do not exist.
 - Integration compatibility is based on Codex CLI 0.144.6 and must be probed at
   runtime.

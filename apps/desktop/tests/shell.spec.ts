@@ -28,6 +28,13 @@ test("desktop preview renders the honest semantic shell", async ({ page }) => {
     page.getByRole("heading", { name: "Authentication stays with Codex." }),
   ).toBeVisible();
   await expect(
+    page.getByRole("heading", { name: "Start a focused Codex task." }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Browser preview cannot start or simulate a Codex task."),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Start task" })).toBeDisabled();
+  await expect(
     page.getByText("Native authentication unavailable"),
   ).toBeVisible();
   await expect(page.locator("main h1")).toHaveCount(1);

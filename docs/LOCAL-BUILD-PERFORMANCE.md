@@ -170,6 +170,31 @@ graph and linker cache were warm. Approximately 46 GiB remained available
 before the full gates, with no competing build, swap growth, OOM, throttling,
 or material disk pressure. The RTX 3050 was correctly unused.
 
+## Milestone 7B measurements
+
+The conversation UI reused warm pnpm, Vite, Playwright, Rust, and Tauri caches.
+The Balanced profile retained four Cargo workers and two Playwright workers. No
+dependencies changed, no clean build was run, and desktop and website builds
+were kept sequential where they share generated output.
+
+| Operation | Observed wall time | Approximate peak RSS | Result |
+|---|---:|---:|---|
+| Frontend type check and lint | about 8.1 seconds | Not instrumented | Passed |
+| Desktop component/integration suite | about 3.84 seconds | Not instrumented | Passed, 42 tests |
+| Desktop production build | about 2.37 seconds | about 316 MiB | Passed, 112 modules |
+| Desktop browser suite | about 5.54 seconds | about 244 MiB | Passed, 6 tests with two workers |
+| Full non-browser repository gate | about 27.48 seconds | about 696 MiB | Passed, including 45 JavaScript and 50 Rust tests; 2 live probes ignored |
+| Combined desktop/website browser gate | about 8.33 seconds | about 251 MiB | Passed, 14 tests |
+| Warm unbundled native release build | about 28.35 seconds | about 1.46 GiB | Passed |
+| Isolated native release launch | about 1 second | Low runtime pressure | D-Bus identity, owner-only metadata, and clean child state verified |
+| Desktop/mobile visual inspection | Manual review interval | Low runtime pressure | Responsive layout and preview boundaries verified |
+
+Approximately 45 GiB of system memory and 726 GiB of NVMe space remained
+available before the milestone gate. No swap growth, OOM, throttling, material
+disk pressure, dependency download, or competing QuireForge build was observed.
+The RTX 3050 was not used because React, TypeScript, Vite, and the ordinary
+Tauri validation path are CPU/system-memory workloads.
+
 ## Current execution guidance
 
 - Default to the Balanced profile and preserve desktop responsiveness.
