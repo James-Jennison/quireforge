@@ -9,6 +9,22 @@ import {
 
 type WorktreeAvailability = "checking" | "native" | "preview";
 
+export interface WorktreeExecutionView {
+  projectId: string;
+  projectName: string;
+  conversationId: string;
+  state:
+    | "running"
+    | "waiting-for-approval"
+    | "stopping"
+    | "completed"
+    | "interrupted"
+    | "blocked"
+    | "failed";
+  changeCount: number | null;
+  conflictCount: number | null;
+}
+
 interface WorktreeWorkspaceProps {
   availability: WorktreeAvailability;
   projectName: string | null;
@@ -16,13 +32,16 @@ interface WorktreeWorkspaceProps {
   preview: WorktreePreviewSnapshot | null;
   result: WorktreeResultSnapshot | null;
   busy: boolean;
+  selectionBusy: boolean;
   actionError: boolean;
+  executions: WorktreeExecutionView[];
   onRefresh: () => Promise<void>;
   onCreate: (branchName: string) => Promise<void>;
   onPickAttach: () => Promise<void>;
   onConfirm: (confirmationId: string) => Promise<void>;
   onCancel: (confirmationId: string) => Promise<void>;
   onSelectProject: (projectId: string) => void;
+  onOpenExecution: (projectId: string) => void;
 }
 
 const diagnosticMessages: Record<
@@ -67,6 +86,16 @@ const stateLabels: Record<
   detached: "Detached HEAD",
 };
 
+const executionStateLabels: Record<WorktreeExecutionView["state"], string> = {
+  running: "Running",
+  "waiting-for-approval": "Approval needed",
+  stopping: "Stopping",
+  completed: "Completed",
+  interrupted: "Interrupted",
+  blocked: "Blocked",
+  failed: "Failed",
+};
+
 export function WorktreeWorkspace({
   availability,
   projectName,
@@ -74,13 +103,16 @@ export function WorktreeWorkspace({
   preview,
   result,
   busy,
+  selectionBusy,
   actionError,
+  executions,
   onRefresh,
   onCreate,
   onPickAttach,
   onConfirm,
   onCancel,
   onSelectProject,
+  onOpenExecution,
 }: WorktreeWorkspaceProps) {
   const [branchName, setBranchName] = useState("");
   const branchValid = worktreeBranchSchema.safeParse(branchName).success;
@@ -100,12 +132,12 @@ export function WorktreeWorkspace({
     >
       <div className="worktree-workspace__heading">
         <div>
-          <p className="eyebrow">Isolated workspaces · Milestone 11A</p>
+          <p className="eyebrow">Isolated workspaces · Milestone 11B</p>
           <h2 id="worktrees-title">Give each line of work its own checkout.</h2>
           <p>
-            Create an app-managed Git worktree or attach one that already
-            exists. Worktrees remain ordinary local projects; removal and
-            cleanup are intentionally unavailable in this milestone.
+            Create or attach isolated projects, run up to four distinct Codex
+            tasks, and review normalized live activity and Git conflict status.
+            Removal and cleanup remain intentionally unavailable.
           </p>
         </div>
         <button
@@ -150,6 +182,81 @@ export function WorktreeWorkspace({
             The native worktree action did not complete. QuireForge did not
             delete or clean any directory.
           </p>
+        )}
+      </div>
+
+      <div
+        className="worktree-executions"
+        aria-labelledby="worktree-executions-title"
+      >
+        <div className="worktree-executions__heading">
+          <div>
+            <span className="project-kicker">Parallel task monitor</span>
+            <h3 id="worktree-executions-title">Worktree execution status</h3>
+          </div>
+          <span>
+            {
+              executions.filter((execution) =>
+                ["running", "waiting-for-approval", "stopping"].includes(
+                  execution.state,
+                ),
+              ).length
+            }{" "}
+            of 4 active
+          </span>
+        </div>
+        {executions.length === 0 ? (
+          <p className="project-message">
+            Start a task from a selected worktree to monitor it here. Distinct
+            projects can run concurrently; each project remains single-owner.
+          </p>
+        ) : (
+          <div className="worktree-execution-list">
+            {executions.map((execution) => (
+              <article
+                className="worktree-execution-card"
+                key={execution.conversationId}
+              >
+                <div>
+                  <strong>{execution.projectName}</strong>
+                  <span
+                    className={`worktree-task-state worktree-task-state--${execution.state}`}
+                  >
+                    {executionStateLabels[execution.state]}
+                  </span>
+                </div>
+                <div className="worktree-execution-card__git">
+                  {execution.conflictCount === null ? (
+                    <span>Git status unavailable</span>
+                  ) : execution.conflictCount > 0 ? (
+                    <strong>
+                      {execution.conflictCount} conflict
+                      {execution.conflictCount === 1 ? "" : "s"}
+                    </strong>
+                  ) : (
+                    <span>No conflicts</span>
+                  )}
+                  {execution.changeCount !== null && (
+                    <span>
+                      {execution.changeCount} changed file
+                      {execution.changeCount === 1 ? "" : "s"}
+                    </span>
+                  )}
+                </div>
+                <button
+                  className="auth-button"
+                  type="button"
+                  disabled={selectionBusy}
+                  onClick={() => onOpenExecution(execution.projectId)}
+                >
+                  {execution.state === "running" ||
+                  execution.state === "waiting-for-approval"
+                    ? "View live activity"
+                    : "Review task"}
+                </button>
+              </article>
+            ))}
+          </div>
         )}
       </div>
 
@@ -292,7 +399,7 @@ export function WorktreeWorkspace({
                     <button
                       className="auth-button"
                       type="button"
-                      disabled={busy}
+                      disabled={selectionBusy}
                       onClick={() => onSelectProject(worktree.projectId!)}
                     >
                       Select project

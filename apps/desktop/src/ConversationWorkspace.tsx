@@ -61,6 +61,8 @@ const diagnosticMessages: Record<
   string
 > = {
   "conversation-active": "Another task is already active.",
+  "parallel-capacity-reached":
+    "Four tasks are already active. Finish or stop one before starting another.",
   "conversation-not-found": "This task is no longer available.",
   "invalid-request": "Review the task settings and try again.",
   "project-unavailable": "The attached project is unavailable.",

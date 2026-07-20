@@ -30,11 +30,13 @@ import { codexRuntimeSchema, type CodexRuntimeSnapshot } from "./codex";
 import { desktopBootstrapSchema, type DesktopBootstrap } from "./contract";
 import {
   conversationSnapshotSchema,
+  conversationRegistrySchema,
   conversationStartRequestSchema,
   conversationApprovalDecisionRequestSchema,
   conversationIdSchema,
   type ConversationApprovalDecisionRequest,
   type ConversationSnapshot,
+  type ConversationRegistrySnapshot,
   type ConversationStartRequest,
 } from "./conversation";
 import {
@@ -92,6 +94,7 @@ export const GIT_MUTATION_PREVIEW_COMMAND = "git_mutation_preview";
 export const GIT_MUTATION_CONFIRM_COMMAND = "git_mutation_confirm";
 export const GIT_MUTATION_RECOVER_COMMAND = "git_mutation_recover";
 export const CONVERSATION_STATUS_COMMAND = "conversation_status";
+export const CONVERSATION_ACTIVE_COMMAND = "conversation_active";
 export const CONVERSATION_START_COMMAND = "conversation_start";
 export const CONVERSATION_POLL_COMMAND = "conversation_poll";
 export const CONVERSATION_INTERRUPT_COMMAND = "conversation_interrupt";
@@ -384,6 +387,13 @@ export async function loadConversationStatus(
 ): Promise<ConversationSnapshot> {
   const payload = await invokeFunction(CONVERSATION_STATUS_COMMAND);
   return conversationSnapshotSchema.parse(payload);
+}
+
+export async function loadActiveConversations(
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<ConversationRegistrySnapshot> {
+  const payload = await invokeFunction(CONVERSATION_ACTIVE_COMMAND);
+  return conversationRegistrySchema.parse(payload);
 }
 
 export async function startConversation(

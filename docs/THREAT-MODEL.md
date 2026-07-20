@@ -4,8 +4,9 @@ Status: initial Milestone 0 model with the Milestone 3 frontend/native boundary,
 Milestone 4 Codex process adapter, Milestone 5 authentication controls, and
 Milestone 6 native directory-attachment controls, Milestone 7 native
 conversation controls, Milestone 8A native lifecycle/recovery controls, and
-Milestone 9 approval/activity controls applied. It must be revisited before
-integrations, packaging, and release milestones.
+Milestone 9 approval/activity controls, Milestone 10 reviewed Git controls, and
+Milestone 11A–11B managed-worktree/parallel-execution controls applied. It must
+be revisited before cleanup, integrations, packaging, and release milestones.
 
 ## Assets
 
@@ -114,6 +115,9 @@ Controls:
   `AGENTS.md`, and `.codex` changes before metadata is committed.
 - Reserve an active project's metadata lifecycle so detach, archive, and relink
   cannot race a running task; release the reservation on every terminal path.
+- Bound concurrent ownership to four starting or active tasks, reserve each
+  exact project before process creation, and reject duplicate same-project
+  execution. Process I/O locks are per task rather than global.
 
 ### Filesystem scope escalation
 
@@ -288,6 +292,38 @@ Controls:
 - Leave a worktree intact and report it as recoverable if post-creation metadata
   persistence fails. Provide no remove, prune, cleanup, arbitrary checkout/ref,
   reset, stash, remote, push, pull, or generic Git mutation in Milestone 11A.
+- Present parallel worktree status only by joining the native active-task
+  registry with normalized read-only Git snapshots. Return aggregate changed-
+  file/conflict counts, never raw Git output, and provide no automatic conflict
+  resolution or mutation in Milestone 11B.
+
+### Parallel task confusion and resource exhaustion
+
+Threats include one task receiving another task's approval or interruption,
+late responses overwriting newer state, duplicate work in one directory,
+unbounded child creation, registry locks serializing all I/O, orphaned children,
+and raw native identity leaking through an aggregate dashboard.
+
+Controls:
+
+- Key native slots only by app-owned conversation UUIDv7 and route poll,
+  approval, and interruption after an exact registry lookup. Keep Codex IDs,
+  cwd, process identity, arguments, environment, and raw protocol native-only.
+- Count provisional starts against the literal capacity of four and reserve the
+  exact project. Failure paths clear the provisional slot and project
+  reservation before returning a stable diagnostic.
+- On active-task paths, hold the registry mutex only for capacity/membership
+  operations and use one mutex per conversation for process I/O. Existing
+  all-session reconciliation remains serialized only while no task is active.
+  Remove a terminal slot only when its registered allocation still matches.
+- Use per-task frontend action generations so a stale poll can be discarded for
+  the affected task without pausing or overwriting unrelated tasks.
+- Close and wait for each owned child exactly once on terminal paths. On
+  application restart, mark stale persisted work interrupted rather than
+  pretending process ownership can be recovered.
+- Bound the active registry, recent event-free snapshots, event streams,
+  activities, and output. Filter monitor rows through current worktree inventory
+  and show only normalized state and Git counts.
 
 ### Webview and preview content
 
@@ -376,6 +412,10 @@ Controls:
 - Conversation ID correlation, exact interruption, project-reservation,
   reference-only persistence, approval-block, event-bound, and child-reaping
   tests using deterministic mock processes.
+- Parallel fixture tests for four-task capacity including provisional starts,
+  same-project exclusion, exact per-task routing, independent progress, stale
+  frontend response protection, normalized registry privacy, and complete
+  multi-child reaping.
 - Tauri capability/CSP review and preview fuzzing.
 - Git fixture tests protecting dirty worktrees, attached-subdirectory scope,
   read-only repositories, path containment, deceptive input, output bounds, and

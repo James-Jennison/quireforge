@@ -5,8 +5,9 @@ pub mod types;
 pub use lifecycle::{ConversationContinueRequest, SessionLifecycleSnapshot, SessionListRequest};
 
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     path::{Path, PathBuf},
+    sync::Arc,
     time::Duration,
 };
 
@@ -35,9 +36,9 @@ use types::{
     ConversationApprovalDecision, ConversationApprovalDecisionRequest, ConversationApprovalDetail,
     ConversationApprovalKind, ConversationApprovalPolicy, ConversationApprovalResolution,
     ConversationDiagnosticCode, ConversationEvent, ConversationLifecyclePhase,
-    ConversationPlanStep, ConversationPlanStepStatus, ConversationSandboxMode,
-    ConversationSnapshot, ConversationStartRequest, ConversationState, ConversationStreamErrorCode,
-    CONVERSATION_SCHEMA_VERSION,
+    ConversationPlanStep, ConversationPlanStepStatus, ConversationRegistrySnapshot,
+    ConversationSandboxMode, ConversationSnapshot, ConversationStartRequest, ConversationState,
+    ConversationStreamErrorCode, CONVERSATION_REGISTRY_SCHEMA_VERSION, CONVERSATION_SCHEMA_VERSION,
 };
 
 const MAX_PROMPT_BYTES: usize = 64 * 1024;
@@ -46,6 +47,8 @@ const FIRST_POLL_WAIT: Duration = Duration::from_millis(200);
 const DRAIN_POLL_WAIT: Duration = Duration::from_millis(1);
 const MAX_TRACKED_ACTIVITIES: usize = 256;
 const MAX_ACTIVITY_DETAIL_BYTES: usize = 8 * 1024;
+pub(crate) const MAX_ACTIVE_CONVERSATIONS: usize = 4;
+const MAX_RECENT_CONVERSATIONS: usize = 256;
 
 pub struct ConversationService {
     state: Mutex<ConversationServiceState>,
@@ -53,7 +56,9 @@ pub struct ConversationService {
 }
 
 struct ConversationServiceState {
-    active: Option<ActiveConversation>,
+    active: HashMap<String, Arc<Mutex<ActiveConversation>>>,
+    starting_projects: HashSet<String>,
+    recent: HashMap<String, ConversationSnapshot>,
     last: ConversationSnapshot,
 }
 
@@ -72,6 +77,7 @@ struct ActiveConversation {
     activities: HashMap<String, ActiveActivity>,
     pending_approval: Option<PendingApproval>,
     process: AppServerProcess,
+    finished: bool,
 }
 
 #[derive(Clone)]
@@ -101,13 +107,60 @@ struct TerminalState {
     diagnostic_code: Option<ConversationDiagnosticCode>,
 }
 
+impl ConversationServiceState {
+    fn empty() -> Self {
+        Self {
+            active: HashMap::new(),
+            starting_projects: HashSet::new(),
+            recent: HashMap::new(),
+            last: ConversationSnapshot::empty(),
+        }
+    }
+
+    fn begin_start(&mut self, project_id: &str) -> Result<(), ConversationDiagnosticCode> {
+        if self.active.len() + self.starting_projects.len() >= MAX_ACTIVE_CONVERSATIONS {
+            return Err(ConversationDiagnosticCode::ParallelCapacityReached);
+        }
+        if !self.starting_projects.insert(project_id.to_owned()) {
+            return Err(ConversationDiagnosticCode::ProjectBusy);
+        }
+        Ok(())
+    }
+
+    fn finish_start(&mut self, project_id: &str) {
+        self.starting_projects.remove(project_id);
+    }
+
+    fn remember(&mut self, snapshot: ConversationSnapshot) {
+        if let Some(conversation_id) = snapshot.conversation_id.clone() {
+            if self.recent.len() >= MAX_RECENT_CONVERSATIONS
+                && !self.recent.contains_key(&conversation_id)
+            {
+                if let Some(oldest) = self.recent.keys().next().cloned() {
+                    self.recent.remove(&oldest);
+                }
+            }
+            let mut recent = snapshot.clone();
+            recent.events.clear();
+            self.recent.insert(conversation_id, recent);
+        }
+        self.last = snapshot;
+    }
+
+    fn recent_or_not_found(&self, conversation_id: &str) -> ConversationSnapshot {
+        self.recent
+            .get(conversation_id)
+            .cloned()
+            .unwrap_or_else(|| {
+                ConversationSnapshot::unavailable(ConversationDiagnosticCode::ConversationNotFound)
+            })
+    }
+}
+
 impl Default for ConversationService {
     fn default() -> Self {
         Self {
-            state: Mutex::new(ConversationServiceState {
-                active: None,
-                last: ConversationSnapshot::empty(),
-            }),
+            state: Mutex::new(ConversationServiceState::empty()),
             command: AppServerCommand::codex("codex"),
         }
     }
@@ -117,21 +170,69 @@ impl ConversationService {
     #[cfg(test)]
     fn with_command(command: AppServerCommand) -> Self {
         Self {
-            state: Mutex::new(ConversationServiceState {
-                active: None,
-                last: ConversationSnapshot::empty(),
-            }),
+            state: Mutex::new(ConversationServiceState::empty()),
             command,
         }
     }
 
     pub async fn status(&self) -> ConversationSnapshot {
         let state = self.state.lock().await;
+        let mut snapshot = state.last.clone();
+        snapshot.events.clear();
+        snapshot
+    }
+
+    pub async fn active(&self) -> ConversationRegistrySnapshot {
+        let slots = {
+            let state = self.state.lock().await;
+            state.active.values().cloned().collect::<Vec<_>>()
+        };
+        let mut conversations = Vec::with_capacity(slots.len());
+        for slot in slots {
+            let active = slot.lock().await;
+            if !active.finished {
+                conversations.push(active.snapshot(Vec::new(), None));
+            }
+        }
+        conversations.sort_by(|left, right| left.conversation_id.cmp(&right.conversation_id));
+        ConversationRegistrySnapshot {
+            schema_version: CONVERSATION_REGISTRY_SCHEMA_VERSION,
+            capacity: MAX_ACTIVE_CONVERSATIONS as u8,
+            conversations,
+        }
+    }
+
+    async fn active_slot(
+        &self,
+        conversation_id: &str,
+    ) -> Result<Arc<Mutex<ActiveConversation>>, ConversationSnapshot> {
+        let state = self.state.lock().await;
         state
             .active
-            .as_ref()
-            .map(|active| active.snapshot(Vec::new(), None))
-            .unwrap_or_else(|| state.last.clone())
+            .get(conversation_id)
+            .cloned()
+            .ok_or_else(|| state.recent_or_not_found(conversation_id))
+    }
+
+    async fn remember_snapshot(&self, snapshot: ConversationSnapshot) {
+        self.state.lock().await.remember(snapshot);
+    }
+
+    async fn complete_slot(
+        &self,
+        conversation_id: &str,
+        slot: &Arc<Mutex<ActiveConversation>>,
+        snapshot: ConversationSnapshot,
+    ) {
+        let mut state = self.state.lock().await;
+        if state
+            .active
+            .get(conversation_id)
+            .is_some_and(|registered| Arc::ptr_eq(registered, slot))
+        {
+            state.active.remove(conversation_id);
+        }
+        state.remember(snapshot);
     }
 
     pub async fn start(
@@ -143,20 +244,22 @@ impl ConversationService {
             return ConversationSnapshot::unavailable(code);
         }
 
-        let mut state = self.state.lock().await;
-        if state.active.is_some() {
-            return ConversationSnapshot::unavailable(
-                ConversationDiagnosticCode::ConversationActive,
-            );
+        {
+            let mut state = self.state.lock().await;
+            if let Err(code) = state.begin_start(&request.project_id) {
+                return ConversationSnapshot::unavailable(code);
+            }
         }
 
         if let Err(error) = projects.reserve_execution(&request.project_id) {
+            self.state.lock().await.finish_start(&request.project_id);
             return ConversationSnapshot::unavailable(map_project_error(error));
         }
         let cwd = match projects.execution_cwd(&request.project_id) {
             Ok(cwd) => cwd,
             Err(error) => {
                 projects.release_execution(&request.project_id);
+                self.state.lock().await.finish_start(&request.project_id);
                 return ConversationSnapshot::unavailable(map_project_error(error));
             }
         };
@@ -174,14 +277,21 @@ impl ConversationService {
                     },
                 ];
                 let snapshot = active.snapshot(events, None);
-                state.active = Some(active);
-                state.last = snapshot.clone();
+                let conversation_id = active.conversation_id.clone();
+                let mut state = self.state.lock().await;
+                state.finish_start(&request.project_id);
+                state
+                    .active
+                    .insert(conversation_id, Arc::new(Mutex::new(active)));
+                state.remember(snapshot.clone());
                 snapshot
             }
             Err(code) => {
                 projects.release_execution(&request.project_id);
                 let snapshot = ConversationSnapshot::unavailable(code);
-                state.last = snapshot.clone();
+                let mut state = self.state.lock().await;
+                state.finish_start(&request.project_id);
+                state.remember(snapshot.clone());
                 snapshot
             }
         }
@@ -218,6 +328,7 @@ impl ConversationService {
             activities: HashMap::new(),
             pending_approval: None,
             process,
+            finished: false,
         })
     }
 
@@ -231,14 +342,13 @@ impl ConversationService {
                 ConversationDiagnosticCode::ConversationNotFound,
             );
         }
-        let mut state = self.state.lock().await;
-        let Some(active) = state.active.as_mut() else {
-            return matching_last_or_not_found(&state.last, &conversation_id);
+        let slot = match self.active_slot(&conversation_id).await {
+            Ok(slot) => slot,
+            Err(snapshot) => return snapshot,
         };
-        if active.conversation_id != conversation_id {
-            return ConversationSnapshot::unavailable(
-                ConversationDiagnosticCode::ConversationNotFound,
-            );
+        let mut active = slot.lock().await;
+        if active.finished {
+            return active.snapshot(Vec::new(), None);
         }
 
         let mut events = Vec::new();
@@ -250,7 +360,7 @@ impl ConversationService {
                 DRAIN_POLL_WAIT
             };
             match active.process.next_notification_with_timeout(wait).await {
-                Ok(Some(notification)) => match apply_notification(active, notification) {
+                Ok(Some(notification)) => match apply_notification(&mut active, notification) {
                     Ok((event, completed)) => {
                         if let Some(event) = event {
                             events.push(event);
@@ -283,14 +393,15 @@ impl ConversationService {
         }
 
         if let Some(terminal) = terminal {
-            return finish_active(&mut state, projects, terminal, events).await;
+            let snapshot = finish_active(&mut active, projects, terminal, events).await;
+            drop(active);
+            self.complete_slot(&conversation_id, &slot, snapshot.clone())
+                .await;
+            return snapshot;
         }
-        let snapshot = state
-            .active
-            .as_ref()
-            .expect("active conversation remains available")
-            .snapshot(events, None);
-        state.last = snapshot.clone();
+        let snapshot = active.snapshot(events, None);
+        drop(active);
+        self.remember_snapshot(snapshot.clone()).await;
         snapshot
     }
 
@@ -304,14 +415,13 @@ impl ConversationService {
                 ConversationDiagnosticCode::ConversationNotFound,
             );
         }
-        let mut state = self.state.lock().await;
-        let Some(active) = state.active.as_mut() else {
-            return matching_last_or_not_found(&state.last, &conversation_id);
+        let slot = match self.active_slot(&conversation_id).await {
+            Ok(slot) => slot,
+            Err(snapshot) => return snapshot,
         };
-        if active.conversation_id != conversation_id {
-            return ConversationSnapshot::unavailable(
-                ConversationDiagnosticCode::ConversationNotFound,
-            );
+        let mut active = slot.lock().await;
+        if active.finished {
+            return active.snapshot(Vec::new(), None);
         }
         if active.state == ConversationState::Stopping {
             return active.snapshot(Vec::new(), None);
@@ -327,13 +437,17 @@ impl ConversationService {
                 )
                 .await
             {
-                return finish_active(
-                    &mut state,
+                let snapshot = finish_active(
+                    &mut active,
                     projects,
                     protocol_terminal(map_adapter_error(&error)),
                     events,
                 )
                 .await;
+                drop(active);
+                self.complete_slot(&conversation_id, &slot, snapshot.clone())
+                    .await;
+                return snapshot;
             }
             active.pending_approval = None;
             events.push(ConversationEvent::ApprovalResolved {
@@ -343,13 +457,15 @@ impl ConversationService {
             });
         }
 
+        let thread_id = active.thread_id.clone();
+        let turn_id = active.turn_id.clone();
         let result = active
             .process
             .request(
                 "turn/interrupt",
                 json!({
-                    "threadId": active.thread_id,
-                    "turnId": active.turn_id,
+                    "threadId": thread_id,
+                    "turnId": turn_id,
                 }),
             )
             .await;
@@ -364,7 +480,11 @@ impl ConversationService {
             } else {
                 protocol_terminal(map_adapter_error(&error))
             };
-            return finish_active(&mut state, projects, terminal, events).await;
+            let snapshot = finish_active(&mut active, projects, terminal, events).await;
+            drop(active);
+            self.complete_slot(&conversation_id, &slot, snapshot.clone())
+                .await;
+            return snapshot;
         }
 
         events.push(active.lifecycle_event(ConversationLifecyclePhase::Stopping));
@@ -373,16 +493,21 @@ impl ConversationService {
             .record_conversation_status(&active.conversation_id, "stopping")
             .is_err()
         {
-            return finish_active(
-                &mut state,
+            let snapshot = finish_active(
+                &mut active,
                 projects,
                 protocol_terminal(ConversationDiagnosticCode::MetadataUnavailable),
                 events,
             )
             .await;
+            drop(active);
+            self.complete_slot(&conversation_id, &slot, snapshot.clone())
+                .await;
+            return snapshot;
         }
         let snapshot = active.snapshot(events, None);
-        state.last = snapshot.clone();
+        drop(active);
+        self.remember_snapshot(snapshot.clone()).await;
         snapshot
     }
 
@@ -396,13 +521,16 @@ impl ConversationService {
         {
             return ConversationSnapshot::unavailable(ConversationDiagnosticCode::ApprovalNotFound);
         }
-        let mut state = self.state.lock().await;
-        let Some(active) = state.active.as_mut() else {
-            return matching_last_or_not_found(&state.last, &request.conversation_id);
+        let conversation_id = request.conversation_id.clone();
+        let slot = match self.active_slot(&conversation_id).await {
+            Ok(slot) => slot,
+            Err(snapshot) => return snapshot,
         };
-        if active.conversation_id != request.conversation_id {
-            return ConversationSnapshot::unavailable(
-                ConversationDiagnosticCode::ConversationNotFound,
+        let mut active = slot.lock().await;
+        if active.finished {
+            return active.snapshot(
+                Vec::new(),
+                Some(ConversationDiagnosticCode::ApprovalNotFound),
             );
         }
         let Some(pending) = active.pending_approval.clone() else {
@@ -432,13 +560,17 @@ impl ConversationService {
             )
             .await
         {
-            return finish_active(
-                &mut state,
+            let snapshot = finish_active(
+                &mut active,
                 projects,
                 protocol_terminal(map_adapter_error(&error)),
                 Vec::new(),
             )
             .await;
+            drop(active);
+            self.complete_slot(&conversation_id, &slot, snapshot.clone())
+                .await;
+            return snapshot;
         }
 
         active.pending_approval = None;
@@ -454,24 +586,30 @@ impl ConversationService {
         }];
 
         if request.decision == ConversationApprovalDecision::Cancel {
+            let thread_id = active.thread_id.clone();
+            let turn_id = active.turn_id.clone();
             let result = active
                 .process
                 .request(
                     "turn/interrupt",
                     json!({
-                        "threadId": active.thread_id,
-                        "turnId": active.turn_id,
+                        "threadId": thread_id,
+                        "turnId": turn_id,
                     }),
                 )
                 .await;
             if let Err(error) = result {
-                return finish_active(
-                    &mut state,
+                let snapshot = finish_active(
+                    &mut active,
                     projects,
                     protocol_terminal(map_adapter_error(&error)),
                     events,
                 )
                 .await;
+                drop(active);
+                self.complete_slot(&conversation_id, &slot, snapshot.clone())
+                    .await;
+                return snapshot;
             }
             events.push(active.lifecycle_event(ConversationLifecyclePhase::Stopping));
             active.state = ConversationState::Stopping;
@@ -479,20 +617,25 @@ impl ConversationService {
                 .record_conversation_status(&active.conversation_id, "stopping")
                 .is_err()
             {
-                return finish_active(
-                    &mut state,
+                let snapshot = finish_active(
+                    &mut active,
                     projects,
                     protocol_terminal(ConversationDiagnosticCode::MetadataUnavailable),
                     events,
                 )
                 .await;
+                drop(active);
+                self.complete_slot(&conversation_id, &slot, snapshot.clone())
+                    .await;
+                return snapshot;
             }
         } else {
             active.state = ConversationState::Running;
         }
 
         let snapshot = active.snapshot(events, None);
-        state.last = snapshot.clone();
+        drop(active);
+        self.remember_snapshot(snapshot.clone()).await;
         snapshot
     }
 }
@@ -646,15 +789,14 @@ impl ActiveConversation {
 }
 
 async fn finish_active(
-    state: &mut ConversationServiceState,
+    active: &mut ActiveConversation,
     projects: &ProjectService,
     mut terminal: TerminalState,
     mut events: Vec<ConversationEvent>,
 ) -> ConversationSnapshot {
-    let mut active = state
-        .active
-        .take()
-        .expect("terminal transition requires an active conversation");
+    if active.finished {
+        return active.snapshot(Vec::new(), terminal.diagnostic_code);
+    }
     if projects
         .record_conversation_status(&active.conversation_id, terminal.storage_status)
         .is_err()
@@ -666,9 +808,8 @@ async fn finish_active(
     active.pending_approval = None;
     let _ = active.process.shutdown().await;
     projects.release_execution(&active.project_id);
-    let snapshot = active.snapshot(events, terminal.diagnostic_code);
-    state.last = snapshot.clone();
-    snapshot
+    active.finished = true;
+    active.snapshot(events, terminal.diagnostic_code)
 }
 
 fn apply_notification(
@@ -1443,19 +1584,6 @@ fn protocol_terminal(code: ConversationDiagnosticCode) -> TerminalState {
     }
 }
 
-fn matching_last_or_not_found(
-    last: &ConversationSnapshot,
-    conversation_id: &str,
-) -> ConversationSnapshot {
-    if last.conversation_id.as_deref() == Some(conversation_id) {
-        let mut snapshot = last.clone();
-        snapshot.events.clear();
-        snapshot
-    } else {
-        ConversationSnapshot::unavailable(ConversationDiagnosticCode::ConversationNotFound)
-    }
-}
-
 fn map_item_kind(kind: WireItemKind) -> ConversationActivityKind {
     match kind {
         WireItemKind::UserMessage => ConversationActivityKind::UserMessage,
@@ -1503,6 +1631,38 @@ mod tests {
             .expect("conversation snapshot must serialize");
 
         assert_eq!(snapshot, fixture);
+    }
+
+    #[tokio::test]
+    async fn serialized_empty_registry_matches_the_shared_frontend_fixture() {
+        let fixture: Value = serde_json::from_str(include_str!(
+            "../../../../fixtures/conversation-registry.json"
+        ))
+        .expect("conversation registry fixture must be JSON");
+        let registry =
+            ConversationService::with_command(AppServerCommand::test("sh", &["-c", "exit 91"]))
+                .active()
+                .await;
+
+        assert_eq!(
+            serde_json::to_value(registry).expect("registry must serialize"),
+            fixture
+        );
+    }
+
+    #[test]
+    fn provisional_starts_count_toward_the_parallel_capacity() {
+        let mut state = ConversationServiceState::empty();
+        for index in 0..MAX_ACTIVE_CONVERSATIONS {
+            assert_eq!(state.begin_start(&format!("project-{index}")), Ok(()));
+        }
+        assert_eq!(
+            state.begin_start("overflow-project"),
+            Err(ConversationDiagnosticCode::ParallelCapacityReached)
+        );
+
+        state.finish_start("project-0");
+        assert_eq!(state.begin_start("replacement-project"), Ok(()));
     }
 
     #[test]
@@ -1637,6 +1797,123 @@ printf '%s\n' '{{"method":"turn/completed","params":{{"threadId":"{THREAD_ID}","
         assert_eq!(interrupted.state, ConversationState::Interrupted);
 
         fs::remove_dir_all(directory).expect("temporary project must be removed");
+    }
+
+    #[tokio::test]
+    async fn runs_distinct_projects_concurrently_and_routes_interrupts_by_app_id() {
+        let projects = ProjectService::in_memory();
+        let (first_directory, first_project_id) = attach_project(&projects);
+        let (second_directory, second_project_id) = attach_project(&projects);
+        let script = concurrent_start_script();
+        let service =
+            ConversationService::with_command(AppServerCommand::test("sh", &["-c", &script]));
+
+        let first = service
+            .start(start_request(first_project_id.clone()), &projects)
+            .await;
+        let second = service
+            .start(start_request(second_project_id.clone()), &projects)
+            .await;
+        assert_eq!(first.state, ConversationState::Running);
+        assert_eq!(second.state, ConversationState::Running, "{second:?}");
+        let first_id = first.conversation_id.expect("first app ID must exist");
+        let second_id = second.conversation_id.expect("second app ID must exist");
+        assert_ne!(first_id, second_id);
+        let registry = service.active().await;
+        assert_eq!(registry.capacity, MAX_ACTIVE_CONVERSATIONS as u8);
+        assert_eq!(registry.conversations.len(), 2);
+        let serialized = serde_json::to_string(&registry).expect("registry must serialize");
+        assert!(!serialized.contains(THREAD_ID));
+        assert!(!serialized.contains(TURN_ID));
+
+        let duplicate = service
+            .start(start_request(first_project_id), &projects)
+            .await;
+        assert_eq!(
+            duplicate.diagnostic_code,
+            Some(ConversationDiagnosticCode::ProjectBusy)
+        );
+
+        assert_eq!(
+            service.interrupt(first_id.clone(), &projects).await.state,
+            ConversationState::Stopping
+        );
+        assert_eq!(
+            service.poll(first_id, &projects).await.state,
+            ConversationState::Interrupted
+        );
+        assert_eq!(
+            service.poll(second_id.clone(), &projects).await.state,
+            ConversationState::Running
+        );
+        assert_eq!(
+            service.interrupt(second_id.clone(), &projects).await.state,
+            ConversationState::Stopping
+        );
+        assert_eq!(
+            service.poll(second_id, &projects).await.state,
+            ConversationState::Interrupted
+        );
+
+        assert_ne!(
+            projects.archive(second_project_id).diagnostic_code,
+            Some(crate::project::types::ProjectDiagnosticCode::ProjectBusy)
+        );
+        fs::remove_dir_all(first_directory).expect("first project must be removed");
+        fs::remove_dir_all(second_directory).expect("second project must be removed");
+    }
+
+    #[tokio::test]
+    async fn enforces_the_bounded_parallel_capacity_and_reaps_every_child() {
+        let projects = ProjectService::in_memory();
+        let attached = (0..=MAX_ACTIVE_CONVERSATIONS)
+            .map(|_| attach_project(&projects))
+            .collect::<Vec<_>>();
+        let script = concurrent_start_script();
+        let service =
+            ConversationService::with_command(AppServerCommand::test("sh", &["-c", &script]));
+        let mut active_ids = Vec::new();
+        for (_, project_id) in attached.iter().take(MAX_ACTIVE_CONVERSATIONS) {
+            let started = service
+                .start(start_request(project_id.clone()), &projects)
+                .await;
+            assert_eq!(started.state, ConversationState::Running);
+            active_ids.push(started.conversation_id.expect("app ID must exist"));
+        }
+        let full = service
+            .start(
+                start_request(
+                    attached
+                        .last()
+                        .expect("overflow project must exist")
+                        .1
+                        .clone(),
+                ),
+                &projects,
+            )
+            .await;
+        assert_eq!(
+            full.diagnostic_code,
+            Some(ConversationDiagnosticCode::ParallelCapacityReached)
+        );
+
+        for conversation_id in active_ids {
+            assert_eq!(
+                service
+                    .interrupt(conversation_id.clone(), &projects)
+                    .await
+                    .state,
+                ConversationState::Stopping
+            );
+            assert_eq!(
+                service.poll(conversation_id, &projects).await.state,
+                ConversationState::Interrupted
+            );
+        }
+        assert!(service.active().await.conversations.is_empty());
+        for (directory, _) in attached {
+            fs::remove_dir_all(directory).expect("temporary project must be removed");
+        }
     }
 
     #[tokio::test]
@@ -1927,22 +2204,32 @@ printf '%s\n' '{{"method":"item/agentMessage/delta","params":{{"threadId":"018f0
     }
 
     fn attached_project() -> (ProjectService, PathBuf, String) {
+        let projects = ProjectService::in_memory();
+        let (directory, project_id) = attach_project(&projects);
+        (projects, directory, project_id)
+    }
+
+    fn attach_project(projects: &ProjectService) -> (PathBuf, String) {
         let directory = std::env::temp_dir().join(format!(
             "quireforge-conversation-project-{}",
             Uuid::now_v7()
         ));
         fs::create_dir(&directory).expect("temporary project must be created");
-        let projects = ProjectService::in_memory();
         let preview = projects.prepare_attachment(directory.clone());
         assert!(preview.pending_attachment.is_some());
         let snapshot = projects.confirm_pending();
         let project_id = snapshot
             .projects
-            .first()
+            .iter()
+            .find(|project| {
+                project.directory.as_ref().is_some_and(|attached| {
+                    attached.display_path == directory.to_string_lossy().as_ref()
+                })
+            })
             .expect("project must attach")
             .id
             .clone();
-        (projects, directory, project_id)
+        (directory, project_id)
     }
 
     fn start_request(project_id: String) -> ConversationStartRequest {
@@ -1974,5 +2261,34 @@ __TRAILING__
 "#
         .replace("__CWD__", &cwd_json)
         .replace("__TRAILING__", trailing)
+    }
+
+    fn concurrent_start_script() -> String {
+        r#"
+read -r _initialize
+printf '%s\n' '{"id":1,"result":{}}'
+read -r _models
+printf '%s\n' '{"id":2,"result":{"data":[{"model":"fixture-model","displayName":"Fixture model","isDefault":true,"defaultReasoningEffort":"medium","supportedReasoningEfforts":[{"reasoningEffort":"medium"}]}]}}'
+read -r thread_request
+cwd=$(printf '%s' "$thread_request" | sed -n 's/.*"cwd":"\([^"]*\)".*/\1/p')
+test -n "$cwd"
+thread_suffix=$(printf '%012x' "$$")
+turn_suffix=$(printf '%012x' "$(( $$ + 1 ))")
+thread_id="018f0000-0000-7000-8000-$thread_suffix"
+turn_id="018f0000-0000-7000-8000-$turn_suffix"
+printf '{"method":"thread/started","params":{"thread":{"id":"%s"}}}\n' "$thread_id"
+printf '{"id":3,"result":{"cwd":"%s","thread":{"id":"%s"}}}\n' "$cwd" "$thread_id"
+read -r _turn
+printf '{"method":"turn/started","params":{"threadId":"%s","turn":{"id":"%s"}}}\n' "$thread_id" "$turn_id"
+printf '{"id":4,"result":{"turn":{"id":"%s","status":"inProgress"}}}\n' "$turn_id"
+read -r interrupt
+case "$interrupt" in
+  *'"id":5'*'"method":"turn/interrupt"'*) ;;
+  *) exit 90 ;;
+esac
+printf '%s\n' '{"id":5,"result":null}'
+printf '{"method":"turn/completed","params":{"threadId":"%s","turn":{"id":"%s","status":"interrupted"}}}\n' "$thread_id" "$turn_id"
+"#
+        .to_owned()
     }
 }

@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 pub const CONVERSATION_SCHEMA_VERSION: u16 = 2;
+pub const CONVERSATION_REGISTRY_SCHEMA_VERSION: u16 = 1;
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -75,6 +76,7 @@ pub enum ConversationState {
 #[serde(rename_all = "kebab-case")]
 pub enum ConversationDiagnosticCode {
     ConversationActive,
+    ParallelCapacityReached,
     ConversationNotFound,
     InvalidRequest,
     ProjectUnavailable,
@@ -108,6 +110,14 @@ pub struct ConversationSnapshot {
     pub pending_approval: Option<ConversationApproval>,
     pub events: Vec<ConversationEvent>,
     pub diagnostic_code: Option<ConversationDiagnosticCode>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConversationRegistrySnapshot {
+    pub schema_version: u16,
+    pub capacity: u8,
+    pub conversations: Vec<ConversationSnapshot>,
 }
 
 impl ConversationSnapshot {

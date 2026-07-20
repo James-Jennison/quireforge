@@ -471,3 +471,42 @@ Approximately 42 GiB RAM and 725 GiB NVMe remained available. Swap stayed near
 dependency download, clean build, competing project build, user-repository
 mutation, live model call, or GPU-compute workload. The RTX 3050 was correctly
 unused.
+
+## Milestone 11B measurements
+
+The bounded-parallel checkpoint reused warm Cargo, Git, pnpm, Vite, Astro, and
+Playwright caches. It added no dependency, schema migration, clean build, cache
+reset, linker/tool, driver, CUDA, swap, or zram change. The Balanced profile
+retained four Cargo workers and two Playwright workers; the RTX 3050 remained
+irrelevant to Rust, TypeScript, browser, and process-fixture work.
+
+| Operation                                      | Observed wall time                                         | Approximate peak RSS | Result                                                                                                                       |
+| ---------------------------------------------- | ----------------------------------------------------------: | -------------------: | ---------------------------------------------------------------------------------------------------------------------------- |
+| Focused native conversation suite              | 0.46 seconds final warm; about 7.6 seconds with earlier compile |        about 106 MiB | Passed 23 conversation/lifecycle/presentation tests, including exact interruption, provisional/four-task capacity, and reaping |
+| Desktop component/contract suite               | about 6.5 seconds                                           |     Not instrumented | Passed 83 tests across 15 files                                                                                              |
+| Complete non-browser repository gate           |                                               42.19 seconds |       about 1.27 GiB | Passed 86 JavaScript tests and 101 Rust tests; 2 deliberate live probes ignored                                             |
+| Combined desktop/website browser gate          |                                               19.29 seconds |        about 372 MiB | Passed all 24 desktop/mobile checks with expanded activity, axe, and overflow analysis                                      |
+| Warm unbundled native release build            |                                               35.73 seconds |       about 1.73 GiB | Passed, including a 31.53-second release compile/link                                                                        |
+| Isolated native release launch                 |                                             about 3 seconds | Low runtime pressure | Schema migrations 1–4, `0700`/`0600` metadata, no task start, and no remaining QuireForge process                           |
+| Desktop parallel-monitor visual inspection     | Focused rendered-state capture plus a 4.6-second browser run | Low runtime pressure | Approval/conflict monitor and expanded normalized live command detail were legible                                           |
+
+The complete gate was about 8% faster than Milestone 11A's 45.99-second
+baseline, and the release build about 5% slower than 33.98 seconds. The final
+browser gate was about 32% slower than the 14.59-second baseline after adding
+two parallel-monitor checks and expanding live activity in both viewports. It
+crossed the dynamic-update threshold, so 19–20 seconds replaces the old warm
+browser baseline; it did not reveal additional scope or alter the overall
+milestone forecast.
+
+The first focused browser run correctly exposed two light-theme contrast
+failures in the new conflict text and an existing approval button when rendered
+in the new scenario. CSS corrections passed the desktop/mobile rerun. A
+targeted stale-poll test also preserved the existing per-conversation action
+generation after the multi-task state refactor. These reruns reused warm output
+and required no cache deletion.
+
+Timed gates reported zero swaps, and the largest observed command used about
+1.73 GiB RSS. There was no OOM, throttling, dependency download, clean build,
+competing project build, user-repository mutation, live model call, or GPU-
+compute workload. Temporary launch and visual-capture files were removed after
+inspection; project and dependency caches were preserved.

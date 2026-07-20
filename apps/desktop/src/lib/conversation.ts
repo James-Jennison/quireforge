@@ -1,4 +1,5 @@
 import conversationFixture from "../../fixtures/conversation.json";
+import conversationRegistryFixture from "../../fixtures/conversation-registry.json";
 import { z } from "zod";
 
 export const conversationIdSchema = z
@@ -203,6 +204,7 @@ const conversationEventSchema = z.discriminatedUnion("type", [
 
 export const conversationDiagnosticSchema = z.enum([
   "conversation-active",
+  "parallel-capacity-reached",
   "conversation-not-found",
   "invalid-request",
   "project-unavailable",
@@ -345,6 +347,60 @@ export const conversationSnapshotSchema = z
     }
   });
 
+export const conversationRegistrySchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    capacity: z.literal(4),
+    conversations: z
+      .array(conversationSnapshotSchema)
+      .max(4)
+      .superRefine((conversations, context) => {
+        const ids = conversations.map(
+          (conversation) => conversation.conversationId,
+        );
+        const projectIds = conversations.map(
+          (conversation) => conversation.projectId,
+        );
+        if (ids.some((id) => id === null) || new Set(ids).size !== ids.length) {
+          context.addIssue({
+            code: "custom",
+            message: "Active conversation IDs must be present and unique",
+          });
+        }
+        if (
+          projectIds.some((projectId) => projectId === null) ||
+          new Set(projectIds).size !== projectIds.length
+        ) {
+          context.addIssue({
+            code: "custom",
+            message: "Active project IDs must be present and unique",
+          });
+        }
+        if (
+          conversations.some(
+            (conversation) =>
+              !["running", "waiting-for-approval", "stopping"].includes(
+                conversation.state,
+              ),
+          )
+        ) {
+          context.addIssue({
+            code: "custom",
+            message: "The active registry may contain only active states",
+          });
+        }
+        if (
+          conversations.some((conversation) => conversation.events.length > 0)
+        ) {
+          context.addIssue({
+            code: "custom",
+            message: "The active registry must not replay event batches",
+          });
+        }
+      }),
+  })
+  .strict();
+
 export type ConversationStartRequest = z.infer<
   typeof conversationStartRequestSchema
 >;
@@ -352,7 +408,13 @@ export type ConversationApprovalDecisionRequest = z.infer<
   typeof conversationApprovalDecisionRequestSchema
 >;
 export type ConversationSnapshot = z.infer<typeof conversationSnapshotSchema>;
+export type ConversationRegistrySnapshot = z.infer<
+  typeof conversationRegistrySchema
+>;
 export type ConversationEvent = ConversationSnapshot["events"][number];
 
 export const scaffoldConversation =
   conversationSnapshotSchema.parse(conversationFixture);
+export const scaffoldConversationRegistry = conversationRegistrySchema.parse(
+  conversationRegistryFixture,
+);

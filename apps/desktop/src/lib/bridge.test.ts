@@ -26,6 +26,7 @@ import {
   confirmGitMutation,
   decideConversationApproval,
   CONVERSATION_APPROVAL_DECIDE_COMMAND,
+  CONVERSATION_ACTIVE_COMMAND,
   CONVERSATION_INTERRUPT_COMMAND,
   CONVERSATION_ARCHIVE_COMMAND,
   CONVERSATION_FORK_COMMAND,
@@ -41,6 +42,7 @@ import {
   loadCodexAuth,
   loadCodexRuntime,
   loadConversationStatus,
+  loadActiveConversations,
   loadConversationSessions,
   loadDesktopBootstrap,
   loadGitDiff,
@@ -332,9 +334,18 @@ describe("desktop bridge", () => {
       sandboxMode: "read-only" as const,
       approvalPolicy: "untrusted" as const,
     };
-    const invoke = vi.fn().mockResolvedValue(scaffoldConversation);
+    const invoke = vi
+      .fn()
+      .mockImplementation((command: string) =>
+        Promise.resolve(
+          command === CONVERSATION_ACTIVE_COMMAND
+            ? { schemaVersion: 1, capacity: 4, conversations: [] }
+            : scaffoldConversation,
+        ),
+      );
 
     await loadConversationStatus(invoke);
+    await loadActiveConversations(invoke);
     await startConversation(request, invoke);
     await pollConversation(conversationId, invoke);
     await interruptConversation(conversationId, invoke);
@@ -349,6 +360,7 @@ describe("desktop bridge", () => {
 
     expect(invoke.mock.calls).toEqual([
       [CONVERSATION_STATUS_COMMAND],
+      [CONVERSATION_ACTIVE_COMMAND],
       [CONVERSATION_START_COMMAND, { request }],
       [CONVERSATION_POLL_COMMAND, { conversationId }],
       [CONVERSATION_INTERRUPT_COMMAND, { conversationId }],

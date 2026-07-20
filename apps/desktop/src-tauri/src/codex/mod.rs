@@ -11,7 +11,8 @@ pub mod types;
 pub use auth::types::{AuthLoginMethod, CodexAuthSnapshot};
 pub use auth::CodexAuthService;
 pub use conversation::types::{
-    ConversationApprovalDecisionRequest, ConversationSnapshot, ConversationStartRequest,
+    ConversationApprovalDecisionRequest, ConversationRegistrySnapshot, ConversationSnapshot,
+    ConversationStartRequest,
 };
 pub use conversation::{
     ConversationContinueRequest, ConversationService, SessionLifecycleSnapshot, SessionListRequest,

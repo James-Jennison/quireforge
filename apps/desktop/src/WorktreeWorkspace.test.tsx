@@ -45,6 +45,7 @@ const handlers = {
   onConfirm: vi.fn().mockResolvedValue(undefined),
   onCancel: vi.fn().mockResolvedValue(undefined),
   onSelectProject: vi.fn(),
+  onOpenExecution: vi.fn(),
 };
 
 describe("WorktreeWorkspace", () => {
@@ -57,7 +58,9 @@ describe("WorktreeWorkspace", () => {
         preview={null}
         result={null}
         busy={false}
+        selectionBusy={false}
         actionError={false}
+        executions={[]}
         {...handlers}
       />,
     );
@@ -99,7 +102,9 @@ describe("WorktreeWorkspace", () => {
         preview={preview}
         result={null}
         busy={false}
+        selectionBusy={false}
         actionError={false}
+        executions={[]}
         {...handlers}
       />,
     );
@@ -108,6 +113,41 @@ describe("WorktreeWorkspace", () => {
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(handlers.onConfirm).toHaveBeenCalledWith(confirmationId);
     expect(handlers.onCancel).toHaveBeenCalledWith(confirmationId);
+  });
+
+  it("aggregates live task and conflict status without exposing native IDs", () => {
+    render(
+      <WorktreeWorkspace
+        availability="native"
+        projectName="QuireForge"
+        snapshot={workspace}
+        preview={null}
+        result={null}
+        busy={false}
+        selectionBusy={false}
+        actionError={false}
+        executions={[
+          {
+            projectId: sourceProjectId,
+            projectName: "QuireForge",
+            conversationId: "018f0000-0000-7000-8000-000000000010",
+            state: "running",
+            changeCount: 3,
+            conflictCount: 1,
+          },
+        ]}
+        {...handlers}
+      />,
+    );
+
+    expect(screen.getByText("1 of 4 active")).toBeInTheDocument();
+    expect(screen.getByText("1 conflict")).toBeInTheDocument();
+    expect(screen.getByText("3 changed files")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "View live activity" }));
+    expect(handlers.onOpenExecution).toHaveBeenCalledWith(sourceProjectId);
+    expect(
+      screen.queryByText("018f0000-0000-7000-8000-000000000010"),
+    ).not.toBeInTheDocument();
   });
 
   it("does not simulate worktrees in browser preview", () => {
@@ -119,7 +159,9 @@ describe("WorktreeWorkspace", () => {
         preview={null}
         result={null}
         busy={false}
+        selectionBusy={false}
         actionError={false}
+        executions={[]}
         {...handlers}
       />,
     );

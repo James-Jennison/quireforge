@@ -2,9 +2,11 @@ import fixture from "../../fixtures/conversation.json";
 import { describe, expect, it } from "vitest";
 
 import {
+  conversationRegistrySchema,
   conversationSnapshotSchema,
   conversationStartRequestSchema,
   conversationApprovalDecisionRequestSchema,
+  scaffoldConversationRegistry,
   scaffoldConversation,
 } from "./conversation";
 
@@ -16,6 +18,14 @@ describe("conversation contract", () => {
     expect(conversationSnapshotSchema.parse(fixture)).toEqual(
       scaffoldConversation,
     );
+  });
+
+  it("parses the shared bounded registry fixture", () => {
+    expect(scaffoldConversationRegistry).toEqual({
+      schemaVersion: 1,
+      capacity: 4,
+      conversations: [],
+    });
   });
 
   it("accepts only bounded explicit start controls", () => {
@@ -92,6 +102,55 @@ describe("conversation contract", () => {
       conversationSnapshotSchema.parse({
         ...snapshot,
         events: snapshot.events.toReversed(),
+      }),
+    ).toThrow();
+  });
+
+  it("bounds the active registry and requires unique app-owned projects", () => {
+    const active = conversationSnapshotSchema.parse({
+      schemaVersion: 2,
+      state: "running",
+      conversationId,
+      projectId,
+      modelId: "gpt-5.6-sol",
+      reasoningEffort: "high",
+      sandboxMode: "read-only",
+      approvalPolicy: "untrusted",
+      pendingApproval: null,
+      events: [],
+      diagnosticCode: null,
+    });
+    expect(
+      conversationRegistrySchema.parse({
+        schemaVersion: 1,
+        capacity: 4,
+        conversations: [active],
+      }).conversations,
+    ).toHaveLength(1);
+    expect(() =>
+      conversationRegistrySchema.parse({
+        schemaVersion: 1,
+        capacity: 4,
+        conversations: [active, active],
+      }),
+    ).toThrow();
+    expect(() =>
+      conversationRegistrySchema.parse({
+        schemaVersion: 1,
+        capacity: 8,
+        conversations: [],
+      }),
+    ).toThrow();
+    expect(() =>
+      conversationRegistrySchema.parse({
+        schemaVersion: 1,
+        capacity: 4,
+        conversations: [
+          {
+            ...active,
+            events: [{ type: "lifecycle", sequence: 1, phase: "running" }],
+          },
+        ],
       }),
     ).toThrow();
   });
