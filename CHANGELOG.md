@@ -160,6 +160,9 @@ released a usable application.
 
 ### Changed
 
+- Kept the exact Git index lock file handle open for the full lock lifetime so
+  a replacement lock cannot be removed if an ephemeral filesystem immediately
+  reuses the original inode number.
 - Adopted **QuireForge** as the permanent product name, with the tagline
   “Build boldly. Work locally.” The former “Codex Linux Workbench” name was a
   temporary discovery-stage label.
