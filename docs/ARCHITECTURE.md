@@ -1,8 +1,7 @@
 # Architecture
 
-Status: Milestone 0 application proposal with the website foundation, desktop
-work through Milestone 10, and Milestone 11A–11B managed-worktree and bounded
-parallel-execution work implemented locally. Cleanup, terminal, packaging,
+Status: Milestone 0 application proposal with the website foundation and
+desktop work implemented locally through Milestone 11C. Terminal, packaging,
 deployment, and integration interfaces remain subject to separately gated
 milestones.
 
@@ -334,6 +333,33 @@ automatic conflict resolution, Git mutation, worktree cleanup, or durable task
 recovery was added. See
 [ADR 0015](DECISIONS/0015-bounded-parallel-worktree-execution.md).
 
+### Milestone 11C managed cleanup and recovery boundary
+
+Worktree IPC schema version 2 adds no frontend path or Git-command input.
+Native inventory may attach an expiring opaque recovery ID to an otherwise
+external entry only when its canonical linked-worktree directory occupies the
+exact QuireForge-managed slot for that source project. Recovery consumes the ID,
+rebinds complete directory/repository identity behind a fresh confirmation, and
+registers the existing checkout without changing its files or branch.
+
+Removal preview accepts the selected app-owned project ID and one related
+worktree project ID. The stored relation must still be `managed`; source,
+selected, attached, external, locked, and prunable worktrees are excluded.
+Confirmation reserves the repository's complete app-owned project group and
+revalidates the relation, private-storage shape, canonical identity, common Git
+directory, inventory entry, branch, `HEAD`, and clean tracked/untracked/
+submodule state. Repository-configured filters are replaced with a fixed
+identity transform for both explicit status and Git's internal removal check.
+
+The fixed `git worktree remove` call never uses force and never deletes the
+branch. The native service verifies directory absence, inventory absence, and
+branch retention before transactionally detaching and archiving the project
+metadata. A post-Git metadata failure remains visible as a missing managed
+entry; a separately reviewed, non-destructive confirmation can finalize only
+the metadata while the directory and inventory entry remain absent. Generic
+prune is unavailable because Git cannot scope it to one app-owned target. See
+[ADR 0016](DECISIONS/0016-safe-managed-worktree-cleanup.md).
+
 ## Application layers
 
 ### Frontend
@@ -346,7 +372,9 @@ supplies only an app-owned project ID and normalized changed-file path. A Git
 mutation preview supplies only a closed operation and path/message; confirmation
 supplies only the native-held plan token. A worktree create preview supplies one
 bounded branch name; existing paths come from the native picker, and every
-worktree confirmation supplies only its native-held token.
+worktree confirmation supplies only its native-held token. Recovery and cleanup
+previews add only opaque app-owned recovery/project IDs; React still cannot
+submit a worktree path, branch for removal, cwd, executable, or Git argument.
 
 ### Native application core
 
@@ -395,9 +423,10 @@ contract tests.
   handoff, stage, unstage, bounded revert/recovery, and commit; remote
   operations remain later work.
 - `WorktreeService`: implemented bounded inventory, managed creation, native-
-  picker attachment, expiring confirmation, and project registration; React
-  composes its inventory with bounded conversation/Git snapshots, while cleanup
-  remains later gated work.
+  picker attachment, retained-worktree recovery, clean managed removal,
+  metadata-only cleanup finalization, expiring confirmation, and project
+  registration; React composes its inventory with bounded conversation/Git
+  snapshots.
 - `TerminalService`: independent PTY sessions rooted in verified directories.
 - `ApprovalService`: request correlation, scope, decision validation, expiry.
 - `PreviewService`: bounded MIME/type-aware previews.
@@ -576,8 +605,10 @@ HEAD, owns the destination, disables checkout hooks/configured filters, and
 revalidates every effect at confirmation. Existing-worktree paths come only
 from the native picker. Milestone 11B adds no Git mutation: it runs independently
 reserved Codex processes in up to four verified worktree projects and reads
-only normalized Git status counts for the aggregate monitor. Cleanup and
-conflict resolution remain separate unavailable operations.
+only normalized Git status counts for the aggregate monitor. Milestone 11C adds
+only fixed recovery registration and non-force managed-worktree removal. It
+retains the branch and excludes generic prune, attached/external deletion,
+direct filesystem deletion, and conflict resolution.
 
 Codex-managed sessions and user worktrees are never removed as a side effect of
 detaching a directory or deleting app metadata.

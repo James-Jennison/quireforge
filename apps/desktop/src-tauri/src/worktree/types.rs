@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-pub const WORKTREE_SCHEMA_VERSION: u16 = 1;
+pub const WORKTREE_SCHEMA_VERSION: u16 = 2;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "kebab-case")]
@@ -69,6 +69,11 @@ pub enum WorktreeDiagnosticCode {
     ConfirmationExpired,
     StalePreview,
     WorktreeRemains,
+    WorktreeDirty,
+    SourceWorktree,
+    UnsupportedOwnership,
+    RecoveryUnavailable,
+    CleanupIncomplete,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
@@ -76,6 +81,8 @@ pub enum WorktreeDiagnosticCode {
 pub enum WorktreeOperation {
     Create,
     Attach,
+    Recover,
+    Remove,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
@@ -97,6 +104,7 @@ pub enum WorktreeResultState {
 #[serde(rename_all = "camelCase")]
 pub struct WorktreeEntry {
     pub project_id: Option<String>,
+    pub recovery_id: Option<String>,
     pub display_name: String,
     pub display_path: String,
     pub branch_name: Option<String>,
@@ -137,6 +145,20 @@ impl WorktreeWorkspaceSnapshot {
 pub struct WorktreeCreatePreviewRequest {
     pub project_id: String,
     pub branch_name: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct WorktreeRecoverPreviewRequest {
+    pub project_id: String,
+    pub recovery_id: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct WorktreeRemovePreviewRequest {
+    pub project_id: String,
+    pub worktree_project_id: String,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq)]

@@ -21,7 +21,8 @@ use crate::project::{
 use types::{
     WorktreeCancelRequest, WorktreeConfirmRequest, WorktreeCreatePreviewRequest,
     WorktreeDiagnosticCode, WorktreeEntry, WorktreeEntryState, WorktreeOperation,
-    WorktreeOwnership, WorktreePreviewSnapshot, WorktreePreviewState, WorktreeResultSnapshot,
+    WorktreeOwnership, WorktreePreviewSnapshot, WorktreePreviewState,
+    WorktreeRecoverPreviewRequest, WorktreeRemovePreviewRequest, WorktreeResultSnapshot,
     WorktreeResultState, WorktreeWorkspaceSnapshot, WorktreeWorkspaceState,
     WORKTREE_SCHEMA_VERSION,
 };
@@ -36,8 +37,21 @@ const MAX_BRANCH_BYTES: usize = 96;
 
 #[derive(Clone, Debug)]
 enum PendingOperation {
-    Create { destination: PathBuf },
-    Attach { candidate: ProjectWorktreeCandidate },
+    Create {
+        destination: PathBuf,
+    },
+    Attach {
+        candidate: ProjectWorktreeCandidate,
+    },
+    Recover {
+        candidate: ProjectWorktreeCandidate,
+    },
+    Remove {
+        worktree_project_id: String,
+        requesting_project_id: String,
+        selected_path: PathBuf,
+        candidate: Option<ProjectWorktreeCandidate>,
+    },
 }
 
 #[derive(Clone, Debug)]
@@ -53,6 +67,14 @@ struct PendingWorktree {
 }
 
 #[derive(Clone, Debug)]
+struct RecoverableWorktree {
+    expires_at: Instant,
+    source_project_id: String,
+    candidate: ProjectWorktreeCandidate,
+    branch_name: Option<String>,
+}
+
+#[derive(Clone, Debug)]
 struct DiscoveredWorktree {
     path: PathBuf,
     branch_name: Option<String>,
@@ -61,7 +83,7 @@ struct DiscoveredWorktree {
     prunable: bool,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 enum GitRunError {
     Unavailable,
     Failed,
@@ -78,6 +100,7 @@ struct GitOutput {
 pub struct WorktreeService {
     storage_root: Option<PathBuf>,
     pending: Mutex<Option<PendingWorktree>>,
+    recoverable: Mutex<HashMap<String, RecoverableWorktree>>,
 }
 
 impl WorktreeService {
@@ -85,6 +108,7 @@ impl WorktreeService {
         Self {
             storage_root: None,
             pending: Mutex::new(None),
+            recoverable: Mutex::new(HashMap::new()),
         }
     }
 
@@ -93,6 +117,7 @@ impl WorktreeService {
         Self {
             storage_root: root,
             pending: Mutex::new(None),
+            recoverable: Mutex::new(HashMap::new()),
         }
     }
 
@@ -130,11 +155,22 @@ impl WorktreeService {
                 );
             }
         };
+        let recovery_ids =
+            match self.refresh_recovery_candidates(&context, &source_root, &discovered, projects) {
+                Ok(recovery_ids) => recovery_ids,
+                Err(diagnostic_code) => {
+                    return WorktreeWorkspaceSnapshot::unavailable(
+                        Some(context.source_project_id),
+                        diagnostic_code,
+                    );
+                }
+            };
         build_workspace(
             project_id,
             context,
             source_root.worktree_root.clone(),
             discovered,
+            &recovery_ids,
         )
     }
 
@@ -365,6 +401,342 @@ impl WorktreeService {
         }
     }
 
+    pub async fn preview_recover(
+        &self,
+        request: WorktreeRecoverPreviewRequest,
+        projects: &ProjectService,
+    ) -> WorktreePreviewSnapshot {
+        let source_project_id = match projects.worktree_context(&request.project_id) {
+            Ok(context) => context.source_project_id,
+            Err(error) => {
+                return WorktreePreviewSnapshot::unavailable(
+                    request.project_id,
+                    WorktreeOperation::Recover,
+                    map_project_error(error),
+                );
+            }
+        };
+        let Some(recoverable) = self.take_recoverable(&request.recovery_id) else {
+            return WorktreePreviewSnapshot::unavailable(
+                source_project_id,
+                WorktreeOperation::Recover,
+                WorktreeDiagnosticCode::RecoveryUnavailable,
+            );
+        };
+        if recoverable.expires_at <= Instant::now()
+            || recoverable.source_project_id != source_project_id
+        {
+            return WorktreePreviewSnapshot::unavailable(
+                source_project_id,
+                WorktreeOperation::Recover,
+                WorktreeDiagnosticCode::RecoveryUnavailable,
+            );
+        }
+        let source_root = match projects.review_root(&source_project_id) {
+            Ok(root) => root,
+            Err(error) => {
+                return WorktreePreviewSnapshot::unavailable(
+                    source_project_id,
+                    WorktreeOperation::Recover,
+                    map_project_error(error),
+                );
+            }
+        };
+        let current =
+            match projects.inspect_worktree_candidate(&recoverable.candidate.selected_path) {
+                Ok(current) if current == recoverable.candidate => current,
+                Ok(_) => {
+                    return WorktreePreviewSnapshot::unavailable(
+                        source_project_id,
+                        WorktreeOperation::Recover,
+                        WorktreeDiagnosticCode::IdentityChanged,
+                    );
+                }
+                Err(error) => {
+                    return WorktreePreviewSnapshot::unavailable(
+                        source_project_id,
+                        WorktreeOperation::Recover,
+                        map_project_error(error),
+                    );
+                }
+            };
+        if current.common_dir != source_root.common_dir
+            || !managed_existing_destination(
+                &self.storage_root,
+                &source_project_id,
+                &current.worktree_root,
+            )
+        {
+            return WorktreePreviewSnapshot::unavailable(
+                source_project_id,
+                WorktreeOperation::Recover,
+                WorktreeDiagnosticCode::RecoveryUnavailable,
+            );
+        }
+        let discovered = match list_worktrees(&source_root).await {
+            Ok(discovered) => discovered,
+            Err(error) => {
+                return WorktreePreviewSnapshot::unavailable(
+                    source_project_id,
+                    WorktreeOperation::Recover,
+                    map_git_error(error),
+                );
+            }
+        };
+        let valid = discovered.iter().any(|entry| {
+            same_path(&entry.path, &current.worktree_root)
+                && entry.branch_name == recoverable.branch_name
+                && !entry.locked
+                && !entry.prunable
+        });
+        if !valid {
+            return WorktreePreviewSnapshot::unavailable(
+                source_project_id,
+                WorktreeOperation::Recover,
+                WorktreeDiagnosticCode::StalePreview,
+            );
+        }
+        let confirmation_id = Uuid::now_v7().to_string();
+        let pending = PendingWorktree {
+            confirmation_id: confirmation_id.clone(),
+            expires_at: Instant::now() + CONFIRMATION_TTL,
+            source_project_id: source_project_id.clone(),
+            source_root: source_root.worktree_root,
+            common_dir: source_root.common_dir,
+            branch_name: recoverable.branch_name.clone(),
+            base_commit: None,
+            operation: PendingOperation::Recover {
+                candidate: current.clone(),
+            },
+        };
+        if !self.replace_pending(pending) {
+            return WorktreePreviewSnapshot::unavailable(
+                source_project_id,
+                WorktreeOperation::Recover,
+                WorktreeDiagnosticCode::MetadataUnavailable,
+            );
+        }
+        WorktreePreviewSnapshot {
+            schema_version: WORKTREE_SCHEMA_VERSION,
+            state: WorktreePreviewState::Ready,
+            source_project_id,
+            operation: WorktreeOperation::Recover,
+            branch_name: recoverable.branch_name,
+            display_path: Some(current.display_path),
+            ownership: Some(WorktreeOwnership::Managed),
+            destructive: false,
+            confirmation_id: Some(confirmation_id),
+            diagnostic_code: None,
+        }
+    }
+
+    pub async fn preview_remove(
+        &self,
+        request: WorktreeRemovePreviewRequest,
+        projects: &ProjectService,
+    ) -> WorktreePreviewSnapshot {
+        let context = match projects.worktree_context(&request.project_id) {
+            Ok(context) => context,
+            Err(error) => {
+                return WorktreePreviewSnapshot::unavailable(
+                    request.project_id,
+                    WorktreeOperation::Remove,
+                    map_project_error(error),
+                );
+            }
+        };
+        let source_project_id = context.source_project_id.clone();
+        if request.worktree_project_id == request.project_id
+            || request.worktree_project_id == source_project_id
+        {
+            return WorktreePreviewSnapshot::unavailable(
+                source_project_id,
+                WorktreeOperation::Remove,
+                WorktreeDiagnosticCode::SourceWorktree,
+            );
+        }
+        let Some(record) = context
+            .records
+            .iter()
+            .find(|record| record.project_id == request.worktree_project_id)
+        else {
+            return WorktreePreviewSnapshot::unavailable(
+                source_project_id,
+                WorktreeOperation::Remove,
+                WorktreeDiagnosticCode::ProjectNotFound,
+            );
+        };
+        if record.ownership != "managed" {
+            return WorktreePreviewSnapshot::unavailable(
+                source_project_id,
+                WorktreeOperation::Remove,
+                WorktreeDiagnosticCode::UnsupportedOwnership,
+            );
+        }
+        let Some(selected_path) = record.selected_path.clone() else {
+            return WorktreePreviewSnapshot::unavailable(
+                source_project_id,
+                WorktreeOperation::Remove,
+                WorktreeDiagnosticCode::RecoveryUnavailable,
+            );
+        };
+        let source_root = match projects.review_root(&source_project_id) {
+            Ok(root) => root,
+            Err(error) => {
+                return WorktreePreviewSnapshot::unavailable(
+                    source_project_id,
+                    WorktreeOperation::Remove,
+                    map_project_error(error),
+                );
+            }
+        };
+        if !managed_destination_path(&self.storage_root, &source_project_id, &selected_path) {
+            return WorktreePreviewSnapshot::unavailable(
+                source_project_id,
+                WorktreeOperation::Remove,
+                WorktreeDiagnosticCode::UnsupportedOwnership,
+            );
+        }
+        let discovered = match list_worktrees(&source_root).await {
+            Ok(discovered) => discovered,
+            Err(error) => {
+                return WorktreePreviewSnapshot::unavailable(
+                    source_project_id,
+                    WorktreeOperation::Remove,
+                    map_git_error(error),
+                );
+            }
+        };
+        let discovered_entry = discovered
+            .iter()
+            .find(|entry| same_path(&entry.path, &selected_path));
+        let (candidate, base_commit, destructive) = if selected_path.exists() {
+            let Some(entry) = discovered_entry else {
+                return WorktreePreviewSnapshot::unavailable(
+                    source_project_id,
+                    WorktreeOperation::Remove,
+                    WorktreeDiagnosticCode::StalePreview,
+                );
+            };
+            if entry.locked || entry.prunable || entry.branch_name != record.branch_name {
+                return WorktreePreviewSnapshot::unavailable(
+                    source_project_id,
+                    WorktreeOperation::Remove,
+                    WorktreeDiagnosticCode::RecoveryUnavailable,
+                );
+            }
+            let candidate = match projects.inspect_worktree_candidate(&selected_path) {
+                Ok(candidate)
+                    if candidate.common_dir == source_root.common_dir
+                        && candidate.worktree_root == candidate.resolved_path
+                        && managed_existing_destination(
+                            &self.storage_root,
+                            &source_project_id,
+                            &candidate.worktree_root,
+                        ) =>
+                {
+                    candidate
+                }
+                Ok(_) => {
+                    return WorktreePreviewSnapshot::unavailable(
+                        source_project_id,
+                        WorktreeOperation::Remove,
+                        WorktreeDiagnosticCode::IdentityChanged,
+                    );
+                }
+                Err(error) => {
+                    return WorktreePreviewSnapshot::unavailable(
+                        source_project_id,
+                        WorktreeOperation::Remove,
+                        map_project_error(error),
+                    );
+                }
+            };
+            let target_root = match projects.cleanup_worktree_root(&request.worktree_project_id) {
+                Ok(root) => root,
+                Err(error) => {
+                    return WorktreePreviewSnapshot::unavailable(
+                        source_project_id,
+                        WorktreeOperation::Remove,
+                        map_project_error(error),
+                    );
+                }
+            };
+            match worktree_clean(&target_root).await {
+                Ok(true) => {}
+                Ok(false) => {
+                    return WorktreePreviewSnapshot::unavailable(
+                        source_project_id,
+                        WorktreeOperation::Remove,
+                        WorktreeDiagnosticCode::WorktreeDirty,
+                    );
+                }
+                Err(error) => {
+                    return WorktreePreviewSnapshot::unavailable(
+                        source_project_id,
+                        WorktreeOperation::Remove,
+                        map_git_error(error),
+                    );
+                }
+            }
+            let base_commit = match read_head(&target_root).await {
+                Ok(base_commit) => base_commit,
+                Err(error) => {
+                    return WorktreePreviewSnapshot::unavailable(
+                        source_project_id,
+                        WorktreeOperation::Remove,
+                        map_git_error(error),
+                    );
+                }
+            };
+            (Some(candidate), Some(base_commit), true)
+        } else {
+            if discovered_entry.is_some() {
+                return WorktreePreviewSnapshot::unavailable(
+                    source_project_id,
+                    WorktreeOperation::Remove,
+                    WorktreeDiagnosticCode::RecoveryUnavailable,
+                );
+            }
+            (None, None, false)
+        };
+        let confirmation_id = Uuid::now_v7().to_string();
+        let pending = PendingWorktree {
+            confirmation_id: confirmation_id.clone(),
+            expires_at: Instant::now() + CONFIRMATION_TTL,
+            source_project_id: source_project_id.clone(),
+            source_root: source_root.worktree_root,
+            common_dir: source_root.common_dir,
+            branch_name: record.branch_name.clone(),
+            base_commit,
+            operation: PendingOperation::Remove {
+                worktree_project_id: request.worktree_project_id,
+                requesting_project_id: request.project_id,
+                selected_path: selected_path.clone(),
+                candidate,
+            },
+        };
+        if !self.replace_pending(pending) {
+            return WorktreePreviewSnapshot::unavailable(
+                source_project_id,
+                WorktreeOperation::Remove,
+                WorktreeDiagnosticCode::MetadataUnavailable,
+            );
+        }
+        WorktreePreviewSnapshot {
+            schema_version: WORKTREE_SCHEMA_VERSION,
+            state: WorktreePreviewState::Ready,
+            source_project_id,
+            operation: WorktreeOperation::Remove,
+            branch_name: record.branch_name.clone(),
+            display_path: Some(display_path(&selected_path)),
+            ownership: Some(WorktreeOwnership::Managed),
+            destructive,
+            confirmation_id: Some(confirmation_id),
+            diagnostic_code: None,
+        }
+    }
+
     pub fn picker_unavailable(&self, project_id: String) -> WorktreePreviewSnapshot {
         WorktreePreviewSnapshot::unavailable(
             project_id,
@@ -467,6 +839,10 @@ impl WorktreeService {
             }
         };
 
+        if matches!(&pending.operation, PendingOperation::Remove { .. }) {
+            return self.confirm_remove(&pending, &source_root, projects).await;
+        }
+
         let (selected_path, ownership) = match pending.operation {
             PendingOperation::Create { destination } => {
                 let branch_name = pending
@@ -507,7 +883,12 @@ impl WorktreeService {
                         );
                     }
                 };
-                if destination.exists() || !destination_is_managed(&self.storage_root, &destination)
+                if destination.exists()
+                    || !managed_destination_path(
+                        &self.storage_root,
+                        &source_project_id,
+                        &destination,
+                    )
                 {
                     return WorktreeResultSnapshot::unavailable(
                         Some(source_project_id),
@@ -517,6 +898,10 @@ impl WorktreeService {
                 if let Some(parent) = destination.parent() {
                     if fs::create_dir_all(parent).is_err()
                         || fs::set_permissions(parent, fs::Permissions::from_mode(0o700)).is_err()
+                        || fs::symlink_metadata(parent)
+                            .map(|metadata| metadata.file_type().is_symlink() || !metadata.is_dir())
+                            .unwrap_or(true)
+                        || fs::canonicalize(parent).ok().as_deref() != Some(parent)
                     {
                         return WorktreeResultSnapshot::unavailable(
                             Some(source_project_id),
@@ -581,6 +966,54 @@ impl WorktreeService {
                 }
                 (current.selected_path, WorktreeOwnership::Attached)
             }
+            PendingOperation::Recover { candidate } => {
+                let current = match projects.inspect_worktree_candidate(&candidate.selected_path) {
+                    Ok(current) if current == candidate => current,
+                    Ok(_) => {
+                        return WorktreeResultSnapshot::unavailable(
+                            Some(source_project_id),
+                            WorktreeDiagnosticCode::IdentityChanged,
+                        );
+                    }
+                    Err(error) => {
+                        return WorktreeResultSnapshot::unavailable(
+                            Some(source_project_id),
+                            map_project_error(error),
+                        );
+                    }
+                };
+                let discovered = match list_worktrees(&source_root).await {
+                    Ok(discovered) => discovered,
+                    Err(error) => {
+                        return WorktreeResultSnapshot::unavailable(
+                            Some(source_project_id),
+                            map_git_error(error),
+                        );
+                    }
+                };
+                let valid = current.common_dir == pending.common_dir
+                    && managed_existing_destination(
+                        &self.storage_root,
+                        &source_project_id,
+                        &current.worktree_root,
+                    )
+                    && discovered.iter().any(|entry| {
+                        same_path(&entry.path, &current.worktree_root)
+                            && entry.branch_name == pending.branch_name
+                            && !entry.locked
+                            && !entry.prunable
+                    });
+                if !valid {
+                    return WorktreeResultSnapshot::unavailable(
+                        Some(source_project_id),
+                        WorktreeDiagnosticCode::StalePreview,
+                    );
+                }
+                (current.selected_path, WorktreeOwnership::Managed)
+            }
+            PendingOperation::Remove { .. } => {
+                unreachable!("remove is handled before registration")
+            }
         };
 
         let ownership_value = ownership
@@ -616,6 +1049,286 @@ impl WorktreeService {
             recoverable_display_path: None,
             diagnostic_code: None,
         }
+    }
+
+    async fn confirm_remove(
+        &self,
+        pending: &PendingWorktree,
+        source_root: &ProjectReviewRoot,
+        projects: &ProjectService,
+    ) -> WorktreeResultSnapshot {
+        let PendingOperation::Remove {
+            worktree_project_id,
+            requesting_project_id,
+            selected_path,
+            candidate,
+        } = &pending.operation
+        else {
+            unreachable!("remove confirmation requires a remove plan");
+        };
+        let source_project_id = pending.source_project_id.clone();
+        if !managed_destination_path(&self.storage_root, &source_project_id, selected_path) {
+            return WorktreeResultSnapshot::unavailable(
+                Some(source_project_id),
+                WorktreeDiagnosticCode::IdentityChanged,
+            );
+        }
+        let current_context = match projects.worktree_context(&source_project_id) {
+            Ok(context) => context,
+            Err(error) => {
+                return WorktreeResultSnapshot::unavailable(
+                    Some(source_project_id),
+                    map_project_error(error),
+                );
+            }
+        };
+        let relation_still_matches = current_context.records.iter().any(|record| {
+            record.project_id == *worktree_project_id
+                && record.ownership == "managed"
+                && record.selected_path.as_deref() == Some(selected_path.as_path())
+                && record.branch_name == pending.branch_name
+        });
+        if !relation_still_matches {
+            return WorktreeResultSnapshot::unavailable(
+                Some(source_project_id),
+                WorktreeDiagnosticCode::StalePreview,
+            );
+        }
+        let discovered = match list_worktrees(source_root).await {
+            Ok(discovered) => discovered,
+            Err(error) => {
+                return WorktreeResultSnapshot::unavailable(
+                    Some(source_project_id),
+                    map_git_error(error),
+                );
+            }
+        };
+
+        if let Some(candidate) = candidate {
+            let current = match projects.inspect_worktree_candidate(&candidate.selected_path) {
+                Ok(current) if current == *candidate => current,
+                Ok(_) => {
+                    return WorktreeResultSnapshot::unavailable(
+                        Some(source_project_id),
+                        WorktreeDiagnosticCode::IdentityChanged,
+                    );
+                }
+                Err(error) => {
+                    return WorktreeResultSnapshot::unavailable(
+                        Some(source_project_id),
+                        map_project_error(error),
+                    );
+                }
+            };
+            if current.common_dir != pending.common_dir
+                || !managed_existing_destination(
+                    &self.storage_root,
+                    &source_project_id,
+                    &current.worktree_root,
+                )
+            {
+                return WorktreeResultSnapshot::unavailable(
+                    Some(source_project_id),
+                    WorktreeDiagnosticCode::IdentityChanged,
+                );
+            }
+            let valid = discovered.iter().any(|entry| {
+                same_path(&entry.path, &current.worktree_root)
+                    && entry.branch_name == pending.branch_name
+                    && !entry.locked
+                    && !entry.prunable
+            });
+            if !valid {
+                return WorktreeResultSnapshot::unavailable(
+                    Some(source_project_id),
+                    WorktreeDiagnosticCode::StalePreview,
+                );
+            }
+            let target_root = match projects.cleanup_worktree_root(worktree_project_id) {
+                Ok(root)
+                    if root.worktree_root == current.worktree_root
+                        && root.common_dir == pending.common_dir =>
+                {
+                    root
+                }
+                Ok(_) => {
+                    return WorktreeResultSnapshot::unavailable(
+                        Some(source_project_id),
+                        WorktreeDiagnosticCode::IdentityChanged,
+                    );
+                }
+                Err(error) => {
+                    return WorktreeResultSnapshot::unavailable(
+                        Some(source_project_id),
+                        map_project_error(error),
+                    );
+                }
+            };
+            match worktree_clean(&target_root).await {
+                Ok(true) => {}
+                Ok(false) => {
+                    return WorktreeResultSnapshot::unavailable(
+                        Some(source_project_id),
+                        WorktreeDiagnosticCode::WorktreeDirty,
+                    );
+                }
+                Err(error) => {
+                    return WorktreeResultSnapshot::unavailable(
+                        Some(source_project_id),
+                        map_git_error(error),
+                    );
+                }
+            }
+            match read_head(&target_root).await {
+                Ok(head) if pending.base_commit.as_deref() == Some(head.as_str()) => {}
+                Ok(_) => {
+                    return WorktreeResultSnapshot::unavailable(
+                        Some(source_project_id),
+                        WorktreeDiagnosticCode::StalePreview,
+                    );
+                }
+                Err(error) => {
+                    return WorktreeResultSnapshot::unavailable(
+                        Some(source_project_id),
+                        map_git_error(error),
+                    );
+                }
+            }
+            if let Err(error) = remove_worktree(source_root, selected_path).await {
+                return WorktreeResultSnapshot::unavailable(
+                    Some(source_project_id),
+                    map_git_error(error),
+                );
+            }
+            let after = match list_worktrees(source_root).await {
+                Ok(discovered) => discovered,
+                Err(error) => {
+                    return WorktreeResultSnapshot::unavailable(
+                        Some(source_project_id),
+                        map_git_error(error),
+                    );
+                }
+            };
+            let branch_preserved = match pending.branch_name.as_deref() {
+                Some(branch_name) => check_branch(source_root, branch_name).await == Ok(true),
+                None => false,
+            };
+            if selected_path.exists()
+                || after
+                    .iter()
+                    .any(|entry| same_path(&entry.path, selected_path))
+                || !branch_preserved
+            {
+                return WorktreeResultSnapshot::unavailable(
+                    Some(source_project_id),
+                    WorktreeDiagnosticCode::CleanupIncomplete,
+                );
+            }
+        } else if selected_path.exists()
+            || discovered
+                .iter()
+                .any(|entry| same_path(&entry.path, selected_path))
+        {
+            return WorktreeResultSnapshot::unavailable(
+                Some(source_project_id),
+                WorktreeDiagnosticCode::RecoveryUnavailable,
+            );
+        }
+
+        if let Err(error) =
+            projects.retire_worktree_project(&source_project_id, worktree_project_id, "managed")
+        {
+            let mut result = WorktreeResultSnapshot::unavailable(
+                Some(source_project_id.clone()),
+                if matches!(error, ProjectExecutionError::MetadataUnavailable) {
+                    WorktreeDiagnosticCode::CleanupIncomplete
+                } else {
+                    map_project_error(error)
+                },
+            );
+            result.workspace = Some(self.status(requesting_project_id.clone(), projects).await);
+            return result;
+        }
+        WorktreeResultSnapshot {
+            schema_version: WORKTREE_SCHEMA_VERSION,
+            state: WorktreeResultState::Applied,
+            source_project_id: Some(source_project_id),
+            project_id: Some(requesting_project_id.clone()),
+            workspace: Some(self.status(requesting_project_id.clone(), projects).await),
+            recoverable_display_path: None,
+            diagnostic_code: None,
+        }
+    }
+
+    fn refresh_recovery_candidates(
+        &self,
+        context: &ProjectWorktreeContext,
+        source_root: &ProjectReviewRoot,
+        discovered: &[DiscoveredWorktree],
+        projects: &ProjectService,
+    ) -> Result<HashMap<PathBuf, String>, WorktreeDiagnosticCode> {
+        let registered: Vec<PathBuf> = context
+            .records
+            .iter()
+            .filter_map(|record| {
+                record
+                    .selected_path
+                    .as_ref()
+                    .map(|path| normalized_path(path))
+            })
+            .collect();
+        let mut candidates = HashMap::new();
+        let mut ids = HashMap::new();
+        for entry in discovered {
+            if same_path(&entry.path, &source_root.worktree_root)
+                || registered.iter().any(|path| same_path(path, &entry.path))
+                || entry.locked
+                || entry.prunable
+                || !managed_existing_destination(
+                    &self.storage_root,
+                    &context.source_project_id,
+                    &entry.path,
+                )
+            {
+                continue;
+            }
+            let candidate = match projects.inspect_worktree_candidate(&entry.path) {
+                Ok(candidate)
+                    if candidate.common_dir == source_root.common_dir
+                        && candidate.worktree_root == candidate.resolved_path =>
+                {
+                    candidate
+                }
+                _ => continue,
+            };
+            let recovery_id = Uuid::now_v7().to_string();
+            ids.insert(normalized_path(&entry.path), recovery_id.clone());
+            candidates.insert(
+                recovery_id,
+                RecoverableWorktree {
+                    expires_at: Instant::now() + CONFIRMATION_TTL,
+                    source_project_id: context.source_project_id.clone(),
+                    candidate,
+                    branch_name: entry.branch_name.clone(),
+                },
+            );
+        }
+        let mut recoverable = self
+            .recoverable
+            .lock()
+            .map_err(|_| WorktreeDiagnosticCode::MetadataUnavailable)?;
+        *recoverable = candidates;
+        Ok(ids)
+    }
+
+    fn take_recoverable(&self, recovery_id: &str) -> Option<RecoverableWorktree> {
+        if !valid_confirmation_id(recovery_id) {
+            return None;
+        }
+        self.recoverable
+            .lock()
+            .ok()
+            .and_then(|mut recoverable| recoverable.remove(recovery_id))
     }
 
     fn replace_pending(&self, pending: PendingWorktree) -> bool {
@@ -674,11 +1387,41 @@ fn generated_destination(root: &Path, source_project_id: &str, branch_name: &str
         .join(format!("{slug}-{}", &suffix[..8]))
 }
 
-fn destination_is_managed(root: &Option<PathBuf>, destination: &Path) -> bool {
+fn managed_destination_path(
+    root: &Option<PathBuf>,
+    source_project_id: &str,
+    destination: &Path,
+) -> bool {
     root.as_ref().is_some_and(|root| {
-        destination.starts_with(root)
-            && destination.parent().and_then(Path::parent) == Some(root.as_path())
+        destination.is_absolute()
+            && destination.to_str().is_some()
+            && destination.parent() == Some(root.join(source_project_id).as_path())
     })
+}
+
+fn managed_existing_destination(
+    root: &Option<PathBuf>,
+    source_project_id: &str,
+    destination: &Path,
+) -> bool {
+    if !managed_destination_path(root, source_project_id, destination) {
+        return false;
+    }
+    let Some(root) = root.as_ref() else {
+        return false;
+    };
+    let Some(parent) = destination.parent() else {
+        return false;
+    };
+    let valid_type = |path: &Path| {
+        fs::symlink_metadata(path)
+            .map(|metadata| metadata.is_dir() && !metadata.file_type().is_symlink())
+            .unwrap_or(false)
+    };
+    valid_type(parent)
+        && valid_type(destination)
+        && fs::canonicalize(parent).ok().as_deref() == Some(root.join(source_project_id).as_path())
+        && fs::canonicalize(destination).ok().as_deref() == Some(destination)
 }
 
 fn valid_branch_name(value: &str) -> bool {
@@ -730,6 +1473,7 @@ fn build_workspace(
     context: ProjectWorktreeContext,
     source_worktree_root: PathBuf,
     discovered: Vec<DiscoveredWorktree>,
+    recovery_ids: &HashMap<PathBuf, String>,
 ) -> WorktreeWorkspaceSnapshot {
     let mut records: HashMap<PathBuf, _> = context
         .records
@@ -790,6 +1534,7 @@ fn build_workspace(
         entries.push(WorktreeEntry {
             current: project_id.as_deref() == Some(&current_project_id),
             project_id,
+            recovery_id: recovery_ids.get(&normalized).cloned(),
             display_name,
             display_path: display_path(&discovered_entry.path),
             branch_name,
@@ -806,6 +1551,7 @@ fn build_workspace(
         entries.push(WorktreeEntry {
             current: record.project_id == current_project_id,
             project_id: Some(record.project_id),
+            recovery_id: None,
             display_name: record.display_name,
             display_path: display_path(&path),
             branch_name: record.branch_name,
@@ -939,6 +1685,47 @@ async fn add_worktree(
     }
 }
 
+async fn worktree_clean(root: &ProjectReviewRoot) -> Result<bool, GitRunError> {
+    let filter_overrides = checkout_filter_overrides(root).await?;
+    let output = run_git_with_config(
+        &root.attached_root,
+        [
+            OsString::from("status"),
+            OsString::from("--porcelain=v2"),
+            OsString::from("--untracked-files=all"),
+            OsString::from("--ignore-submodules=none"),
+            OsString::from("-z"),
+        ],
+        false,
+        &filter_overrides,
+    )
+    .await?;
+    if !output.success {
+        return Err(GitRunError::Failed);
+    }
+    Ok(output.stdout.is_empty())
+}
+
+async fn remove_worktree(root: &ProjectReviewRoot, destination: &Path) -> Result<(), GitRunError> {
+    let filter_overrides = checkout_filter_overrides(root).await?;
+    let output = run_git_with_config(
+        &root.attached_root,
+        [
+            OsString::from("worktree"),
+            OsString::from("remove"),
+            destination.as_os_str().to_os_string(),
+        ],
+        true,
+        &filter_overrides,
+    )
+    .await?;
+    if output.success {
+        Ok(())
+    } else {
+        Err(GitRunError::Failed)
+    }
+}
+
 async fn checkout_filter_overrides(root: &ProjectReviewRoot) -> Result<Vec<String>, GitRunError> {
     let output = run_git(
         &root.attached_root,
@@ -990,8 +1777,8 @@ async fn checkout_filter_overrides(root: &ProjectReviewRoot) -> Result<Vec<Strin
     let mut overrides = Vec::with_capacity(drivers.len() * 4);
     for driver in drivers {
         overrides.extend([
-            format!("filter.{driver}.clean="),
-            format!("filter.{driver}.smudge="),
+            format!("filter.{driver}.clean=/bin/cat"),
+            format!("filter.{driver}.smudge=/bin/cat"),
             format!("filter.{driver}.process="),
             format!("filter.{driver}.required=false"),
         ]);
@@ -1246,17 +2033,24 @@ fn map_registration_error(error: WorktreeRegistrationError) -> WorktreeDiagnosti
 
 #[cfg(test)]
 mod tests {
-    use std::{fs, os::unix::fs::PermissionsExt, process::Command as StdCommand};
+    use std::{
+        fs,
+        os::unix::fs::{symlink, PermissionsExt},
+        process::Command as StdCommand,
+    };
 
     use uuid::Uuid;
 
     use super::{
         parse_worktree_list, types::WorktreeDiagnosticCode, types::WorktreeOwnership,
         types::WorktreePreviewState, types::WorktreeResultState, types::WorktreeWorkspaceState,
-        valid_branch_name, WorktreeService,
+        valid_branch_name, WorktreeOperation, WorktreeService,
     };
     use crate::project::ProjectService;
-    use crate::worktree::types::{WorktreeConfirmRequest, WorktreeCreatePreviewRequest};
+    use crate::worktree::types::{
+        WorktreeConfirmRequest, WorktreeCreatePreviewRequest, WorktreeRecoverPreviewRequest,
+        WorktreeRemovePreviewRequest,
+    };
 
     fn temporary_directory(label: &str) -> std::path::PathBuf {
         let path = std::env::temp_dir().join(format!("quireforge-{label}-{}", Uuid::now_v7()));
@@ -1627,6 +2421,20 @@ mod tests {
             .status()
             .expect("Git must run")
             .success());
+        assert!(StdCommand::new("git")
+            .args(["config", "--local", "filter.fixture.clean"])
+            .arg(&filter_command)
+            .current_dir(&repository)
+            .status()
+            .expect("Git must run")
+            .success());
+        assert!(StdCommand::new("git")
+            .args(["config", "--local", "filter.fixture.process"])
+            .arg(&filter_command)
+            .current_dir(&repository)
+            .status()
+            .expect("Git must run")
+            .success());
         let hook = repository.join(".git/hooks/post-checkout");
         fs::write(
             &hook,
@@ -1646,7 +2454,7 @@ mod tests {
         let preview = service
             .preview_create(
                 WorktreeCreatePreviewRequest {
-                    project_id,
+                    project_id: project_id.clone(),
                     branch_name: "feature/no-filter".to_owned(),
                 },
                 &projects,
@@ -1663,6 +2471,43 @@ mod tests {
             .await;
 
         assert_eq!(result.state, WorktreeResultState::Applied);
+        assert!(!marker.exists(), "checkout filter must not execute");
+        let worktree_project_id = result.project_id.expect("managed project must exist");
+        let target = projects
+            .execution_cwd(&worktree_project_id)
+            .expect("managed cwd must resolve");
+        let target_root = projects
+            .review_root(&worktree_project_id)
+            .expect("managed review root must resolve");
+        let overrides = super::checkout_filter_overrides(&target_root)
+            .await
+            .expect("filter overrides must be generated");
+        assert!(overrides
+            .iter()
+            .any(|value| value == "filter.fixture.clean=/bin/cat"));
+        fs::write(target.join("payload.txt"), "safe payload\n")
+            .expect("payload mtime must be refreshed");
+        let cleanup = service
+            .preview_remove(
+                WorktreeRemovePreviewRequest {
+                    project_id,
+                    worktree_project_id,
+                },
+                &projects,
+            )
+            .await;
+        assert_eq!(cleanup.state, WorktreePreviewState::Ready);
+        let removed = service
+            .confirm(
+                WorktreeConfirmRequest {
+                    confirmation_id: cleanup
+                        .confirmation_id
+                        .expect("cleanup confirmation must exist"),
+                },
+                &projects,
+            )
+            .await;
+        assert_eq!(removed.state, WorktreeResultState::Applied);
         let filter_executed = marker.exists();
         if filter_executed {
             fs::remove_file(&marker).expect("unexpected filter marker must be removed");
@@ -1671,11 +2516,505 @@ mod tests {
         if hook_executed {
             fs::remove_file(&hook_marker).expect("unexpected hook marker must be removed");
         }
-        assert!(!filter_executed, "checkout filter must not execute");
+        assert!(
+            !filter_executed,
+            "checkout or status filters must not execute"
+        );
         assert!(!hook_executed, "checkout hook must not execute");
         drop(service);
         drop(projects);
         fs::remove_dir_all(repository).expect("repository fixture must be removed");
         fs::remove_dir_all(app_data).expect("app data fixture must be removed");
+    }
+
+    #[tokio::test]
+    async fn removes_a_clean_archived_managed_worktree_and_preserves_its_branch() {
+        let (repository, projects, source_project_id) = repository_fixture();
+        let app_data = temporary_directory("worktree-remove-app-data");
+        let service = WorktreeService::for_test(&app_data.join("worktrees"));
+        let created = service
+            .confirm(
+                WorktreeConfirmRequest {
+                    confirmation_id: service
+                        .preview_create(
+                            WorktreeCreatePreviewRequest {
+                                project_id: source_project_id.clone(),
+                                branch_name: "feature/remove-clean".to_owned(),
+                            },
+                            &projects,
+                        )
+                        .await
+                        .confirmation_id
+                        .expect("create confirmation must exist"),
+                },
+                &projects,
+            )
+            .await;
+        let worktree_project_id = created
+            .project_id
+            .expect("managed project must be registered");
+        let managed_path = projects
+            .execution_cwd(&worktree_project_id)
+            .expect("managed cwd must resolve");
+        let archived = projects.archive(worktree_project_id.clone());
+        assert!(archived.diagnostic_code.is_none());
+        let preview = service
+            .preview_remove(
+                WorktreeRemovePreviewRequest {
+                    project_id: source_project_id.clone(),
+                    worktree_project_id: worktree_project_id.clone(),
+                },
+                &projects,
+            )
+            .await;
+        assert_eq!(preview.state, WorktreePreviewState::Ready);
+        assert_eq!(preview.operation, WorktreeOperation::Remove);
+        assert!(preview.destructive);
+
+        let removed = service
+            .confirm(
+                WorktreeConfirmRequest {
+                    confirmation_id: preview
+                        .confirmation_id
+                        .expect("remove confirmation must exist"),
+                },
+                &projects,
+            )
+            .await;
+
+        assert_eq!(removed.state, WorktreeResultState::Applied);
+        assert_eq!(
+            removed.project_id.as_deref(),
+            Some(source_project_id.as_str())
+        );
+        assert!(!removed
+            .workspace
+            .expect("refreshed workspace must be returned")
+            .worktrees
+            .iter()
+            .any(|entry| entry.project_id.as_deref() == Some(&worktree_project_id)));
+        assert!(StdCommand::new("git")
+            .args([
+                "show-ref",
+                "--verify",
+                "--quiet",
+                "refs/heads/feature/remove-clean",
+            ])
+            .current_dir(&repository)
+            .status()
+            .expect("Git must run")
+            .success());
+        assert!(!managed_path.exists());
+        drop(service);
+        drop(projects);
+        fs::remove_dir_all(repository).expect("repository fixture must be removed");
+        fs::remove_dir_all(app_data).expect("app data fixture must be removed");
+    }
+
+    #[tokio::test]
+    async fn refuses_cleanup_when_the_managed_worktree_becomes_dirty() {
+        let (repository, projects, source_project_id) = repository_fixture();
+        let app_data = temporary_directory("worktree-dirty-remove-app-data");
+        let service = WorktreeService::for_test(&app_data.join("worktrees"));
+        let created = service
+            .confirm(
+                WorktreeConfirmRequest {
+                    confirmation_id: service
+                        .preview_create(
+                            WorktreeCreatePreviewRequest {
+                                project_id: source_project_id.clone(),
+                                branch_name: "feature/refuse-dirty".to_owned(),
+                            },
+                            &projects,
+                        )
+                        .await
+                        .confirmation_id
+                        .expect("create confirmation must exist"),
+                },
+                &projects,
+            )
+            .await;
+        let worktree_project_id = created.project_id.expect("managed project must exist");
+        let target = projects
+            .execution_cwd(&worktree_project_id)
+            .expect("managed cwd must resolve");
+        let preview = service
+            .preview_remove(
+                WorktreeRemovePreviewRequest {
+                    project_id: source_project_id,
+                    worktree_project_id,
+                },
+                &projects,
+            )
+            .await;
+        fs::write(target.join("untracked-after-preview.txt"), "preserve me\n")
+            .expect("dirty fixture must be written");
+
+        let refused = service
+            .confirm(
+                WorktreeConfirmRequest {
+                    confirmation_id: preview
+                        .confirmation_id
+                        .expect("remove confirmation must exist"),
+                },
+                &projects,
+            )
+            .await;
+
+        assert_eq!(
+            refused.diagnostic_code,
+            Some(WorktreeDiagnosticCode::WorktreeDirty)
+        );
+        assert!(target.join("untracked-after-preview.txt").exists());
+        drop(service);
+        drop(projects);
+        fs::remove_dir_all(repository).expect("repository fixture must be removed");
+        fs::remove_dir_all(app_data).expect("dirty fixture must be removed explicitly");
+    }
+
+    #[tokio::test]
+    async fn recovers_an_unregistered_worktree_only_through_an_opaque_status_id() {
+        let (repository, projects, source_project_id) = repository_fixture();
+        let app_data = temporary_directory("worktree-adopt-recovery-app-data");
+        let service = WorktreeService::for_test(&app_data.join("worktrees"));
+        let create_preview = service
+            .preview_create(
+                WorktreeCreatePreviewRequest {
+                    project_id: source_project_id.clone(),
+                    branch_name: "feature/adopt-recovery".to_owned(),
+                },
+                &projects,
+            )
+            .await;
+        projects.fail_worktree_registration_for_test();
+        let retained = service
+            .confirm(
+                WorktreeConfirmRequest {
+                    confirmation_id: create_preview
+                        .confirmation_id
+                        .expect("create confirmation must exist"),
+                },
+                &projects,
+            )
+            .await;
+        assert_eq!(
+            retained.diagnostic_code,
+            Some(WorktreeDiagnosticCode::WorktreeRemains)
+        );
+        projects.allow_worktree_registration_for_test();
+        let inventory = service.status(source_project_id.clone(), &projects).await;
+        let candidate = inventory
+            .worktrees
+            .iter()
+            .find(|entry| entry.branch_name.as_deref() == Some("feature/adopt-recovery"))
+            .expect("retained worktree must be inventoried");
+        assert_eq!(candidate.ownership, WorktreeOwnership::External);
+        let recovery_id = candidate
+            .recovery_id
+            .clone()
+            .expect("native status must issue a recovery ID");
+        let preview = service
+            .preview_recover(
+                WorktreeRecoverPreviewRequest {
+                    project_id: source_project_id,
+                    recovery_id,
+                },
+                &projects,
+            )
+            .await;
+        assert_eq!(preview.operation, WorktreeOperation::Recover);
+        assert!(!preview.destructive);
+
+        let recovered = service
+            .confirm(
+                WorktreeConfirmRequest {
+                    confirmation_id: preview
+                        .confirmation_id
+                        .expect("recovery confirmation must exist"),
+                },
+                &projects,
+            )
+            .await;
+
+        assert_eq!(recovered.state, WorktreeResultState::Applied);
+        assert!(recovered
+            .workspace
+            .expect("workspace must be returned")
+            .worktrees
+            .iter()
+            .any(|entry| {
+                entry.ownership == WorktreeOwnership::Managed
+                    && entry.branch_name.as_deref() == Some("feature/adopt-recovery")
+                    && entry.recovery_id.is_none()
+            }));
+        drop(service);
+        drop(projects);
+        fs::remove_dir_all(repository).expect("repository fixture must be removed");
+        fs::remove_dir_all(app_data).expect("recovery fixture must be removed explicitly");
+    }
+
+    #[tokio::test]
+    async fn finalizes_metadata_after_a_post_git_cleanup_failure() {
+        let (repository, projects, source_project_id) = repository_fixture();
+        let app_data = temporary_directory("worktree-finalize-cleanup-app-data");
+        let service = WorktreeService::for_test(&app_data.join("worktrees"));
+        let created = service
+            .confirm(
+                WorktreeConfirmRequest {
+                    confirmation_id: service
+                        .preview_create(
+                            WorktreeCreatePreviewRequest {
+                                project_id: source_project_id.clone(),
+                                branch_name: "feature/finalize-cleanup".to_owned(),
+                            },
+                            &projects,
+                        )
+                        .await
+                        .confirmation_id
+                        .expect("create confirmation must exist"),
+                },
+                &projects,
+            )
+            .await;
+        let worktree_project_id = created.project_id.expect("managed project must exist");
+        projects.fail_worktree_retirement_for_test();
+        let preview = service
+            .preview_remove(
+                WorktreeRemovePreviewRequest {
+                    project_id: source_project_id.clone(),
+                    worktree_project_id: worktree_project_id.clone(),
+                },
+                &projects,
+            )
+            .await;
+        let incomplete = service
+            .confirm(
+                WorktreeConfirmRequest {
+                    confirmation_id: preview
+                        .confirmation_id
+                        .expect("remove confirmation must exist"),
+                },
+                &projects,
+            )
+            .await;
+        assert_eq!(
+            incomplete.diagnostic_code,
+            Some(WorktreeDiagnosticCode::CleanupIncomplete)
+        );
+        assert!(incomplete
+            .workspace
+            .expect("incomplete result must refresh inventory")
+            .worktrees
+            .iter()
+            .any(|entry| {
+                entry.project_id.as_deref() == Some(&worktree_project_id)
+                    && entry.state == super::types::WorktreeEntryState::Missing
+            }));
+
+        projects.allow_worktree_retirement_for_test();
+        let finalize = service
+            .preview_remove(
+                WorktreeRemovePreviewRequest {
+                    project_id: source_project_id,
+                    worktree_project_id,
+                },
+                &projects,
+            )
+            .await;
+        assert_eq!(finalize.state, WorktreePreviewState::Ready);
+        assert!(!finalize.destructive);
+        let finalized = service
+            .confirm(
+                WorktreeConfirmRequest {
+                    confirmation_id: finalize
+                        .confirmation_id
+                        .expect("finalization confirmation must exist"),
+                },
+                &projects,
+            )
+            .await;
+        assert_eq!(finalized.state, WorktreeResultState::Applied);
+        drop(service);
+        drop(projects);
+        fs::remove_dir_all(repository).expect("repository fixture must be removed");
+        fs::remove_dir_all(app_data).expect("app data fixture must be removed");
+    }
+
+    #[tokio::test]
+    async fn never_offers_filesystem_cleanup_for_an_attached_worktree() {
+        let (repository, projects, source_project_id) = repository_fixture();
+        let external = repository.with_extension(format!("attached-{}", Uuid::now_v7()));
+        assert!(StdCommand::new("git")
+            .args(["worktree", "add", "--quiet", "-b", "feature/attached-safe"])
+            .arg(&external)
+            .arg("HEAD")
+            .current_dir(&repository)
+            .status()
+            .expect("Git must run")
+            .success());
+        let app_data = temporary_directory("worktree-attached-cleanup-app-data");
+        let service = WorktreeService::for_test(&app_data.join("worktrees"));
+        let attach = service
+            .preview_attach(source_project_id.clone(), external.clone(), &projects)
+            .await;
+        let attached = service
+            .confirm(
+                WorktreeConfirmRequest {
+                    confirmation_id: attach
+                        .confirmation_id
+                        .expect("attach confirmation must exist"),
+                },
+                &projects,
+            )
+            .await;
+        let preview = service
+            .preview_remove(
+                WorktreeRemovePreviewRequest {
+                    project_id: source_project_id,
+                    worktree_project_id: attached.project_id.expect("attached project must exist"),
+                },
+                &projects,
+            )
+            .await;
+
+        assert_eq!(preview.state, WorktreePreviewState::Unavailable);
+        assert_eq!(
+            preview.diagnostic_code,
+            Some(WorktreeDiagnosticCode::UnsupportedOwnership)
+        );
+        assert!(external.exists());
+        drop(service);
+        drop(projects);
+        fs::remove_dir_all(external).expect("attached fixture must be removed explicitly");
+        fs::remove_dir_all(repository).expect("repository fixture must be removed");
+        fs::remove_dir_all(app_data).expect("app data fixture must be removed");
+    }
+
+    #[tokio::test]
+    async fn refuses_cleanup_while_any_related_project_is_reserved() {
+        let (repository, projects, source_project_id) = repository_fixture();
+        let app_data = temporary_directory("worktree-busy-cleanup-app-data");
+        let service = WorktreeService::for_test(&app_data.join("worktrees"));
+        let created = service
+            .confirm(
+                WorktreeConfirmRequest {
+                    confirmation_id: service
+                        .preview_create(
+                            WorktreeCreatePreviewRequest {
+                                project_id: source_project_id.clone(),
+                                branch_name: "feature/busy-cleanup".to_owned(),
+                            },
+                            &projects,
+                        )
+                        .await
+                        .confirmation_id
+                        .expect("create confirmation must exist"),
+                },
+                &projects,
+            )
+            .await;
+        let worktree_project_id = created.project_id.expect("managed project must exist");
+        let target = projects
+            .execution_cwd(&worktree_project_id)
+            .expect("managed cwd must resolve");
+        let preview = service
+            .preview_remove(
+                WorktreeRemovePreviewRequest {
+                    project_id: source_project_id.clone(),
+                    worktree_project_id,
+                },
+                &projects,
+            )
+            .await;
+        projects
+            .reserve_execution(&source_project_id)
+            .expect("source reservation must succeed");
+        let refused = service
+            .confirm(
+                WorktreeConfirmRequest {
+                    confirmation_id: preview
+                        .confirmation_id
+                        .expect("remove confirmation must exist"),
+                },
+                &projects,
+            )
+            .await;
+        projects.release_execution(&source_project_id);
+
+        assert_eq!(
+            refused.diagnostic_code,
+            Some(WorktreeDiagnosticCode::ProjectBusy)
+        );
+        assert!(target.exists());
+        drop(service);
+        drop(projects);
+        fs::remove_dir_all(repository).expect("repository fixture must be removed");
+        fs::remove_dir_all(app_data).expect("busy fixture must be removed explicitly");
+    }
+
+    #[tokio::test]
+    async fn refuses_cleanup_after_the_reviewed_path_becomes_a_symlink() {
+        let (repository, projects, source_project_id) = repository_fixture();
+        let app_data = temporary_directory("worktree-symlink-cleanup-app-data");
+        let service = WorktreeService::for_test(&app_data.join("worktrees"));
+        let created = service
+            .confirm(
+                WorktreeConfirmRequest {
+                    confirmation_id: service
+                        .preview_create(
+                            WorktreeCreatePreviewRequest {
+                                project_id: source_project_id.clone(),
+                                branch_name: "feature/symlink-cleanup".to_owned(),
+                            },
+                            &projects,
+                        )
+                        .await
+                        .confirmation_id
+                        .expect("create confirmation must exist"),
+                },
+                &projects,
+            )
+            .await;
+        let worktree_project_id = created.project_id.expect("managed project must exist");
+        let target = projects
+            .execution_cwd(&worktree_project_id)
+            .expect("managed cwd must resolve");
+        let preview = service
+            .preview_remove(
+                WorktreeRemovePreviewRequest {
+                    project_id: source_project_id,
+                    worktree_project_id,
+                },
+                &projects,
+            )
+            .await;
+        let preserved = app_data.join("preserved-worktree");
+        fs::rename(&target, &preserved).expect("reviewed worktree must move");
+        symlink(&repository, &target).expect("replacement symlink must be created");
+
+        let refused = service
+            .confirm(
+                WorktreeConfirmRequest {
+                    confirmation_id: preview
+                        .confirmation_id
+                        .expect("remove confirmation must exist"),
+                },
+                &projects,
+            )
+            .await;
+
+        assert_eq!(
+            refused.diagnostic_code,
+            Some(WorktreeDiagnosticCode::IdentityChanged)
+        );
+        assert!(preserved.exists());
+        assert!(fs::symlink_metadata(&target)
+            .expect("replacement must remain")
+            .file_type()
+            .is_symlink());
+        drop(service);
+        drop(projects);
+        fs::remove_dir_all(repository).expect("repository fixture must be removed");
+        fs::remove_dir_all(app_data).expect("symlink fixture must be removed explicitly");
     }
 }

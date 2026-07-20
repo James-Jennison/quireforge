@@ -102,12 +102,13 @@ const nativeResponses = {
     diagnosticCode: null,
   },
   worktree_status: {
-    schemaVersion: 1,
+    schemaVersion: 2,
     state: "ready",
     sourceProjectId: "018f0000-0000-7000-8000-000000000001",
     worktrees: [
       {
         projectId: "018f0000-0000-7000-8000-000000000001",
+        recoveryId: null,
         displayName: "QuireForge",
         displayPath: "~/work/quireforge",
         branchName: "feature/review",
@@ -117,10 +118,23 @@ const nativeResponses = {
       },
       {
         projectId: null,
-        displayName: "feature/external",
-        displayPath: "~/work/quireforge-external",
-        branchName: "feature/external",
+        recoveryId: "018f0000-0000-7000-8000-000000000041",
+        displayName: "feature/recoverable",
+        displayPath:
+          "~/.local/share/io.github.codeframe78.QuireForge/worktrees/recoverable",
+        branchName: "feature/recoverable",
         ownership: "external",
+        state: "ready",
+        current: false,
+      },
+      {
+        projectId: "018f0000-0000-7000-8000-000000000003",
+        recoveryId: null,
+        displayName: "feature/managed-cleanup",
+        displayPath:
+          "~/.local/share/io.github.codeframe78.QuireForge/worktrees/managed-cleanup",
+        branchName: "feature/managed-cleanup",
+        ownership: "managed",
         state: "ready",
         current: false,
       },
@@ -129,7 +143,7 @@ const nativeResponses = {
     diagnosticCode: null,
   },
   worktree_create_preview: {
-    schemaVersion: 1,
+    schemaVersion: 2,
     state: "ready",
     sourceProjectId: "018f0000-0000-7000-8000-000000000001",
     operation: "create",
@@ -138,6 +152,32 @@ const nativeResponses = {
     ownership: "managed",
     destructive: false,
     confirmationId: "018f0000-0000-7000-8000-000000000040",
+    diagnosticCode: null,
+  },
+  worktree_recover_preview: {
+    schemaVersion: 2,
+    state: "ready",
+    sourceProjectId: "018f0000-0000-7000-8000-000000000001",
+    operation: "recover",
+    branchName: "feature/recoverable",
+    displayPath:
+      "~/.local/share/io.github.codeframe78.QuireForge/worktrees/recoverable",
+    ownership: "managed",
+    destructive: false,
+    confirmationId: "018f0000-0000-7000-8000-000000000042",
+    diagnosticCode: null,
+  },
+  worktree_remove_preview: {
+    schemaVersion: 2,
+    state: "ready",
+    sourceProjectId: "018f0000-0000-7000-8000-000000000001",
+    operation: "remove",
+    branchName: "feature/managed-cleanup",
+    displayPath:
+      "~/.local/share/io.github.codeframe78.QuireForge/worktrees/managed-cleanup",
+    ownership: "managed",
+    destructive: true,
+    confirmationId: "018f0000-0000-7000-8000-000000000043",
     diagnosticCode: null,
   },
   worktree_cancel: true,
@@ -505,7 +545,7 @@ test("native Git fixture reviews a diff and confirms a fixed mutation", async ({
   expect(overflow).toBeLessThanOrEqual(1);
 });
 
-test("native worktree fixture previews an isolated checkout without cleanup controls", async ({
+test("native worktree fixture reviews creation, recovery, and managed cleanup", async ({
   page,
 }) => {
   await installNativeFixture(page);
@@ -521,11 +561,22 @@ test("native worktree fixture previews an isolated checkout without cleanup cont
   await page.getByRole("button", { name: "Preview managed worktree" }).click();
   await expect(page.getByText("Create feature/isolated")).toBeVisible();
   await expect(page.getByText("Non-destructive preview")).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: /remove|delete|prune|clean/u }),
-  ).toHaveCount(0);
   await page.getByRole("button", { name: "Cancel" }).click();
   await expect(page.getByText("Create feature/isolated")).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Review recovery" }).click();
+  await expect(page.getByText("Recover feature/recoverable")).toBeVisible();
+  await expect(
+    page.getByText(/registers this retained app-managed checkout/u),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Cancel" }).click();
+
+  await page.getByRole("button", { name: "Review cleanup" }).click();
+  await expect(page.getByText("Destructive cleanup preview")).toBeVisible();
+  await expect(page.getByText(/Its branch is preserved/u)).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /force|prune|delete branch/u }),
+  ).toHaveCount(0);
 
   const results = await new AxeBuilder({ page }).analyze();
   expect(results.violations).toEqual([]);

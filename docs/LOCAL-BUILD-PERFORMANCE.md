@@ -510,3 +510,44 @@ Timed gates reported zero swaps, and the largest observed command used about
 competing project build, user-repository mutation, live model call, or GPU-
 compute workload. Temporary launch and visual-capture files were removed after
 inspection; project and dependency caches were preserved.
+
+## Milestone 11C measurements
+
+The safe-cleanup checkpoint reused warm Cargo, Git, pnpm, Vite, Astro, and
+Playwright caches. It added no dependency, schema migration, clean build, cache
+reset, linker/tool, driver, CUDA, swap, or zram change. The Balanced profile
+retained four Cargo workers and two Playwright workers; filesystem-sensitive
+Git fixtures stayed serialized. The RTX 3050 was not applicable.
+
+| Operation                                      | Observed wall time                                   | Approximate peak RSS | Result                                                                                                                               |
+| ---------------------------------------------- | ---------------------------------------------------: | -------------------: | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Focused native worktree suite                  | about 7.6 seconds including incremental compile/link |     Not instrumented | Passed 19 worktree tests plus matched project coverage, including recovery, removal, races, filters, partial failure, and ownership |
+| Desktop component/contract suite               | about 6.4 seconds                                    |     Not instrumented | Passed 84 tests across 15 files                                                                                                      |
+| Complete non-browser repository gate           |                                        33.38 seconds |        about 891 MiB | Passed 87 JavaScript tests and 108 Rust tests; 106 Rust tests passed and 2 deliberate live probes were ignored                     |
+| Combined desktop/website browser gate          |                                        17.12 seconds |        about 370 MiB | Passed all 24 desktop/mobile checks with recovery/cleanup, axe, and overflow analysis                                               |
+| Warm unbundled native release build            |                                        31.31 seconds |       about 1.98 GiB | Passed, including a 27.20-second optimized compile/link                                                                               |
+| Isolated native release launch                 |                                      about 3 seconds | Low runtime pressure | Private isolated metadata, no task start, expected timeout, and no remaining QuireForge process                                     |
+| Desktop/mobile cleanup visual inspection       | Focused trace capture plus a 4.2-second browser run | Low runtime pressure | Destructive hierarchy, branch-preservation copy, recovery separation, controls, and stacked mobile layout were legible             |
+
+The final complete gate was about 21% faster than Milestone 11B's 42.19-second
+baseline, the browser gate about 11% faster than 19.29 seconds, and the release
+build about 12% faster than 35.73 seconds. Release peak RSS increased by about
+15% but remained below 2 GiB with ample headroom. No measurement crossed the
+25% dynamic forecast-update threshold.
+
+One aggregate attempt stopped after 18.07 seconds because the non-interactive
+command environment omitted Cargo from `PATH`; the corrected, command-local
+environment passed without changing machine configuration. An early focused
+browser attempt served a stale desktop bundle, confirming that production build
+and preview validation must remain sequential. Native testing also established
+that `git worktree remove` performs its own clean-status conversion, so the
+fixed remove command must neutralize configured clean, smudge, and process
+filters as well as the explicit status check. The adversarial fixture proves
+that no repository-controlled filter or hook executes.
+
+Approximately 40 GiB RAM and 725 GiB NVMe remained available before the final
+gates. Timed commands reported zero swaps; there was no OOM, throttling,
+dependency download, clean build, cache reset, competing project build,
+user-repository mutation, live model call, or GPU-compute workload. Temporary
+launch and visual-capture files were removed after inspection; project and
+dependency caches were preserved.

@@ -1,10 +1,10 @@
 # Testing QuireForge
 
-Status: Milestones 2–11B establish repository, website, desktop frontend,
+Status: Milestones 2–11C establish repository, website, desktop frontend,
 native contract, Codex adapter, authentication, project attachment,
 conversation/runtime lifecycle, approvals, reviewed Git read/write checks, and
-managed worktrees with bounded parallel execution. Cleanup and PTY fixtures
-arrive with their separately gated milestones.
+managed worktrees with bounded parallel execution and safe cleanup/recovery.
+PTY fixtures arrive with their separately gated milestone.
 
 ## Repository, website, and desktop checks
 
@@ -77,16 +77,45 @@ porcelain inventory without object IDs, strict branch/token contracts, source
 HEAD changes, single-use confirmation, external-before-attach state,
 native-selected linked-worktree identity, managed creation, configured checkout
 filter suppression, schema migration 4, transactional registration, and the
-recoverable-worktree path after a forced metadata failure. Frontend and browser
-tests cover strict schemas, fixed bridge payloads, honest preview behavior,
-responsive inventory/create/attach controls, absence of cleanup actions,
-overflow, and axe-core.
+recoverable-worktree path after a forced metadata failure. Milestone 11C adds
+disposable-fixture coverage for opaque recovery adoption, managed-only cleanup,
+dirty/busy/attached/symlink refusal, branch retention, configured-filter
+neutralization during Git's internal removal check, post-Git metadata failure,
+and non-destructive finalization. Frontend and browser tests cover strict
+schema-v2 payloads, fixed bridge commands, explicit destructive copy,
+responsive recovery/cleanup controls, overflow, and axe-core.
 Parallel-registry contract tests share one empty fixture with Rust, require
 active-only unique project/conversation IDs, and reject unknown or over-capacity
 state. App/component/browser tests recover and poll multiple task IDs
 independently, show normalized changed-file/conflict counts, open the selected
 task's expandable activity, and verify both configured viewports with axe-core
 and overflow analysis.
+
+## Manual Milestone 11C checklist
+
+- Use only disposable repositories and private temporary app-data roots. Do not
+  point cleanup validation at a user or project worktree.
+- Force post-create registration failure, refresh inventory, and confirm only
+  the retained exact managed-storage checkout receives an opaque recovery ID.
+  Recover it and verify no file or branch changes.
+- Preview cleanup from a different selected project. Verify source, current,
+  attached, external, locked, prunable, dirty, conflicted, and submodule-dirty
+  worktrees cannot reach destructive confirmation.
+- After a valid preview, change `HEAD`, add an untracked file, reserve a related
+  project, or replace the reviewed path with a symlink. Confirm each case fails
+  closed and preserves the checkout.
+- Configure clean/smudge/process filters and checkout hooks with marker files.
+  Confirm create, explicit status, Git's internal removal check, and removal do
+  not execute repository-controlled helpers.
+- Remove one clean managed fixture. Confirm only its directory and inventory
+  entry disappear, its branch remains, other worktrees remain, and no force or
+  generic prune command is available.
+- Force metadata retirement to fail after Git removal. Confirm the missing
+  managed entry remains visible, then use a second non-destructive preview to
+  finalize metadata while no filesystem deletion is retried.
+- Exercise desktop/mobile destructive and recovery previews with keyboard,
+  axe-core, overflow, complete repository validation, release build, isolated
+  launch, and visual inspection before publication.
 
 ## Manual Milestone 11B checklist
 

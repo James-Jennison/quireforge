@@ -231,6 +231,30 @@ impl ProjectRepository {
         Ok(())
     }
 
+    #[cfg(test)]
+    pub(crate) fn allow_worktree_registration_for_test(&self) -> Result<(), StorageError> {
+        self.connection
+            .execute_batch("DROP TRIGGER IF EXISTS fail_worktree_registration")?;
+        Ok(())
+    }
+
+    #[cfg(test)]
+    pub(crate) fn fail_worktree_retirement_for_test(&self) -> Result<(), StorageError> {
+        self.connection.execute_batch(
+            "CREATE TEMP TRIGGER fail_worktree_retirement
+             BEFORE UPDATE OF active_directory_association_id ON projects
+             BEGIN SELECT RAISE(ABORT, 'test worktree retirement failure'); END;",
+        )?;
+        Ok(())
+    }
+
+    #[cfg(test)]
+    pub(crate) fn allow_worktree_retirement_for_test(&self) -> Result<(), StorageError> {
+        self.connection
+            .execute_batch("DROP TRIGGER IF EXISTS fail_worktree_retirement")?;
+        Ok(())
+    }
+
     fn from_connection(mut connection: Connection) -> Result<Self, StorageError> {
         connection.pragma_update(None, "foreign_keys", true)?;
         connection.pragma_update(None, "trusted_schema", false)?;
@@ -436,6 +460,60 @@ impl ProjectRepository {
             .collect::<Result<Vec<_>, _>>()
             .map_err(StorageError::from)?;
         Ok(relations)
+    }
+
+    pub(crate) fn retire_worktree_project(
+        &mut self,
+        source_project_id: &str,
+        worktree_project_id: &str,
+        expected_ownership: &str,
+    ) -> Result<(), StorageError> {
+        if source_project_id == worktree_project_id
+            || !matches!(expected_ownership, "managed" | "attached")
+        {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let transaction = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let relation_matches = transaction
+            .query_row(
+                "SELECT 1 FROM worktree_relations
+                 WHERE source_project_id = ?1 AND worktree_project_id = ?2
+                   AND ownership = ?3",
+                params![source_project_id, worktree_project_id, expected_ownership],
+                |_| Ok(()),
+            )
+            .optional()?
+            .is_some();
+        if !relation_matches {
+            return Err(StorageError::ProjectNotFound);
+        }
+        let association_id = transaction
+            .query_row(
+                "SELECT active_directory_association_id FROM projects WHERE id = ?1",
+                [worktree_project_id],
+                |row| row.get::<_, Option<String>>(0),
+            )
+            .optional()?
+            .ok_or(StorageError::ProjectNotFound)?;
+        let timestamp = now_millis();
+        if let Some(association_id) = association_id {
+            transaction.execute(
+                "UPDATE directory_associations
+                 SET detached_at_ms = ?1, updated_at_ms = ?1 WHERE id = ?2",
+                params![timestamp, association_id],
+            )?;
+        }
+        transaction.execute(
+            "UPDATE projects
+             SET active_directory_association_id = NULL,
+                 archived_at_ms = COALESCE(archived_at_ms, ?1), updated_at_ms = ?1
+             WHERE id = ?2",
+            params![timestamp, worktree_project_id],
+        )?;
+        transaction.commit()?;
+        Ok(())
     }
 
     pub(crate) fn relink_project(

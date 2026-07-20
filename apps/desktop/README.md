@@ -1,11 +1,12 @@
 # QuireForge Desktop
 
-Status: desktop work through Milestone 10 is implemented and verified locally.
+Status: desktop work through Milestone 11C is implemented and verified locally.
 This package contains the Tauri shell, typed Rust/TypeScript boundary, supported
 Codex app-server adapter, Codex-owned authentication handoff, direct local
-project attachment, conversation/session/approval presentation, and reviewed
-Git status, diff, stage, unstage, bounded revert/recovery, and commit workflows.
-Terminal, advanced worktree/remote Git operations, integrations, packaging, and
+project attachment, conversation/session/approval presentation, reviewed Git
+status/diff/mutation, bounded parallel worktrees, retained-worktree recovery,
+and explicit clean managed-worktree removal. Terminal, generic worktree prune,
+force cleanup, advanced remote Git operations, integrations, packaging, and
 release workflows remain separately gated.
 
 Run package checks from the repository root with `pnpm validate`. Start the

@@ -5,8 +5,8 @@ Milestone 4 Codex process adapter, Milestone 5 authentication controls, and
 Milestone 6 native directory-attachment controls, Milestone 7 native
 conversation controls, Milestone 8A native lifecycle/recovery controls, and
 Milestone 9 approval/activity controls, Milestone 10 reviewed Git controls, and
-Milestone 11A–11B managed-worktree/parallel-execution controls applied. It must
-be revisited before cleanup, integrations, packaging, and release milestones.
+Milestone 11A–11C managed-worktree/parallel-execution/cleanup controls applied.
+It must be revisited before integrations, packaging, and release milestones.
 
 ## Assets
 
@@ -290,12 +290,26 @@ Controls:
   linked-worktree/common-directory identity. Discovered external worktrees have
   no selectable project ID until attachment succeeds.
 - Leave a worktree intact and report it as recoverable if post-creation metadata
-  persistence fails. Provide no remove, prune, cleanup, arbitrary checkout/ref,
-  reset, stash, remote, push, pull, or generic Git mutation in Milestone 11A.
+  persistence fails. Issue recovery IDs only for unregistered linked worktrees
+  in the exact private source-project storage slot, and revalidate their complete
+  identity before metadata-only registration.
 - Present parallel worktree status only by joining the native active-task
   registry with normalized read-only Git snapshots. Return aggregate changed-
   file/conflict counts, never raw Git output, and provide no automatic conflict
   resolution or mutation in Milestone 11B.
+- Remove only a stored `managed` worktree after an expiring preview, complete
+  repository-group reservation, and confirmation-time relation, canonical path,
+  common-directory, inventory, branch, `HEAD`, lock, and clean-status checks.
+- Neutralize repository-configured clean/smudge/process filters for both the
+  explicit status check and Git's internal removal check; continue disabling
+  hooks, prompts, inherited/global/system configuration, and unbounded output.
+- Never use force or delete the branch. Verify directory/inventory absence and
+  branch retention before transactionally detaching and archiving project
+  metadata. If that transaction fails, require a new metadata-only confirmation
+  while the path and inventory entry remain absent.
+- Do not expose generic prune, direct directory deletion, attached/external
+  worktree deletion, arbitrary checkout/ref, reset, stash, remote, push, pull,
+  or generic Git mutation in Milestone 11C.
 
 ### Parallel task confusion and resource exhaustion
 

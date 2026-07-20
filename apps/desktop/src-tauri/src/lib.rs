@@ -29,7 +29,8 @@ use tauri_plugin_opener::OpenerExt;
 use worktree::{
     types::{
         WorktreeCancelRequest, WorktreeConfirmRequest, WorktreeCreatePreviewRequest,
-        WorktreePreviewSnapshot, WorktreeResultSnapshot, WorktreeWorkspaceSnapshot,
+        WorktreePreviewSnapshot, WorktreeRecoverPreviewRequest, WorktreeRemovePreviewRequest,
+        WorktreeResultSnapshot, WorktreeWorkspaceSnapshot,
     },
     WorktreeService,
 };
@@ -189,6 +190,24 @@ async fn worktree_create_preview(
     projects: tauri::State<'_, ProjectService>,
 ) -> Result<WorktreePreviewSnapshot, ()> {
     Ok(service.preview_create(request, &projects).await)
+}
+
+#[tauri::command]
+async fn worktree_recover_preview(
+    request: WorktreeRecoverPreviewRequest,
+    service: tauri::State<'_, WorktreeService>,
+    projects: tauri::State<'_, ProjectService>,
+) -> Result<WorktreePreviewSnapshot, ()> {
+    Ok(service.preview_recover(request, &projects).await)
+}
+
+#[tauri::command]
+async fn worktree_remove_preview(
+    request: WorktreeRemovePreviewRequest,
+    service: tauri::State<'_, WorktreeService>,
+    projects: tauri::State<'_, ProjectService>,
+) -> Result<WorktreePreviewSnapshot, ()> {
+    Ok(service.preview_remove(request, &projects).await)
 }
 
 #[tauri::command]
@@ -426,6 +445,8 @@ pub fn run() {
             project_preflight,
             worktree_status,
             worktree_create_preview,
+            worktree_recover_preview,
+            worktree_remove_preview,
             worktree_pick_attach,
             worktree_confirm,
             worktree_cancel,

@@ -38,6 +38,8 @@ interface WorktreeWorkspaceProps {
   onRefresh: () => Promise<void>;
   onCreate: (branchName: string) => Promise<void>;
   onPickAttach: () => Promise<void>;
+  onRecover: (recoveryId: string) => Promise<void>;
+  onRemove: (worktreeProjectId: string) => Promise<void>;
   onConfirm: (confirmationId: string) => Promise<void>;
   onCancel: (confirmationId: string) => Promise<void>;
   onSelectProject: (projectId: string) => void;
@@ -72,6 +74,16 @@ const diagnosticMessages: Record<
   "stale-preview": "The repository changed after preview. Review it again.",
   "worktree-remains":
     "The worktree remains on disk for explicit recovery; nothing was deleted.",
+  "worktree-dirty":
+    "Cleanup was refused because the worktree has tracked, untracked, or conflicted changes.",
+  "source-worktree":
+    "The source or currently selected worktree cannot be removed.",
+  "unsupported-ownership":
+    "QuireForge can remove only worktrees it created inside private app storage.",
+  "recovery-unavailable":
+    "This worktree cannot be safely recovered or cleaned automatically. Refresh its Git state first.",
+  "cleanup-incomplete":
+    "Git cleanup completed but QuireForge metadata still needs explicit finalization. Refresh and review cleanup again.",
 };
 
 const stateLabels: Record<
@@ -109,6 +121,8 @@ export function WorktreeWorkspace({
   onRefresh,
   onCreate,
   onPickAttach,
+  onRecover,
+  onRemove,
   onConfirm,
   onCancel,
   onSelectProject,
@@ -132,12 +146,12 @@ export function WorktreeWorkspace({
     >
       <div className="worktree-workspace__heading">
         <div>
-          <p className="eyebrow">Isolated workspaces · Milestone 11B</p>
+          <p className="eyebrow">Isolated workspaces · Milestone 11C</p>
           <h2 id="worktrees-title">Give each line of work its own checkout.</h2>
           <p>
             Create or attach isolated projects, run up to four distinct Codex
-            tasks, and review normalized live activity and Git conflict status.
-            Removal and cleanup remain intentionally unavailable.
+            tasks, review normalized live activity, recover retained managed
+            worktrees, and explicitly clean safe app-managed checkouts.
           </p>
         </div>
         <button
@@ -179,8 +193,8 @@ export function WorktreeWorkspace({
         )}
         {actionError && (
           <p className="project-message project-message--warning" role="alert">
-            The native worktree action did not complete. QuireForge did not
-            delete or clean any directory.
+            The native worktree response was interrupted. Refresh the inventory
+            before reviewing or retrying the action.
           </p>
         )}
       </div>
@@ -312,11 +326,21 @@ export function WorktreeWorkspace({
         >
           <div className="attachment-review__heading">
             <div>
-              <span className="project-kicker">Non-destructive preview</span>
+              <span className="project-kicker">
+                {preview.destructive
+                  ? "Destructive cleanup preview"
+                  : "Non-destructive preview"}
+              </span>
               <h3 id="worktree-preview-title">
                 {preview.operation === "create"
                   ? `Create ${preview.branchName}`
-                  : `Attach ${preview.branchName ?? "detached worktree"}`}
+                  : preview.operation === "attach"
+                    ? `Attach ${preview.branchName ?? "detached worktree"}`
+                    : preview.operation === "recover"
+                      ? `Recover ${preview.branchName ?? "managed worktree"}`
+                      : preview.destructive
+                        ? `Remove ${preview.branchName ?? "managed worktree"}`
+                        : "Finalize managed-worktree metadata"}
               </h3>
             </div>
             <span className="directory-state directory-state--connected-accessible">
@@ -334,9 +358,13 @@ export function WorktreeWorkspace({
             </div>
           </dl>
           <p className="project-message">
-            This operation does not remove, prune, or clean any existing
-            worktree. Repository identity and branch availability will be
-            checked again on confirmation.
+            {preview.operation === "remove"
+              ? preview.destructive
+                ? "Git will remove only this clean app-managed checkout. Its branch is preserved. Identity, branch, cleanliness, locks, and active tasks will be checked again on confirmation."
+                : "The checkout is already absent. Confirmation finalizes QuireForge metadata only and does not delete files or prune other worktrees."
+              : preview.operation === "recover"
+                ? "Confirmation registers this retained app-managed checkout as a project without changing its files or branch. Identity is checked again first."
+                : "This operation does not remove, prune, or clean any existing worktree. Repository identity and branch availability will be checked again on confirmation."}
           </p>
           <div className="project-actions">
             <button
@@ -403,6 +431,30 @@ export function WorktreeWorkspace({
                       onClick={() => onSelectProject(worktree.projectId!)}
                     >
                       Select project
+                    </button>
+                  )}
+                {worktree.recoveryId && (
+                  <button
+                    className="auth-button"
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void onRecover(worktree.recoveryId!)}
+                  >
+                    Review recovery
+                  </button>
+                )}
+                {worktree.ownership === "managed" &&
+                  worktree.projectId &&
+                  !worktree.current &&
+                  worktree.state !== "locked" &&
+                  worktree.state !== "prunable" && (
+                    <button
+                      className="auth-button auth-button--danger"
+                      type="button"
+                      disabled={busy}
+                      onClick={() => void onRemove(worktree.projectId!)}
+                    >
+                      Review cleanup
                     </button>
                   )}
                 {worktree.current && <strong>Current project</strong>}

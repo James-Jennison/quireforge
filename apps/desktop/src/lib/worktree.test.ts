@@ -13,7 +13,7 @@ const linkedProjectId = "018f0000-0000-7000-8000-000000000002";
 describe("worktree contract", () => {
   it("keeps the browser fixture honest and empty", () => {
     expect(scaffoldWorktreeWorkspace).toEqual({
-      schemaVersion: 1,
+      schemaVersion: 2,
       state: "empty",
       sourceProjectId: null,
       worktrees: [],
@@ -24,12 +24,13 @@ describe("worktree contract", () => {
 
   it("validates a normalized inventory without Git object IDs", () => {
     const workspace = worktreeWorkspaceSchema.parse({
-      schemaVersion: 1,
+      schemaVersion: 2,
       state: "ready",
       sourceProjectId,
       worktrees: [
         {
           projectId: sourceProjectId,
+          recoveryId: null,
           displayName: "QuireForge",
           displayPath: "~/work/quireforge",
           branchName: "main",
@@ -39,6 +40,7 @@ describe("worktree contract", () => {
         },
         {
           projectId: linkedProjectId,
+          recoveryId: null,
           displayName: "feature/worktrees",
           displayPath: "~/.local/share/quireforge/worktrees/managed",
           branchName: "feature/worktrees",
@@ -66,12 +68,13 @@ describe("worktree contract", () => {
     ).toThrow();
     expect(() =>
       worktreeWorkspaceSchema.parse({
-        schemaVersion: 1,
+        schemaVersion: 2,
         state: "ready",
         sourceProjectId,
         worktrees: [
           {
             projectId: sourceProjectId,
+            recoveryId: null,
             displayName: "External",
             displayPath: "/tmp/external",
             branchName: "feature/external",
@@ -88,7 +91,7 @@ describe("worktree contract", () => {
 
   it("requires a one-use confirmation shape for every ready preview", () => {
     const preview = worktreePreviewSchema.parse({
-      schemaVersion: 1,
+      schemaVersion: 2,
       state: "ready",
       sourceProjectId,
       operation: "create",
@@ -108,7 +111,7 @@ describe("worktree contract", () => {
   it("only exposes a recovery path when a created worktree remains", () => {
     expect(() =>
       worktreeResultSchema.parse({
-        schemaVersion: 1,
+        schemaVersion: 2,
         state: "unavailable",
         sourceProjectId,
         projectId: null,
@@ -119,7 +122,7 @@ describe("worktree contract", () => {
     ).toThrow();
     expect(
       worktreeResultSchema.parse({
-        schemaVersion: 1,
+        schemaVersion: 2,
         state: "unavailable",
         sourceProjectId,
         projectId: null,

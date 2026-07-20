@@ -148,6 +148,39 @@ impl ProjectService {
             .expect("test failure trigger must install");
     }
 
+    #[cfg(test)]
+    pub(crate) fn allow_worktree_registration_for_test(&self) {
+        self.repository
+            .lock()
+            .expect("test repository lock must be available")
+            .as_ref()
+            .expect("test repository must be available")
+            .allow_worktree_registration_for_test()
+            .expect("test failure trigger must be removed");
+    }
+
+    #[cfg(test)]
+    pub(crate) fn fail_worktree_retirement_for_test(&self) {
+        self.repository
+            .lock()
+            .expect("test repository lock must be available")
+            .as_ref()
+            .expect("test repository must be available")
+            .fail_worktree_retirement_for_test()
+            .expect("test retirement failure trigger must install");
+    }
+
+    #[cfg(test)]
+    pub(crate) fn allow_worktree_retirement_for_test(&self) {
+        self.repository
+            .lock()
+            .expect("test repository lock must be available")
+            .as_ref()
+            .expect("test repository must be available")
+            .allow_worktree_retirement_for_test()
+            .expect("test retirement failure trigger must be removed");
+    }
+
     pub fn status(&self) -> ProjectWorkspaceSnapshot {
         self.build_snapshot(None)
     }
@@ -367,6 +400,21 @@ impl ProjectService {
         &self,
         project_id: &str,
     ) -> Result<ProjectReviewRoot, ProjectExecutionError> {
+        self.review_root_with_archived(project_id, false)
+    }
+
+    pub(crate) fn cleanup_worktree_root(
+        &self,
+        project_id: &str,
+    ) -> Result<ProjectReviewRoot, ProjectExecutionError> {
+        self.review_root_with_archived(project_id, true)
+    }
+
+    fn review_root_with_archived(
+        &self,
+        project_id: &str,
+        allow_archived: bool,
+    ) -> Result<ProjectReviewRoot, ProjectExecutionError> {
         if !valid_id(project_id) {
             return Err(ProjectExecutionError::InvalidProjectId);
         }
@@ -383,7 +431,7 @@ impl ProjectService {
                 StorageError::ProjectNotFound => ProjectExecutionError::ProjectNotFound,
                 _ => ProjectExecutionError::MetadataUnavailable,
             })?;
-        if project.archived {
+        if project.archived && !allow_archived {
             return Err(ProjectExecutionError::ProjectNotFound);
         }
         let association = project
@@ -512,6 +560,27 @@ impl ProjectService {
                     WorktreeRegistrationError::Project(map_project_execution_storage_error(error))
                 }
             })
+    }
+
+    pub(crate) fn retire_worktree_project(
+        &self,
+        source_project_id: &str,
+        worktree_project_id: &str,
+        expected_ownership: &str,
+    ) -> Result<(), ProjectExecutionError> {
+        if !valid_id(source_project_id) || !valid_id(worktree_project_id) {
+            return Err(ProjectExecutionError::InvalidProjectId);
+        }
+        let mut repository_guard = self
+            .repository
+            .lock()
+            .map_err(|_| ProjectExecutionError::MetadataUnavailable)?;
+        let repository = repository_guard
+            .as_mut()
+            .ok_or(ProjectExecutionError::MetadataUnavailable)?;
+        repository
+            .retire_worktree_project(source_project_id, worktree_project_id, expected_ownership)
+            .map_err(map_project_execution_storage_error)
     }
 
     pub(crate) fn inspect_worktree_candidate(

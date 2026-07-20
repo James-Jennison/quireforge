@@ -289,7 +289,7 @@ describe("QuireForge desktop shell", () => {
 
   it("blocks a missing cwd and relinks through an explicitly reviewed preview", async () => {
     const preflightProjectDirectory = vi.fn().mockResolvedValue({
-      schemaVersion: 1,
+      schemaVersion: 2,
       projectId,
       cwdReady: false,
       displayPath: "~/work/quireforge-link",
@@ -537,12 +537,13 @@ describe("QuireForge desktop shell", () => {
       ],
     });
     const worktrees = worktreeWorkspaceSchema.parse({
-      schemaVersion: 1,
+      schemaVersion: 2,
       state: "ready",
       sourceProjectId: projectId,
       worktrees: [
         {
           projectId,
+          recoveryId: null,
           displayName: "QuireForge",
           displayPath: "~/work/quireforge-link",
           branchName: "main",
@@ -552,6 +553,7 @@ describe("QuireForge desktop shell", () => {
         },
         {
           projectId: secondProjectId,
+          recoveryId: null,
           displayName: "QuireForge parallel",
           displayPath: "~/work/quireforge-parallel",
           branchName: "feature/parallel",

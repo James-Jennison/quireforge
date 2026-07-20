@@ -878,3 +878,67 @@ security review even though implementation completed within one session.
   dirty/conflicted worktree refusal, branch retention, symlink/path races,
   partial deletion failures, and explicit user confirmation are data-loss-
   sensitive.
+
+### Milestone 11C — Safe Managed-Worktree Recovery and Cleanup
+
+| Field                       | Record                                                                                                                                                                                                                                                                                                                                                     |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Forecast date               | 2026-07-20                                                                                                                                                                                                                                                                                                                                                 |
+| Selected model              | GPT-5.6 Sol, XHigh reasoning; manually confirmed                                                                                                                                                                                                                                                                                                           |
+| Preliminary forecast        | Approximately 4–7 active hours; 20–45 minutes of local commands; about 5–9 total elapsed hours across one or two sessions; low confidence                                                                                                                                                                                                                  |
+| Calibrated forecast         | Approximately 4–7 active hours; 25–50 minutes of local commands; about 5–9 total elapsed hours across one or two sessions; low-to-medium confidence                                                                                                                                                                                                         |
+| Calibration basis           | Clean synchronized Milestone 11B `main`; Ryzen 5 5600G with 6 physical/12 logical processors; about 40 GiB available of 61 GiB RAM; 8 GiB swap; 725 GiB free NVMe/ext4; warm Cargo, pnpm, Vite, Astro, and Playwright caches; no dependency or migration change; four Cargo workers, two Playwright workers, no GPU workload                                      |
+| Observed active execution   | Approximately 80–120 minutes through cleanup architecture, native/SQLite/IPC/UI implementation, adversarial disposable-repository tests, documentation and security review, complete gates, release/native verification, visual inspection, and publication preparation; approval and hosted-runner waiting excluded                                      |
+| Observed local command time | Approximately 9–15 minutes across focused iterations, the 33.38-second final passing complete gate, 17.12-second combined browser gate, 31.31-second release build, isolated launch, rendered-state capture, and corrective warm reruns                                                                                                                      |
+| User approval/waiting time  | Manual model/reasoning and milestone-start confirmations occurred before implementation and are excluded; publication and hosted-runner waiting are tracked separately                                                                                                                                                                                     |
+| Sessions                    | One logical implementation session with recoverable native-boundary, strict-contract/UI, documentation, validation, visual, and publication checkpoints                                                                                                                                                                                                   |
+| Usage intensity             | XHigh model/tool activity; moderate local CPU and low memory pressure under the Balanced profile                                                                                                                                                                                                                                                          |
+| Completion status           | Implemented and fully verified locally on `feat/milestone-11c-safe-worktree-cleanup`; publication prepared                                                                                                                                                                                                                                                 |
+
+The calibrated forecast substantially overestimated active and elapsed time.
+Existing managed-worktree identity, source-group reservations, fixed Git
+runner, project archival, expiring confirmation, strict Zod contract, and
+responsive review-card patterns were reusable. XHigh reasoning remained
+appropriate because the implementation introduced a deliberately destructive
+operation and required safe behavior across dirty-state changes, symlink/path
+races, repository-controlled filters, active work, ownership confusion, and a
+Git-success/metadata-failure split.
+
+### Milestone 11C required observations and lessons
+
+- Inventory issues an expiring opaque recovery ID only when an unregistered
+  linked worktree occupies its exact app-managed private slot. Recovery consumes
+  that ID, revalidates the candidate, and registers metadata without mutating
+  Git or files.
+- Removal accepts only an app-owned target project related as `managed` to the
+  exact source repository. It refuses current, attached/external, dirty,
+  conflicted, locked, prunable, busy, identity-changed, symlink-replaced, and
+  branch/`HEAD`-changed targets.
+- `git worktree remove` runs without `--force`; success requires the checkout
+  and inventory entry to be absent while the branch still exists. Product code
+  offers no generic prune, branch deletion, or direct recursive deletion.
+- Git removal precedes transactional metadata retirement. If the transaction
+  fails, a fresh metadata-only confirmation can archive and detach the now-
+  missing managed project without repeating filesystem mutation.
+- Removal itself invokes Git's clean-status conversion. Repository-configured
+  clean, smudge, and process filters therefore need the same fixed identity
+  overrides as explicit status/create operations. A disposable adversarial
+  test proves neither those helpers nor hooks execute.
+- The final complete repository gate passed in 33.38 seconds at about 891 MiB peak
+  RSS; the browser gate passed 24 checks in 17.12 seconds at about 370 MiB; and
+  the release build passed in 31.31 seconds at about 1.98 GiB. Every timed gate
+  reported zero swaps.
+- The isolated native launch created only private test metadata, started no
+  task, and left no QuireForge process. Desktop and mobile inspection confirmed
+  the destructive-review hierarchy, explicit branch preservation, separate
+  recovery flow, and absence of force/prune/branch-delete actions.
+- No dependency, schema migration, clean build, cache reset, user-repository
+  mutation, live model call, or GPU computation was required. The RTX 3050 was
+  correctly unused.
+- Milestone 12 requires a fresh reasoning/model/start gate. A preliminary range
+  is approximately 5–8 active hours, 30–60 minutes of local commands, and 6–10
+  total elapsed hours across one or two sessions, low confidence. GPT-5.6 Sol
+  with XHigh reasoning is provisionally appropriate because PTY ownership,
+  verified cwd/environment setup, process groups, resize/input concurrency,
+  output normalization, terminal escape handling, and cleanup are security- and
+  lifecycle-sensitive.
