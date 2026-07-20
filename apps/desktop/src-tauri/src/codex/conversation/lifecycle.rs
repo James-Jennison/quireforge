@@ -299,10 +299,13 @@ impl ConversationService {
                 reasoning_effort: reference.reasoning_effort.clone(),
                 sandbox_mode: controls.sandbox_mode,
                 approval_policy: controls.approval_policy,
+                cwd: cwd.to_path_buf(),
                 thread_id: started.thread_id,
                 turn_id: started.turn_id,
                 state: ConversationState::Running,
                 next_sequence: 3,
+                activities: HashMap::new(),
+                pending_approval: None,
                 process,
             }),
             Err(code) => {

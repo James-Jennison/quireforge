@@ -39,6 +39,7 @@ const approvalOptions = [
 const stateLabels: Record<ConversationSnapshot["state"], string> = {
   empty: "Ready for a task",
   running: "Codex is working",
+  "waiting-for-approval": "Codex is waiting for approval",
   stopping: "Stopping safely",
   completed: "Task completed",
   interrupted: "Task stopped",
@@ -65,6 +66,9 @@ const diagnosticMessages: Record<
   "metadata-unavailable":
     "QuireForge could not read its conversation metadata.",
   "approval-required": "Codex needs an approval before it can continue.",
+  "approval-not-found": "That approval is no longer pending.",
+  "approval-decision-unavailable":
+    "That decision is not available for this approval.",
   "process-exited": "The Codex process exited before the task finished.",
   "transport-failed": "The connection to the Codex process was interrupted.",
   "protocol-invalid":
@@ -117,9 +121,30 @@ function EventCard({ event }: { event: ConversationEvent }) {
   }
   if (event.type === "activity") {
     return (
-      <p className="conversation-event__activity">
-        <span aria-hidden="true" />
-        {activityLabels[event.kind]} {event.status}
+      <div className="conversation-event__activity">
+        <p>
+          <span aria-hidden="true" />
+          {event.title || activityLabels[event.kind]} {event.status}
+        </p>
+        {event.detail && <pre>{event.detail}</pre>}
+        {event.exitCode !== null && <small>Exit code {event.exitCode}</small>}
+      </div>
+    );
+  }
+  if (event.type === "activity-output-delta") {
+    return <pre className="conversation-event__output">{event.delta}</pre>;
+  }
+  if (event.type === "approval-requested") {
+    return (
+      <p className="conversation-event__approval">
+        Approval requested for {event.kind.split("-").join(" ")}.
+      </p>
+    );
+  }
+  if (event.type === "approval-resolved") {
+    return (
+      <p className="conversation-event__approval">
+        Approval {event.resolution.split("-").join(" ")}.
       </p>
     );
   }
@@ -131,11 +156,13 @@ function EventCard({ event }: { event: ConversationEvent }) {
       </p>
     );
   }
-  return (
-    <p className="conversation-event__lifecycle">
-      {event.phase.split("-").join(" ")}
-    </p>
-  );
+  if (event.type === "lifecycle")
+    return (
+      <p className="conversation-event__lifecycle">
+        {event.phase.split("-").join(" ")}
+      </p>
+    );
+  return null;
 }
 
 export function ConversationWorkspace({
@@ -181,7 +208,9 @@ export function ConversationWorkspace({
         capability.id === "conversation-runtime" &&
         capability.state === "ready",
     );
-  const active = snapshot.state === "running" || snapshot.state === "stopping";
+  const active = ["running", "waiting-for-approval", "stopping"].includes(
+    snapshot.state,
+  );
   const unsafeCombination =
     sandboxMode === "danger-full-access" && approvalPolicy === "never";
   const request = useMemo(
@@ -224,7 +253,11 @@ export function ConversationWorkspace({
   }
 
   async function stopTask() {
-    if (!snapshot.conversationId || snapshot.state !== "running" || busy)
+    if (
+      !snapshot.conversationId ||
+      !["running", "waiting-for-approval"].includes(snapshot.state) ||
+      busy
+    )
       return;
     try {
       await onInterrupt(snapshot.conversationId);
@@ -406,6 +439,7 @@ export function ConversationWorkspace({
               </strong>
             </div>
             {(snapshot.state === "running" ||
+              snapshot.state === "waiting-for-approval" ||
               snapshot.state === "stopping") && (
               <span className="conversation-pulse" aria-hidden="true" />
             )}

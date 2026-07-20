@@ -10,7 +10,9 @@ import { desktopBootstrapSchema, type DesktopBootstrap } from "./contract";
 import {
   conversationSnapshotSchema,
   conversationStartRequestSchema,
+  conversationApprovalDecisionRequestSchema,
   conversationIdSchema,
+  type ConversationApprovalDecisionRequest,
   type ConversationSnapshot,
   type ConversationStartRequest,
 } from "./conversation";
@@ -49,6 +51,8 @@ export const CONVERSATION_STATUS_COMMAND = "conversation_status";
 export const CONVERSATION_START_COMMAND = "conversation_start";
 export const CONVERSATION_POLL_COMMAND = "conversation_poll";
 export const CONVERSATION_INTERRUPT_COMMAND = "conversation_interrupt";
+export const CONVERSATION_APPROVAL_DECIDE_COMMAND =
+  "conversation_approval_decide";
 export const CONVERSATION_SESSIONS_COMMAND = "conversation_sessions";
 export const CONVERSATION_RESUME_COMMAND = "conversation_resume";
 export const CONVERSATION_FORK_COMMAND = "conversation_fork";
@@ -247,6 +251,18 @@ export async function interruptConversation(
   const reviewedId = conversationIdSchema.parse(conversationId);
   const payload = await invokeFunction(CONVERSATION_INTERRUPT_COMMAND, {
     conversationId: reviewedId,
+  });
+  return conversationSnapshotSchema.parse(payload);
+}
+
+export async function decideConversationApproval(
+  request: ConversationApprovalDecisionRequest,
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<ConversationSnapshot> {
+  const reviewedRequest =
+    conversationApprovalDecisionRequestSchema.parse(request);
+  const payload = await invokeFunction(CONVERSATION_APPROVAL_DECIDE_COMMAND, {
+    request: reviewedRequest,
   });
   return conversationSnapshotSchema.parse(payload);
 }

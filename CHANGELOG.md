@@ -109,6 +109,19 @@ released a usable application.
   axe-core coverage proving that title filtering does not corrupt complete
   reconciliation or expose paths, Codex IDs, previews, transcripts, or raw
   protocol records.
+- A Milestone 9A native approval boundary for exact command, file, and
+  permission requests, with app-owned UUIDv7 correlation, one-turn
+  approve/decline/cancel decisions, turn-scoped permission grants, safe pending
+  cancellation, stale/unavailable-decision refusal, and conservative crash
+  recovery without approval persistence.
+- Detailed schema-v2 activity events with stable app IDs, sanitized command and
+  tool/file presentation, bounded line-buffered command output, MCP progress,
+  exit status, approval lifecycle events, terminal-control stripping,
+  credential redaction, and project-relative/outside-project path reduction.
+- Reviewed Codex 0.144.6 approval request/response, command-output, MCP-progress,
+  and request-resolution schemas plus deterministic tests for ID collisions,
+  malformed/unsupported requests, raw argument/diff discard, split-secret
+  redaction, exact decision responses, and cancel-before-interrupt ordering.
 
 ### Changed
 
@@ -172,6 +185,11 @@ released a usable application.
   remain transient, lifecycle actions use app-owned IDs, and no live model
   call, approval decision, deletion, deployment, package, or release was
   performed.
+- Completed the Milestone 9A native approval and detailed-activity contract
+  locally. Routine verification used deterministic fixtures only; no live model
+  call, real approval response, persistent policy grant, deployment, package,
+  or release was performed. The polished selectable/expanded interface remains
+  Milestone 9B.
 
 ### Migration note
 
@@ -188,8 +206,9 @@ released a usable application.
 ### Known limitations
 
 - The desktop adapter, Codex-owned authentication workflow, project attachment,
-  conversation MVP, native session lifecycle and history interface, and website
-  are locally verified, but approval/expanded process details, installable
+  conversation MVP, native session lifecycle/history, Milestone 9A approval and
+  detailed-activity contract, and website are locally verified, but the
+  polished selectable/expanded approval interface, installable
   packages, website deployment, and a release workflow do not exist.
 - Integration compatibility is based on Codex CLI 0.144.6 and must be probed at
   runtime.

@@ -3,6 +3,10 @@
 - Status: Accepted for Milestone 7A
 - Date: 2026-07-19
 
+> Milestone 9A supersedes this checkpoint's approval-block behavior for the
+> reviewed stable request subset; see ADR 0011. Unsupported requests still fail
+> closed.
+
 ## Context
 
 QuireForge must start Codex work only in a verified attached directory, expose a

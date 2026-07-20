@@ -326,7 +326,7 @@ describe("QuireForge desktop shell", () => {
   it("starts, polls, deduplicates, and completes a native conversation", async () => {
     const conversationId = "018f0000-0000-7000-8000-000000000010";
     const running = conversationSnapshotSchema.parse({
-      schemaVersion: 1,
+      schemaVersion: 2,
       state: "running",
       conversationId,
       projectId,
@@ -334,6 +334,7 @@ describe("QuireForge desktop shell", () => {
       reasoningEffort: "high",
       sandboxMode: "workspace-write",
       approvalPolicy: "on-request",
+      pendingApproval: null,
       events: [
         {
           type: "agent-message-delta",
@@ -390,7 +391,7 @@ describe("QuireForge desktop shell", () => {
 
   it("cancels pending conversation polling when the shell unmounts", async () => {
     const running = conversationSnapshotSchema.parse({
-      schemaVersion: 1,
+      schemaVersion: 2,
       state: "running",
       conversationId: "018f0000-0000-7000-8000-000000000010",
       projectId,
@@ -398,6 +399,7 @@ describe("QuireForge desktop shell", () => {
       reasoningEffort: "high",
       sandboxMode: "workspace-write",
       approvalPolicy: "on-request",
+      pendingApproval: null,
       events: [],
       diagnosticCode: null,
     });
@@ -444,7 +446,7 @@ describe("QuireForge desktop shell", () => {
       diagnosticCode: null,
     });
     const running = conversationSnapshotSchema.parse({
-      schemaVersion: 1,
+      schemaVersion: 2,
       state: "running",
       conversationId,
       projectId,
@@ -452,6 +454,7 @@ describe("QuireForge desktop shell", () => {
       reasoningEffort: "high",
       sandboxMode: "workspace-write",
       approvalPolicy: "on-request",
+      pendingApproval: null,
       events: [],
       diagnosticCode: null,
     });

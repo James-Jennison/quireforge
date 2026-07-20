@@ -4,8 +4,8 @@ mod project;
 
 use codex::{
     types::CodexRuntimeSnapshot, AuthLoginMethod, CodexAuthService, CodexAuthSnapshot,
-    CodexRuntimeService, ConversationContinueRequest, ConversationService, ConversationSnapshot,
-    ConversationStartRequest, SessionLifecycleSnapshot,
+    CodexRuntimeService, ConversationApprovalDecisionRequest, ConversationContinueRequest,
+    ConversationService, ConversationSnapshot, ConversationStartRequest, SessionLifecycleSnapshot,
 };
 use contract::DesktopBootstrap;
 use project::{
@@ -190,6 +190,15 @@ async fn conversation_interrupt(
 }
 
 #[tauri::command]
+async fn conversation_approval_decide(
+    request: ConversationApprovalDecisionRequest,
+    service: tauri::State<'_, ConversationService>,
+    projects: tauri::State<'_, ProjectService>,
+) -> Result<ConversationSnapshot, ()> {
+    Ok(service.decide_approval(request, &projects).await)
+}
+
+#[tauri::command]
 async fn conversation_sessions(
     request: codex::SessionListRequest,
     service: tauri::State<'_, ConversationService>,
@@ -272,6 +281,7 @@ pub fn run() {
             conversation_start,
             conversation_poll,
             conversation_interrupt,
+            conversation_approval_decide,
             conversation_sessions,
             conversation_resume,
             conversation_fork,

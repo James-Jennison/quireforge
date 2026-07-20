@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "state": "empty",
   "conversationId": null,
   "projectId": null,
@@ -7,6 +7,7 @@
   "reasoningEffort": null,
   "sandboxMode": null,
   "approvalPolicy": null,
+  "pendingApproval": null,
   "events": [],
   "diagnosticCode": null
 }

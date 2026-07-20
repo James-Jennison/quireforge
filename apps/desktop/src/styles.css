@@ -1437,6 +1437,7 @@ button:disabled {
 }
 
 .conversation-event__activity,
+.conversation-event__approval,
 .conversation-event__lifecycle,
 .conversation-event__error {
   color: var(--text-subtle);
@@ -1447,6 +1448,11 @@ button:disabled {
 }
 
 .conversation-event__activity {
+  display: grid;
+  gap: 7px;
+}
+
+.conversation-event__activity p {
   display: flex;
   align-items: center;
   gap: 7px;
@@ -1457,6 +1463,28 @@ button:disabled {
   height: 6px;
   border-radius: 50%;
   background: var(--green);
+}
+
+.conversation-event__activity pre,
+.conversation-event__output {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--text-muted);
+  font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+  font-size: 9px;
+  font-weight: 500;
+  line-height: 1.55;
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: pre-wrap;
+}
+
+.conversation-event__activity small {
+  color: var(--text-muted);
+  font-size: 8px;
+  letter-spacing: normal;
+  text-transform: none;
 }
 
 .conversation-event__error,

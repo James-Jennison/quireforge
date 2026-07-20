@@ -185,6 +185,37 @@ IDs. Browser preview cannot simulate a session operation. Detailed real-time
 command/tool/process disclosure remains Milestone 9 and requires its own
 redacted normalized event contract.
 
+### Milestone 9A approval and activity boundary
+
+The serialized conversation owner now handles only three reviewed stable
+server-request methods: command execution, file change, and permissions. It
+correlates native thread, turn, request, and item identity, then replaces the
+native request/item identity with app-owned approval and activity UUIDv7 values
+before IPC. React can submit only an app conversation ID, app approval ID, and
+approve/decline/cancel enum through the fixed
+`conversation_approval_decide` command.
+
+Command session acceptance and execution/network policy amendments are not
+offered. Additional per-command permission and network context is strictly
+parsed and summarized. Permission approval is always turn-scoped; decline and
+cancel grant nothing. File requests containing the unstable session write-root
+grant can only be declined or canceled. Cancel resolves the pending request
+before `turn/interrupt` is sent with native-held IDs.
+
+Activity schema version 2 exposes stable app activity IDs, normalized titles,
+sanitized details, status, exit code, bounded command-output lines, MCP progress,
+and approval lifecycle events. Rust removes terminal/bidirectional controls,
+redacts credential-shaped values, presents only safe project-relative paths,
+and discards raw arguments and diffs. Command output waits for a line boundary
+so split secret assignments are redacted together; incomplete oversized lines
+and final unterminated tails are omitted.
+
+The pending approval and output buffer are ephemeral. SQLite continues to store
+only the active reference/status, so restart recovery marks the lost turn
+interrupted instead of persisting or replaying consent. Milestone 9B consumes
+this contract in selectable expanded activity rows and the complete approval
+interface.
+
 ## Application layers
 
 ### Frontend

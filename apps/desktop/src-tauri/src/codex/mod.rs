@@ -10,7 +10,9 @@ pub mod types;
 
 pub use auth::types::{AuthLoginMethod, CodexAuthSnapshot};
 pub use auth::CodexAuthService;
-pub use conversation::types::{ConversationSnapshot, ConversationStartRequest};
+pub use conversation::types::{
+    ConversationApprovalDecisionRequest, ConversationSnapshot, ConversationStartRequest,
+};
 pub use conversation::{
     ConversationContinueRequest, ConversationService, SessionLifecycleSnapshot, SessionListRequest,
 };

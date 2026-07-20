@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   conversationSnapshotSchema,
   conversationStartRequestSchema,
+  conversationApprovalDecisionRequestSchema,
   scaffoldConversation,
 } from "./conversation";
 
@@ -60,7 +61,7 @@ describe("conversation contract", () => {
 
   it("accepts normalized ordered events without Codex protocol identity", () => {
     const snapshot = conversationSnapshotSchema.parse({
-      schemaVersion: 1,
+      schemaVersion: 2,
       state: "running",
       conversationId,
       projectId,
@@ -68,6 +69,7 @@ describe("conversation contract", () => {
       reasoningEffort: "high",
       sandboxMode: "read-only",
       approvalPolicy: "untrusted",
+      pendingApproval: null,
       events: [
         { type: "lifecycle", sequence: 1, phase: "starting" },
         {
@@ -90,6 +92,62 @@ describe("conversation contract", () => {
       conversationSnapshotSchema.parse({
         ...snapshot,
         events: snapshot.events.toReversed(),
+      }),
+    ).toThrow();
+  });
+
+  it("accepts only app-owned approval decisions and bounded activity detail", () => {
+    const approvalId = "018f0000-0000-7000-8000-000000000011";
+    const activityId = "018f0000-0000-7000-8000-000000000012";
+    const request = conversationApprovalDecisionRequestSchema.parse({
+      conversationId,
+      approvalId,
+      decision: "decline",
+    });
+    expect(request).toEqual({
+      conversationId,
+      approvalId,
+      decision: "decline",
+    });
+
+    const waiting = conversationSnapshotSchema.parse({
+      schemaVersion: 2,
+      state: "waiting-for-approval",
+      conversationId,
+      projectId,
+      modelId: "gpt-5.6-sol",
+      reasoningEffort: "high",
+      sandboxMode: "workspace-write",
+      approvalPolicy: "on-request",
+      pendingApproval: {
+        approvalId,
+        activityId,
+        kind: "command-execution",
+        title: "Run this command?",
+        reason: "The check needs permission.",
+        details: [{ label: "Command", value: "pnpm check" }],
+        decisions: ["approve", "decline", "cancel"],
+      },
+      events: [
+        {
+          type: "approval-requested",
+          sequence: 1,
+          approvalId,
+          activityId,
+          kind: "command-execution",
+        },
+      ],
+      diagnosticCode: null,
+    });
+    expect(waiting.pendingApproval?.approvalId).toBe(approvalId);
+
+    expect(() =>
+      conversationSnapshotSchema.parse({
+        ...waiting,
+        pendingApproval: {
+          ...waiting.pendingApproval,
+          rawArguments: { token: "private" },
+        },
       }),
     ).toThrow();
   });

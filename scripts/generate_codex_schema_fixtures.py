@@ -13,6 +13,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 OUTPUT_ROOT = ROOT / "apps/desktop/fixtures/codex-schema"
 SELECTED_SCHEMAS = (
+    "RequestId.json",
+    "CommandExecutionRequestApprovalParams.json",
+    "CommandExecutionRequestApprovalResponse.json",
+    "FileChangeRequestApprovalParams.json",
+    "FileChangeRequestApprovalResponse.json",
+    "PermissionsRequestApprovalParams.json",
+    "PermissionsRequestApprovalResponse.json",
     "v1/InitializeParams.json",
     "v1/InitializeResponse.json",
     "v2/AccountLoginCompletedNotification.json",
@@ -54,6 +61,9 @@ SELECTED_SCHEMAS = (
     "v2/TurnPlanUpdatedNotification.json",
     "v2/ItemStartedNotification.json",
     "v2/ItemCompletedNotification.json",
+    "v2/CommandExecutionOutputDeltaNotification.json",
+    "v2/McpToolCallProgressNotification.json",
+    "v2/ServerRequestResolvedNotification.json",
     "v2/ErrorNotification.json",
 )
 
@@ -128,8 +138,8 @@ def main() -> None:
             "generator": "codex app-server generate-json-schema --experimental",
             "selection": (
                 "initialize, model/list, stable account lifecycle, and the "
-                "Milestone 7 conversation runtime and Milestone 8A reviewed "
-                "thread lifecycle subset only"
+                "Milestone 7 conversation runtime, Milestone 8A thread "
+                "lifecycle, and Milestone 9A approval/activity subset only"
             ),
             "files": manifest_files,
         }

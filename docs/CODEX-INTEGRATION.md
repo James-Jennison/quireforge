@@ -271,6 +271,32 @@ grouping, keyboard-accessible tabs, and lifecycle controls use app-owned IDs.
 Approval presentation, decisions, and expandable real-time process details
 remain Milestone 9.
 
+### Implemented Milestone 9A subset
+
+The native adapter now accepts the reviewed stable
+`item/commandExecution/requestApproval`, `item/fileChange/requestApproval`, and
+`item/permissions/requestApproval` methods. It also consumes reviewed command
+output, MCP progress, and server-request resolution notifications. Client
+response correlation checks the method before the ID so an inbound server
+request cannot be mistaken for a response even if their numeric IDs coincide.
+
+All requests must match the active native-owned thread and turn. QuireForge
+retains the native request ID only in memory and exposes a new app UUIDv7.
+Command `acceptForSession`, execution-policy amendments, and network-policy
+amendments are filtered out. Additional per-command permissions and network
+targets are strictly parsed and summarized. Permission grants echo only the
+validated profile with turn scope; denial and cancellation grant an empty
+profile. Unstable file write-root grants cannot be accepted through the
+Milestone 9A contract.
+
+Detailed item normalization retains no tool arguments, file diff body,
+aggregated raw output, or raw protocol payload. Commands, paths, labels, web
+queries, output lines, status, and exit code cross the boundary only after
+control stripping, credential redaction, path reduction, and size bounds.
+Command chunks are joined through a line boundary before display redaction.
+Milestone 9B remains responsible for the polished selectable/expanded activity
+and approval UI.
+
 ## Authentication boundary
 
 Preferred authentication is Codex-managed ChatGPT login:

@@ -5,7 +5,7 @@ use std::{
     time::Duration,
 };
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use tokio::{
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader, Lines},
@@ -67,6 +67,65 @@ pub(crate) enum AppServerNotification {
     },
     AccountUpdated,
     Conversation(ConversationNotification),
+    ConversationRequest(ConversationServerRequest),
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[serde(untagged)]
+pub(crate) enum ServerRequestId {
+    String(String),
+    Integer(i64),
+}
+
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub(crate) enum ConversationServerDecision {
+    Accept,
+    Decline,
+    Cancel,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) enum ConversationServerRequest {
+    CommandExecution {
+        request_id: ServerRequestId,
+        thread_id: String,
+        turn_id: String,
+        item_id: String,
+        command: Option<String>,
+        cwd: Option<String>,
+        reason: Option<String>,
+        additional_permissions: Option<Value>,
+        network_host: Option<String>,
+        network_protocol: Option<String>,
+        available_decisions: Vec<ConversationServerDecision>,
+    },
+    FileChange {
+        request_id: ServerRequestId,
+        thread_id: String,
+        turn_id: String,
+        item_id: String,
+        grant_root: Option<String>,
+        reason: Option<String>,
+    },
+    Permissions {
+        request_id: ServerRequestId,
+        thread_id: String,
+        turn_id: String,
+        item_id: String,
+        cwd: String,
+        permissions: Value,
+        reason: Option<String>,
+    },
+}
+
+impl ConversationServerRequest {
+    pub(crate) fn request_id(&self) -> &ServerRequestId {
+        match self {
+            Self::CommandExecution { request_id, .. }
+            | Self::FileChange { request_id, .. }
+            | Self::Permissions { request_id, .. } => request_id,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -103,8 +162,18 @@ pub(crate) enum ConversationNotification {
     ItemLifecycle {
         thread_id: String,
         turn_id: String,
-        kind: ConversationItemKind,
-        status: ConversationItemStatus,
+        item: ConversationItem,
+    },
+    ActivityDelta {
+        thread_id: String,
+        turn_id: String,
+        item_id: String,
+        kind: ConversationActivityDeltaKind,
+        delta: String,
+    },
+    ServerRequestResolved {
+        thread_id: String,
+        request_id: ServerRequestId,
     },
     TurnCompleted {
         thread_id: String,
@@ -117,6 +186,42 @@ pub(crate) enum ConversationNotification {
         code: ConversationErrorCode,
         will_retry: bool,
     },
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum ConversationActivityDeltaKind {
+    CommandOutput,
+    ToolProgress,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct ConversationItem {
+    pub item_id: String,
+    pub kind: ConversationItemKind,
+    pub status: ConversationItemStatus,
+    pub detail: ConversationItemDetail,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) enum ConversationItemDetail {
+    CommandExecution {
+        command: String,
+        cwd: String,
+        exit_code: Option<i32>,
+    },
+    FileChange {
+        paths: Vec<String>,
+    },
+    ToolCall {
+        server: Option<String>,
+        tool: String,
+        app_name: Option<String>,
+        action_name: Option<String>,
+    },
+    WebSearch {
+        query: String,
+    },
+    None,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -296,6 +401,13 @@ impl AppServerProcess {
             let message: Value = serde_json::from_str(&line)
                 .map_err(|_| CodexAdapterError::InvalidProtocolMessage)?;
 
+            if message.get("method").and_then(Value::as_str).is_some() {
+                if let Some(notification) = parse_notification(&message)? {
+                    self.notifications.push_back(notification);
+                }
+                continue;
+            }
+
             if message.get("id").and_then(Value::as_u64) == Some(request_id) {
                 if message.get("error").is_some_and(|error| !error.is_null()) {
                     return Err(CodexAdapterError::RpcRejected);
@@ -307,19 +419,39 @@ impl AppServerProcess {
                     .ok_or(CodexAdapterError::InvalidProtocolMessage);
             }
 
-            if let Some(notification) = parse_notification(&message)? {
-                self.notifications.push_back(notification);
-                continue;
-            }
-
-            if message.get("method").and_then(Value::as_str).is_some() {
-                // Unrelated notifications are deliberately discarded without retaining
-                // account, installation, path, or remote-control metadata.
-                continue;
-            }
-
             return Err(CodexAdapterError::InvalidProtocolMessage);
         }
+    }
+
+    pub(crate) async fn respond_server_request(
+        &mut self,
+        request_id: &ServerRequestId,
+        result: Value,
+    ) -> Result<(), CodexAdapterError> {
+        let encoded = serde_json::to_vec(&json!({
+            "id": request_id,
+            "result": result,
+        }))
+        .map_err(|_| CodexAdapterError::InvalidProtocolMessage)?;
+        if encoded.len() > MAX_PROTOCOL_LINE_BYTES {
+            return Err(CodexAdapterError::MessageTooLarge);
+        }
+        let stdin = self
+            .stdin
+            .as_mut()
+            .ok_or(CodexAdapterError::TransportClosed)?;
+        stdin
+            .write_all(&encoded)
+            .await
+            .map_err(|_| CodexAdapterError::TransportClosed)?;
+        stdin
+            .write_all(b"\n")
+            .await
+            .map_err(|_| CodexAdapterError::TransportClosed)?;
+        stdin
+            .flush()
+            .await
+            .map_err(|_| CodexAdapterError::TransportClosed)
     }
 
     pub(crate) fn take_notification(&mut self) -> Option<AppServerNotification> {
@@ -398,7 +530,9 @@ fn parse_notification(message: &Value) -> Result<Option<AppServerNotification>, 
         return Ok(None);
     };
     if message.get("id").is_some_and(|id| !id.is_null()) {
-        return Err(CodexAdapterError::UnexpectedServerRequest);
+        return parse_server_request(message, method)
+            .map(AppServerNotification::ConversationRequest)
+            .map(Some);
     }
 
     match method {
@@ -573,47 +707,82 @@ fn parse_notification(message: &Value) -> Result<Option<AppServerNotification>, 
         }
         "item/started" | "item/completed" => {
             #[derive(Deserialize)]
-            struct Item {
-                #[serde(rename = "id")]
-                _id: String,
-                #[serde(rename = "type")]
-                kind: String,
-            }
-            #[derive(Deserialize)]
             #[serde(rename_all = "camelCase")]
             struct Params {
                 thread_id: String,
                 turn_id: String,
-                item: Item,
+                item: Value,
             }
             let params: Params = notification_params(message)?;
             validate_conversation_ids(&params.thread_id, &params.turn_id)?;
-            validate_protocol_identifier(&params.item._id, 128)?;
-            let kind = match params.item.kind.as_str() {
-                "userMessage" => ConversationItemKind::UserMessage,
-                "agentMessage" => ConversationItemKind::AgentMessage,
-                "plan" => ConversationItemKind::Plan,
-                "reasoning" => ConversationItemKind::Reasoning,
-                "commandExecution" => ConversationItemKind::CommandExecution,
-                "fileChange" => ConversationItemKind::FileChange,
-                "mcpToolCall" | "dynamicToolCall" | "collabAgentToolCall" | "subAgentActivity" => {
-                    ConversationItemKind::ToolCall
-                }
-                "webSearch" => ConversationItemKind::WebSearch,
-                "imageView" | "imageGeneration" => ConversationItemKind::Image,
-                _ => ConversationItemKind::Other,
-            };
             let status = if method == "item/started" {
                 ConversationItemStatus::Started
             } else {
                 ConversationItemStatus::Completed
             };
+            let item = parse_conversation_item(params.item, status)?;
             Ok(Some(AppServerNotification::Conversation(
                 ConversationNotification::ItemLifecycle {
                     thread_id: params.thread_id,
                     turn_id: params.turn_id,
+                    item,
+                },
+            )))
+        }
+        "item/commandExecution/outputDelta" | "item/mcpToolCall/progress" => {
+            #[derive(Deserialize)]
+            #[serde(rename_all = "camelCase")]
+            struct Params {
+                thread_id: String,
+                turn_id: String,
+                item_id: String,
+                #[serde(default)]
+                delta: Option<String>,
+                #[serde(default)]
+                message: Option<String>,
+            }
+            let params: Params = notification_params(message)?;
+            validate_conversation_ids(&params.thread_id, &params.turn_id)?;
+            validate_protocol_identifier(&params.item_id, 128)?;
+            let (kind, delta) = if method == "item/commandExecution/outputDelta" {
+                (
+                    ConversationActivityDeltaKind::CommandOutput,
+                    params
+                        .delta
+                        .ok_or(CodexAdapterError::InvalidProtocolMessage)?,
+                )
+            } else {
+                (
+                    ConversationActivityDeltaKind::ToolProgress,
+                    params
+                        .message
+                        .ok_or(CodexAdapterError::InvalidProtocolMessage)?,
+                )
+            };
+            validate_bounded_protocol_text(&delta, 64 * 1024)?;
+            Ok(Some(AppServerNotification::Conversation(
+                ConversationNotification::ActivityDelta {
+                    thread_id: params.thread_id,
+                    turn_id: params.turn_id,
+                    item_id: params.item_id,
                     kind,
-                    status,
+                    delta,
+                },
+            )))
+        }
+        "serverRequest/resolved" => {
+            #[derive(Deserialize)]
+            #[serde(rename_all = "camelCase", deny_unknown_fields)]
+            struct Params {
+                thread_id: String,
+                request_id: Value,
+            }
+            let params: Params = notification_params(message)?;
+            validate_uuid_v7(&params.thread_id)?;
+            Ok(Some(AppServerNotification::Conversation(
+                ConversationNotification::ServerRequestResolved {
+                    thread_id: params.thread_id,
+                    request_id: parse_server_request_id(&params.request_id)?,
                 },
             )))
         }
@@ -686,6 +855,634 @@ fn parse_notification(message: &Value) -> Result<Option<AppServerNotification>, 
             )))
         }
         _ => Ok(None),
+    }
+}
+
+fn parse_server_request(
+    message: &Value,
+    method: &str,
+) -> Result<ConversationServerRequest, CodexAdapterError> {
+    let request_id = parse_server_request_id(
+        message
+            .get("id")
+            .ok_or(CodexAdapterError::InvalidProtocolMessage)?,
+    )?;
+
+    #[derive(Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    struct CommonApprovalParams {
+        thread_id: String,
+        turn_id: String,
+        item_id: String,
+        started_at_ms: i64,
+        #[serde(default)]
+        reason: Option<String>,
+    }
+
+    fn validate_common(params: &CommonApprovalParams) -> Result<(), CodexAdapterError> {
+        validate_conversation_ids(&params.thread_id, &params.turn_id)?;
+        validate_protocol_identifier(&params.item_id, 128)?;
+        if params.started_at_ms < 0 {
+            return Err(CodexAdapterError::InvalidProtocolMessage);
+        }
+        if let Some(reason) = params.reason.as_deref() {
+            validate_bounded_protocol_text(reason, 4096)?;
+        }
+        Ok(())
+    }
+
+    match method {
+        "item/commandExecution/requestApproval" => {
+            #[derive(Deserialize)]
+            #[serde(rename_all = "camelCase")]
+            struct Params {
+                #[serde(flatten)]
+                common: CommonApprovalParams,
+                #[serde(default)]
+                command: Option<String>,
+                #[serde(default)]
+                cwd: Option<String>,
+                #[serde(default)]
+                available_decisions: Option<Vec<Value>>,
+                #[serde(default)]
+                additional_permissions: Option<RequestPermissionProfile>,
+                #[serde(default)]
+                network_approval_context: Option<NetworkApprovalContext>,
+            }
+            let params: Params = notification_params(message)?;
+            validate_common(&params.common)?;
+            if let Some(command) = params.command.as_deref() {
+                validate_bounded_protocol_text(command, 64 * 1024)?;
+            }
+            if let Some(cwd) = params.cwd.as_deref() {
+                validate_absolute_path(cwd)?;
+            }
+            if let Some(permissions) = params.additional_permissions.as_ref() {
+                permissions.validate()?;
+            }
+            if let Some(context) = params.network_approval_context.as_ref() {
+                context.validate()?;
+            }
+            let additional_permissions = params
+                .additional_permissions
+                .map(serde_json::to_value)
+                .transpose()
+                .map_err(|_| CodexAdapterError::InvalidProtocolMessage)?;
+            let available_decisions = parse_available_decisions(params.available_decisions)?;
+            Ok(ConversationServerRequest::CommandExecution {
+                request_id,
+                thread_id: params.common.thread_id,
+                turn_id: params.common.turn_id,
+                item_id: params.common.item_id,
+                command: params.command,
+                cwd: params.cwd,
+                reason: params.common.reason,
+                additional_permissions,
+                network_host: params
+                    .network_approval_context
+                    .as_ref()
+                    .map(|context| context.host.clone()),
+                network_protocol: params
+                    .network_approval_context
+                    .map(|context| context.protocol.as_str().to_owned()),
+                available_decisions,
+            })
+        }
+        "item/fileChange/requestApproval" => {
+            #[derive(Deserialize)]
+            #[serde(rename_all = "camelCase")]
+            struct Params {
+                #[serde(flatten)]
+                common: CommonApprovalParams,
+                #[serde(default)]
+                grant_root: Option<String>,
+            }
+            let params: Params = notification_params(message)?;
+            validate_common(&params.common)?;
+            if let Some(grant_root) = params.grant_root.as_deref() {
+                validate_absolute_path(grant_root)?;
+            }
+            Ok(ConversationServerRequest::FileChange {
+                request_id,
+                thread_id: params.common.thread_id,
+                turn_id: params.common.turn_id,
+                item_id: params.common.item_id,
+                grant_root: params.grant_root,
+                reason: params.common.reason,
+            })
+        }
+        "item/permissions/requestApproval" => {
+            #[derive(Deserialize)]
+            #[serde(rename_all = "camelCase")]
+            struct Params {
+                #[serde(flatten)]
+                common: CommonApprovalParams,
+                cwd: String,
+                permissions: RequestPermissionProfile,
+            }
+            let params: Params = notification_params(message)?;
+            validate_common(&params.common)?;
+            validate_absolute_path(&params.cwd)?;
+            params.permissions.validate()?;
+            let permissions = serde_json::to_value(params.permissions)
+                .map_err(|_| CodexAdapterError::InvalidProtocolMessage)?;
+            Ok(ConversationServerRequest::Permissions {
+                request_id,
+                thread_id: params.common.thread_id,
+                turn_id: params.common.turn_id,
+                item_id: params.common.item_id,
+                cwd: params.cwd,
+                permissions,
+                reason: params.common.reason,
+            })
+        }
+        _ => Err(CodexAdapterError::UnexpectedServerRequest),
+    }
+}
+
+fn parse_server_request_id(value: &Value) -> Result<ServerRequestId, CodexAdapterError> {
+    if let Some(value) = value.as_str() {
+        validate_protocol_identifier(value, 128)?;
+        return Ok(ServerRequestId::String(value.to_owned()));
+    }
+    value
+        .as_i64()
+        .map(ServerRequestId::Integer)
+        .ok_or(CodexAdapterError::InvalidProtocolMessage)
+}
+
+fn parse_available_decisions(
+    values: Option<Vec<Value>>,
+) -> Result<Vec<ConversationServerDecision>, CodexAdapterError> {
+    let Some(values) = values else {
+        return Ok(vec![
+            ConversationServerDecision::Accept,
+            ConversationServerDecision::Decline,
+            ConversationServerDecision::Cancel,
+        ]);
+    };
+    if values.len() > 16 {
+        return Err(CodexAdapterError::InvalidProtocolMessage);
+    }
+    let mut decisions = Vec::new();
+    for value in values {
+        let decision = match &value {
+            Value::String(value) if value == "accept" => Some(ConversationServerDecision::Accept),
+            Value::String(value) if value == "decline" => Some(ConversationServerDecision::Decline),
+            Value::String(value) if value == "cancel" => Some(ConversationServerDecision::Cancel),
+            Value::String(value) if value == "acceptForSession" => None,
+            Value::Object(_) => None,
+            _ => return Err(CodexAdapterError::InvalidProtocolMessage),
+        };
+        if let Some(decision) = decision {
+            if !decisions.contains(&decision) {
+                decisions.push(decision);
+            }
+        }
+    }
+    if decisions.is_empty() {
+        return Err(CodexAdapterError::InvalidProtocolMessage);
+    }
+    Ok(decisions)
+}
+
+fn parse_conversation_item(
+    item: Value,
+    status: ConversationItemStatus,
+) -> Result<ConversationItem, CodexAdapterError> {
+    let object = item
+        .as_object()
+        .ok_or(CodexAdapterError::InvalidProtocolMessage)?;
+    let item_id = required_string(object.get("id"), 128)?;
+    validate_protocol_identifier(&item_id, 128)?;
+    let item_type = required_string(object.get("type"), 64)?;
+
+    let (kind, detail) = match item_type.as_str() {
+        "userMessage" => (
+            ConversationItemKind::UserMessage,
+            ConversationItemDetail::None,
+        ),
+        "agentMessage" => (
+            ConversationItemKind::AgentMessage,
+            ConversationItemDetail::None,
+        ),
+        "plan" => (ConversationItemKind::Plan, ConversationItemDetail::None),
+        "reasoning" => (
+            ConversationItemKind::Reasoning,
+            ConversationItemDetail::None,
+        ),
+        "commandExecution" => {
+            let command = required_bounded_text(object.get("command"), 64 * 1024)?;
+            let cwd = required_bounded_text(object.get("cwd"), 4096)?;
+            validate_absolute_path(&cwd)?;
+            validate_enum_string(
+                object.get("status"),
+                &["inProgress", "completed", "failed", "declined"],
+            )?;
+            let command_actions = object
+                .get("commandActions")
+                .and_then(Value::as_array)
+                .ok_or(CodexAdapterError::InvalidProtocolMessage)?;
+            if command_actions.len() > 128 {
+                return Err(CodexAdapterError::InvalidProtocolMessage);
+            }
+            let exit_code = object
+                .get("exitCode")
+                .filter(|value| !value.is_null())
+                .map(|value| {
+                    value
+                        .as_i64()
+                        .and_then(|value| i32::try_from(value).ok())
+                        .ok_or(CodexAdapterError::InvalidProtocolMessage)
+                })
+                .transpose()?;
+            (
+                ConversationItemKind::CommandExecution,
+                ConversationItemDetail::CommandExecution {
+                    command,
+                    cwd,
+                    exit_code,
+                },
+            )
+        }
+        "fileChange" => {
+            validate_enum_string(
+                object.get("status"),
+                &["inProgress", "completed", "failed", "declined"],
+            )?;
+            let changes = object
+                .get("changes")
+                .and_then(Value::as_array)
+                .ok_or(CodexAdapterError::InvalidProtocolMessage)?;
+            if changes.len() > 128 {
+                return Err(CodexAdapterError::InvalidProtocolMessage);
+            }
+            let paths = changes
+                .iter()
+                .map(|change| {
+                    let change = change
+                        .as_object()
+                        .ok_or(CodexAdapterError::InvalidProtocolMessage)?;
+                    let path = required_bounded_text(change.get("path"), 4096)?;
+                    validate_bounded_protocol_text(
+                        change
+                            .get("diff")
+                            .and_then(Value::as_str)
+                            .ok_or(CodexAdapterError::InvalidProtocolMessage)?,
+                        256 * 1024,
+                    )?;
+                    validate_patch_kind(
+                        change
+                            .get("kind")
+                            .ok_or(CodexAdapterError::InvalidProtocolMessage)?,
+                    )?;
+                    Ok(path)
+                })
+                .collect::<Result<Vec<_>, CodexAdapterError>>()?;
+            (
+                ConversationItemKind::FileChange,
+                ConversationItemDetail::FileChange { paths },
+            )
+        }
+        "mcpToolCall" => {
+            if !object.contains_key("arguments") {
+                return Err(CodexAdapterError::InvalidProtocolMessage);
+            }
+            validate_enum_string(object.get("status"), &["inProgress", "completed", "failed"])?;
+            let server = required_string(object.get("server"), 128)?;
+            validate_protocol_identifier(&server, 128)?;
+            let tool = required_string(object.get("tool"), 128)?;
+            validate_protocol_identifier(&tool, 128)?;
+            let (app_name, action_name) = parse_app_context(object.get("appContext"))?;
+            (
+                ConversationItemKind::ToolCall,
+                ConversationItemDetail::ToolCall {
+                    server: Some(server),
+                    tool,
+                    app_name,
+                    action_name,
+                },
+            )
+        }
+        "dynamicToolCall" => {
+            if !object.contains_key("arguments") {
+                return Err(CodexAdapterError::InvalidProtocolMessage);
+            }
+            validate_enum_string(object.get("status"), &["inProgress", "completed", "failed"])?;
+            let tool = required_string(object.get("tool"), 128)?;
+            validate_protocol_identifier(&tool, 128)?;
+            (
+                ConversationItemKind::ToolCall,
+                ConversationItemDetail::ToolCall {
+                    server: None,
+                    tool,
+                    app_name: None,
+                    action_name: None,
+                },
+            )
+        }
+        "collabAgentToolCall" | "subAgentActivity" => (
+            ConversationItemKind::ToolCall,
+            ConversationItemDetail::ToolCall {
+                server: None,
+                tool: "collaboration".to_owned(),
+                app_name: None,
+                action_name: None,
+            },
+        ),
+        "webSearch" => {
+            let query = required_bounded_text(object.get("query"), 4096)?;
+            (
+                ConversationItemKind::WebSearch,
+                ConversationItemDetail::WebSearch { query },
+            )
+        }
+        "imageView" | "imageGeneration" => {
+            (ConversationItemKind::Image, ConversationItemDetail::None)
+        }
+        _ => (ConversationItemKind::Other, ConversationItemDetail::None),
+    };
+
+    Ok(ConversationItem {
+        item_id,
+        kind,
+        status,
+        detail,
+    })
+}
+
+fn validate_patch_kind(value: &Value) -> Result<(), CodexAdapterError> {
+    let object = value
+        .as_object()
+        .ok_or(CodexAdapterError::InvalidProtocolMessage)?;
+    match object.get("type").and_then(Value::as_str) {
+        Some("add" | "delete") if object.len() == 1 => Ok(()),
+        Some("update") if object.keys().all(|key| key == "type" || key == "movePath") => {
+            if let Some(path) = object.get("movePath").filter(|path| !path.is_null()) {
+                validate_bounded_protocol_text(
+                    path.as_str()
+                        .ok_or(CodexAdapterError::InvalidProtocolMessage)?,
+                    4096,
+                )?;
+            }
+            Ok(())
+        }
+        _ => Err(CodexAdapterError::InvalidProtocolMessage),
+    }
+}
+
+fn parse_app_context(
+    value: Option<&Value>,
+) -> Result<(Option<String>, Option<String>), CodexAdapterError> {
+    let Some(value) = value.filter(|value| !value.is_null()) else {
+        return Ok((None, None));
+    };
+    let object = value
+        .as_object()
+        .ok_or(CodexAdapterError::InvalidProtocolMessage)?;
+    let app_name = object
+        .get("appName")
+        .and_then(Value::as_str)
+        .map(|value| {
+            validate_bounded_protocol_text(value, 128)?;
+            Ok(value.to_owned())
+        })
+        .transpose()?;
+    let action_name = object
+        .get("actionName")
+        .and_then(Value::as_str)
+        .map(|value| {
+            validate_bounded_protocol_text(value, 128)?;
+            Ok(value.to_owned())
+        })
+        .transpose()?;
+    Ok((app_name, action_name))
+}
+
+fn required_string(value: Option<&Value>, max_bytes: usize) -> Result<String, CodexAdapterError> {
+    let value = value
+        .and_then(Value::as_str)
+        .ok_or(CodexAdapterError::InvalidProtocolMessage)?;
+    validate_bounded_protocol_text(value, max_bytes)?;
+    Ok(value.to_owned())
+}
+
+fn required_bounded_text(
+    value: Option<&Value>,
+    max_bytes: usize,
+) -> Result<String, CodexAdapterError> {
+    required_string(value, max_bytes)
+}
+
+fn validate_enum_string(value: Option<&Value>, allowed: &[&str]) -> Result<(), CodexAdapterError> {
+    let value = value
+        .and_then(Value::as_str)
+        .ok_or(CodexAdapterError::InvalidProtocolMessage)?;
+    if allowed.contains(&value) {
+        Ok(())
+    } else {
+        Err(CodexAdapterError::InvalidProtocolMessage)
+    }
+}
+
+fn validate_absolute_path(value: &str) -> Result<(), CodexAdapterError> {
+    validate_bounded_protocol_text(value, 4096)?;
+    if !std::path::Path::new(value).is_absolute() {
+        return Err(CodexAdapterError::InvalidProtocolMessage);
+    }
+    Ok(())
+}
+
+fn validate_bounded_protocol_text(value: &str, max_bytes: usize) -> Result<(), CodexAdapterError> {
+    if value.len() > max_bytes || value.contains('\0') {
+        return Err(CodexAdapterError::InvalidProtocolMessage);
+    }
+    Ok(())
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct RequestPermissionProfile {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    file_system: Option<AdditionalFileSystemPermissions>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    network: Option<AdditionalNetworkPermissions>,
+}
+
+impl RequestPermissionProfile {
+    fn validate(&self) -> Result<(), CodexAdapterError> {
+        if let Some(file_system) = &self.file_system {
+            file_system.validate()?;
+        }
+        Ok(())
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct AdditionalFileSystemPermissions {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    entries: Option<Vec<FileSystemSandboxEntry>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    glob_scan_max_depth: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    read: Option<Vec<String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    write: Option<Vec<String>>,
+}
+
+impl AdditionalFileSystemPermissions {
+    fn validate(&self) -> Result<(), CodexAdapterError> {
+        if self.glob_scan_max_depth == Some(0) {
+            return Err(CodexAdapterError::InvalidProtocolMessage);
+        }
+        if self
+            .entries
+            .as_ref()
+            .is_some_and(|entries| entries.len() > 64)
+            || self.read.as_ref().is_some_and(|paths| paths.len() > 64)
+            || self.write.as_ref().is_some_and(|paths| paths.len() > 64)
+        {
+            return Err(CodexAdapterError::InvalidProtocolMessage);
+        }
+        for entry in self.entries.iter().flatten() {
+            entry.validate()?;
+        }
+        for path in self
+            .read
+            .iter()
+            .flatten()
+            .chain(self.write.iter().flatten())
+        {
+            validate_bounded_protocol_text(path, 4096)?;
+        }
+        Ok(())
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct AdditionalNetworkPermissions {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    enabled: Option<bool>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct NetworkApprovalContext {
+    host: String,
+    protocol: NetworkApprovalProtocol,
+}
+
+impl NetworkApprovalContext {
+    fn validate(&self) -> Result<(), CodexAdapterError> {
+        if self.host.is_empty() {
+            return Err(CodexAdapterError::InvalidProtocolMessage);
+        }
+        validate_bounded_protocol_text(&self.host, 253)
+    }
+}
+
+#[derive(Clone, Copy, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+enum NetworkApprovalProtocol {
+    Http,
+    Https,
+    Socks5Tcp,
+    Socks5Udp,
+}
+
+impl NetworkApprovalProtocol {
+    const fn as_str(self) -> &'static str {
+        match self {
+            Self::Http => "http",
+            Self::Https => "https",
+            Self::Socks5Tcp => "socks5 TCP",
+            Self::Socks5Udp => "socks5 UDP",
+        }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+struct FileSystemSandboxEntry {
+    access: FileSystemAccessMode,
+    path: FileSystemPath,
+}
+
+impl FileSystemSandboxEntry {
+    fn validate(&self) -> Result<(), CodexAdapterError> {
+        self.path.validate()
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
+enum FileSystemAccessMode {
+    Read,
+    Write,
+    Deny,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
+enum FileSystemPath {
+    Path { path: String },
+    GlobPattern { pattern: String },
+    Special { value: FileSystemSpecialPath },
+}
+
+impl FileSystemPath {
+    fn validate(&self) -> Result<(), CodexAdapterError> {
+        match self {
+            Self::Path { path } => validate_bounded_protocol_text(path, 4096),
+            Self::GlobPattern { pattern } => validate_bounded_protocol_text(pattern, 4096),
+            Self::Special { value } => value.validate(),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+enum FileSystemSpecialPath {
+    Root,
+    Minimal,
+    ProjectRoots {
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        subpath: Option<String>,
+    },
+    Tmpdir,
+    SlashTmp,
+    Unknown {
+        path: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        subpath: Option<String>,
+    },
+}
+
+impl FileSystemSpecialPath {
+    fn validate(&self) -> Result<(), CodexAdapterError> {
+        match self {
+            Self::ProjectRoots {
+                subpath: Some(path),
+            }
+            | Self::Unknown {
+                path,
+                subpath: None,
+            } => validate_bounded_protocol_text(path, 4096),
+            Self::Unknown {
+                path,
+                subpath: Some(subpath),
+            } => {
+                validate_bounded_protocol_text(path, 4096)?;
+                validate_bounded_protocol_text(subpath, 4096)
+            }
+            Self::Root
+            | Self::Minimal
+            | Self::ProjectRoots { subpath: None }
+            | Self::Tmpdir
+            | Self::SlashTmp => Ok(()),
+        }
     }
 }
 
@@ -990,6 +1787,133 @@ mod tests {
         assert!(parse_notification(&invalid_thread).is_err());
     }
 
+    #[test]
+    fn parses_only_reviewed_approval_fields_and_safe_one_turn_decisions() {
+        let request = json!({
+            "id": "approval-1",
+            "method": "item/commandExecution/requestApproval",
+            "params": {
+                "threadId": "018f0000-0000-7000-8000-000000000020",
+                "turnId": "018f0000-0000-7000-8000-000000000030",
+                "itemId": "item-1",
+                "startedAtMs": 1,
+                "command": "cargo check --token private",
+                "cwd": "/workspace/project",
+                "reason": "Run a check",
+                "availableDecisions": [
+                    "accept",
+                    "acceptForSession",
+                    {"acceptWithExecpolicyAmendment": {"execpolicy_amendment": ["cargo"]}},
+                    "decline",
+                    "cancel"
+                ],
+                "proposedExecpolicyAmendment": ["private value is discarded"]
+            }
+        });
+
+        let parsed = parse_notification(&request).expect("approval must parse");
+        let debug = format!("{parsed:?}");
+        let Some(AppServerNotification::ConversationRequest(
+            ConversationServerRequest::CommandExecution {
+                request_id,
+                available_decisions,
+                ..
+            },
+        )) = parsed
+        else {
+            panic!("command approval must normalize");
+        };
+        assert_eq!(request_id, ServerRequestId::String("approval-1".to_owned()));
+        assert_eq!(
+            available_decisions,
+            vec![
+                ConversationServerDecision::Accept,
+                ConversationServerDecision::Decline,
+                ConversationServerDecision::Cancel,
+            ]
+        );
+        assert!(!debug.contains("execpolicy_amendment"));
+        assert!(!debug.contains("private value is discarded"));
+    }
+
+    #[test]
+    fn strictly_validates_permission_profiles_before_retaining_them() {
+        let valid = json!({
+            "id": 42,
+            "method": "item/permissions/requestApproval",
+            "params": {
+                "threadId": "018f0000-0000-7000-8000-000000000020",
+                "turnId": "018f0000-0000-7000-8000-000000000030",
+                "itemId": "item-1",
+                "startedAtMs": 1,
+                "cwd": "/workspace/project",
+                "permissions": {
+                    "fileSystem": {
+                        "entries": [{
+                            "access": "read",
+                            "path": {"type": "special", "value": {"kind": "project_roots"}}
+                        }]
+                    },
+                    "network": {"enabled": false}
+                }
+            }
+        });
+        let mut invalid = valid.clone();
+        invalid["params"]["permissions"]["credential"] = json!("private");
+
+        assert!(matches!(
+            parse_notification(&valid),
+            Ok(Some(AppServerNotification::ConversationRequest(
+                ConversationServerRequest::Permissions { .. }
+            )))
+        ));
+        assert!(matches!(
+            parse_notification(&invalid),
+            Err(CodexAdapterError::InvalidProtocolMessage)
+        ));
+    }
+
+    #[test]
+    fn discards_raw_tool_arguments_and_file_diffs_from_activity_events() {
+        let tool = json!({
+            "method": "item/started",
+            "params": {
+                "threadId": "018f0000-0000-7000-8000-000000000020",
+                "turnId": "018f0000-0000-7000-8000-000000000030",
+                "item": {
+                    "id": "item-1",
+                    "type": "mcpToolCall",
+                    "server": "github",
+                    "tool": "get_issue",
+                    "status": "inProgress",
+                    "arguments": {"token": "private argument"}
+                }
+            }
+        });
+        let file = json!({
+            "method": "item/completed",
+            "params": {
+                "threadId": "018f0000-0000-7000-8000-000000000020",
+                "turnId": "018f0000-0000-7000-8000-000000000030",
+                "item": {
+                    "id": "item-2",
+                    "type": "fileChange",
+                    "status": "completed",
+                    "changes": [{
+                        "path": "/workspace/project/src/lib.rs",
+                        "kind": {"type": "update", "movePath": null},
+                        "diff": "private diff body"
+                    }]
+                }
+            }
+        });
+
+        let tool = parse_notification(&tool).expect("tool must parse");
+        let file = parse_notification(&file).expect("file must parse");
+        assert!(!format!("{tool:?}").contains("private argument"));
+        assert!(!format!("{file:?}").contains("private diff body"));
+    }
+
     #[tokio::test]
     async fn correlates_responses_and_discards_notification_payloads() {
         let script = r#"
@@ -1014,6 +1938,35 @@ printf '%s\n' '{"id":2,"result":{"data":[{"model":"fixture-model","displayName":
     }
 
     #[tokio::test]
+    async fn queues_a_server_request_even_when_its_id_matches_a_client_request() {
+        let script = r#"
+read -r _initialize
+printf '%s\n' '{"id":1,"method":"item/commandExecution/requestApproval","params":{"threadId":"018f0000-0000-7000-8000-000000000020","turnId":"018f0000-0000-7000-8000-000000000030","itemId":"item-1","startedAtMs":1,"command":"cargo check","cwd":"/workspace/project"}}'
+printf '%s\n' '{"id":1,"result":{}}'
+read -r _models
+printf '%s\n' '{"id":2,"result":{"data":[{"model":"fixture-model","displayName":"Fixture model","isDefault":true,"defaultReasoningEffort":"medium","supportedReasoningEfforts":[{"reasoningEffort":"medium"}]}]}}'
+"#;
+        let command = AppServerCommand::test("sh", &["-c", script]);
+        let mut process = AppServerProcess::spawn_with_timeout(command, Duration::from_secs(1))
+            .expect("fixture process must start");
+
+        process
+            .discover_models()
+            .await
+            .expect("client responses must remain correlated");
+        assert!(matches!(
+            process.take_notification(),
+            Some(AppServerNotification::ConversationRequest(
+                ConversationServerRequest::CommandExecution {
+                    request_id: ServerRequestId::Integer(1),
+                    ..
+                }
+            ))
+        ));
+        process.shutdown().await.expect("fixture must stop");
+    }
+
+    #[tokio::test]
     async fn reports_an_unexpected_process_exit_without_raw_output() {
         let command = AppServerCommand::test("sh", &["-c", "exit 0"]);
         let mut process = AppServerProcess::spawn_with_timeout(command, Duration::from_millis(250))
@@ -1033,7 +1986,7 @@ printf '%s\n' '{"id":2,"result":{"data":[{"model":"fixture-model","displayName":
     async fn fails_closed_on_an_unexpected_server_request() {
         let script = r#"
 read -r _initialize
-printf '%s\n' '{"id":99,"method":"item/permissions/requestApproval","params":{"private":"discarded"}}'
+printf '%s\n' '{"id":99,"method":"item/tool/requestUserInput","params":{"private":"discarded"}}'
 "#;
         let command = AppServerCommand::test("sh", &["-c", script]);
         let mut process = AppServerProcess::spawn_with_timeout(command, Duration::from_secs(1))

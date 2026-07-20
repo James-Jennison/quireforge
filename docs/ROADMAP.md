@@ -47,6 +47,9 @@ and external provider settings remain milestone- and approval-gated. Milestone
 8A adds native resume, fork, archive/restore, Codex-authoritative reference
 reconciliation, and conservative crash recovery. Milestone 8B adds the bounded
 history/search/tabs presentation and accessible lifecycle actions.
+Milestone 9A adds the native approval and detailed-activity contract with
+app-owned correlation, one-turn decisions, redaction, and safe cancellation;
+the selectable expanded interface remains Milestone 9B.
 
 ## Status
 
@@ -60,8 +63,8 @@ history/search/tabs presentation and accessible lifecycle actions.
 | 5 | Authentication and onboarding | Medium | Complete; merged to `main` |
 | 6 | Projects and direct local-directory attachment | Very large | Complete; merged to `main` |
 | 7 | Conversation MVP | Very large | Complete; merged to `main` |
-| 8 | Session lifecycle and crash recovery | Large | Complete locally; 8A native lifecycle and 8B UI verified |
-| 9 | Approvals and command presentation | Large | Planned |
+| 8 | Session lifecycle and crash recovery | Large | Complete; merged to `main` |
+| 9 | Approvals and command presentation | Large | 9A implemented locally; 9B planned |
 | 10 | Git status and diff review | Large | Planned |
 | 11 | Worktrees and parallel work | Very large | Planned |
 | 12 | Integrated terminal | Large | Planned |
@@ -229,6 +232,25 @@ and recovery. Live activity rows must be selectable and expand in place to show
 normalized real-time command/tool/file/process progress, comparable to Codex's
 own disclosed activity presentation, without exposing raw protocol payloads,
 credentials, unsafe terminal sequences, or unredacted private paths.
+
+Milestone 9A implements the native security and contract checkpoint. The
+serialized conversation owner recognizes only reviewed stable command, file,
+and permission approval methods; correlates the exact native thread, turn,
+request, and item; and exposes only app-owned UUIDv7 approval/activity IDs.
+Approve, decline, and cancel are bounded decisions. Session-wide acceptance,
+policy amendments, unstable write-root grants, and unsupported request types
+remain unavailable. Turn-scoped permission profiles are strictly parsed, and
+cancel resolves the request before interrupting the exact turn.
+
+Activity schema version 2 provides stable IDs, safe titles/details, exit codes,
+bounded command-output and MCP-progress deltas, and approval requested/resolved
+events. Native presentation strips terminal and bidirectional controls, redacts
+credential-shaped values, reduces paths to project-relative or
+`[outside project]`, buffers output to line boundaries, and discards raw tool
+arguments and file diffs. Pending approval remains ephemeral and uses existing
+conservative crash recovery; no database migration or sensitive persistence is
+added. Milestone 9B will aggregate these events into the requested selectable,
+in-place expanded activity rows and complete approval controls.
 
 ### 10 — Git and Diff Review
 
