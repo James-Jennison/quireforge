@@ -58,7 +58,8 @@ deployed. There is no application package to install yet.
   and the Milestone 9A native approval/detailed-activity contract.
 - CI status: repository, website, and desktop quality gates are configured for
   pull requests and `main` pushes; deployment remains separately gated.
-- Current milestone: Milestone 9A is implemented locally; Milestone 9B's
+- Current milestone: Milestone 9A is complete and merged to `main` in PR #9;
+  Milestone 9B's
   selectable expanded activity and complete approval interface is next.
 - Known limitations: the native approval decision bridge exists, but its
   polished user-facing controls and selectable expanded activity rows remain

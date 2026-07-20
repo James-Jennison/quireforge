@@ -64,7 +64,7 @@ the selectable expanded interface remains Milestone 9B.
 | 6 | Projects and direct local-directory attachment | Very large | Complete; merged to `main` |
 | 7 | Conversation MVP | Very large | Complete; merged to `main` |
 | 8 | Session lifecycle and crash recovery | Large | Complete; merged to `main` |
-| 9 | Approvals and command presentation | Large | 9A implemented locally; 9B planned |
+| 9 | Approvals and command presentation | Large | 9A complete; merged to `main` in PR #9; 9B planned |
 | 10 | Git status and diff review | Large | Planned |
 | 11 | Worktrees and parallel work | Very large | Planned |
 | 12 | Integrated terminal | Large | Planned |
