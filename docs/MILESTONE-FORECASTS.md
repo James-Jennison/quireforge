@@ -283,3 +283,55 @@ closed and waited rather than relying only on kill-on-drop.
 - Milestone 7B is predominantly frontend integration and interaction design,
   so its reasoning strength and forecast must be gated independently rather
   than automatically retaining XHigh.
+
+### Milestone 7B — Conversation User Interface
+
+| Field | Record |
+|---|---|
+| Forecast date | 2026-07-19 |
+| Selected model | GPT-5.6 Sol, High reasoning; manually confirmed |
+| Preliminary forecast | 1.5–3 active hours; 5–15 minutes of local commands; about 2–4 total elapsed hours; medium confidence |
+| Calibrated forecast | 1.5–3 active hours; 5–15 minutes of local commands; about 2–4 total elapsed hours in one session; medium-to-high confidence |
+| Calibration basis | Clean Milestone 7A `main`, stable strict frontend/native contracts, 45–46 GiB available RAM, warm pnpm/Vite/Playwright/Rust caches, four Cargo workers, and two Playwright workers |
+| Observed active execution | Approximately 30–50 minutes through shell integration, UI implementation, focused tests, responsive/accessibility review, documentation, full validation, and commit preparation; approval and hosted-runner delays excluded |
+| Observed local command time | Approximately 2–4 minutes across iterative type/lint/test runs, a 2.37-second frontend build, a 5.54-second desktop browser gate, full repository gates, and release/native checks |
+| User approval/waiting time | Manual reasoning and milestone-start confirmations occurred before implementation and were excluded; GitHub-hosted CI runner queue time was also tracked separately |
+| Sessions | One active implementation session with recoverable UI, test, visual-review, validation, and publication checkpoints |
+| Usage intensity | High model/tool activity; low local CPU and memory pressure |
+| Completion status | Complete and verified locally; publication remains separately recorded in repository history |
+
+The forecast overestimated implementation and debugging time. Milestone 7A had
+already established the strict request/snapshot contracts and fixed native IPC,
+so 7B could remain a focused React state-and-presentation layer with no new
+dependencies or native protocol work. High reasoning was appropriate for the
+poll lifecycle, event deduplication, security-control gating, terminal states,
+and the review boundary; a stronger setting would not have materially improved
+the largely frontend implementation.
+
+### Milestone 7B required observations and lessons
+
+- The frontend production build completed in 2.37 seconds at about 316 MiB peak
+  RSS, transforming 112 modules with warm caches.
+- The focused desktop browser gate passed six desktop/mobile tests in 5.54
+  seconds at about 244 MiB peak RSS, including axe-core and overflow checks.
+- The component and integration suite passed 42 desktop tests. The full
+  repository gate passed those plus 3 website tests and 50 Rust tests, with 2
+  deliberate live probes ignored. Coverage includes runtime-derived controls,
+  verified-project gating, unsafe-policy rejection, exact-ID stop,
+  start/poll/completion wiring, event deduplication, and the 256-event UI bound.
+- The combined desktop/website browser gate passed all 14 tests in 8.33 seconds
+  at about 251 MiB peak RSS. The warm unbundled release build completed in
+  28.35 seconds at about 1.46 GiB peak RSS, and an isolated native launch verified the exact D-Bus name,
+  `0700`/`0600` metadata permissions, and no remaining app-server child.
+- Desktop and mobile screenshots confirmed responsive stacking, readable form
+  controls, visible preview limitations, and no horizontal overflow.
+- No dependency install, native protocol change, live model call, approval
+  decision, cache deletion, heavy swapping, OOM, or GPU-compute workload was
+  required.
+- One validation invocation initially lacked the installed Cargo directory in
+  the package-runner `PATH`; preserving the existing path fixed the environment
+  issue without installation or configuration changes. An initial smoke-check
+  assertion also guessed the old database filename and was corrected to locate
+  `metadata.sqlite3` only within the fresh temporary XDG root.
+- Milestone 8 adds native lifecycle/reconciliation work and should receive a new
+  model and reasoning gate rather than inheriting High automatically.

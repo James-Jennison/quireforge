@@ -252,6 +252,7 @@ export type ConversationStartRequest = z.infer<
   typeof conversationStartRequestSchema
 >;
 export type ConversationSnapshot = z.infer<typeof conversationSnapshotSchema>;
+export type ConversationEvent = ConversationSnapshot["events"][number];
 
 export const scaffoldConversation =
   conversationSnapshotSchema.parse(conversationFixture);

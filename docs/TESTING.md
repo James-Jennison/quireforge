@@ -137,6 +137,15 @@ print the account-visible catalog.
   transcript content.
 - Confirm an approval server request becomes a stable blocked state and no
   approval response is fabricated.
+- Confirm the composer stays disabled without a verified writable project and
+  ready native runtime; browser preview must not simulate a task.
+- Confirm model/reasoning choices come only from the normalized runtime catalog,
+  and unrestricted execution with approvals disabled is visibly rejected before
+  IPC.
+- Confirm streamed batches are ordered and deduplicated, terminal states remain
+  understandable, and stop sends only the app-owned conversation ID.
+- Check the composer and event stream at desktop/mobile widths, by keyboard, and
+  with automated accessibility analysis.
 - Verify the unbundled release starts under isolated XDG directories, performs
   no conversation work without user action, and leaves no app-server child.
 

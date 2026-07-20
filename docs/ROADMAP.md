@@ -41,8 +41,9 @@ adds app-owned project metadata, native directory attachment, identity-aware
 preflight, and an accessible project workspace without copying or deleting
 source content. Milestone 7A adds the native conversation runtime, strict
 normalized contracts, exact-turn interruption, and reference-only persistence;
-the Milestone 7B user interface remains gated. Application packages and external
-provider settings remain milestone- and approval-gated.
+Milestone 7B adds the responsive task composer, runtime-derived controls,
+normalized progress stream, and exact stop interaction. Application packages
+and external provider settings remain milestone- and approval-gated.
 
 ## Status
 
@@ -55,7 +56,7 @@ provider settings remain milestone- and approval-gated.
 | 4 | Codex process adapter and contracts | Very large | Complete; merged to `main` |
 | 5 | Authentication and onboarding | Medium | Complete; merged to `main` |
 | 6 | Projects and direct local-directory attachment | Very large | Complete; merged to `main` |
-| 7 | Conversation MVP | Very large | In progress; 7A native runtime complete locally, 7B UI pending |
+| 7 | Conversation MVP | Very large | Complete locally; 7A runtime merged, 7B UI verified |
 | 8 | Session lifecycle and crash recovery | Large | Planned |
 | 9 | Approvals and command presentation | Large | Planned |
 | 10 | Git status and diff review | Large | Planned |
@@ -182,8 +183,15 @@ only Codex reference IDs and lifecycle metadata in QuireForge SQLite. Active
 execution reserves the project against detach, archive, or relink races.
 Approval requests block and close the task rather than being guessed or
 auto-approved. Deterministic tests use a mock app-server and make no model call.
-The user-facing conversation composer, stream view, controls, and accessible
-interaction states remain Milestone 7B.
+
+Milestone 7B adds an accessible responsive composer for a verified attached
+project, with model and reasoning options taken from the normalized runtime
+catalog, explicit filesystem and approval controls, pre-IPC rejection of the
+unsafe unrestricted/no-approval combination, an ordered bounded event view,
+stable terminal diagnostics, and exact app-owned conversation interruption.
+Browser preview remains visibly non-interactive and never simulates a native
+task. Session history, resume/fork/archive, crash recovery, approval decisions,
+command details, diffs, packaging, and deployment remain later milestones.
 
 ### 8 — Session Lifecycle
 

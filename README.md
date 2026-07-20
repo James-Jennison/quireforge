@@ -26,7 +26,10 @@ are implemented locally without storing credentials. Milestone 6's project
 metadata, directory attachment, cwd preflight, and accessible workspace are
 merged. Milestone 7A's native conversation runtime now starts a verified
 thread/turn, normalizes its bounded stream, interrupts the exact active turn,
-and stores reference-only metadata; the conversation UI remains Milestone 7B.
+and stores reference-only metadata. Milestone 7B adds the responsive composer,
+runtime-derived model and reasoning controls, explicit sandbox and approval
+choices, normalized progress stream, and exact stop action. Session history and
+crash recovery remain Milestone 8.
 Cloudflare Pages is the selected production host, but the site has not been
 deployed. There is no application package to install yet.
 
@@ -42,14 +45,14 @@ deployed. There is no application package to install yet.
 - Desktop: the Tauri 2, React, TypeScript, and Rust shell builds and launches
   locally with narrow typed IPC, a supervised non-billable Codex runtime and
   account-status probe, a verified native project-attachment workflow, and a
-  strict native conversation runtime; the conversation UI is not complete.
+  strict native conversation runtime with a responsive, accessible task UI.
 - CI status: repository, website, and desktop quality gates are configured for
   pull requests and `main` pushes; deployment remains separately gated.
-- Current milestone: Milestone 7 — the 7A native conversation-runtime
-  checkpoint is implemented and verified; 7B UI and integration remain gated.
-- Known limitations: no user-facing conversation workflow, installable
-  packages, releases, public deployment, or production Lighthouse evidence
-  exists yet.
+- Current milestone: Milestone 7 — the native runtime and user-facing
+  conversation MVP are implemented and verified locally.
+- Known limitations: session resume/history and approval decisions remain
+  planned; no installable packages, releases, public deployment, or production
+  Lighthouse evidence exists yet.
 
 ## Discovery documents
 
