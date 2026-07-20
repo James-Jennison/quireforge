@@ -91,6 +91,17 @@ released a usable application.
   monitor with independent live activity selection and read-only changed-file
   and conflict counts. It exposes no Codex IDs, cwd, raw protocol/process
   fields, conflict resolution, or cleanup action.
+- A Milestone 11C native recovery and cleanup boundary that issues opaque
+  recovery IDs for retained private app-managed checkouts and removes only
+  clean, unlocked, inactive `managed` worktrees after repository-group
+  reservation and confirmation-time relation, identity, branch, `HEAD`, and
+  status revalidation.
+- Strict recovery/remove IPC, an accessible destructive-review interface, and
+  adversarial fixtures for dirty-after-preview, attached/external ownership,
+  symlink replacement, active work, configured hooks/filters, branch retention,
+  metadata-only recovery, and post-Git metadata failure. Force removal, generic
+  prune, branch deletion, direct directory deletion, and conflict resolution
+  remain unavailable.
 - A serialized native Milestone 7A conversation service that revalidates the
   attached cwd, starts a supported Codex thread and turn with explicit model,
   reasoning, sandbox, and approval controls, normalizes bounded stream events,

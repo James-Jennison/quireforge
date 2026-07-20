@@ -10,13 +10,16 @@ import {
 
 const sourceProjectId = "018f0000-0000-7000-8000-000000000001";
 const confirmationId = "018f0000-0000-7000-8000-000000000002";
+const linkedProjectId = "018f0000-0000-7000-8000-000000000003";
+const recoveryId = "018f0000-0000-7000-8000-000000000004";
 const workspace = worktreeWorkspaceSchema.parse({
-  schemaVersion: 1,
+  schemaVersion: 2,
   state: "ready",
   sourceProjectId,
   worktrees: [
     {
       projectId: sourceProjectId,
+      recoveryId: null,
       displayName: "QuireForge",
       displayPath: "~/work/quireforge",
       branchName: "main",
@@ -26,9 +29,30 @@ const workspace = worktreeWorkspaceSchema.parse({
     },
     {
       projectId: null,
+      recoveryId: null,
       displayName: "feature/external",
       displayPath: "~/work/external",
       branchName: "feature/external",
+      ownership: "external",
+      state: "ready",
+      current: false,
+    },
+    {
+      projectId: linkedProjectId,
+      recoveryId: null,
+      displayName: "feature/managed",
+      displayPath: "~/.local/share/quireforge/worktrees/managed",
+      branchName: "feature/managed",
+      ownership: "managed",
+      state: "ready",
+      current: false,
+    },
+    {
+      projectId: null,
+      recoveryId,
+      displayName: "feature/recoverable",
+      displayPath: "~/.local/share/quireforge/worktrees/recoverable",
+      branchName: "feature/recoverable",
       ownership: "external",
       state: "ready",
       current: false,
@@ -42,6 +66,8 @@ const handlers = {
   onRefresh: vi.fn().mockResolvedValue(undefined),
   onCreate: vi.fn().mockResolvedValue(undefined),
   onPickAttach: vi.fn().mockResolvedValue(undefined),
+  onRecover: vi.fn().mockResolvedValue(undefined),
+  onRemove: vi.fn().mockResolvedValue(undefined),
   onConfirm: vi.fn().mockResolvedValue(undefined),
   onCancel: vi.fn().mockResolvedValue(undefined),
   onSelectProject: vi.fn(),
@@ -49,7 +75,7 @@ const handlers = {
 };
 
 describe("WorktreeWorkspace", () => {
-  it("accepts a bounded branch and offers no cleanup action", () => {
+  it("accepts a bounded branch and limits cleanup to managed entries", () => {
     render(
       <WorktreeWorkspace
         availability="native"
@@ -75,15 +101,16 @@ describe("WorktreeWorkspace", () => {
     expect(create).toBeEnabled();
     fireEvent.click(create);
     expect(handlers.onCreate).toHaveBeenCalledWith("feature/native-foundation");
-    expect(
-      screen.queryByRole("button", { name: /remove|delete|prune|clean/u }),
-    ).not.toBeInTheDocument();
-    expect(screen.getByText("external checkout")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Review cleanup" }));
+    fireEvent.click(screen.getByRole("button", { name: "Review recovery" }));
+    expect(handlers.onRemove).toHaveBeenCalledWith(linkedProjectId);
+    expect(handlers.onRecover).toHaveBeenCalledWith(recoveryId);
+    expect(screen.getAllByText("external checkout")).toHaveLength(2);
   });
 
   it("requires confirmation and can cancel by opaque token only", () => {
     const preview = worktreePreviewSchema.parse({
-      schemaVersion: 1,
+      schemaVersion: 2,
       state: "ready",
       sourceProjectId,
       operation: "create",
@@ -113,6 +140,40 @@ describe("WorktreeWorkspace", () => {
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(handlers.onConfirm).toHaveBeenCalledWith(confirmationId);
     expect(handlers.onCancel).toHaveBeenCalledWith(confirmationId);
+  });
+
+  it("makes managed removal explicitly destructive and promises branch retention", () => {
+    const preview = worktreePreviewSchema.parse({
+      schemaVersion: 2,
+      state: "ready",
+      sourceProjectId,
+      operation: "remove",
+      branchName: "feature/managed",
+      displayPath: "~/.local/share/quireforge/worktrees/managed",
+      ownership: "managed",
+      destructive: true,
+      confirmationId,
+      diagnosticCode: null,
+    });
+    render(
+      <WorktreeWorkspace
+        availability="native"
+        projectName="QuireForge"
+        snapshot={workspace}
+        preview={preview}
+        result={null}
+        busy={false}
+        selectionBusy={false}
+        actionError={false}
+        executions={[]}
+        {...handlers}
+      />,
+    );
+
+    expect(screen.getByText("Destructive cleanup preview")).toBeInTheDocument();
+    expect(screen.getByText(/Its branch is preserved/u)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Confirm remove" }));
+    expect(handlers.onConfirm).toHaveBeenCalledWith(confirmationId);
   });
 
   it("aggregates live task and conflict status without exposing native IDs", () => {

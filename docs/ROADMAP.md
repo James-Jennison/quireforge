@@ -63,6 +63,10 @@ Milestone 11B adds a four-task native conversation registry, independent
 worktree execution and interruption, refresh recovery from normalized active
 state, and aggregate activity/changed-file/conflict presentation without
 adding destructive cleanup or automatic conflict resolution.
+Milestone 11C adds opaque recovery for retained app-managed worktrees and
+confirmed removal of clean, inactive, app-managed worktrees while preserving
+their branches. Attached worktrees, force removal, generic prune, direct
+directory deletion, and conflict resolution remain excluded.
 
 ## Status
 
@@ -79,7 +83,7 @@ adding destructive cleanup or automatic conflict resolution.
 |         8 | Session lifecycle and crash recovery                              | Large        | Complete; merged to `main`                                                     |
 |         9 | Approvals and command presentation                                | Large        | Complete and verified; publication recorded in repository history              |
 |        10 | Git status, diff review, and controlled mutations                  | Large        | Complete and verified; publication tracked by this milestone change             |
-|        11 | Worktrees and parallel work                                       | Very large   | In progress; 11A–11B implemented and verified locally                         |
+|        11 | Worktrees and parallel work                                       | Very large   | Complete through 11C and verified locally                                      |
 |        12 | Integrated terminal                                               | Large        | Planned                                                                        |
 |        13 | Integration discovery and compatibility                           | Very large   | Planned                                                                        |
 |        14 | Integration Center and installation workflows                     | Very large   | Planned                                                                        |
@@ -349,11 +353,24 @@ counts. Process ownership does not survive an application restart, so stale
 active records follow the existing interrupted-state recovery rule. Milestone
 11B performs no conflict resolution or Git mutation.
 
-Milestone 11A–11B have no remove, prune, cleanup, generic checkout, arbitrary
-ref, frontend path, cwd, executable, or argument-vector command. Milestone 11C
-must receive its own data-loss-sensitive gate before any cleanup or recovery
-workflow. See [ADR 0014](DECISIONS/0014-managed-worktree-foundation.md) and
-[ADR 0015](DECISIONS/0015-bounded-parallel-worktree-execution.md).
+Milestone 11C adds separately gated recovery and cleanup. Native inventory
+issues opaque recovery IDs only for unregistered linked worktrees inside the
+exact private managed-storage slot. Recovery registers the retained checkout
+without changing Git or files. Cleanup accepts only app-owned project IDs and
+removes only a clean, unlocked, non-current `managed` checkout after repository-
+group reservation and confirmation-time relation, identity, branch, `HEAD`,
+and status revalidation. Git removal never uses force, preserves the branch,
+and must satisfy explicit path/inventory/branch postconditions before a
+transaction detaches and archives project metadata.
+
+If Git succeeds but metadata retirement fails, the missing managed entry can be
+reviewed again for metadata-only finalization; no filesystem mutation is
+retried. Attached/external worktrees, direct directory deletion, branch
+deletion, conflict resolution, arbitrary Git arguments, and repository-wide
+`git worktree prune` remain unavailable. See
+[ADR 0014](DECISIONS/0014-managed-worktree-foundation.md),
+[ADR 0015](DECISIONS/0015-bounded-parallel-worktree-execution.md), and
+[ADR 0016](DECISIONS/0016-safe-managed-worktree-cleanup.md).
 
 ### 12 — Integrated Terminal
 

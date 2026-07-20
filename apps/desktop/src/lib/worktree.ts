@@ -44,6 +44,11 @@ const worktreeDiagnosticSchema = z.enum([
   "confirmation-expired",
   "stale-preview",
   "worktree-remains",
+  "worktree-dirty",
+  "source-worktree",
+  "unsupported-ownership",
+  "recovery-unavailable",
+  "cleanup-incomplete",
 ]);
 
 const worktreeOwnershipSchema = z.enum([
@@ -56,6 +61,7 @@ const worktreeOwnershipSchema = z.enum([
 const worktreeEntrySchema = z
   .object({
     projectId: opaqueIdSchema.nullable(),
+    recoveryId: opaqueIdSchema.nullable(),
     displayName: displayTextSchema.max(120),
     displayPath: displayPathSchema,
     branchName: worktreeBranchSchema.nullable(),
@@ -78,6 +84,18 @@ const worktreeEntrySchema = z
         message: "Only external worktrees may omit a QuireForge project ID",
       });
     }
+    if (
+      entry.recoveryId !== null &&
+      (entry.ownership !== "external" ||
+        entry.projectId !== null ||
+        entry.state !== "ready")
+    ) {
+      context.addIssue({
+        code: "custom",
+        message:
+          "Only a ready unregistered managed candidate may offer recovery",
+      });
+    }
     if (entry.state === "detached" && entry.branchName !== null) {
       context.addIssue({
         code: "custom",
@@ -88,7 +106,7 @@ const worktreeEntrySchema = z
 
 export const worktreeWorkspaceSchema = z
   .object({
-    schemaVersion: z.literal(1),
+    schemaVersion: z.literal(2),
     state: z.enum(["empty", "ready", "unavailable"]),
     sourceProjectId: opaqueIdSchema.nullable(),
     worktrees: z.array(worktreeEntrySchema).max(256),
@@ -154,20 +172,37 @@ export const worktreeCreatePreviewRequestSchema = z
   })
   .strict();
 
+export const worktreeRecoverPreviewRequestSchema = z
+  .object({
+    projectId: opaqueIdSchema,
+    recoveryId: opaqueIdSchema,
+  })
+  .strict();
+
+export const worktreeRemovePreviewRequestSchema = z
+  .object({
+    projectId: opaqueIdSchema,
+    worktreeProjectId: opaqueIdSchema,
+  })
+  .strict()
+  .refine((request) => request.projectId !== request.worktreeProjectId, {
+    message: "The selected project cannot remove itself",
+  });
+
 export const worktreeConfirmationRequestSchema = z
   .object({ confirmationId: opaqueIdSchema })
   .strict();
 
 export const worktreePreviewSchema = z
   .object({
-    schemaVersion: z.literal(1),
+    schemaVersion: z.literal(2),
     state: z.enum(["ready", "cancelled", "unavailable"]),
     sourceProjectId: opaqueIdSchema,
-    operation: z.enum(["create", "attach"]),
+    operation: z.enum(["create", "attach", "recover", "remove"]),
     branchName: worktreeBranchSchema.nullable(),
     displayPath: displayPathSchema.nullable(),
     ownership: z.enum(["managed", "attached"]).nullable(),
-    destructive: z.literal(false),
+    destructive: z.boolean(),
     confirmationId: opaqueIdSchema.nullable(),
     diagnosticCode: worktreeDiagnosticSchema.nullable(),
   })
@@ -202,11 +237,17 @@ export const worktreePreviewSchema = z
         message: "An unavailable preview requires a diagnostic",
       });
     }
+    if (preview.operation !== "remove" && preview.destructive) {
+      context.addIssue({
+        code: "custom",
+        message: "Only managed removal may be destructive",
+      });
+    }
   });
 
 export const worktreeResultSchema = z
   .object({
-    schemaVersion: z.literal(1),
+    schemaVersion: z.literal(2),
     state: z.enum(["applied", "unavailable"]),
     sourceProjectId: opaqueIdSchema.nullable(),
     projectId: opaqueIdSchema.nullable(),
@@ -230,13 +271,21 @@ export const worktreeResultSchema = z
     }
     if (
       result.state === "unavailable" &&
-      (result.projectId !== null ||
-        result.workspace !== null ||
-        result.diagnosticCode === null)
+      (result.projectId !== null || result.diagnosticCode === null)
     ) {
       context.addIssue({
         code: "custom",
         message: "Unavailable worktree result fields are inconsistent",
+      });
+    }
+    if (
+      result.state === "unavailable" &&
+      result.workspace !== null &&
+      result.diagnosticCode !== "cleanup-incomplete"
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "Only incomplete cleanup may return a refreshed workspace",
       });
     }
     if (
@@ -252,6 +301,12 @@ export const worktreeResultSchema = z
 
 export type WorktreeCreatePreviewRequest = z.infer<
   typeof worktreeCreatePreviewRequestSchema
+>;
+export type WorktreeRecoverPreviewRequest = z.infer<
+  typeof worktreeRecoverPreviewRequestSchema
+>;
+export type WorktreeRemovePreviewRequest = z.infer<
+  typeof worktreeRemovePreviewRequestSchema
 >;
 export type WorktreeConfirmationRequest = z.infer<
   typeof worktreeConfirmationRequestSchema

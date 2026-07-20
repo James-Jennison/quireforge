@@ -57,6 +57,8 @@ import {
   preflightProject,
   previewGitMutation,
   previewWorktreeCreate,
+  previewWorktreeRecover,
+  previewWorktreeRemove,
   pollConversation,
   restoreConversation,
   resumeConversation,
@@ -71,6 +73,8 @@ import {
   WORKTREE_CANCEL_COMMAND,
   WORKTREE_CONFIRM_COMMAND,
   WORKTREE_CREATE_PREVIEW_COMMAND,
+  WORKTREE_RECOVER_PREVIEW_COMMAND,
+  WORKTREE_REMOVE_PREVIEW_COMMAND,
   WORKTREE_PICK_ATTACH_COMMAND,
   WORKTREE_STATUS_COMMAND,
   GIT_DIFF_COMMAND,
@@ -201,7 +205,7 @@ describe("desktop bridge", () => {
     const projectId = "018f0000-0000-7000-8000-000000000001";
     const confirmationId = "018f0000-0000-7000-8000-000000000002";
     const preview = worktreePreviewSchema.parse({
-      schemaVersion: 1,
+      schemaVersion: 2,
       state: "ready",
       sourceProjectId: projectId,
       operation: "create",
@@ -213,7 +217,7 @@ describe("desktop bridge", () => {
       diagnosticCode: null,
     });
     const result = worktreeResultSchema.parse({
-      schemaVersion: 1,
+      schemaVersion: 2,
       state: "unavailable",
       sourceProjectId: projectId,
       projectId: null,
@@ -226,12 +230,25 @@ describe("desktop bridge", () => {
       .mockResolvedValueOnce(scaffoldWorktreeWorkspace)
       .mockResolvedValueOnce(preview)
       .mockResolvedValueOnce(preview)
+      .mockResolvedValueOnce(preview)
+      .mockResolvedValueOnce(preview)
       .mockResolvedValueOnce(result)
       .mockResolvedValueOnce(true);
 
     await loadWorktreeStatus(projectId, invoke);
     await previewWorktreeCreate(
       { projectId, branchName: "feature/bridge-fixture" },
+      invoke,
+    );
+    await previewWorktreeRecover(
+      { projectId, recoveryId: confirmationId },
+      invoke,
+    );
+    await previewWorktreeRemove(
+      {
+        projectId,
+        worktreeProjectId: "018f0000-0000-7000-8000-000000000003",
+      },
       invoke,
     );
     await pickWorktreeAttach(projectId, invoke);
@@ -246,6 +263,19 @@ describe("desktop bridge", () => {
           request: { projectId, branchName: "feature/bridge-fixture" },
         },
       ],
+      [
+        WORKTREE_RECOVER_PREVIEW_COMMAND,
+        { request: { projectId, recoveryId: confirmationId } },
+      ],
+      [
+        WORKTREE_REMOVE_PREVIEW_COMMAND,
+        {
+          request: {
+            projectId,
+            worktreeProjectId: "018f0000-0000-7000-8000-000000000003",
+          },
+        },
+      ],
       [WORKTREE_PICK_ATTACH_COMMAND, { projectId }],
       [WORKTREE_CONFIRM_COMMAND, { request: { confirmationId } }],
       [WORKTREE_CANCEL_COMMAND, { request: { confirmationId } }],
@@ -256,7 +286,7 @@ describe("desktop bridge", () => {
         invoke,
       ),
     ).rejects.toThrow();
-    expect(invoke).toHaveBeenCalledTimes(5);
+    expect(invoke).toHaveBeenCalledTimes(7);
   });
 
   it("uses fixed Git review commands and validates paths before invocation", async () => {

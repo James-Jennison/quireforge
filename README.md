@@ -48,12 +48,15 @@ paths, repository-local identity, and high-confidence secret refusal. It does
 not expose arbitrary Git arguments or remote operations. Milestone 11A adds a
 managed-worktree foundation: bounded native inventory, app-generated
 destinations, native-picker attachment, expiring confirmations, source-HEAD and
-identity revalidation, and ordinary project registration. It intentionally
-provides no worktree removal, pruning, or cleanup action yet. Milestone 11B
-adds bounded parallel execution for up to four distinct worktree projects, an
+identity revalidation, and ordinary project registration. Milestone 11B adds
+bounded parallel execution for up to four distinct worktree projects, an
 aggregate task monitor, exact per-task controls, and normalized changed-file
 and conflict counts. Selecting a task opens its live bounded activity stream;
-raw Codex and process identity remains native-only.
+raw Codex and process identity remains native-only. Milestone 11C adds opaque
+recovery of retained app-managed checkouts and explicit removal of only clean,
+inactive, app-managed worktrees after confirmation-time identity and status
+revalidation. Cleanup preserves the branch and never offers force or generic
+prune behavior.
 Cloudflare Pages is the selected production host, but the site has not been
 deployed. There is no application package to install yet.
 
@@ -74,15 +77,17 @@ deployed. There is no application package to install yet.
   the complete Milestone 9 native approval and detailed-activity interface, and
   complete Milestone 10 reviewed Git status/diff and mutation workflows, plus
   the Milestone 11A managed-worktree inventory/create/attach foundation and
-  Milestone 11B bounded parallel task monitor.
+  Milestone 11B bounded parallel task monitor, retained-worktree recovery, and
+  Milestone 11C clean managed-worktree cleanup.
 - CI status: repository, website, and desktop quality gates are configured for
   pull requests and `main` pushes; deployment remains separately gated.
-- Current milestone: Milestone 11B is implemented and verified locally;
-  Milestone 11C cleanup/recovery requires a fresh data-loss-sensitive gate.
+- Current milestone: Milestone 11 is implemented and verified locally through
+  11C; Milestone 12 requires a fresh terminal-security reasoning gate.
 - Known limitations: concurrency is capped at four active worktree tasks;
-  durable task recovery, automatic conflict resolution, worktree
-  cleanup/recovery, advanced remote operations, installable packages, releases,
-  public deployment, and production Lighthouse evidence do not exist yet.
+  durable task recovery, automatic conflict resolution, attached-worktree
+  cleanup, force/prune workflows, advanced remote operations, installable
+  packages, releases, public deployment, and production Lighthouse evidence do
+  not exist yet.
 
 ## Discovery documents
 
@@ -104,6 +109,7 @@ deployed. There is no application package to install yet.
 - [Reviewed Git mutation decision](docs/DECISIONS/0013-reviewed-git-mutation-boundary.md)
 - [Managed worktree foundation decision](docs/DECISIONS/0014-managed-worktree-foundation.md)
 - [Bounded parallel worktree execution decision](docs/DECISIONS/0015-bounded-parallel-worktree-execution.md)
+- [Safe managed-worktree cleanup decision](docs/DECISIONS/0016-safe-managed-worktree-cleanup.md)
 - [Brand sources and usage](assets/brand/README.md)
 - [Roadmap](docs/ROADMAP.md)
 - [Changelog](CHANGELOG.md)

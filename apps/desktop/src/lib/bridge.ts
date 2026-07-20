@@ -57,11 +57,15 @@ import {
   worktreeConfirmationRequestSchema,
   worktreeCreatePreviewRequestSchema,
   worktreePreviewSchema,
+  worktreeRecoverPreviewRequestSchema,
+  worktreeRemovePreviewRequestSchema,
   worktreeResultSchema,
   worktreeWorkspaceSchema,
   type WorktreeConfirmationRequest,
   type WorktreeCreatePreviewRequest,
   type WorktreePreviewSnapshot,
+  type WorktreeRecoverPreviewRequest,
+  type WorktreeRemovePreviewRequest,
   type WorktreeResultSnapshot,
   type WorktreeWorkspaceSnapshot,
 } from "./worktree";
@@ -84,6 +88,8 @@ export const PROJECT_ARCHIVE_COMMAND = "project_archive";
 export const PROJECT_PREFLIGHT_COMMAND = "project_preflight";
 export const WORKTREE_STATUS_COMMAND = "worktree_status";
 export const WORKTREE_CREATE_PREVIEW_COMMAND = "worktree_create_preview";
+export const WORKTREE_RECOVER_PREVIEW_COMMAND = "worktree_recover_preview";
+export const WORKTREE_REMOVE_PREVIEW_COMMAND = "worktree_remove_preview";
 export const WORKTREE_PICK_ATTACH_COMMAND = "worktree_pick_attach";
 export const WORKTREE_CONFIRM_COMMAND = "worktree_confirm";
 export const WORKTREE_CANCEL_COMMAND = "worktree_cancel";
@@ -280,6 +286,28 @@ export async function previewWorktreeCreate(
 ): Promise<WorktreePreviewSnapshot> {
   const reviewedRequest = worktreeCreatePreviewRequestSchema.parse(request);
   const payload = await invokeFunction(WORKTREE_CREATE_PREVIEW_COMMAND, {
+    request: reviewedRequest,
+  });
+  return worktreePreviewSchema.parse(payload);
+}
+
+export async function previewWorktreeRecover(
+  request: WorktreeRecoverPreviewRequest,
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<WorktreePreviewSnapshot> {
+  const reviewedRequest = worktreeRecoverPreviewRequestSchema.parse(request);
+  const payload = await invokeFunction(WORKTREE_RECOVER_PREVIEW_COMMAND, {
+    request: reviewedRequest,
+  });
+  return worktreePreviewSchema.parse(payload);
+}
+
+export async function previewWorktreeRemove(
+  request: WorktreeRemovePreviewRequest,
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<WorktreePreviewSnapshot> {
+  const reviewedRequest = worktreeRemovePreviewRequestSchema.parse(request);
+  const payload = await invokeFunction(WORKTREE_REMOVE_PREVIEW_COMMAND, {
     request: reviewedRequest,
   });
   return worktreePreviewSchema.parse(payload);

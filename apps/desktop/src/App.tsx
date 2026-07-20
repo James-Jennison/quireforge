@@ -48,6 +48,8 @@ import {
   loadWorktreeStatus,
   pickWorktreeAttach,
   previewWorktreeCreate,
+  previewWorktreeRecover,
+  previewWorktreeRemove,
 } from "./lib/bridge";
 import {
   scaffoldCodexAuth,
@@ -93,6 +95,8 @@ import {
   type WorktreeConfirmationRequest,
   type WorktreeCreatePreviewRequest,
   type WorktreePreviewSnapshot,
+  type WorktreeRecoverPreviewRequest,
+  type WorktreeRemovePreviewRequest,
   type WorktreeResultSnapshot,
   type WorktreeWorkspaceSnapshot,
 } from "./lib/worktree";
@@ -136,6 +140,12 @@ interface AppProps {
   loadWorktreesTask?: (projectId: string) => Promise<WorktreeWorkspaceSnapshot>;
   previewWorktreeCreateTask?: (
     request: WorktreeCreatePreviewRequest,
+  ) => Promise<WorktreePreviewSnapshot>;
+  previewWorktreeRecoverTask?: (
+    request: WorktreeRecoverPreviewRequest,
+  ) => Promise<WorktreePreviewSnapshot>;
+  previewWorktreeRemoveTask?: (
+    request: WorktreeRemovePreviewRequest,
   ) => Promise<WorktreePreviewSnapshot>;
   pickWorktreeAttachTask?: (
     projectId: string,
@@ -344,6 +354,8 @@ export default function App({
   preflightProjectDirectory = preflightProject,
   loadWorktreesTask = loadWorktreeStatus,
   previewWorktreeCreateTask = previewWorktreeCreate,
+  previewWorktreeRecoverTask = previewWorktreeRecover,
+  previewWorktreeRemoveTask = previewWorktreeRemove,
   pickWorktreeAttachTask = pickWorktreeAttach,
   confirmWorktreeTask = confirmWorktree,
   cancelWorktreeTask = cancelWorktree,
@@ -1000,6 +1012,46 @@ export default function App({
     }
   }
 
+  async function beginWorktreeRecover(recoveryId: string) {
+    if (!currentProject) return;
+    setWorktreeBusy(true);
+    setWorktreeActionError(false);
+    setWorktreeResult(null);
+    try {
+      setWorktreePreview(
+        await previewWorktreeRecoverTask({
+          projectId: currentProject.id,
+          recoveryId,
+        }),
+      );
+    } catch {
+      setWorktreePreview(null);
+      setWorktreeActionError(true);
+    } finally {
+      setWorktreeBusy(false);
+    }
+  }
+
+  async function beginWorktreeRemove(worktreeProjectId: string) {
+    if (!currentProject) return;
+    setWorktreeBusy(true);
+    setWorktreeActionError(false);
+    setWorktreeResult(null);
+    try {
+      setWorktreePreview(
+        await previewWorktreeRemoveTask({
+          projectId: currentProject.id,
+          worktreeProjectId,
+        }),
+      );
+    } catch {
+      setWorktreePreview(null);
+      setWorktreeActionError(true);
+    } finally {
+      setWorktreeBusy(false);
+    }
+  }
+
   async function applyWorktree(confirmationId: string) {
     setWorktreeBusy(true);
     setWorktreeActionError(false);
@@ -1575,6 +1627,8 @@ export default function App({
             onRefresh={refreshWorktrees}
             onCreate={beginWorktreeCreate}
             onPickAttach={beginWorktreeAttach}
+            onRecover={beginWorktreeRecover}
+            onRemove={beginWorktreeRemove}
             onConfirm={applyWorktree}
             onCancel={cancelWorktreePreview}
             onSelectProject={selectProject}
