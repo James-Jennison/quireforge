@@ -439,3 +439,63 @@ the predominantly bounded integration work.
 - Selectable expandable real-time command/tool/file/process details are now an
   explicit Milestone 9 requirement and require a separate normalized redacted
   event contract rather than raw protocol display.
+
+### Milestone 9A — Native Approvals and Detailed Activity Contract
+
+| Field | Record |
+|---|---|
+| Forecast date | 2026-07-19 |
+| Selected model | GPT-5.6 Sol, XHigh reasoning; manually confirmed |
+| Preliminary forecast | 4–7 active hours; 15–35 minutes of local commands; about 5–8.5 total elapsed hours across one or two sessions; medium confidence |
+| Calibrated forecast | 4–7 active hours; 15–35 minutes of local commands; about 5–8.5 total elapsed hours across one or two sessions; medium confidence |
+| Calibration basis | Clean merged Milestone 8 `main`, reviewed Codex 0.144.6 request/activity schemas, 44 GiB available RAM, 726 GiB free NVMe, warm 13 GiB Cargo target and dependency/browser caches, four Cargo workers, and two Playwright workers |
+| Observed active execution | Approximately 1.5–2.5 hours through protocol/security review, strict parsing, native state/decision handling, redaction, schema-v2 IPC, deterministic tests, minimal presentation, documentation, full gates, release/native verification, and commit preparation; approval and hosted-runner delays excluded |
+| Observed local command time | Approximately 5–9 minutes across schema generation, iterative checks/tests, the 37.57-second full gate, browser gates, 32.03-second release build, and isolated native smoke checks |
+| User approval/waiting time | Manual model/reasoning, system-audit, milestone-start, and publication approvals occurred outside execution time; GitHub-hosted queue time is tracked separately |
+| Sessions | One logical implementation session with a compacted handoff and recoverable parser, state-machine, frontend-contract, documentation, validation, and publication checkpoints |
+| Usage intensity | Very high model/tool activity; moderate local CPU and low memory pressure |
+| Completion status | Complete and verified locally; publication is recorded in repository history |
+
+The forecast substantially overestimated implementation time. The existing
+serialized process owner, app-reference model, strict fixtures, conservative
+crash recovery, and warm build graph could be extended without a database
+migration, dependency change, or second runtime task. XHigh reasoning was still
+appropriate for server/client request-ID collision, authority scope, exact
+correlation, cancel ordering, streamed-secret redaction, unsupported request
+handling, and the final native/webview security review.
+
+### Milestone 9A required observations and lessons
+
+- The reviewed schema generator took 1.04 seconds at about 141 MiB peak RSS and
+  expanded the committed Codex 0.144.6 subset from 42 to 52 files.
+- Only stable command, file-change, and permission requests are accepted.
+  Session acceptance and policy amendments are filtered out; unstable
+  session-wide file write-root grants cannot be approved; permission grants are
+  strictly parsed and limited to turn scope.
+- Native request/item/thread/turn identity remains behind Tauri. React receives
+  app-owned UUIDv7 approval/activity IDs, and deterministic tests cover stale
+  IDs, unavailable decisions, matching numeric client/server IDs, and
+  cancel-before-interrupt ordering.
+- Line-boundary buffering prevents a credential assignment split across output
+  chunks from bypassing redaction. Terminal/bidirectional controls, raw tool
+  arguments, file diffs, external/escaping paths, and credential-shaped values
+  do not enter the schema-v2 snapshot.
+- The full non-browser gate took 37.57 seconds at about 1.25 GiB peak RSS and
+  passed 59 JavaScript tests plus 68 Rust tests, with two deliberate live probes
+  ignored. The warm unbundled release build took 32.03 seconds at about 1.55 GiB
+  peak RSS.
+- Desktop/mobile activity-fixture checks passed accessibility and overflow
+  analysis. Visual inspection confirmed readable waiting, command detail,
+  progress, and approval-request presentation; the selectable expanded and
+  decision-control UX remains Milestone 9B.
+- An isolated release launch owned the exact D-Bus name, opened schema version
+  3 with `0700`/`0600` metadata permissions, started no Codex child, and cleaned
+  up its temporary XDG tree.
+- Available RAM remained about 44 GiB, swap stayed at about 175 MiB with zero
+  measured swaps, and no OOM, thermal issue, dependency download, clean build,
+  live model turn, real approval, persistent grant, source mutation, or GPU
+  workload occurred.
+- Milestone 9B is predominantly interaction/presentation work but still handles
+  explicit user consent. It requires a fresh model/reasoning gate; a preliminary
+  range is approximately 2–4 active hours, 5–15 minutes of local commands, and
+  2.5–5 total elapsed hours in one session, medium confidence.

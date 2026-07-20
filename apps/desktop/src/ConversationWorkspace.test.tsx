@@ -37,7 +37,7 @@ const project = projectWorkspaceSchema.parse({
 }).projects[0];
 
 const runningConversation = conversationSnapshotSchema.parse({
-  schemaVersion: 1,
+  schemaVersion: 2,
   state: "running",
   conversationId,
   projectId,
@@ -45,6 +45,7 @@ const runningConversation = conversationSnapshotSchema.parse({
   reasoningEffort: "high",
   sandboxMode: "workspace-write",
   approvalPolicy: "on-request",
+  pendingApproval: null,
   events: [{ type: "lifecycle", sequence: 1, phase: "running" }],
   diagnosticCode: null,
 });
@@ -136,14 +137,66 @@ describe("ConversationWorkspace", () => {
         {
           type: "activity",
           sequence: 3,
+          activityId: "018f0000-0000-7000-8000-000000000011",
           kind: "command-execution",
           status: "completed",
+          title: "Run command",
+          detail: "pnpm check",
+          exitCode: 0,
+        },
+        {
+          type: "activity-output-delta",
+          sequence: 4,
+          activityId: "018f0000-0000-7000-8000-000000000011",
+          delta: "Checks passed.",
         },
       ],
     });
 
     expect(screen.getByText("The UI is ready for review.")).toBeInTheDocument();
-    expect(screen.getByText("Command completed")).toBeInTheDocument();
+    expect(screen.getByText("Run command completed")).toBeInTheDocument();
+    expect(screen.getByText("pnpm check")).toBeInTheDocument();
+    expect(screen.getByText("Checks passed.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Stop task" }));
+    expect(onInterrupt).toHaveBeenCalledWith(conversationId);
+  });
+
+  it("keeps a pending approval active and allows safe task cancellation", () => {
+    const approvalId = "018f0000-0000-7000-8000-000000000011";
+    const activityId = "018f0000-0000-7000-8000-000000000012";
+    const waiting = conversationSnapshotSchema.parse({
+      ...runningConversation,
+      state: "waiting-for-approval",
+      pendingApproval: {
+        approvalId,
+        activityId,
+        kind: "command-execution",
+        title: "Run this command?",
+        reason: "The check needs permission.",
+        details: [{ label: "Command", value: "pnpm check" }],
+        decisions: ["approve", "decline", "cancel"],
+      },
+      events: [
+        {
+          type: "approval-requested",
+          sequence: 2,
+          approvalId,
+          activityId,
+          kind: "command-execution",
+        },
+      ],
+    });
+    const { onInterrupt } = renderWorkspace({
+      snapshot: waiting,
+      events: waiting.events,
+    });
+
+    expect(
+      screen.getByText("Codex is waiting for approval"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Approval requested for command execution."),
+    ).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Stop task" }));
     expect(onInterrupt).toHaveBeenCalledWith(conversationId);
   });

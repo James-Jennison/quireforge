@@ -102,7 +102,7 @@ const nativeResponses = {
     diagnosticCode: null,
   },
   conversation_status: {
-    schemaVersion: 1,
+    schemaVersion: 2,
     state: "empty",
     conversationId: null,
     projectId: null,
@@ -110,6 +110,7 @@ const nativeResponses = {
     reasoningEffort: null,
     sandboxMode: null,
     approvalPolicy: null,
+    pendingApproval: null,
     events: [],
     diagnosticCode: null,
   },
@@ -148,7 +149,10 @@ const nativeResponses = {
   },
 } as const;
 
-async function installNativeFixture(page: import("@playwright/test").Page) {
+async function installNativeFixture(
+  page: import("@playwright/test").Page,
+  responses: Record<string, unknown> = nativeResponses,
+) {
   await page.addInitScript((responses) => {
     const target = window as unknown as {
       __TAURI_INTERNALS__: {
@@ -159,13 +163,57 @@ async function installNativeFixture(page: import("@playwright/test").Page) {
       invoke: (command) => {
         if (!(command in responses))
           throw new Error(`Unexpected command: ${command}`);
-        return Promise.resolve(
-          structuredClone(responses[command as keyof typeof responses]),
-        );
+        return Promise.resolve(structuredClone(responses[command]));
       },
     };
-  }, nativeResponses);
+  }, responses);
 }
+
+const approvalConversation = {
+  schemaVersion: 2,
+  state: "waiting-for-approval",
+  conversationId: "018f0000-0000-7000-8000-000000000020",
+  projectId: "018f0000-0000-7000-8000-000000000001",
+  modelId: "gpt-5.6-sol",
+  reasoningEffort: "high",
+  sandboxMode: "workspace-write",
+  approvalPolicy: "on-request",
+  pendingApproval: {
+    approvalId: "018f0000-0000-7000-8000-000000000021",
+    activityId: "018f0000-0000-7000-8000-000000000022",
+    kind: "command-execution",
+    title: "Run this command?",
+    reason: "The project check needs permission.",
+    details: [{ label: "Command", value: "pnpm check" }],
+    decisions: ["approve", "decline", "cancel"],
+  },
+  events: [
+    {
+      type: "activity",
+      sequence: 1,
+      activityId: "018f0000-0000-7000-8000-000000000022",
+      kind: "command-execution",
+      status: "started",
+      title: "Run command",
+      detail: "pnpm check",
+      exitCode: null,
+    },
+    {
+      type: "activity-output-delta",
+      sequence: 2,
+      activityId: "018f0000-0000-7000-8000-000000000022",
+      delta: "Checking the desktop contract…",
+    },
+    {
+      type: "approval-requested",
+      sequence: 3,
+      approvalId: "018f0000-0000-7000-8000-000000000021",
+      activityId: "018f0000-0000-7000-8000-000000000022",
+      kind: "command-execution",
+    },
+  ],
+  diagnosticCode: null,
+} as const;
 
 test("desktop preview renders the honest semantic shell", async ({ page }) => {
   const response = await page.goto("/");
@@ -237,6 +285,32 @@ test("native session fixture renders grouping, tabs, and bounded controls", asyn
   ).toHaveAttribute("aria-selected", "true");
   await expect(page.getByLabel("Next task")).toBeVisible();
   await expect(page.getByRole("button", { name: "Resume" })).toBeDisabled();
+
+  const results = await new AxeBuilder({ page }).analyze();
+  expect(results.violations).toEqual([]);
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - window.innerWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(1);
+});
+
+test("native activity fixture renders bounded real-time approval detail", async ({
+  page,
+}) => {
+  await installNativeFixture(page, {
+    ...nativeResponses,
+    conversation_status: approvalConversation,
+    conversation_poll: approvalConversation,
+  });
+  await page.goto("/");
+
+  await expect(page.getByText("Codex is waiting for approval")).toBeVisible();
+  await expect(page.getByText("pnpm check")).toBeVisible();
+  await expect(page.getByText("Checking the desktop contract…")).toBeVisible();
+  await expect(
+    page.getByText("Approval requested for command execution."),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Stop task" })).toBeEnabled();
 
   const results = await new AxeBuilder({ page }).analyze();
   expect(results.violations).toEqual([]);

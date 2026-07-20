@@ -426,7 +426,9 @@ export default function App({
   useEffect(() => {
     if (
       !conversation.conversationId ||
-      !["running", "stopping"].includes(conversation.state)
+      !["running", "waiting-for-approval", "stopping"].includes(
+        conversation.state,
+      )
     ) {
       return;
     }
@@ -443,7 +445,9 @@ export default function App({
         setConversationEvents((current) =>
           mergeConversationEvents(current, result.events),
         );
-        if (["running", "stopping"].includes(result.state)) {
+        if (
+          ["running", "waiting-for-approval", "stopping"].includes(result.state)
+        ) {
           timer = window.setTimeout(() => void poll(), 250);
         } else {
           void loadSessions({
@@ -672,9 +676,11 @@ export default function App({
     ) ??
     projects.projects.find((project) => !project.archived) ??
     projects.projects[0];
-  const conversationActive = ["running", "stopping"].includes(
-    conversation.state,
-  );
+  const conversationActive = [
+    "running",
+    "waiting-for-approval",
+    "stopping",
+  ].includes(conversation.state);
 
   return (
     <div className="app-shell">

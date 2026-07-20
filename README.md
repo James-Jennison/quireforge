@@ -34,6 +34,10 @@ reconciliation, and conservative crash recovery. Milestone 8B adds bounded
 Codex-authoritative title search, project/fork grouping, keyboard-accessible
 tabs, and the user-facing resume/fork/archive/restore interface without
 persisting titles or transcript content.
+Milestone 9A adds a strict native approval boundary, app-owned approval and
+activity identity, turn-scoped decisions, safe pending-request cancellation,
+and bounded redacted command/tool/file progress. The polished selectable,
+expanded activity and approval interface remains Milestone 9B.
 Cloudflare Pages is the selected production host, but the site has not been
 deployed. There is no application package to install yet.
 
@@ -50,13 +54,15 @@ deployed. There is no application package to install yet.
   locally with narrow typed IPC, a supervised non-billable Codex runtime and
   account-status probe, a verified native project-attachment workflow, and a
   strict native conversation runtime with a responsive task UI and native
-  session-lifecycle/recovery boundary plus accessible session history controls.
+  session-lifecycle/recovery boundary, accessible session history controls,
+  and the Milestone 9A native approval/detailed-activity contract.
 - CI status: repository, website, and desktop quality gates are configured for
   pull requests and `main` pushes; deployment remains separately gated.
-- Current milestone: Milestone 8 is implemented and verified locally; Milestone
-  9 approvals and real-time command/tool/process presentation is next.
-- Known limitations: approval decisions and expandable real-time process details
-  remain planned; no installable packages, releases,
+- Current milestone: Milestone 9A is implemented locally; Milestone 9B's
+  selectable expanded activity and complete approval interface is next.
+- Known limitations: the native approval decision bridge exists, but its
+  polished user-facing controls and selectable expanded activity rows remain
+  Milestone 9B; no installable packages, releases,
   public deployment, or production Lighthouse evidence exists yet.
 
 ## Discovery documents
@@ -75,6 +81,7 @@ deployed. There is no application package to install yet.
 - [Milestone forecasts](docs/MILESTONE-FORECASTS.md)
 - [Superseded GitHub Pages plan](docs/GITHUB-PAGES.md)
 - [Permanent identity decision](docs/DECISIONS/0003-permanent-quireforge-identity.md)
+- [Native approval and activity decision](docs/DECISIONS/0011-native-approvals-and-activity-contract.md)
 - [Brand sources and usage](assets/brand/README.md)
 - [Roadmap](docs/ROADMAP.md)
 - [Changelog](CHANGELOG.md)

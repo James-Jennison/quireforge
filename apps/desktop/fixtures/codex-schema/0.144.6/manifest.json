@@ -2,8 +2,36 @@
   "schemaVersion": 1,
   "codexCliVersion": "0.144.6",
   "generator": "codex app-server generate-json-schema --experimental",
-  "selection": "initialize, model/list, stable account lifecycle, and the Milestone 7 conversation runtime and Milestone 8A reviewed thread lifecycle subset only",
+  "selection": "initialize, model/list, stable account lifecycle, and the Milestone 7 conversation runtime, Milestone 8A thread lifecycle, and Milestone 9A approval/activity subset only",
   "files": [
+    {
+      "path": "RequestId.json",
+      "sha256": "96c99482920c480e285c2776ed35bc3efa59146c281cd9cf09fcf0bf0e557091"
+    },
+    {
+      "path": "CommandExecutionRequestApprovalParams.json",
+      "sha256": "df52f055ecbb5f15e205e5d7d3c372b83ba363b4b8ae376f888fe056bd333025"
+    },
+    {
+      "path": "CommandExecutionRequestApprovalResponse.json",
+      "sha256": "b7353719d5ceb0dacb7e83c9bd06746c9eb3104b0c816a089253c5371f27cb57"
+    },
+    {
+      "path": "FileChangeRequestApprovalParams.json",
+      "sha256": "17ad04b2245eaf137891d71f81319a939f0b233e94487e7059c641433b874205"
+    },
+    {
+      "path": "FileChangeRequestApprovalResponse.json",
+      "sha256": "4a1f7b2ab9f1e8aef2928719c376c3351afc1eff7a7147b315a7d39309b93f36"
+    },
+    {
+      "path": "PermissionsRequestApprovalParams.json",
+      "sha256": "5477bcc8a984038598538658a643f1879f7d7fe040c42de04cf4347a48602cbd"
+    },
+    {
+      "path": "PermissionsRequestApprovalResponse.json",
+      "sha256": "40b7808937a0a763a6f3f1a7cbbc74ac098714c7359273875fe735fd011efaf2"
+    },
     {
       "path": "v1/InitializeParams.json",
       "sha256": "049471f470f79af52083db0bf41e93cbb4628ae2cc5524bbcc7e06fcc9695630"
@@ -167,6 +195,18 @@
     {
       "path": "v2/ItemCompletedNotification.json",
       "sha256": "6d8d1e6156976c30c545fd1df5fe7b3f9431dd763503064260530cee9925af98"
+    },
+    {
+      "path": "v2/CommandExecutionOutputDeltaNotification.json",
+      "sha256": "aefb4bb71258fdba49ee7fc5a7106bdd4cb5b9f7119dffcaa38e2102b610c111"
+    },
+    {
+      "path": "v2/McpToolCallProgressNotification.json",
+      "sha256": "f02d2e39c45175ddca8ba7c79f7ab649bfbce53f923eed6dc033a991cfb72f81"
+    },
+    {
+      "path": "v2/ServerRequestResolvedNotification.json",
+      "sha256": "96c753940c24489d5cd41fcc45136973f7bdf3e92eab4233d8535b7848f51cf0"
     },
     {
       "path": "v2/ErrorNotification.json",

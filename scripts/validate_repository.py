@@ -89,6 +89,16 @@ REQUIRED_PATHS = (
     "apps/desktop/fixtures/codex-schema/0.144.6/v2/ReasoningSummaryTextDeltaNotification.json",
     "apps/desktop/fixtures/codex-schema/0.144.6/v2/TurnPlanUpdatedNotification.json",
     "apps/desktop/fixtures/codex-schema/0.144.6/v2/ItemStartedNotification.json",
+    "apps/desktop/fixtures/codex-schema/0.144.6/RequestId.json",
+    "apps/desktop/fixtures/codex-schema/0.144.6/CommandExecutionRequestApprovalParams.json",
+    "apps/desktop/fixtures/codex-schema/0.144.6/CommandExecutionRequestApprovalResponse.json",
+    "apps/desktop/fixtures/codex-schema/0.144.6/FileChangeRequestApprovalParams.json",
+    "apps/desktop/fixtures/codex-schema/0.144.6/FileChangeRequestApprovalResponse.json",
+    "apps/desktop/fixtures/codex-schema/0.144.6/PermissionsRequestApprovalParams.json",
+    "apps/desktop/fixtures/codex-schema/0.144.6/PermissionsRequestApprovalResponse.json",
+    "apps/desktop/fixtures/codex-schema/0.144.6/v2/CommandExecutionOutputDeltaNotification.json",
+    "apps/desktop/fixtures/codex-schema/0.144.6/v2/McpToolCallProgressNotification.json",
+    "apps/desktop/fixtures/codex-schema/0.144.6/v2/ServerRequestResolvedNotification.json",
     "apps/desktop/fixtures/codex-schema/0.144.6/v2/ItemCompletedNotification.json",
     "apps/desktop/fixtures/codex-schema/0.144.6/v2/ErrorNotification.json",
     "apps/desktop/package.json",
@@ -109,6 +119,7 @@ REQUIRED_PATHS = (
     "apps/desktop/src-tauri/src/codex/auth/types.rs",
     "apps/desktop/src-tauri/src/codex/backend.rs",
     "apps/desktop/src-tauri/src/codex/conversation/mod.rs",
+    "apps/desktop/src-tauri/src/codex/conversation/presentation.rs",
     "apps/desktop/src-tauri/src/codex/conversation/types.rs",
     "apps/desktop/src-tauri/src/codex/probe.rs",
     "apps/desktop/src-tauri/src/project/identity.rs",
@@ -125,6 +136,7 @@ REQUIRED_PATHS = (
     "docs/WEBSITE.md",
     "docs/DECISIONS/0007-quireforge-metadata-sqlite.md",
     "docs/DECISIONS/0008-native-conversation-runtime.md",
+    "docs/DECISIONS/0011-native-approvals-and-activity-contract.md",
     "scripts/generate_codex_schema_fixtures.py",
 )
 
@@ -170,7 +182,7 @@ IDENTITY_EXPECTATIONS = {
         '"pendingAttachment": null',
     ),
     "apps/desktop/fixtures/conversation.json": (
-        '"schemaVersion": 1',
+        '"schemaVersion": 2',
         '"state": "empty"',
         '"conversationId": null',
         '"events": []',
@@ -191,6 +203,7 @@ IDENTITY_EXPECTATIONS = {
         "conversation_start",
         "conversation_poll",
         "conversation_interrupt",
+        "conversation_approval_decide",
         "ConversationService::default()",
     ),
 }
@@ -321,6 +334,13 @@ def validate() -> list[str]:
     if manifest_path.is_file():
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         expected_schema_paths = {
+            "RequestId.json",
+            "CommandExecutionRequestApprovalParams.json",
+            "CommandExecutionRequestApprovalResponse.json",
+            "FileChangeRequestApprovalParams.json",
+            "FileChangeRequestApprovalResponse.json",
+            "PermissionsRequestApprovalParams.json",
+            "PermissionsRequestApprovalResponse.json",
             "v1/InitializeParams.json",
             "v1/InitializeResponse.json",
             "v2/AccountLoginCompletedNotification.json",
@@ -362,6 +382,9 @@ def validate() -> list[str]:
             "v2/TurnPlanUpdatedNotification.json",
             "v2/ItemStartedNotification.json",
             "v2/ItemCompletedNotification.json",
+            "v2/CommandExecutionOutputDeltaNotification.json",
+            "v2/McpToolCallProgressNotification.json",
+            "v2/ServerRequestResolvedNotification.json",
             "v2/ErrorNotification.json",
         }
         manifest_files = manifest.get("files", [])
@@ -423,6 +446,10 @@ def validate() -> list[str]:
             "selectedPath",
             "resolvedPath",
             "rawMessage",
+            "requestId",
+            "itemId",
+            "arguments",
+            "diff",
         ):
             if forbidden_field in serialized_fixture:
                 errors.append(

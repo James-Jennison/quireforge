@@ -3,8 +3,8 @@
 Status: initial Milestone 0 model with the Milestone 3 frontend/native boundary,
 Milestone 4 Codex process adapter, Milestone 5 authentication controls, and
 Milestone 6 native directory-attachment controls, Milestone 7 native
-conversation controls, and Milestone 8A native lifecycle/recovery controls
-applied. It must be revisited before approvals,
+conversation controls, Milestone 8A native lifecycle/recovery controls, and
+Milestone 9A approval/activity controls applied. It must be revisited before
 integrations, packaging, and release milestones.
 
 ## Assets
@@ -69,6 +69,20 @@ references. Startup clears obsolete active-turn ownership and records stale
 work as interrupted. Fork failure attempts to archive an otherwise unreferenced
 new thread; archive/restore never delete project files or Codex history.
 
+Milestone 9A keeps approval authority behind that native owner. Only reviewed
+command, file, and permission requests are accepted; exact native identities
+are replaced with app-owned UUIDv7 values for IPC. Session acceptance, policy
+amendments, unstable write-root grants, unsupported requests, stale IDs, and
+unadvertised decisions cannot be approved. Permission approval is turn-scoped,
+and cancel answers the pending request before exact-turn interruption. Pending
+approval is not persisted or replayed after a crash.
+
+Detailed activity discards raw tool arguments and file diffs, buffers command
+output through line boundaries, strips terminal and bidirectional controls,
+redacts credential-shaped values, reduces paths to project-relative or an
+outside-project marker, and applies strict size/count bounds. Raw Codex
+protocol and identity remain native-only.
+
 ## Principal threats and controls
 
 ### Wrong-directory execution
@@ -126,6 +140,12 @@ Controls:
   emulator.
 - Bound captured output and process lifetime.
 - Correlate approvals to exact command/cwd/turn.
+- Correlate approval responses to the native request while accepting only an
+  app-owned approval UUID from React.
+- Never offer session acceptance or policy amendments through the one-turn
+  approval contract; never approve an unstable session write-root grant.
+- Buffer command output to a line boundary before redaction so credential
+  assignments split across chunks are not exposed.
 - Keep integrated terminals separate from Codex approval semantics.
 - Never offer bypass modes as an innocuous default.
 - Reject the `danger-full-access` plus `never` approval combination and validate

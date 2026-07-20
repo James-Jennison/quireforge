@@ -1,6 +1,6 @@
 # Testing QuireForge
 
-Status: Milestones 2–8A establish repository, website, desktop frontend, native
+Status: Milestones 2–9A establish repository, website, desktop frontend, native
 contract, Codex adapter, authentication, project attachment, native
 conversation/runtime lifecycle, and Tauri build checks. PTY and broader Git
 fixtures arrive with the milestones that introduce those systems.
@@ -44,8 +44,10 @@ path-bearing bridge input, and cover confirmation, missing/read-only states,
 relink, preflight, and two-step detach/archive controls.
 Conversation tests cover verified-cwd start, live catalog validation, strict
 control combinations, UUIDv7 correlation, bounded normalized events, exact
-interrupt, project reservation, approval-blocked shutdown, protocol mismatch,
-child reaping, and reference-only persistence. TypeScript tests reject cwd,
+interrupt, project reservation, exact approval correlation and decisions,
+pending-approval cancellation, detailed activity identity, split-secret
+redaction, protocol mismatch, child reaping, and reference-only persistence.
+TypeScript tests reject cwd,
 Codex thread/turn IDs, unknown fields, raw protocol payloads, and path-bearing
 bridge input before native invocation.
 Session-lifecycle tests cover schema migration, stale-turn crash reconciliation,
@@ -54,6 +56,35 @@ archive/restore without deletion, mismatched-cwd rejection, project-reservation
 release, child reaping, and shared strict Rust/TypeScript fixtures. They use
 deterministic mock app-server processes and never read a personal transcript or
 start a live model turn.
+
+## Manual Milestone 9A checklist
+
+- Use deterministic mock app-server fixtures only; do not start a billable
+  model turn or approve a real command during routine validation.
+- Confirm command, file, and permission requests correlate the exact native
+  thread/turn/request/item while React receives only app-owned conversation,
+  approval, and activity IDs.
+- Confirm `acceptForSession`, policy-amendment objects, unstable file write-root
+  grants, experimental tool requests, duplicate requests, stale IDs, and
+  unadvertised decisions cannot be approved.
+- Confirm permission approval echoes only a strictly parsed profile with turn
+  scope; decline/cancel grant an empty profile; stop resolves a pending request
+  before interrupting the exact turn.
+- Confirm the project remains reserved while approval is pending and becomes
+  available after every terminal path. Reopen a fixture database with the
+  active status and verify existing crash recovery marks it interrupted without
+  persisting or replaying approval content.
+- Feed terminal controls, bidirectional controls, credential flags/environment
+  names, credential-bearing URLs, internal/external/escaping paths, split
+  secret assignments, oversized/incomplete output, raw tool arguments, and file
+  diffs; confirm only bounded redacted normalized presentation crosses IPC.
+- Confirm a stable app activity ID links item start, output/progress, and
+  completion, and that the strict schema-v2 frontend rejects raw or unknown
+  fields.
+- Run focused native/frontend suites, the complete repository and browser
+  gates, the warm unbundled native build, and an isolated launch smoke check.
+  Milestone 9B must separately verify selectable expansion, approval controls,
+  keyboard behavior, responsive layout, and accessibility.
 
 ## Responsive browser and accessibility checks
 
@@ -189,8 +220,9 @@ print the account-visible catalog.
 - Inspect the migrated SQLite schema and confirm conversation records contain
   references, selected controls, status, and timestamps only—never prompt or
   transcript content.
-- Confirm an approval server request becomes a stable blocked state and no
-  approval response is fabricated.
+- Confirm an unsupported server request becomes a stable blocked state and no
+  response is fabricated; reviewed stable approvals follow the Milestone 9A
+  checklist above.
 - Confirm the composer stays disabled without a verified writable project and
   ready native runtime; browser preview must not simulate a task.
 - Confirm model/reasoning choices come only from the normalized runtime catalog,

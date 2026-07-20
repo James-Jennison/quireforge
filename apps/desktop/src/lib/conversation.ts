@@ -71,6 +71,20 @@ export const conversationStartRequestSchema = z
     }
   });
 
+export const conversationApprovalDecisionSchema = z.enum([
+  "approve",
+  "decline",
+  "cancel",
+]);
+
+export const conversationApprovalDecisionRequestSchema = z
+  .object({
+    conversationId: conversationIdSchema,
+    approvalId: conversationIdSchema,
+    decision: conversationApprovalDecisionSchema,
+  })
+  .strict();
+
 const sequenceSchema = z.number().int().positive().safe();
 const planStepSchema = z
   .object({
@@ -121,6 +135,7 @@ const conversationEventSchema = z.discriminatedUnion("type", [
     .object({
       type: z.literal("activity"),
       sequence: sequenceSchema,
+      activityId: conversationIdSchema,
       kind: z.enum([
         "user-message",
         "agent-message",
@@ -134,6 +149,39 @@ const conversationEventSchema = z.discriminatedUnion("type", [
         "other",
       ]),
       status: z.enum(["started", "completed"]),
+      title: boundedTextSchema(256),
+      detail: boundedTextSchema(8 * 1024).nullable(),
+      exitCode: z.number().int().min(-2147483648).max(2147483647).nullable(),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("activity-output-delta"),
+      sequence: sequenceSchema,
+      activityId: conversationIdSchema,
+      delta: boundedTextSchema(8 * 1024),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("approval-requested"),
+      sequence: sequenceSchema,
+      approvalId: conversationIdSchema,
+      activityId: conversationIdSchema,
+      kind: z.enum(["command-execution", "file-change", "permissions"]),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("approval-resolved"),
+      sequence: sequenceSchema,
+      approvalId: conversationIdSchema,
+      resolution: z.enum([
+        "approved",
+        "declined",
+        "canceled",
+        "resolved-externally",
+      ]),
     })
     .strict(),
   z
@@ -166,18 +214,51 @@ export const conversationDiagnosticSchema = z.enum([
   "reasoning-unavailable",
   "metadata-unavailable",
   "approval-required",
+  "approval-not-found",
+  "approval-decision-unavailable",
   "process-exited",
   "transport-failed",
   "protocol-invalid",
   "rpc-rejected",
 ]);
 
+const conversationApprovalSchema = z
+  .object({
+    approvalId: conversationIdSchema,
+    activityId: conversationIdSchema,
+    kind: z.enum(["command-execution", "file-change", "permissions"]),
+    title: boundedTextSchema(256),
+    reason: boundedTextSchema(4096).nullable(),
+    details: z
+      .array(
+        z
+          .object({
+            label: boundedTextSchema(128),
+            value: boundedTextSchema(8 * 1024),
+          })
+          .strict(),
+      )
+      .max(16),
+    decisions: z.array(conversationApprovalDecisionSchema).min(1).max(3),
+  })
+  .strict()
+  .superRefine((approval, context) => {
+    if (new Set(approval.decisions).size !== approval.decisions.length) {
+      context.addIssue({
+        code: "custom",
+        message: "Approval decisions must be unique",
+        path: ["decisions"],
+      });
+    }
+  });
+
 export const conversationSnapshotSchema = z
   .object({
-    schemaVersion: z.literal(1),
+    schemaVersion: z.literal(2),
     state: z.enum([
       "empty",
       "running",
+      "waiting-for-approval",
       "stopping",
       "completed",
       "interrupted",
@@ -191,6 +272,7 @@ export const conversationSnapshotSchema = z
     reasoningEffort: conversationProtocolChoiceSchema.max(32).nullable(),
     sandboxMode: conversationSandboxModeSchema.nullable(),
     approvalPolicy: conversationApprovalPolicySchema.nullable(),
+    pendingApproval: conversationApprovalSchema.nullable(),
     events: z.array(conversationEventSchema).max(64),
     diagnosticCode: conversationDiagnosticSchema.nullable(),
   })
@@ -212,23 +294,36 @@ export const conversationSnapshotSchema = z
     const consistent =
       (snapshot.state === "empty" &&
         hasNoMetadata &&
+        snapshot.pendingApproval === null &&
         snapshot.events.length === 0 &&
         snapshot.diagnosticCode === null) ||
       (snapshot.state === "unavailable" &&
         hasNoMetadata &&
+        snapshot.pendingApproval === null &&
         snapshot.events.length === 0 &&
         snapshot.diagnosticCode !== null) ||
       (["running", "stopping"].includes(snapshot.state) &&
         hasAllMetadata &&
+        snapshot.pendingApproval === null &&
         snapshot.diagnosticCode === null) ||
+      (snapshot.state === "waiting-for-approval" &&
+        hasAllMetadata &&
+        snapshot.pendingApproval !== null &&
+        (snapshot.diagnosticCode === null ||
+          ["approval-not-found", "approval-decision-unavailable"].includes(
+            snapshot.diagnosticCode,
+          ))) ||
       (terminalWithoutDiagnostic &&
         hasAllMetadata &&
+        snapshot.pendingApproval === null &&
         snapshot.diagnosticCode === null) ||
       (snapshot.state === "blocked" &&
         hasAllMetadata &&
+        snapshot.pendingApproval === null &&
         snapshot.diagnosticCode === "approval-required") ||
       (snapshot.state === "failed" &&
         hasAllMetadata &&
+        snapshot.pendingApproval === null &&
         snapshot.diagnosticCode !== null);
     if (!consistent) {
       context.addIssue({
@@ -252,6 +347,9 @@ export const conversationSnapshotSchema = z
 
 export type ConversationStartRequest = z.infer<
   typeof conversationStartRequestSchema
+>;
+export type ConversationApprovalDecisionRequest = z.infer<
+  typeof conversationApprovalDecisionRequestSchema
 >;
 export type ConversationSnapshot = z.infer<typeof conversationSnapshotSchema>;
 export type ConversationEvent = ConversationSnapshot["events"][number];

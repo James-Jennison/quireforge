@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-pub const CONVERSATION_SCHEMA_VERSION: u16 = 1;
+pub const CONVERSATION_SCHEMA_VERSION: u16 = 2;
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -11,6 +11,14 @@ pub struct ConversationStartRequest {
     pub reasoning_effort: String,
     pub sandbox_mode: ConversationSandboxMode,
     pub approval_policy: ConversationApprovalPolicy,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ConversationApprovalDecisionRequest {
+    pub conversation_id: String,
+    pub approval_id: String,
+    pub decision: ConversationApprovalDecision,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -54,6 +62,7 @@ impl ConversationApprovalPolicy {
 pub enum ConversationState {
     Empty,
     Running,
+    WaitingForApproval,
     Stopping,
     Completed,
     Interrupted,
@@ -77,6 +86,8 @@ pub enum ConversationDiagnosticCode {
     ReasoningUnavailable,
     MetadataUnavailable,
     ApprovalRequired,
+    ApprovalNotFound,
+    ApprovalDecisionUnavailable,
     ProcessExited,
     TransportFailed,
     ProtocolInvalid,
@@ -94,6 +105,7 @@ pub struct ConversationSnapshot {
     pub reasoning_effort: Option<String>,
     pub sandbox_mode: Option<ConversationSandboxMode>,
     pub approval_policy: Option<ConversationApprovalPolicy>,
+    pub pending_approval: Option<ConversationApproval>,
     pub events: Vec<ConversationEvent>,
     pub diagnostic_code: Option<ConversationDiagnosticCode>,
 }
@@ -109,6 +121,7 @@ impl ConversationSnapshot {
             reasoning_effort: None,
             sandbox_mode: None,
             approval_policy: None,
+            pending_approval: None,
             events: Vec::new(),
             diagnostic_code: None,
         }
@@ -145,8 +158,28 @@ pub enum ConversationEvent {
     },
     Activity {
         sequence: u64,
+        activity_id: String,
         kind: ConversationActivityKind,
         status: ConversationActivityStatus,
+        title: String,
+        detail: Option<String>,
+        exit_code: Option<i32>,
+    },
+    ActivityOutputDelta {
+        sequence: u64,
+        activity_id: String,
+        delta: String,
+    },
+    ApprovalRequested {
+        sequence: u64,
+        approval_id: String,
+        activity_id: String,
+        kind: ConversationApprovalKind,
+    },
+    ApprovalResolved {
+        sequence: u64,
+        approval_id: String,
+        resolution: ConversationApprovalResolution,
     },
     Error {
         sequence: u64,
@@ -202,6 +235,50 @@ pub enum ConversationActivityKind {
 pub enum ConversationActivityStatus {
     Started,
     Completed,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum ConversationApprovalDecision {
+    Approve,
+    Decline,
+    Cancel,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum ConversationApprovalResolution {
+    Approved,
+    Declined,
+    Canceled,
+    ResolvedExternally,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum ConversationApprovalKind {
+    CommandExecution,
+    FileChange,
+    Permissions,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConversationApprovalDetail {
+    pub label: String,
+    pub value: String,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConversationApproval {
+    pub approval_id: String,
+    pub activity_id: String,
+    pub kind: ConversationApprovalKind,
+    pub title: String,
+    pub reason: Option<String>,
+    pub details: Vec<ConversationApprovalDetail>,
+    pub decisions: Vec<ConversationApprovalDecision>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]

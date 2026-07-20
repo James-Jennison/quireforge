@@ -307,7 +307,8 @@ async fn run_login_owner(
                         state.send_replace(snapshot);
                         return;
                     }
-                    Ok(AppServerNotification::Conversation(_)) => {
+                    Ok(AppServerNotification::Conversation(_)
+                        | AppServerNotification::ConversationRequest(_)) => {
                         let _ = process.shutdown().await;
                         state.send_replace(CodexAuthSnapshot::unavailable(
                             AuthDiagnosticCode::ProtocolInvalid,

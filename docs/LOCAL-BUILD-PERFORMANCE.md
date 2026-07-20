@@ -281,3 +281,36 @@ Playwright remained CPU/system-memory workloads.
 The RTX 3050 is reserved for genuine GPU workloads such as WebGL/WebGPU,
 shader, CUDA, ML, or hardware-rendering validation. Rust, Tauri, React,
 TypeScript, Vite, and Astro compilation remains CPU/system-memory work.
+
+## Milestone 9A measurements
+
+The native approval/activity checkpoint reused the warm Cargo target, registry,
+pnpm, Vite, Astro, and Playwright caches. The Balanced profile retained four
+Cargo workers and two Playwright workers. No dependency install, clean build,
+cache deletion, database migration, or simultaneous release/browser build was
+required.
+
+| Operation | Observed wall time | Approximate peak RSS | Result |
+|---|---:|---:|---|
+| Reviewed Codex approval/activity schema generation | 1.04 seconds | about 141 MiB | Passed, 52 selected schemas total |
+| Focused app-server and conversation suites | about 5.5 seconds incremental compile plus under 0.3 seconds per suite | Not instrumented | Passed, including 13 app-server and 19 conversation tests |
+| Desktop component/integration suite | 4.76 seconds | Not instrumented | Passed, 56 tests across 11 files |
+| Full non-browser repository gate | 37.57 seconds initially; 28.83-second final warm rerun | about 1.25 GiB initially; about 765 MiB final | Passed, including 59 JavaScript and 68 Rust tests; 2 live probes ignored |
+| Combined desktop/website browser gate | 9.93 seconds | about 281 MiB | Passed 18 desktop/mobile checks, including native approval/activity accessibility and overflow presentation |
+| Warm unbundled native release build | 32.03 seconds | about 1.55 GiB | Passed, 115 frontend modules |
+| Isolated native release launch | under 1 second | Low runtime pressure | Exact D-Bus identity, schema version 3, `0700`/`0600` metadata, and no Codex child verified |
+| Desktop/mobile visual inspection | Manual review interval | Low runtime pressure | Waiting state, command detail, progress, and approval-request presentation remained readable without horizontal overflow |
+
+Approximately 44 GiB of system memory and 726 GiB of NVMe space remained
+available through the final gates. Swap stayed at about 175 MiB and every
+measured gate reported zero swaps. No OOM, throttling, dependency download,
+cache deletion, clean build, competing QuireForge build, or material disk
+pressure occurred. The RTX 3050 was correctly unused because schema generation,
+Rust, React, TypeScript, Vite, Astro, and Playwright were CPU/system-memory
+workloads.
+
+Line-boundary buffering and strict native projection added security coverage
+without materially changing build pressure. The warm release link remains the
+longest individual local command. Milestone 9B can keep the Balanced profile,
+four Cargo workers, and two Playwright workers unless its fresh preflight finds
+different system load or memory availability.

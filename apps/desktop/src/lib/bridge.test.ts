@@ -15,6 +15,8 @@ import {
   CODEX_AUTH_STATUS_COMMAND,
   CODEX_RUNTIME_PROBE_COMMAND,
   confirmProjectAttachment,
+  decideConversationApproval,
+  CONVERSATION_APPROVAL_DECIDE_COMMAND,
   CONVERSATION_INTERRUPT_COMMAND,
   CONVERSATION_ARCHIVE_COMMAND,
   CONVERSATION_FORK_COMMAND,
@@ -176,12 +178,30 @@ describe("desktop bridge", () => {
     await startConversation(request, invoke);
     await pollConversation(conversationId, invoke);
     await interruptConversation(conversationId, invoke);
+    await decideConversationApproval(
+      {
+        conversationId,
+        approvalId: "018f0000-0000-7000-8000-000000000011",
+        decision: "decline",
+      },
+      invoke,
+    );
 
     expect(invoke.mock.calls).toEqual([
       [CONVERSATION_STATUS_COMMAND],
       [CONVERSATION_START_COMMAND, { request }],
       [CONVERSATION_POLL_COMMAND, { conversationId }],
       [CONVERSATION_INTERRUPT_COMMAND, { conversationId }],
+      [
+        CONVERSATION_APPROVAL_DECIDE_COMMAND,
+        {
+          request: {
+            conversationId,
+            approvalId: "018f0000-0000-7000-8000-000000000011",
+            decision: "decline",
+          },
+        },
+      ],
     ]);
   });
 
