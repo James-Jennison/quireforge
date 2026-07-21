@@ -16,7 +16,7 @@ concurrency:
 jobs:
   validate:
     name: Validate tracked sources
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64, upcloud]
     timeout-minutes: 10
     steps:
       - name: Check out repository
@@ -30,7 +30,7 @@ jobs:
 
   website:
     name: Website quality gate
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64, upcloud, node]
     timeout-minutes: 20
     steps:
       - name: Check out repository
@@ -78,7 +78,7 @@ jobs:
 
   desktop:
     name: Desktop quality gate
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64, upcloud, node, rust]
     timeout-minutes: 35
     steps:
       - name: Check out repository
@@ -112,7 +112,10 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
 
       - name: Install Rust with formatting and linting components
-        run: rustup toolchain install stable --profile minimal --component rustfmt,clippy
+        uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
 
       - name: Install locked dependencies
         run: pnpm install --frozen-lockfile
