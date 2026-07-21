@@ -16,6 +16,7 @@ concurrency:
 jobs:
   validate:
     name: Validate tracked sources
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: [self-hosted, Linux, X64, upcloud, build]
     timeout-minutes: 10
     steps:
@@ -30,6 +31,7 @@ jobs:
 
   website:
     name: Website quality gate
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: [self-hosted, Linux, X64, upcloud, build]
     timeout-minutes: 20
     steps:
@@ -84,6 +86,7 @@ jobs:
 
   desktop:
     name: Desktop quality gate
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: [self-hosted, Linux, X64, upcloud, build]
     timeout-minutes: 35
     steps:
