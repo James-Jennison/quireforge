@@ -13,7 +13,7 @@ the real toolchain rather than inferred from documentation alone:
 | Surface                        | Target identity                            | Current validation state                                                                   |
 | ------------------------------ | ------------------------------------------ | ------------------------------------------------------------------------------------------ |
 | Product/window/desktop display | `QuireForge`                               | Verified in Tauri configuration and local Wayland launch                                   |
-| Executable and Debian package  | `quireforge`                               | Unbundled executable verified; Debian package pending Milestone 19                         |
+| Executable and Debian package  | `quireforge`                               | Unbundled executable verified; Debian package pending Milestone 20                         |
 | Desktop entry filename         | `io.github.codeframe78.QuireForge.desktop` | Reverse-DNS contract retained; installed package output not yet validated                  |
 | AppImage release basename      | `QuireForge`                               | Project release policy; verify the final workflow-renamed artifact                         |
 | Application identifier         | `io.github.codeframe78.QuireForge`         | Verified as the running GTK/D-Bus application identity on Wayland                          |
@@ -86,6 +86,8 @@ baseline examples in the [official AppImage guidance](https://v2.tauri.app/distr
 | ------------------------------------------ | -------------------- | ----------------------------------------------------------------------------- | ------------------------------------- |
 | Detect version                             | Implemented          | Fixed `codex --version` probe                                                 | Stable official                       |
 | List account-visible models/efforts        | Implemented          | Bounded `model/list` normalization                                            | Stable method on experimental server  |
+| Apply model/effort to the next turn        | Yes                  | Revalidated `turn/start` model/effort overrides                               | Stable method on experimental server  |
+| Agent-directed selector request lifecycle  | Present in schemas   | Typed app-owned control; exact lifecycle validation required in Milestone 13  | Experimental/dependency-gated         |
 | Start in an absolute local cwd             | Yes                  | `thread/start` / `turn/start`; CLI fallback                                   | Stable method + stable CLI            |
 | Additional writable roots                  | Yes                  | sandbox `writableRoots`; CLI `--add-dir`                                      | Stable official                       |
 | Stream turns, commands, plans, diffs       | Yes                  | app-server events                                                             | Stable methods on experimental server |
@@ -108,7 +110,7 @@ baseline examples in the [official AppImage guidance](https://v2.tauri.app/distr
 | Integrated process API                     | Present              | Do not use as default terminal                                                | Experimental/outside Codex sandbox    |
 | Scheduled hosted tasks                     | Not established      | Defer                                                                         | Unsupported until discovered          |
 | Repository status and staged/worktree diff | Git 2.53.0 available | Fixed native shell-free Git service over a revalidated attachment             | Implemented locally in Milestone 10A  |
-| Stage, unstage, bounded revert, and commit  | Git 2.53.0 available | Native-held preview/confirmation plans with fixed Git operations               | Implemented locally in Milestone 10B  |
+| Stage, unstage, bounded revert, and commit | Git 2.53.0 available | Native-held preview/confirmation plans with fixed Git operations              | Implemented locally in Milestone 10B  |
 
 Account-scoped inspection on 2026-07-19 returned a multi-page app directory
 from both the default OpenAI catalog and ecosystem directory, with only a small

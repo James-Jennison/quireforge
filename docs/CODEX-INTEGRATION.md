@@ -45,8 +45,8 @@ through OpenAI's supported known-client process.
 ## Evidence sources
 
 - Installed CLI help and redacted diagnostics.
-- Generated app-server JSON Schema from `codex app-server
-  generate-json-schema --experimental`.
+- Generated app-server JSON Schema from
+  `codex app-server generate-json-schema --experimental`.
 - Live, non-mutating app-server requests against CLI 0.144.6.
 - [Official Codex app-server documentation](https://learn.chatgpt.com/docs/app-server).
 - [Official Codex plugin documentation](https://learn.chatgpt.com/docs/plugins)
@@ -232,6 +232,31 @@ efforts, default effort, modalities, display metadata, and default-model state.
 The UI must populate model and reasoning controls only from `model/list` (or an
 official fallback exposed by that Codex version). It must never assume a model
 or reasoning effort exists.
+
+## Agent-directed model selection boundary
+
+The reviewed `turn/start` contract accepts model and effort overrides for that
+turn and subsequent turns. That creates a supported next-turn application
+point, not a way for the executing model to replace itself in the middle of a
+turn. Milestone 13 will let Codex inspect only a normalized picker catalog,
+current effective selection, pending selection, and app-owned policy, then
+request at most one bounded model/reasoning change per turn with a short
+rationale.
+
+Native code must refresh and revalidate the requested model and effort before
+the next `turn/start`. Manual selection and a user lock always take precedence.
+Recommend mode displays a proposal without applying it; Automatic mode requires
+explicit opt-in plus an allowlist or model/reasoning ceiling. The UI must show
+effective and pending values separately and label Codex-requested provenance.
+No account identifier, credential, raw prompt, or raw app-server payload belongs
+in the selector policy or audit record.
+
+The exact app-server request/response lifecycle used for the model to invoke
+this app-owned control remains an implementation-time compatibility gate. It
+must use a documented interface and strict typed normalization. If the installed
+Codex version cannot provide that lifecycle reliably, QuireForge will expose
+recommendation-only behavior and will not automate a website selector, call a
+private endpoint, or claim automatic control.
 
 ## Sessions and conversation lifecycle
 

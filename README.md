@@ -87,12 +87,15 @@ deployed. There is no application package to install yet.
   pull requests and `main` pushes; deployment remains separately gated.
 - Current milestone: Milestone 12 is complete, merged to `main`, and verified
   by the repository, website, desktop, browser, native, and release-build gates.
-  Milestone 13 remains planned and requires a fresh reasoning/model/start gate.
-- Known limitations: concurrency is capped at four active worktree tasks;
-  durable task recovery, automatic conflict resolution, attached-worktree
-  cleanup, force/prune workflows, advanced remote operations, installable
-  packages, releases, public deployment, and production Lighthouse evidence do
-  not exist yet.
+  Milestone 13 now plans an app-owned, policy-bounded way for Codex to stage the
+  model and reasoning selection for the next turn; it requires a fresh
+  reasoning/model/start gate.
+- Known limitations: Codex-directed model/reasoning selection is not yet
+  implemented and the current turn cannot replace its own executing model;
+  concurrency is capped at four active worktree tasks; durable task recovery,
+  automatic conflict resolution, attached-worktree cleanup, force/prune
+  workflows, advanced remote operations, installable packages, releases,
+  public deployment, and production Lighthouse evidence do not exist yet.
 
 ## Discovery documents
 

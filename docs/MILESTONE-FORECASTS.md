@@ -1027,3 +1027,82 @@ ordinary Rust/TypeScript builds are CPU/system-memory workloads.
   or Playwright browser downloads. A credential-free, lockfile/toolchain-keyed
   cache is a separately scoped optimization candidate rather than a Milestone
   12 product change.
+
+## Milestone 13 — Agent-directed model and reasoning selection
+
+Status: planned; awaiting the manual model/reasoning confirmation and milestone
+start approval. The preliminary forecast was prepared on
+`2026-07-21T18:43:23-07:00`; the calibrated forecast and actual start timestamp
+must be recorded only after that gate.
+
+### Milestone Reasoning Gate
+
+- **Objective:** let Codex inspect QuireForge's normalized selector state and
+  request a policy-compliant model/reasoning choice for the next turn, while
+  preserving manual ownership, visible provenance, and the strict native IPC
+  boundary.
+- **Recommended model/reasoning:** GPT-5.6 Sol at Extra High/XHigh. The work
+  combines protocol compatibility, state-machine design, cost and
+  prompt-injection controls, restart semantics, native concurrency, typed IPC,
+  accessible UI, and adversarial tests. XHigh is the lowest currently available
+  strength expected to handle those interactions reliably in one coherent
+  milestone.
+- **Lower-strength risk:** High or Medium would be more likely to miss a stale
+  catalog race, manual-lock precedence edge, sticky next-turn semantics,
+  oscillation path, or unsupported-interface fallback. Correcting one of those
+  late would cost more than the reasoning saved.
+- **Higher-strength benefit:** Max may marginally help the final adversarial
+  review, but it is not expected to materially improve routine implementation
+  enough to justify its additional latency and usage.
+- **Preparation:** no credential, connector authorization, live model call,
+  Codex configuration mutation, or website automation is required. The user
+  needs only to select or verify GPT-5.6 Sol XHigh and grant the separate start
+  approval.
+
+### Preliminary system-calibrated forecast
+
+- Expected active Codex work: approximately **4–7 hours**.
+- Expected local build/test command time: approximately **30–75 minutes**, with
+  warm pnpm, Cargo, and Playwright caches preserved.
+- Expected GitHub Actions time after publication: approximately **10–25 minutes**
+  of runner time; hosted queue variance is outside the local baseline.
+- Expected total real-world execution after approval: approximately **6–9
+  hours across one or two sessions**, low-to-medium confidence.
+- Expected user-blocked/model-change/approval time: unknown and reported
+  separately; it is excluded from counted project time.
+- Usage intensity: high model usage, balanced local CPU/memory usage, no GPU.
+
+The forecast assumes the existing normalized `model/list` catalog, conversation
+picker, per-turn model/effort overrides, deterministic app-server mock harness,
+and warm dependency/build caches remain usable. The most important uncertainty
+is the exact supported lifecycle by which the executing Codex turn invokes an
+app-owned selector control and how that request composes with resume/sticky
+turn behavior. If that lifecycle is not reliable, the accepted fallback is
+recommendation-only rather than a private or fabricated control path.
+
+The most recent generalized host profile provides approximately 42 GiB of
+available system RAM, more than 700 GiB of free NVMe storage, low load, and warm
+Rust/Node caches. The Balanced profile will begin with four Cargo workers and
+two Playwright workers, reducing concurrency if memory pressure or swapping
+appears. The RTX 3050 is not used because Rust, TypeScript, React, Tauri, and
+browser tests are CPU/system-memory workloads.
+
+| Component                                               | Duration range | Confidence | Primary uncertainty                                      | Resource class      | Safe overlap                           |
+| ------------------------------------------------------- | -------------: | ---------- | -------------------------------------------------------- | ------------------- | -------------------------------------- |
+| Repository and installed-protocol inspection            |      20–35 min | Medium     | Dynamic-control request lifecycle                        | Model/storage-bound | Batched read-only checks               |
+| Architecture, policy, and threat review                 |      35–60 min | Medium     | Ownership and sticky next-turn semantics                 | Model-bound         | Documentation only                     |
+| Native selector policy and control lifecycle            |      1.5–2.5 h | Low–Medium | Concurrency, persistence, and supported invocation route | Model/CPU-bound     | Focused UI work when not compiling     |
+| Typed IPC and selector ownership/provenance UI          |      45–75 min | Medium     | Accessible pending/effective presentation                | Model-bound         | Targeted native tests                  |
+| Deterministic and adversarial tests                     |      45–90 min | Medium     | Prompt injection, stale catalog, restart, oscillation    | Model/CPU-bound     | Documentation at low load              |
+| Full build, browser, native, and visual verification    |      25–50 min | Medium     | UI state timing and native mock integration              | CPU/storage-bound   | Limited; heavy gates remain sequential |
+| Debugging allowance                                     |      45–90 min | Low        | Unsupported or changed app-server behavior               | Model/CPU-bound     | Case dependent                         |
+| Documentation, security/diff review, commit preparation |      35–60 min | Medium     | Cross-document and fixture consistency                   | Model-bound         | Warm builds/tests                      |
+| GitHub publication and main CI                          |      10–25 min | Medium     | Hosted queue and cold runner                             | Network-bound       | Local completion review                |
+
+Critical path: validate the supported control lifecycle → define native policy
+and persistence → implement staged next-turn application → expose strict typed
+IPC and accessible selector ownership UI → adversarial and restart tests → full
+repository/browser/release/native gates → security and diff review → approved
+publication and successful `main` CI. Independent documentation and fixture
+review may overlap warm targeted builds; simultaneous release, browser, and
+native suites will be avoided to preserve responsiveness.
