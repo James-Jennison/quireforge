@@ -1037,9 +1037,13 @@ ordinary Rust/TypeScript builds are CPU/system-memory workloads.
 | Preliminary forecast | Approximately 3.5–5.5 active hours; 25–60 minutes of local commands; 4.5–7 total elapsed hours; medium confidence |
 | Calibrated forecast | Approximately 3.5–6 active hours; 20–50 minutes of local commands; 4.5–7.5 total elapsed hours across one or two sessions; medium confidence |
 | Calibration basis | Clean `main` at `3ce57b9`; Codex CLI 0.145.0 versus 0.144.6 fixtures; 43 GiB available RAM and 720 GiB free NVMe; warm Cargo/pnpm caches; four Cargo workers; no GPU work |
-| Current local checkpoint | Contract implementation, documentation, complete non-browser gate, and release build passed; publication verification pending |
+| Observed active execution | Approximately 0.43 hour across inspection, architecture, implementation, security hardening, documentation, review, and publication operations |
 | Observed local command time | About 5.2 measured minutes through security hardening and the final complete/release reruns |
-| Resource observations | Final complete gate 37.77 seconds/about 935 MiB RSS; final release build 38.41 seconds/about 1.81 GiB RSS; zero swaps |
+| Observed automated wait | Approximately 0.14 hour: about 0.087 hour of measured local commands plus 104-second pull-request and 83-second `main` workflow critical paths |
+| Observed counted / elapsed | 0.57 counted project hour / 0.68 total elapsed hour; a 0.11-hour environment-permission block is included only in elapsed time |
+| Forecast variance | Approximately 4.18 hours (88.0%) below the 4.75-hour calibrated active-forecast midpoint when compared with counted project time |
+| Resource observations | Final complete gate 37.77 seconds/about 935 MiB RSS; final release build 38.41 seconds/about 1.81 GiB RSS; zero swaps; persistent UpCloud CI desktop jobs completed in 1 minute 20 seconds to 1 minute 41 seconds |
+| Completion status | Complete; merged by [PR #32](https://github.com/James-Jennison/quireforge/pull/32) as `7bc5f5f`, with successful PR and `main` repository checks |
 
 Critical path: installed schema inventory → route/stability classification →
 category-preserving normalized contract → dynamic-tool lifecycle decision →
@@ -1051,8 +1055,11 @@ so the recommendation-only fallback is not currently required for Milestone
 
 The calibrated forecast was conservative because this checkpoint intentionally
 stopped at contract architecture, reused established strict fixture patterns,
-added no dependency or user-facing UI, and needed no protocol debugging. Final
-variance will be recorded after publication and hosted-runner waits complete.
+added no dependency or user-facing UI, and needed no protocol debugging. The
+persistent UpCloud runner also completed the desktop gate in 1 minute 20
+seconds to 1 minute 41 seconds rather than repeating the Milestone 12
+GitHub-hosted cold-build path. Future forecasts should use the persistent-runner
+baseline while still allowing for cache eviction and runner availability.
 
 ## Milestone 18 — Agent-directed model and reasoning selection
 

@@ -629,3 +629,15 @@ dependency download, personal integration read, user-repository mutation, live
 model call, browser run, or GPU workload. Browser, native launch, and visual
 checks were deliberately omitted because Milestone 13A introduces no
 user-facing or runtime integration surface.
+
+Publication ran on the persistent self-hosted UpCloud build runner rather than
+a fresh GitHub-hosted virtual machine. Pull-request workflow
+[`29888106276`](https://github.com/James-Jennison/quireforge/actions/runs/29888106276)
+completed its source, website, and desktop jobs in 7 seconds, 54 seconds, and 1
+minute 41 seconds respectively. The post-merge `main` workflow
+[`29888198468`](https://github.com/James-Jennison/quireforge/actions/runs/29888198468)
+completed them in 6 seconds, 1 minute 14 seconds, and 1 minute 20 seconds. The
+persistent host and retained dependency/compiler/browser caches removed the
+roughly 9.5-minute cold desktop path observed for Milestone 12. No additional
+cache action, clean build, or runner configuration change was made by Milestone
+13A.

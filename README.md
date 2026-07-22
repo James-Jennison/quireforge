@@ -60,11 +60,12 @@ prune behavior. Milestone 12 adds up to eight app-owned native PTY tabs rooted
 in freshly reverified attached projects, with byte-safe bounded output,
 input/resize, controlled environment inheritance, explicit process cleanup,
 and metadata-only recovery that never stores shell content or process identity.
-Milestone 13A refreshes the Codex 0.145.0 protocol evidence and adds strict
+Milestone 13A refreshed the Codex 0.145.0 protocol evidence and added strict
 shared contracts for connector, plugin, marketplace, skill, MCP, policy,
 requirement, scope, health, and app-owned dynamic-tool discovery. The contract
 preserves blocked, degraded, and unknown states while keeping every integration
-operation contract-only until the native discovery service is implemented.
+operation contract-only until the Milestone 13B native discovery service is
+implemented. Milestone 13A is merged and verified on `main`.
 Cloudflare Pages is the selected production host, but the site has not been
 deployed. There is no application package to install yet.
 
@@ -93,9 +94,9 @@ deployed. There is no application package to install yet.
 - CI status: repository, website, and desktop quality gates are configured for
   pull requests and `main` pushes; deployment remains separately gated.
 - Current milestone: Milestone 13A protocol refresh and integration contract
-  architecture is implemented and fully verified locally; publication
-  verification is in progress. Milestone 13B live read-only discovery requires
-  a fresh reasoning/model/start gate after 13A completion.
+  architecture is complete, merged, and verified on `main`. Milestone 13B live
+  read-only discovery is next and requires a fresh reasoning/model/start gate
+  before implementation.
 - Known limitations: Codex-directed model/reasoning selection is not yet
   implemented and is deferred to Milestone 18 after its integration and
   advanced-feature prerequisites; the current turn cannot replace its own
