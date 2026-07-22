@@ -253,6 +253,14 @@ released a usable application.
   persistence, drag/drop, conversation attachments, generic filesystem reads,
   packages, releases, and deployments remain excluded. UTF-8 markup can appear
   only as inert normalized text.
+- The Milestone 15B bounded conversation-image attachment flow: explicit native
+  picker and browser drag/drop sources; strict PNG/JPEG byte, dimension, name,
+  count, and total limits; private mode-`0700`/`0600` staging; opaque one-use
+  UUIDv7 draft IDs; cancellation, expiry, startup, failure, and terminal-turn
+  cleanup; and documented `localImage` inputs on start, resume, and fork. Raw
+  source/staging paths never cross IPC or persist in QuireForge metadata.
+  Generic files, browser path events, arbitrary filesystem reads, live model
+  calls in routine tests, packages, releases, and deployments remain excluded.
 
 ### Changed
 

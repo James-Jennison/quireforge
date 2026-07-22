@@ -2,6 +2,14 @@ import { invoke } from "@tauri-apps/api/core";
 import { z } from "zod";
 
 import {
+  conversationAttachmentCancelRequestSchema,
+  conversationAttachmentDropRequestSchema,
+  conversationAttachmentSnapshotSchema,
+  type ConversationAttachmentCancelRequest,
+  type ConversationAttachmentDropRequest,
+  type ConversationAttachmentSnapshot,
+} from "./attachment";
+import {
   gitDiffRequestSchema,
   gitDiffSchema,
   gitMutationConfirmRequestSchema,
@@ -140,6 +148,14 @@ export const PROJECT_DETACH_COMMAND = "project_detach";
 export const PROJECT_ARCHIVE_COMMAND = "project_archive";
 export const PROJECT_PREFLIGHT_COMMAND = "project_preflight";
 export const FILE_PREVIEW_PICK_COMMAND = "file_preview_pick";
+export const CONVERSATION_ATTACHMENT_STATUS_COMMAND =
+  "conversation_attachment_status";
+export const CONVERSATION_ATTACHMENT_PICK_COMMAND =
+  "conversation_attachment_pick";
+export const CONVERSATION_ATTACHMENT_STAGE_DROP_COMMAND =
+  "conversation_attachment_stage_drop";
+export const CONVERSATION_ATTACHMENT_CANCEL_COMMAND =
+  "conversation_attachment_cancel";
 export const WORKTREE_STATUS_COMMAND = "worktree_status";
 export const WORKTREE_CREATE_PREVIEW_COMMAND = "worktree_create_preview";
 export const WORKTREE_RECOVER_PREVIEW_COMMAND = "worktree_recover_preview";
@@ -426,6 +442,55 @@ export async function pickFilePreview(
     projectId: reviewedProjectId,
   });
   return filePreviewSchema.parse(payload);
+}
+
+export async function loadConversationAttachments(
+  projectId: string,
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<ConversationAttachmentSnapshot> {
+  const reviewedProjectId =
+    conversationStartRequestSchema.shape.projectId.parse(projectId);
+  const payload = await invokeFunction(CONVERSATION_ATTACHMENT_STATUS_COMMAND, {
+    projectId: reviewedProjectId,
+  });
+  return conversationAttachmentSnapshotSchema.parse(payload);
+}
+
+export async function pickConversationAttachments(
+  projectId: string,
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<ConversationAttachmentSnapshot> {
+  const reviewedProjectId =
+    conversationStartRequestSchema.shape.projectId.parse(projectId);
+  const payload = await invokeFunction(CONVERSATION_ATTACHMENT_PICK_COMMAND, {
+    projectId: reviewedProjectId,
+  });
+  return conversationAttachmentSnapshotSchema.parse(payload);
+}
+
+export async function stageDroppedConversationAttachments(
+  request: ConversationAttachmentDropRequest,
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<ConversationAttachmentSnapshot> {
+  const reviewedRequest =
+    conversationAttachmentDropRequestSchema.parse(request);
+  const payload = await invokeFunction(
+    CONVERSATION_ATTACHMENT_STAGE_DROP_COMMAND,
+    { request: reviewedRequest },
+  );
+  return conversationAttachmentSnapshotSchema.parse(payload);
+}
+
+export async function cancelConversationAttachments(
+  request: ConversationAttachmentCancelRequest,
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<ConversationAttachmentSnapshot> {
+  const reviewedRequest =
+    conversationAttachmentCancelRequestSchema.parse(request);
+  const payload = await invokeFunction(CONVERSATION_ATTACHMENT_CANCEL_COMMAND, {
+    request: reviewedRequest,
+  });
+  return conversationAttachmentSnapshotSchema.parse(payload);
 }
 
 export async function loadWorktreeStatus(

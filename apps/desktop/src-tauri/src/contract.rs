@@ -95,6 +95,12 @@ impl DesktopBootstrap {
                     state: CapabilityState::Ready,
                     milestone: 15,
                 },
+                CapabilitySummary {
+                    id: "conversation-attachments",
+                    label: "Conversation image attachments",
+                    state: CapabilityState::Ready,
+                    milestone: 15,
+                },
             ],
         }
     }

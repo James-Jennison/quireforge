@@ -1,9 +1,10 @@
 # Building QuireForge
 
-Status: the Milestone 2 website and desktop work through Milestone 15A can be
+Status: the Milestone 2 website and desktop work through Milestone 15B can be
 developed and built locally, including Codex/authentication, project and
 conversation lifecycle, reviewed Git/worktree workflows, the native terminal,
-normalized/confirmed integration workflows, and bounded project-file previews.
+normalized/confirmed integration workflows, bounded project-file previews, and
+private conversation-image attachments.
 An installable application package does not yet exist.
 
 ## Supported development baseline
@@ -125,6 +126,14 @@ accepts only an opaque project ID, bounded prompt, and closed model/reasoning,
 sandbox, and approval values plus up to eight normalized connector catalog IDs;
 cwd, `app://` paths, and native Codex IDs never enter from the webview. Poll and
 interrupt accept only QuireForge's application conversation ID.
+
+Conversation start/resume/fork may additionally carry at most four opaque
+attachment UUIDv7s. `conversation_attachment_pick` owns its native picker path;
+`conversation_attachment_stage_drop` accepts only bounded PNG/JPEG bytes and
+safe display metadata; status/cancel commands expose no path. Native code
+revalidates private staged copies and constructs documented `localImage` turn
+inputs. Tauri default drag/drop path events are disabled. Generic file
+attachments and arbitrary filesystem reads are not exposed.
 
 `file_preview_pick` also accepts only an opaque project ID. The file path comes
 from the native picker and remains in Rust while attachment containment,

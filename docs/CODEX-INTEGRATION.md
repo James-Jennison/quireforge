@@ -386,6 +386,21 @@ method level in the inspected release:
 The application will still version-gate every method because the app-server
 executable as a whole remains labeled experimental.
 
+## Local image turn input
+
+The reviewed Codex CLI 0.145.0 `TurnStartParams` schema includes the documented
+`localImage` user input with a native path. The official app-server guide also
+describes user-message content as text, image, or `localImage`. No generic
+local-file input appears in the reviewed turn contract, so QuireForge must not
+represent text, PDF, or arbitrary files as supported turn attachments.
+
+App-server documents `turn/start` as returning the initial turn and then
+streaming lifecycle/item events through terminal `turn/completed`. It does not
+specify an earlier point when a `localImage` path may be removed. Milestone 15B
+therefore constructs the path only from a private native-held staged copy and
+retains that copy until QuireForge observes a terminal normalized turn. Source
+and staging paths never cross IPC or enter QuireForge metadata.
+
 ## Model discovery
 
 Live `model/list` returned picker-visible models rather than requiring hardcoded

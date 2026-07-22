@@ -826,3 +826,35 @@ desktop suite still passed 22/22. The external process was preserved, and the
 unchanged website suite then passed 8/8 on an isolated temporary port. This is
 an orchestration/environment collision, not a product-test failure; generated
 preview suites remain safest when sequenced with verified port ownership.
+
+## Milestone 15B measurements
+
+The bounded conversation-image checkpoint reused warm Cargo, pnpm, Vite,
+Astro, and browser caches. It added no dependency, clean build, cache reset,
+schema migration, linker, driver, CUDA, swap, or zram change, and the RTX 3050
+remained unused.
+
+| Operation                                       | Observed wall time | Approximate peak RSS | Result                                                                                             |
+| ----------------------------------------------- | -----------------: | -------------------: | -------------------------------------------------------------------------------------------------- |
+| Desktop TypeScript preflight                    |       1.63 seconds |        about 260 MiB | Passed with zero swaps                                                                             |
+| Four-worker Cargo preflight                     |       0.26 second  |        about 109 MiB | Passed with zero swaps                                                                             |
+| Final complete non-browser `pnpm validate` gate |      68.50 seconds |       about 1.51 GiB | Passed 138 frontend tests and 160 Rust tests; 157 passed and 3 deliberate live probes were ignored |
+| Final desktop Playwright regression             |      26.81 seconds |        about 436 MiB | Passed 24 desktop/mobile checks, including attachment, accessibility, and overflow                 |
+| Final website Playwright regression             |       7.10 seconds |        about 253 MiB | Passed 8 desktop/mobile checks after verifying port 4321 was free                                  |
+| Final warm unbundled native release build       |      39.63 seconds |       about 2.28 GiB | Passed, including a 35.50-second optimized compile/link                                            |
+
+All resource-timed final operations reported zero swaps. The desktop bundle
+retained its existing chunk-size warning at 785.35 kB/211.10 kB gzip; this
+checkpoint did not introduce a new dependency or separate chunk. Routine tests
+used only deterministic fixtures, temporary files, and mock app-server
+processes. They performed no personal-file inspection, personal Codex-state
+read or mutation, live/billable model call, package, release, deployment, or
+hosting change.
+
+The full validation peak increased from 15A because the attachment lifecycle
+and final retention correction recompiled more Rust targets during the timed
+gate; the warm release build remained below 15A's wall time while its peak RSS
+rose to about 2.28 GiB. Both remained comfortably within the host's available
+memory and forecasted command allowance. An initial targeted browser run used
+the previous production `dist`; rebuilding before Playwright produced the
+expected attachment surface and all final checks passed.

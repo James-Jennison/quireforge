@@ -1,5 +1,10 @@
 import { useMemo, useRef, useState } from "react";
 
+import { ConversationAttachmentTray } from "./ConversationAttachmentTray";
+import type {
+  ConversationAttachmentDropRequest,
+  ConversationAttachmentSnapshot,
+} from "./lib/attachment";
 import type { CodexRuntimeSnapshot } from "./lib/codex";
 import {
   conversationStartRequestSchema,
@@ -25,13 +30,24 @@ interface ConversationWorkspaceProps {
   runtime: CodexRuntimeSnapshot;
   project: Project | undefined;
   integrations: IntegrationCatalogSnapshot;
+  attachments: ConversationAttachmentSnapshot;
   busy: boolean;
+  attachmentBusy: boolean;
   actionError: boolean;
+  attachmentActionError: boolean;
   onStart: (request: ConversationStartRequest) => Promise<ConversationSnapshot>;
   onInterrupt: (conversationId: string) => Promise<ConversationSnapshot>;
   onDecideApproval: (
     request: ConversationApprovalDecisionRequest,
   ) => Promise<ConversationSnapshot>;
+  onAttachmentPick: (projectId: string) => Promise<void>;
+  onAttachmentDrop: (
+    request: ConversationAttachmentDropRequest,
+  ) => Promise<void>;
+  onAttachmentCancel: (
+    projectId: string,
+    attachmentId: string,
+  ) => Promise<void>;
 }
 
 const sandboxOptions = [
@@ -77,6 +93,8 @@ const diagnosticMessages: Record<
   "reasoning-unavailable": "The selected reasoning level is unavailable.",
   "integration-unavailable":
     "A selected connector is no longer authorized, enabled, or callable.",
+  "attachment-unavailable":
+    "A staged image is no longer available. Add it again before retrying.",
   "metadata-unavailable":
     "QuireForge could not read its conversation metadata.",
   "approval-required": "Codex needs an approval before it can continue.",
@@ -245,11 +263,17 @@ export function ConversationWorkspace({
   runtime,
   project,
   integrations,
+  attachments,
   busy,
+  attachmentBusy,
   actionError,
+  attachmentActionError,
   onStart,
   onInterrupt,
   onDecideApproval,
+  onAttachmentPick,
+  onAttachmentDrop,
+  onAttachmentCancel,
 }: ConversationWorkspaceProps) {
   const defaultModel =
     runtime.models.find((model) => model.isDefault) ?? runtime.models[0];
@@ -340,10 +364,18 @@ export function ConversationWorkspace({
         .map((entry) => entry.id),
     [availableConnectors, effectiveSelectedConnectorIds],
   );
+  const attachmentIds = useMemo(
+    () =>
+      attachments.projectId === project?.id && attachments.state === "ready"
+        ? attachments.attachments.map((attachment) => attachment.attachmentId)
+        : [],
+    [attachments, project?.id],
+  );
   const request = useMemo(
     () => ({
       projectId: project?.id ?? "",
       prompt,
+      attachmentIds,
       integrationEntryIds,
       modelId: effectiveModelId,
       reasoningEffort: effectiveReasoningEffort,
@@ -356,6 +388,7 @@ export function ConversationWorkspace({
       effectiveReasoningEffort,
       project?.id,
       prompt,
+      attachmentIds,
       integrationEntryIds,
       sandboxMode,
     ],
@@ -466,6 +499,17 @@ export function ConversationWorkspace({
             value={prompt}
             disabled={active || busy}
             onChange={(event) => setPrompt(event.target.value)}
+          />
+          <ConversationAttachmentTray
+            availability={availability}
+            projectId={project?.id ?? null}
+            snapshot={attachments}
+            busy={attachmentBusy}
+            disabled={active || busy || !projectReady}
+            actionError={attachmentActionError}
+            onPick={onAttachmentPick}
+            onDrop={onAttachmentDrop}
+            onCancel={onAttachmentCancel}
           />
           <fieldset className="conversation-integrations">
             <legend>Connected integrations</legend>

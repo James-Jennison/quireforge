@@ -80,9 +80,9 @@ Milestone 14A establishes the confirmed native plugin and marketplace mutation
 boundary. Milestone 14B adds the user-facing Integration Center over that
 boundary without broadening it. Milestone 14C adds only reviewed connector/MCP
 authorization, skill enablement, refresh, and connector prompt mentions. Later
-Milestone 15A adds the first bounded local-file preview surface. Milestones
-15B–17 still need to establish the remaining desktop and advanced-feature
-prerequisites before that control is implemented.
+Milestones 15A and 15B add bounded local preview and conversation-image
+surfaces. Milestones 15C–17 still need to establish the remaining desktop and
+advanced-feature prerequisites before that control is implemented.
 
 ## Status
 
@@ -103,7 +103,7 @@ prerequisites before that control is implemented.
 |        12 | Integrated terminal                                               | Large        | Complete; merged to `main`; not packaged                            |
 |        13 | Integration discovery and compatibility                           | Very large   | Complete through 13B; verified locally                              |
 |        14 | Integration Center and installation workflows                     | Very large   | Complete through 14C; merged and verified on `main`                 |
-|        15 | File previews and desktop integration                             | Large        | In progress; 15A implemented and verified locally                   |
+|        15 | File previews and desktop integration                             | Large        | In progress; 15A–15B implemented and verified locally               |
 |        16 | Complete Cloudflare Pages website                                 | Very large   | Planned                                                             |
 |        17 | Scheduled tasks and advanced supported features                   | Medium–Large | Planned/dependency-gated                                            |
 |        18 | Agent-directed model and reasoning selection                      | Large        | Planned/dependency-gated                                            |
@@ -553,16 +553,20 @@ reviewable:
 - **15B — drag/drop and conversation attachments:** define source ownership,
   staging/retention, model-interface support, explicit send semantics, size and
   count limits, cancellation, and cleanup without turning drag/drop into a
-  general path bridge.
+  general path bridge. The implemented checkpoint accepts only PNG/JPEG,
+  disables Tauri's default path-bearing drag/drop events, stages validated
+  bytes in private app data, sends only native `localImage` paths, and retains
+  each consumed copy until its turn is terminal. See
+  [ADR 0022](DECISIONS/0022-bounded-conversation-image-attachments.md).
 - **15C — desktop handoffs and Linux verification:** add notifications and
   reviewed editor/open-with behavior, then verify native picker/handoff behavior
   on supported Wayland and X11 sessions. External destinations stay visible and
   allowlisted; no generic opener or arbitrary command IPC is allowed.
 
-Milestone 15A is implemented and verified locally with no dependency addition,
-persistence, user-file test access, package, release, or deployment. The broader
-Milestone 15 acceptance remains open until 15B and 15C are implemented and
-verified.
+Milestones 15A and 15B are implemented and verified locally with no dependency
+addition, source-path persistence, user-file test access, billable model call,
+package, release, or deployment. The broader Milestone 15 acceptance remains
+open until 15C is implemented and verified.
 
 ### 16 — Complete Cloudflare Pages Website
 

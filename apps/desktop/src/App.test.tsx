@@ -5,6 +5,7 @@ vi.mock("@xterm/xterm", () => ({ Terminal: class {} }));
 vi.mock("@xterm/addon-fit", () => ({ FitAddon: class {} }));
 
 import App from "./App";
+import { sharedConversationAttachmentFixture } from "./lib/attachment";
 import { codexAuthSchema, scaffoldCodexAuth } from "./lib/auth";
 import { scaffoldCodexRuntime } from "./lib/codex";
 import { scaffoldBootstrap } from "./lib/contract";
@@ -149,7 +150,7 @@ describe("QuireForge desktop shell", () => {
     expect(
       await screen.findByRole("button", { name: "Continue in browser" }),
     ).toBeInTheDocument();
-    expect(screen.getAllByText("ready")).toHaveLength(8);
+    expect(screen.getAllByText("ready")).toHaveLength(9);
     expect(screen.queryByText("planned")).not.toBeInTheDocument();
     expect(
       screen.getByText(
@@ -226,6 +227,66 @@ describe("QuireForge desktop shell", () => {
       }),
     ).toBeInTheDocument();
     expect(pickFilePreviewTask).toHaveBeenCalledWith(projectId);
+  });
+
+  it("sends only reviewed opaque image IDs with an explicit task start", async () => {
+    const conversationId = "018f0000-0000-7000-8000-000000000010";
+    const attachmentSnapshot = {
+      ...sharedConversationAttachmentFixture,
+      projectId,
+    };
+    const pickConversationAttachmentsTask = vi
+      .fn()
+      .mockResolvedValue(attachmentSnapshot);
+    const startConversationTask = vi.fn().mockResolvedValue(
+      conversationSnapshotSchema.parse({
+        ...scaffoldConversation,
+        state: "running",
+        conversationId,
+        projectId,
+        modelId: "gpt-5.6-sol",
+        reasoningEffort: "medium",
+        sandboxMode: "workspace-write",
+        approvalPolicy: "on-request",
+        events: [{ type: "lifecycle", sequence: 1, phase: "running" }],
+      }),
+    );
+    render(
+      <App
+        loadBootstrap={() => Promise.resolve(scaffoldBootstrap)}
+        loadRuntime={() => Promise.resolve(scaffoldCodexRuntime)}
+        loadAuth={() => Promise.resolve(scaffoldCodexAuth)}
+        loadProjects={() => Promise.resolve(attachedProject)}
+        loadConversation={() => Promise.resolve(scaffoldConversation)}
+        pickConversationAttachmentsTask={pickConversationAttachmentsTask}
+        startConversationTask={startConversationTask}
+      />,
+    );
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Choose images" }),
+    );
+    expect(await screen.findByText("review.png")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Task"), {
+      target: { value: "Review the attached image." },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Start task" }));
+
+    await waitFor(() =>
+      expect(startConversationTask).toHaveBeenCalledWith(
+        expect.objectContaining({
+          projectId,
+          prompt: "Review the attached image.",
+          attachmentIds: [
+            sharedConversationAttachmentFixture.attachments[0]!.attachmentId,
+          ],
+        }),
+      ),
+    );
+    expect(screen.queryByText("review.png")).not.toBeInTheDocument();
+    expect(JSON.stringify(startConversationTask.mock.calls)).not.toContain(
+      "/private/",
+    );
   });
 
   it("renders a device-code handoff and cancels through fixed actions", async () => {
@@ -771,6 +832,7 @@ describe("QuireForge desktop shell", () => {
       expect(resumeConversationTask).toHaveBeenCalledWith({
         conversationId,
         prompt: "Continue from the app-owned reference.",
+        attachmentIds: [],
       }),
     );
     await waitFor(() =>

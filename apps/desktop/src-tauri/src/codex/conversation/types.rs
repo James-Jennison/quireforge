@@ -8,6 +8,7 @@ pub const CONVERSATION_REGISTRY_SCHEMA_VERSION: u16 = 1;
 pub struct ConversationStartRequest {
     pub project_id: String,
     pub prompt: String,
+    pub attachment_ids: Vec<String>,
     pub integration_entry_ids: Vec<String>,
     pub model_id: String,
     pub reasoning_effort: String,
@@ -88,6 +89,7 @@ pub enum ConversationDiagnosticCode {
     ModelUnavailable,
     ReasoningUnavailable,
     IntegrationUnavailable,
+    AttachmentUnavailable,
     MetadataUnavailable,
     ApprovalRequired,
     ApprovalNotFound,
@@ -145,6 +147,15 @@ impl ConversationSnapshot {
             diagnostic_code: Some(diagnostic_code),
             ..Self::empty()
         }
+    }
+
+    pub(crate) fn turn_in_flight(&self) -> bool {
+        matches!(
+            self.state,
+            ConversationState::Running
+                | ConversationState::WaitingForApproval
+                | ConversationState::Stopping
+        )
     }
 }
 

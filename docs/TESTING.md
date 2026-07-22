@@ -13,6 +13,8 @@ Milestones 14A–14C add confirmed lifecycle, Integration Center, authorization,
 skill-control, refresh, and connector-mention coverage.
 Milestone 15A adds a strict bounded file-preview contract, temporary-file
 native tests, and honest browser/native presentation coverage.
+Milestone 15B adds strict conversation-image staging, lifecycle, turn-input,
+component, and browser coverage.
 
 ## Repository, website, and desktop checks
 
@@ -175,6 +177,18 @@ payloads. Bridge, component, application, and browser tests verify the one
 fixed opaque-ID command, native-picker ownership, browser honesty, axe-core,
 and overflow. They never read a user's project files.
 
+Milestone 15B adds a strict shared Rust/TypeScript conversation-attachment
+fixture. Native tests use temporary images and app-data roots to cover native
+picker and dragged-byte sources, symlink/name/type/size refusal, private file
+permissions, expiry, cancellation, tamper detection, one-use claim,
+path-free serialization, startup reconciliation, documented `localImage`
+construction, and terminal-turn cleanup. TypeScript rejects unknown fields,
+unsafe names, non-PNG/JPEG types, malformed IDs/base64, and inconsistent
+states. Bridge, component, application, and browser tests cover the four fixed
+commands, explicit start/resume/fork IDs, browser drag/drop/picker honesty,
+responsive layout, axe-core, and overflow. They use deterministic mock
+app-server processes and make no live model call.
+
 ## Milestone 13A contract checklist
 
 - Confirm the generated manifest identifies CLI 0.145.0, hashes every selected
@@ -301,6 +315,28 @@ and overflow. They never read a user's project files.
   tests, desktop/mobile Playwright with axe-core/overflow, complete repository
   gates, and a warm unbundled release build. Do not inspect a user's files or
   create a package, release, deployment, or hosting change.
+
+## Milestone 15B conversation-image checklist
+
+- Confirm Tauri default file-drop events are disabled, picker paths stay native,
+  and browser drops transmit only explicitly read bounded bytes plus a safe
+  name and declared PNG/JPEG type.
+- Confirm Rust independently validates real type/structure, dimensions, names,
+  4 MiB per-file, four-file, and 16 MiB aggregate limits before creating
+  mode-`0600` UUIDv7 copies under a mode-`0700` app-data root.
+- Confirm snapshots contain only opaque project/attachment IDs and normalized
+  metadata; source/staged paths, bytes, filesystem handles, Codex IDs, and raw
+  protocol input never cross IPC or enter SQLite.
+- Confirm drafts expire after 15 minutes, are consumed once, remain project-
+  bound, and are cleaned by cancel, failed send, terminal turn, or startup.
+  Tampered/replaced copies must fail closed at claim.
+- Confirm start, resume, and fork construct only documented `localImage` inputs
+  natively and retain claimed files until the normalized turn is terminal.
+  Generic file and arbitrary path inputs must remain unavailable.
+- Run strict contracts, temporary native tests, bridge/component/app tests,
+  desktop/mobile Playwright with axe-core/overflow, complete repository gates,
+  and a warm unbundled release build. Do not inspect user files, start a live
+  model turn, or create a package, release, deployment, or hosting change.
 
 ## Planned manual Milestone 18 checklist
 

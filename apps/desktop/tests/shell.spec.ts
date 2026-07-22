@@ -5,6 +5,7 @@ import integrationCatalogFixture from "../fixtures/integration-catalog.json" wit
 import integrationControlFixture from "../fixtures/integration-control.json" with { type: "json" };
 import integrationMutationFixture from "../fixtures/integration-mutation.json" with { type: "json" };
 import filePreviewFixture from "../fixtures/file-preview.json" with { type: "json" };
+import conversationAttachmentFixture from "../fixtures/conversation-attachments.json" with { type: "json" };
 
 const nativeIntegrationCatalog = {
   ...integrationCatalogFixture,
@@ -87,6 +88,12 @@ const nativeResponses = {
         state: "ready",
         milestone: 15,
       },
+      {
+        id: "conversation-attachments",
+        label: "Conversation image attachments",
+        state: "ready",
+        milestone: 15,
+      },
     ],
   },
   codex_runtime_probe: {
@@ -124,6 +131,24 @@ const nativeResponses = {
   file_preview_pick: {
     ...filePreviewFixture,
     projectId: "018f0000-0000-7000-8000-000000000001",
+  },
+  conversation_attachment_status: {
+    schemaVersion: 1,
+    state: "empty",
+    projectId: "018f0000-0000-7000-8000-000000000001",
+    attachments: [],
+    diagnosticCode: null,
+  },
+  conversation_attachment_pick: {
+    ...conversationAttachmentFixture,
+    projectId: "018f0000-0000-7000-8000-000000000001",
+  },
+  conversation_attachment_cancel: {
+    schemaVersion: 1,
+    state: "empty",
+    projectId: "018f0000-0000-7000-8000-000000000001",
+    attachments: [],
+    diagnosticCode: null,
   },
   integration_catalog_read: nativeIntegrationCatalog,
   integration_catalog_refresh: nativeIntegrationCatalog,
@@ -645,6 +670,29 @@ test("native file preview uses the bounded shared contract", async ({
   await expect(page.locator(".file-preview-text code")).toContainText(
     "Paths remain native-only.",
   );
+
+  const results = await new AxeBuilder({ page }).analyze();
+  expect(results.violations).toEqual([]);
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - window.innerWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(1);
+});
+
+test("native conversation attachments expose only bounded draft metadata", async ({
+  page,
+}) => {
+  await installNativeFixture(page);
+  await page.goto("/");
+
+  await page.getByRole("button", { name: "Choose images" }).click();
+  await expect(page.getByText("review.png")).toBeVisible();
+  await expect(page.getByText(/67 B · 1 × 1 · drag drop/u)).toBeVisible();
+  await expect(
+    page.getByText(/sent only with Start, Resume, or Fork/u),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Remove review.png" }).click();
+  await expect(page.getByText("review.png")).not.toBeVisible();
 
   const results = await new AxeBuilder({ page }).analyze();
   expect(results.violations).toEqual([]);

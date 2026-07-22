@@ -35,6 +35,42 @@ enum DetectedPreview {
     Pdf,
 }
 
+pub(crate) struct ValidatedAttachmentImage {
+    pub(crate) mime_type: &'static str,
+    pub(crate) width: u32,
+    pub(crate) height: u32,
+}
+
+pub(crate) fn validate_attachment_image(
+    bytes: &[u8],
+) -> Result<ValidatedAttachmentImage, FilePreviewDiagnosticCode> {
+    if bytes.len() as u64 > MAX_IMAGE_BYTES {
+        return Err(FilePreviewDiagnosticCode::FileTooLarge);
+    }
+    let sniff = &bytes[..bytes.len().min(SNIFF_BYTES)];
+    let (mime_type, sniff_dimensions) = match detect_preview(sniff)? {
+        DetectedPreview::Png(width, height) => ("image/png", (width, height)),
+        DetectedPreview::Jpeg(width, height) => ("image/jpeg", (width, height)),
+        _ => return Err(FilePreviewDiagnosticCode::UnsupportedType),
+    };
+    let full_dimensions = match mime_type {
+        "image/png" => validated_png_dimensions(bytes)?,
+        "image/jpeg" if bytes.ends_with(&[0xff, 0xd9]) => {
+            jpeg_dimensions(bytes).ok_or(FilePreviewDiagnosticCode::InvalidContent)?
+        }
+        _ => return Err(FilePreviewDiagnosticCode::InvalidContent),
+    };
+    if full_dimensions != sniff_dimensions {
+        return Err(FilePreviewDiagnosticCode::InvalidContent);
+    }
+    validate_dimensions(full_dimensions.0, full_dimensions.1)?;
+    Ok(ValidatedAttachmentImage {
+        mime_type,
+        width: full_dimensions.0,
+        height: full_dimensions.1,
+    })
+}
+
 impl FilePreviewService {
     pub fn preview_selected(
         &self,

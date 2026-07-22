@@ -1,5 +1,10 @@
 import { useMemo, useState, type KeyboardEvent } from "react";
 
+import { ConversationAttachmentTray } from "./ConversationAttachmentTray";
+import type {
+  ConversationAttachmentDropRequest,
+  ConversationAttachmentSnapshot,
+} from "./lib/attachment";
 import type { ConversationSnapshot } from "./lib/conversation";
 import type { ProjectWorkspaceSnapshot } from "./lib/project";
 import {
@@ -18,8 +23,11 @@ interface SessionWorkspaceProps {
   snapshot: SessionLifecycleSnapshot;
   projects: ProjectWorkspaceSnapshot["projects"];
   activeConversationId: string | null;
+  attachments: ConversationAttachmentSnapshot;
   busy: boolean;
+  attachmentBusy: boolean;
   actionError: boolean;
+  attachmentActionError: boolean;
   searchTerm: string | null;
   onSearch: (request: SessionListRequest) => Promise<void>;
   onRefresh: () => Promise<void>;
@@ -32,6 +40,14 @@ interface SessionWorkspaceProps {
   ) => Promise<ConversationSnapshot>;
   onArchive: (conversationId: string) => Promise<void>;
   onRestore: (conversationId: string) => Promise<void>;
+  onAttachmentPick: (projectId: string) => Promise<void>;
+  onAttachmentDrop: (
+    request: ConversationAttachmentDropRequest,
+  ) => Promise<void>;
+  onAttachmentCancel: (
+    projectId: string,
+    attachmentId: string,
+  ) => Promise<void>;
 }
 
 const stateLabels: Record<Session["state"], string> = {
@@ -62,8 +78,11 @@ export function SessionWorkspace({
   snapshot,
   projects,
   activeConversationId,
+  attachments,
   busy,
+  attachmentBusy,
   actionError,
+  attachmentActionError,
   searchTerm,
   onSearch,
   onRefresh,
@@ -72,6 +91,9 @@ export function SessionWorkspace({
   onFork,
   onArchive,
   onRestore,
+  onAttachmentPick,
+  onAttachmentDrop,
+  onAttachmentCancel,
 }: SessionWorkspaceProps) {
   const [query, setQuery] = useState(searchTerm ?? "");
   const [openIds, setOpenIds] = useState<string[]>([]);
@@ -107,8 +129,17 @@ export function SessionWorkspace({
   const selectedSession = effectiveSelectedId
     ? sessionsById.get(effectiveSelectedId)
     : undefined;
+  const attachmentIds =
+    attachments.projectId === selectedSession?.projectId &&
+    attachments.state === "ready"
+      ? attachments.attachments.map((attachment) => attachment.attachmentId)
+      : [];
   const continueRequest = selectedSession
-    ? { conversationId: selectedSession.conversationId, prompt }
+    ? {
+        conversationId: selectedSession.conversationId,
+        prompt,
+        attachmentIds,
+      }
     : null;
   const requestValid =
     continueRequest !== null &&
@@ -430,6 +461,22 @@ export function SessionWorkspace({
                           onChange={(event) => setPrompt(event.target.value)}
                         />
                       </label>
+                    )}
+
+                    {!["archived", "missing", "running"].includes(
+                      selectedSession.state,
+                    ) && (
+                      <ConversationAttachmentTray
+                        availability={availability}
+                        projectId={selectedSession.projectId}
+                        snapshot={attachments}
+                        busy={attachmentBusy}
+                        disabled={busy}
+                        actionError={attachmentActionError}
+                        onPick={onAttachmentPick}
+                        onDrop={onAttachmentDrop}
+                        onCancel={onAttachmentCancel}
+                      />
                     )}
 
                     <div className="session-detail__actions">

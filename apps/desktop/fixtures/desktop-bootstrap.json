@@ -56,6 +56,12 @@
       "label": "Safe file previews",
       "state": "ready",
       "milestone": 15
+    },
+    {
+      "id": "conversation-attachments",
+      "label": "Conversation image attachments",
+      "state": "ready",
+      "milestone": 15
     }
   ]
 }

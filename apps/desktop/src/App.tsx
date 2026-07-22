@@ -15,6 +15,7 @@ import {
 import {
   archiveConversation,
   archiveProject,
+  cancelConversationAttachments,
   cancelCodexAuth,
   cancelProjectAttachment,
   confirmProjectAttachment,
@@ -37,6 +38,7 @@ import {
   loadProjectWorkspace,
   logoutCodexAuth,
   openGitFile,
+  pickConversationAttachments,
   pickFilePreview,
   openCodexAuthBrowser,
   pickProjectDirectory,
@@ -55,6 +57,7 @@ import {
   forkConversation,
   startConversation,
   startCodexAuth,
+  stageDroppedConversationAttachments,
   cancelWorktree,
   closeTerminal,
   confirmWorktree,
@@ -69,6 +72,12 @@ import {
   startTerminal,
   writeTerminal,
 } from "./lib/bridge";
+import {
+  scaffoldConversationAttachments,
+  type ConversationAttachmentCancelRequest,
+  type ConversationAttachmentDropRequest,
+  type ConversationAttachmentSnapshot,
+} from "./lib/attachment";
 import {
   scaffoldCodexAuth,
   type AuthLoginMethod,
@@ -185,6 +194,15 @@ interface AppProps {
     projectId: string,
   ) => Promise<ProjectPreflightSnapshot>;
   pickFilePreviewTask?: (projectId: string) => Promise<FilePreviewSnapshot>;
+  pickConversationAttachmentsTask?: (
+    projectId: string,
+  ) => Promise<ConversationAttachmentSnapshot>;
+  stageDroppedConversationAttachmentsTask?: (
+    request: ConversationAttachmentDropRequest,
+  ) => Promise<ConversationAttachmentSnapshot>;
+  cancelConversationAttachmentsTask?: (
+    request: ConversationAttachmentCancelRequest,
+  ) => Promise<ConversationAttachmentSnapshot>;
   loadWorktreesTask?: (projectId: string) => Promise<WorktreeWorkspaceSnapshot>;
   previewWorktreeCreateTask?: (
     request: WorktreeCreatePreviewRequest,
@@ -451,6 +469,9 @@ export default function App({
   archiveProjectMetadata = archiveProject,
   preflightProjectDirectory = preflightProject,
   pickFilePreviewTask = pickFilePreview,
+  pickConversationAttachmentsTask = pickConversationAttachments,
+  stageDroppedConversationAttachmentsTask = stageDroppedConversationAttachments,
+  cancelConversationAttachmentsTask = cancelConversationAttachments,
   loadWorktreesTask = loadWorktreeStatus,
   previewWorktreeCreateTask = previewWorktreeCreate,
   previewWorktreeRecoverTask = previewWorktreeRecover,
@@ -515,6 +536,14 @@ export default function App({
     useState<FilePreviewSnapshot>(scaffoldFilePreview);
   const [filePreviewBusy, setFilePreviewBusy] = useState(false);
   const [filePreviewActionError, setFilePreviewActionError] = useState(false);
+  const [conversationAttachments, setConversationAttachments] =
+    useState<ConversationAttachmentSnapshot>(scaffoldConversationAttachments);
+  const [conversationAttachmentBusy, setConversationAttachmentBusy] =
+    useState(false);
+  const [
+    conversationAttachmentActionError,
+    setConversationAttachmentActionError,
+  ] = useState(false);
   const [worktrees, setWorktrees] = useState<WorktreeWorkspaceSnapshot>(
     scaffoldWorktreeWorkspace,
   );
@@ -1102,6 +1131,24 @@ export default function App({
     void applyAuthAction(() => startAuth(method), true);
   }
 
+  function discardConversationAttachmentDraft() {
+    if (
+      conversationAttachments.state === "ready" &&
+      conversationAttachments.projectId
+    ) {
+      void cancelConversationAttachmentsTask({
+        projectId: conversationAttachments.projectId,
+        attachmentIds: conversationAttachments.attachments.map(
+          (attachment) => attachment.attachmentId,
+        ),
+      }).catch(() => {
+        // Native expiry/startup cleanup remains the fail-closed fallback.
+      });
+    }
+    setConversationAttachments(scaffoldConversationAttachments);
+    setConversationAttachmentActionError(false);
+  }
+
   async function applyProjectAction(
     action: () => Promise<ProjectWorkspaceSnapshot>,
   ) {
@@ -1111,6 +1158,17 @@ export default function App({
       const result = await action();
       setProjects(result);
       setProjectPreflights({});
+      if (
+        conversationAttachments.state === "ready" &&
+        !result.projects.some(
+          (project) =>
+            project.id === conversationAttachments.projectId &&
+            !project.archived &&
+            project.directory?.state === "connected-accessible",
+        )
+      ) {
+        discardConversationAttachmentDraft();
+      }
     } catch {
       setProjectActionError(true);
     } finally {
@@ -1378,6 +1436,13 @@ export default function App({
   }
 
   function selectProject(projectId: string) {
+    if (
+      conversationAttachments.state === "ready" &&
+      conversationAttachments.projectId &&
+      conversationAttachments.projectId !== projectId
+    ) {
+      discardConversationAttachmentDraft();
+    }
     setSelectedProjectId(projectId);
     setFilePreview(scaffoldFilePreview);
     setFilePreviewActionError(false);
@@ -1400,6 +1465,80 @@ export default function App({
     }
   }
 
+  async function chooseConversationAttachments(projectId: string) {
+    setConversationAttachmentBusy(true);
+    setConversationAttachmentActionError(false);
+    try {
+      const result = await pickConversationAttachmentsTask(projectId);
+      if (
+        result.state === "unavailable" &&
+        conversationAttachments.state === "ready" &&
+        conversationAttachments.projectId === projectId
+      ) {
+        setConversationAttachmentActionError(true);
+      } else {
+        setConversationAttachments(result);
+      }
+    } catch (error) {
+      setConversationAttachmentActionError(true);
+      throw error;
+    } finally {
+      setConversationAttachmentBusy(false);
+    }
+  }
+
+  async function stageConversationAttachmentDrop(
+    request: ConversationAttachmentDropRequest,
+  ) {
+    setConversationAttachmentBusy(true);
+    setConversationAttachmentActionError(false);
+    try {
+      const result = await stageDroppedConversationAttachmentsTask(request);
+      if (
+        result.state === "unavailable" &&
+        conversationAttachments.state === "ready" &&
+        conversationAttachments.projectId === request.projectId
+      ) {
+        setConversationAttachmentActionError(true);
+      } else {
+        setConversationAttachments(result);
+      }
+    } catch (error) {
+      setConversationAttachmentActionError(true);
+      throw error;
+    } finally {
+      setConversationAttachmentBusy(false);
+    }
+  }
+
+  async function removeConversationAttachment(
+    projectId: string,
+    attachmentId: string,
+  ) {
+    setConversationAttachmentBusy(true);
+    setConversationAttachmentActionError(false);
+    try {
+      const result = await cancelConversationAttachmentsTask({
+        projectId,
+        attachmentIds: [attachmentId],
+      });
+      if (
+        result.state === "unavailable" &&
+        conversationAttachments.state === "ready" &&
+        conversationAttachments.projectId === projectId
+      ) {
+        setConversationAttachmentActionError(true);
+      } else {
+        setConversationAttachments(result);
+      }
+    } catch (error) {
+      setConversationAttachmentActionError(true);
+      throw error;
+    } finally {
+      setConversationAttachmentBusy(false);
+    }
+  }
+
   async function beginConversation(
     request: ConversationStartRequest,
   ): Promise<ConversationSnapshot> {
@@ -1407,6 +1546,8 @@ export default function App({
     setConversationActionError(false);
     try {
       const result = await startConversationTask(request);
+      setConversationAttachments(scaffoldConversationAttachments);
+      setConversationAttachmentActionError(false);
       setConversation(result);
       setConversationEvents(result.events);
       trackConversation(result, true);
@@ -1502,6 +1643,8 @@ export default function App({
       );
       if (source) selectProject(source.projectId);
       const result = await action(request);
+      setConversationAttachments(scaffoldConversationAttachments);
+      setConversationAttachmentActionError(false);
       setConversation(result);
       setConversationEvents(result.events);
       trackConversation(result, true);
@@ -2110,8 +2253,11 @@ export default function App({
             snapshot={sessions}
             projects={projects.projects}
             activeConversationId={conversation.conversationId}
+            attachments={conversationAttachments}
             busy={sessionBusy || conversationBusy || conversationActive}
+            attachmentBusy={conversationAttachmentBusy}
             actionError={sessionActionError}
+            attachmentActionError={conversationAttachmentActionError}
             searchTerm={sessionSearchTerm}
             onSearch={refreshSessions}
             onRefresh={() => refreshSessions()}
@@ -2128,6 +2274,9 @@ export default function App({
             onRestore={(conversationId) =>
               mutateSession(() => restoreConversationTask(conversationId))
             }
+            onAttachmentPick={chooseConversationAttachments}
+            onAttachmentDrop={stageConversationAttachmentDrop}
+            onAttachmentCancel={removeConversationAttachment}
           />
 
           <IntegrationCenter
@@ -2159,11 +2308,17 @@ export default function App({
             runtime={runtime}
             project={currentProject}
             integrations={integrationCatalog}
+            attachments={conversationAttachments}
             busy={conversationBusy}
+            attachmentBusy={conversationAttachmentBusy}
             actionError={conversationActionError}
+            attachmentActionError={conversationAttachmentActionError}
             onStart={beginConversation}
             onInterrupt={stopConversation}
             onDecideApproval={applyConversationApproval}
+            onAttachmentPick={chooseConversationAttachments}
+            onAttachmentDrop={stageConversationAttachmentDrop}
+            onAttachmentCancel={removeConversationAttachment}
           />
 
           <section className="auth-onboarding" aria-labelledby="auth-title">

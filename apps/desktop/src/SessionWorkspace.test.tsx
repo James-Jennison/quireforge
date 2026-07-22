@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { SessionWorkspace } from "./SessionWorkspace";
+import { scaffoldConversationAttachments } from "./lib/attachment";
 import {
   conversationSnapshotSchema,
   scaffoldConversation,
@@ -88,8 +89,11 @@ function renderWorkspace(
     snapshot: readySnapshot,
     projects,
     activeConversationId: null,
+    attachments: scaffoldConversationAttachments,
     busy: false,
+    attachmentBusy: false,
     actionError: false,
+    attachmentActionError: false,
     searchTerm: null,
     onSearch: vi.fn().mockResolvedValue(undefined),
     onRefresh: vi.fn().mockResolvedValue(undefined),
@@ -98,6 +102,9 @@ function renderWorkspace(
     onFork: vi.fn().mockResolvedValue(running),
     onArchive: vi.fn().mockResolvedValue(undefined),
     onRestore: vi.fn().mockResolvedValue(undefined),
+    onAttachmentPick: vi.fn().mockResolvedValue(undefined),
+    onAttachmentDrop: vi.fn().mockResolvedValue(undefined),
+    onAttachmentCancel: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
   render(<SessionWorkspace {...props} />);
@@ -155,6 +162,7 @@ describe("SessionWorkspace", () => {
       expect(props.onResume).toHaveBeenCalledWith({
         conversationId: parentId,
         prompt: "Continue with the verified reference.",
+        attachmentIds: [],
       }),
     );
 
@@ -166,6 +174,7 @@ describe("SessionWorkspace", () => {
       expect(props.onFork).toHaveBeenCalledWith({
         conversationId: parentId,
         prompt: "Try a separate safe approach.",
+        attachmentIds: [],
       }),
     );
   });

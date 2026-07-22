@@ -8,6 +8,8 @@ Milestone 9 approval/activity controls, Milestone 10 reviewed Git controls,
 Milestone 11A–11C managed-worktree/parallel-execution/cleanup controls, and
 Milestone 12 native PTY controls applied, plus Milestones 13–14C normalized
 integration discovery, mutation, authorization, and prompt-mention controls.
+Milestones 15A–15B additionally apply bounded preview and conversation-image
+staging controls.
 It must be revisited before packaging and release milestones or any expansion
 of the supported integration-management surface.
 
@@ -491,6 +493,23 @@ Controls:
   content, absolute paths, or active-document URLs to the webview. HTML/SVG
   source may cross only as normalized inert text, never active markup.
 - Keep preview state transient; browser preview cannot select/read local files.
+- Disable Tauri's default path-bearing file-drop events. Treat browser drops as
+  explicit bounded byte inputs only; picker paths remain native and are never
+  returned to React.
+- Accept only structurally validated PNG/JPEG conversation images: four files,
+  4 MiB each/16 MiB aggregate, safe display names, and bounded dimensions.
+  Refuse text, PDF, SVG, generic binary, mismatched declared type, symlinks, and
+  malformed content.
+- Stage app-owned UUIDv7 copies beneath a mode-`0700` root with mode-`0600`
+  files. Return only opaque project-bound IDs and normalized metadata; persist
+  no draft, source path, staged path, or bytes in SQLite.
+- Expire unconsumed drafts after 15 minutes and consume IDs once. Reopen and
+  revalidate device, inode, size, type, and dimensions immediately before
+  constructing native-only documented `localImage` inputs.
+- Retain claimed copies until the normalized turn becomes terminal because the
+  app-server start response does not document completed image consumption.
+  Clean on terminal poll, cancel, failed send, expiry, and next startup without
+  deleting source files.
 - Allowlisted external URL opening with visible destination.
 - No remote content receives privileged Tauri access.
 
@@ -573,6 +592,9 @@ Controls:
   frontend response protection, normalized registry privacy, and complete
   multi-child reaping.
 - Tauri capability/CSP review and preview fuzzing.
+- Conversation-attachment fixture tests for strict IDs, source ownership,
+  content/type/size limits, tamper and expiry refusal, path non-disclosure,
+  one-use claim, terminal cleanup, browser honesty, and default-drop disabling.
 - Git fixture tests protecting dirty worktrees, attached-subdirectory scope,
   read-only repositories, path containment, deceptive input, output bounds, and
   the no-mutation boundary.

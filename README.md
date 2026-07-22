@@ -85,9 +85,13 @@ the selected project attachment and file identity, keeps absolute paths native,
 and sends React only bounded normalized UTF-8 text, PNG/JPEG data, or
 metadata-only PDF state. Active HTML/SVG rendering, APNG, unknown binary
 content, oversized files, and browser-side local selection remain unavailable;
-UTF-8 markup can appear only as inert normalized text. Drag/drop and conversation
-attachments, notifications, expanded open-with behavior, and Wayland/X11
-verification remain Milestones 15B–15C.
+UTF-8 markup can appear only as inert normalized text. Milestone 15B adds
+explicit PNG/JPEG conversation attachments through the documented Codex
+`localImage` turn input. Native picker selections and browser drag/drop bytes
+are revalidated into private, short-lived app-owned copies; React receives only
+opaque IDs and normalized metadata. Generic file attachments and path-bearing
+drag/drop remain unavailable. Notifications, expanded open-with behavior, and
+Wayland/X11 verification remain Milestone 15C.
 Cloudflare Pages is the selected production host, but the site has not been
 deployed. There is no application package to install yet.
 
@@ -117,14 +121,15 @@ deployed. There is no application package to install yet.
   catalog boundary, the Milestone 14A confirmed native plugin/marketplace
   mutation boundary, the Milestone 14B accessible Integration Center, and the
   Milestone 14C confirmed authorization/control boundary, plus the Milestone
-  15A bounded project-file preview surface.
+  15A bounded project-file preview surface and Milestone 15B bounded
+  conversation-image staging and explicit attachment flow.
 - CI status: repository, website, and desktop quality gates are configured for
   pull requests and `main` pushes; deployment remains separately gated.
-- Current milestone: Milestone 15 is in progress. The 15A safe file-preview
-  foundation is implemented and verified locally on its feature branch; 15B
-  drag/drop and conversation attachments and 15C desktop handoffs/Linux
-  verification remain. Unsupported generic integration-management paths remain
-  unavailable.
+- Current milestone: Milestone 15 is in progress. The 15A safe file-preview and
+  15B conversation-image attachment checkpoints are implemented and verified
+  locally on their feature branches; 15C desktop handoffs/Linux verification
+  remains. Unsupported generic file attachments and integration-management
+  paths remain unavailable.
 - Known limitations: Codex-directed model/reasoning selection is not yet
   implemented and is deferred to Milestone 18 after its integration and
   advanced-feature prerequisites; the current turn cannot replace its own
@@ -152,6 +157,8 @@ deployed. There is no application package to install yet.
 - [Normalized integration contracts decision](docs/DECISIONS/0018-normalized-integration-contracts.md)
 - [Confirmed integration mutations decision](docs/DECISIONS/0019-confirmed-integration-mutations.md)
 - [Confirmed integration authorization and controls decision](docs/DECISIONS/0020-confirmed-integration-authorization-and-controls.md)
+- [Safe project file previews decision](docs/DECISIONS/0021-safe-project-file-previews.md)
+- [Bounded conversation image attachments decision](docs/DECISIONS/0022-bounded-conversation-image-attachments.md)
 - [Superseded GitHub Pages plan](docs/GITHUB-PAGES.md)
 - [Permanent identity decision](docs/DECISIONS/0003-permanent-quireforge-identity.md)
 - [Native approval and activity decision](docs/DECISIONS/0011-native-approvals-and-activity-contract.md)

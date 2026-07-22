@@ -1262,16 +1262,17 @@ representation issues before publication.
 | Calibrated forecast  | Approximately 4.5–8 active hours; 25–55 minutes of local commands; 4–10 minutes hosted CI critical path; 5–9.5 total elapsed hours across 15A–15C; medium confidence                                             |
 | Calibration basis    | Synchronized clean `main` at `f99c078`; 44 GiB available RAM and 718 GiB free storage; low load; 12 logical CPUs; warm Cargo/pnpm caches; no GPU work; split into three independently reviewable checkpoints     |
 | Preflight commands   | Desktop TypeScript check 1.67 seconds/about 266 MiB; four-worker Cargo check 0.25 second/about 109 MiB; both passed with zero swaps                                                                              |
-| Current status       | Milestone 15A implemented and verified locally on `feat/milestone-15a-safe-file-previews`; publication remains separately approval-gated and 15B–15C remain gated                                                |
-| Observed local work  | Approximately 0.60 active hour and 0.13 automated-wait hour from branch creation through final local verification; 0.73 hour total elapsed and no user-blocked interval                                          |
-| Acceptance timings   | Full validation 40.20 seconds/about 1.01 GiB; sequential desktop/website browser suites 31.27 seconds/about 435/253 MiB; warm unbundled native release build 43.34 seconds/about 1.97 GiB; zero product failures |
+| Current status       | Milestones 15A and 15B implemented and verified locally on their feature branches; publication remains separately approval-gated and 15C remains gated                                                                       |
+| Observed local work  | 15A: approximately 0.60 active/0.13 automated hour. 15B: approximately 0.60 active/0.08 automated hour. Neither checkpoint had a post-start user-blocked interval                                                           |
+| Acceptance timings   | 15B full validation 68.50 seconds/about 1.51 GiB; final Rust rerun 161 tests/158 passed/3 ignored; browser suites 26.81/7.10 seconds; warm native release build 39.63 seconds/about 2.28 GiB; zero product failures                      |
 
 Critical path: safe preview threat/format decision → native picker and
 attachment-contained read boundary → strict shared contract → responsive
 text/image/PDF presentation → temporary-file and browser security tests →
 complete repository/browser/release gates → review/publication → 15B attachment
-design → 15C desktop handoffs and Wayland/X11 verification. Browser and release
-gates remain sequential; the RTX 3050 is intentionally unused.
+design and verification → 15C desktop handoffs and Wayland/X11 verification.
+Browser and release gates remain sequential; the RTX 3050 is intentionally
+unused.
 
 The calibrated range is slightly above the preliminary range because the
 single Milestone 15 description concealed three distinct trust boundaries.
@@ -1284,13 +1285,41 @@ required for 15A routine validation.
 
 The 15A local checkpoint completed approximately 5.65 hours or 90.4% below the
 6.25-hour calibrated active midpoint for the complete three-part milestone.
-That comparison is directional because 15B and 15C remain unstarted. Focused
-review still caught a project-ID fixture mismatch, exact normalized-byte and
-line-limit edge cases, a growing-file allocation risk, and a UTF-8 sniff-boundary
-case before acceptance. The repository's parallel root browser command attached
-the website suite to an unrelated preview already occupying port 4321; no
-external process was stopped. Desktop passed 22/22, and the unchanged website
-suite passed 8/8 when rerun sequentially on an isolated temporary port.
+That comparison was directional because 15B and 15C were unstarted at the 15A
+checkpoint. Focused review still caught a project-ID fixture mismatch, exact
+normalized-byte and line-limit edge cases, a growing-file allocation risk, and
+a UTF-8 sniff-boundary case before acceptance. The repository's parallel root
+browser command attached the website suite to an unrelated preview already
+occupying port 4321; no external process was stopped. Desktop passed 22/22, and
+the unchanged website suite passed 8/8 when rerun sequentially on an isolated
+temporary port.
+
+### Milestone 15B checkpoint
+
+| Field               | Record                                                                                                                                                                                                                                                                                         |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Forecast date       | 2026-07-22                                                                                                                                                                                                                                                                                     |
+| Selected model      | GPT-5.6 Sol, XHigh reasoning; manually confirmed                                                                                                                                                                                                                                               |
+| Calibrated forecast | Approximately 2.5–4.5 active hours; 20–40 minutes of local commands; 3–5.5 total elapsed hours in one session; medium confidence                                                                                                                                                              |
+| Calibration basis   | Finished 15A branch at `4c2600a`; reviewed Codex 0.145.0 turn schema; warm Cargo/pnpm/browser caches; no dependency or GPU work; desktop TypeScript preflight 1.63 seconds/about 260 MiB and four-worker Cargo preflight 0.26 second/about 109 MiB                                               |
+| Current status      | Implemented and verified locally on `feat/milestone-15b-conversation-attachments`; local commit prepared without push, merge, package, release, deployment, personal-file inspection, personal Codex-state access, or live model call                                                           |
+| Observed local work | Approximately 0.60 active hour and 0.08 automated-wait hour from branch creation through final local verification; approximately 0.69 hour elapsed with no post-start user-blocked interval                                                                                                    |
+| Acceptance timings  | Full validation 68.50 seconds/about 1.51 GiB; 135 desktop and 3 website frontend tests; final Rust rerun 161 tests with 158 passed/3 deliberate live probes ignored; desktop Playwright 24/24 in 26.81 seconds/about 436 MiB; website 8/8 in 7.10 seconds/about 253 MiB; release 39.63 seconds/about 2.28 GiB |
+
+The official app-server guide and pinned schema established `localImage` but
+not a generic local-file input or an early file-consumption point. The final
+design therefore remained image-only, disabled Tauri path-bearing drop events,
+staged private copies, and retained claimed copies until terminal turn state.
+That documentation check tightened cleanup semantics without adding a
+dependency or expanding IPC.
+
+The checkpoint completed approximately 2.90 hours or 82.9% below the
+3.5-hour calibrated active midpoint. Reuse of the finished conversation,
+picker, preview-image validator, strict contract, and responsive shell
+compressed implementation. Focused review still caught a stale production
+browser artifact, a React state-derivation lint issue, a Rust argument-grouping
+Clippy issue, conservative image-lifetime semantics, and source-file identity
+revalidation before the final green gates.
 
 ## Milestone 18 — Agent-directed model and reasoning selection
 

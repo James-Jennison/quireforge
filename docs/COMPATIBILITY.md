@@ -1,9 +1,10 @@
 # Compatibility
 
-Status: desktop work through Milestone 15A is implemented and verified on the discovery
+Status: desktop work through Milestone 15B is implemented and verified on the discovery
 host. Milestone 13 defines the Codex 0.145.0 integration contract and read-only
 catalog; Milestones 14A–14C add fixed integration workflows, and Milestone 15A
-adds native-selected bounded project-file previews.
+adds native-selected bounded project-file previews while 15B adds documented
+conversation-image inputs.
 
 ## Identity compatibility contract
 
@@ -99,6 +100,7 @@ baseline examples in the [official AppImage guidance](https://v2.tauri.app/distr
 | Enable/disable skills                      | Implemented          | 14C native preview/confirmation, exact `skills/config/write`, and list postcondition                           | Stable method on experimental server  |
 | List apps/connectors                       | Yes                  | `app/list`                                                                                                     | Stable method on experimental server  |
 | Attach app to prompt                       | Implemented          | 14C native re-resolution and constructed documented `mention`/`app://` item                                    | Stable method on experimental server  |
+| Attach local image to turn                 | Implemented          | 15B private PNG/JPEG staging and native-constructed `localImage` item                                           | Stable method on experimental server  |
 | General connector authorization RPC        | Not established      | 14C confirmed official returned-URL handoff plus refreshed accessibility state                                 | Limited                               |
 | MCP list/status/tools/auth                 | Yes                  | app-server + CLI                                                                                               | Stable official                       |
 | MCP OAuth                                  | Implemented          | 14C native URL ownership and exact `mcpServer/oauthLogin/completed` correlation                                | Stable official                       |
@@ -230,6 +232,22 @@ byte/dimension limits are refused; UTF-8 HTML/SVG source is shown only as inert
 normalized text. The native picker compiles on the discovery Wayland host;
 interactive Wayland and X11 behavior remains a 15C manual verification
 obligation rather than an automated claim.
+
+## Conversation-image compatibility
+
+The reviewed Codex CLI 0.145.0 `TurnStartParams` schema and current official
+app-server documentation include `localImage` user inputs with native paths.
+They do not establish a generic local-file input, so Milestone 15B supports only
+bounded PNG/JPEG images and does not relabel PDF, text, or arbitrary files as
+Codex attachments.
+
+Native picker selections may come from outside an attached project only through
+an explicit dialog choice; QuireForge copies validated bytes into private app
+data and does not retain the source path. Browser drag/drop uses HTML `File`
+bytes with Tauri default file-drop events disabled, so WebKitGTK does not become
+a native path bridge. Source and staged paths remain native-only. Interactive
+picker/drop behavior on both target Wayland and X11 sessions remains part of
+the 15C manual compatibility gate.
 
 ## Website-host compatibility
 

@@ -54,6 +54,7 @@ export const conversationStartRequestSchema = z
   .object({
     projectId: conversationIdSchema,
     prompt: conversationPromptSchema,
+    attachmentIds: z.array(conversationIdSchema).max(4),
     integrationEntryIds: z
       .array(
         z
@@ -70,6 +71,13 @@ export const conversationStartRequestSchema = z
   })
   .strict()
   .superRefine((request, context) => {
+    if (new Set(request.attachmentIds).size !== request.attachmentIds.length) {
+      context.addIssue({
+        code: "custom",
+        message: "Conversation attachments must be unique",
+        path: ["attachmentIds"],
+      });
+    }
     if (
       new Set(request.integrationEntryIds).size !==
       request.integrationEntryIds.length
@@ -234,6 +242,7 @@ export const conversationDiagnosticSchema = z.enum([
   "model-unavailable",
   "reasoning-unavailable",
   "integration-unavailable",
+  "attachment-unavailable",
   "metadata-unavailable",
   "approval-required",
   "approval-not-found",

@@ -14,8 +14,13 @@ export const conversationContinueRequestSchema = z
   .object({
     conversationId: conversationIdSchema,
     prompt: conversationPromptSchema,
+    attachmentIds: z.array(conversationIdSchema).max(4),
   })
-  .strict();
+  .strict()
+  .refine(
+    (request) =>
+      new Set(request.attachmentIds).size === request.attachmentIds.length,
+  );
 
 export const sessionSearchTermSchema = z
   .string()

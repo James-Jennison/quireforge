@@ -24,24 +24,24 @@ Definitions used here:
 
 ## Cumulative project totals
 
-Last updated: `2026-07-22T12:30:42-07:00`
+Last updated: `2026-07-22T14:25:43-07:00`
 
 | Measure                                   | Cumulative record                                                                                                                                            |
 | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Total milestones planned                  | 22 major milestones (0–21); Milestones 13 and 14 use separately gated submilestones                                                                          |
-| Total milestone entries completed         | 18 (Milestones 0–12, 13A, 13B, 14A, 14B, and 14C); Milestone 14 is complete through its three separately gated checkpoints                                   |
-| Milestones in progress                    | None; Milestone 15 requires a fresh reasoning/model/forecast/start gate                                                                                      |
-| Confirmed/reconstructed active execution  | Approximately 20.84–27.92 hours                                                                                                                              |
-| Confirmed/reconstructed automated wait    | Approximately 6.64–7.53 hours; early uninstrumented waits excluded                                                                                           |
+| Total milestone entries completed         | 20 (Milestones 0–12, 13A–13B, 14A–14C, and local 15A–15B checkpoints); Milestone 15 remains open through 15C                                                |
+| Milestones in progress                    | Milestone 15; 15A–15B are complete locally and 15C remains separately gated                                                                                  |
+| Confirmed/reconstructed active execution  | Approximately 22.04–29.12 hours                                                                                                                              |
+| Confirmed/reconstructed automated wait    | Approximately 6.85–7.74 hours; early uninstrumented waits excluded                                                                                           |
 | Reconstructed user-blocked time           | At least 11.73 hours, plus unmeasured early approvals/prerequisites                                                                                          |
-| Counted project time                      | Approximately 27.48–35.45 hours                                                                                                                              |
-| Total elapsed across completed milestones | At least 35.24 evidenced hours; exact historical total is unknown                                                                                            |
-| Average counted time                      | Approximately 1.53–1.97 hours per completed milestone entry                                                                                                  |
-| Median counted time                       | Approximately 0.89 hour using reconstructed range midpoints                                                                                                  |
+| Counted project time                      | Approximately 28.89–36.86 hours                                                                                                                              |
+| Total elapsed across completed milestones | At least 36.71 evidenced hours; exact historical total is unknown                                                                                            |
+| Average counted time                      | Approximately 1.44–1.84 hours per completed milestone entry                                                                                                  |
+| Median counted time                       | Approximately 0.81 hour using reconstructed range midpoints                                                                                                  |
 | Longest completed milestone               | Milestone 11, approximately 5.45–7.72 counted hours                                                                                                          |
 | Shortest completed milestone              | Milestone 0, approximately 0.15 counted hours                                                                                                                |
-| Comparable forecast versus actual         | Milestones 3–14C forecast 83.25–143.50 active hours in aggregate and used approximately 23.93–31.90 counted hours, about 62%–83% below the forecast envelope |
-| Confidence classifications                | 5 Confirmed, 11 Reconstructed, 2 Estimated, 0 Unknown completed entries                                                                                      |
+| Comparable forecast versus actual         | Milestones 3–15B forecast 87.75–151.50 active hours in aggregate and used approximately 25.36–33.33 counted hours, about 62%–83% below the forecast envelope |
+| Confidence classifications                | 7 Confirmed, 11 Reconstructed, 2 Estimated, 0 Unknown completed entries                                                                                      |
 
 The cumulative active and automated ranges are derived from historical reports
 and workflow evidence that were recorded with different granularity. They are
@@ -71,6 +71,8 @@ range endpoints.
 | 14A       | Complete | `2026-07-21T21:43:18-07:00` | `2026-07-21T22:26:02-07:00` | 2.75–5 h active; 3.25–6 h elapsed    |      0.58 h |         0.14 h |                    0.00 h |               0.71 h |        0.71 h | ~3.16 h / 81.7% below midpoint  | Confirmed     |
 | 14B       | Complete | `2026-07-22T04:42:01-07:00` | `2026-07-22T05:12:14-07:00` | 2–3.75 h active; 2.25–4.25 h elapsed |     ~0.34 h |        ~0.16 h |                    0.00 h |               0.50 h |        0.50 h | ~2.38 h / 82.6% below midpoint  | Confirmed     |
 | 14C       | Complete | `2026-07-22T10:42:02-07:00` | `2026-07-22T12:30:42-07:00` | 4.5–8 h active; 5–9.5 h elapsed      |     ~0.70 h |        ~0.24 h |                   ~0.87 h |               0.94 h |        1.81 h | ~5.55 h / 88.8% below midpoint  | Confirmed     |
+| 15A       | Local    | `2026-07-22T12:48:19-07:00` | `2026-07-22T13:35:21-07:00` | M15 aggregate: 4.5–8 h active        |     ~0.60 h |        ~0.13 h |                    0.00 h |               0.73 h |        0.78 h | Directionally 90.4% below aggregate midpoint | Confirmed |
+| 15B       | Local    | `2026-07-22T13:44:10-07:00` | `2026-07-22T14:25:43-07:00` | 2.5–4.5 h active; 3–5.5 h elapsed    |     ~0.60 h |        ~0.08 h |                    0.00 h |               0.68 h |        0.69 h | ~2.90 h / 82.9% below midpoint  | Confirmed     |
 
 Variance uses the midpoint of the historical forecast and counted-time ranges.
 It is included only where a recorded forecast exists and should not be read as
@@ -734,3 +736,52 @@ greater precision than the underlying ranges.
   passed. No package, release, deployment, hosting change, personal integration
   read/mutation, real third-party authorization, or billable model call
   occurred during implementation and verification.
+
+## Milestone 15A — Safe project file previews
+
+- **Objective:** Add native-selected, attachment-contained, bounded text/image/
+  PDF preview presentation without exposing absolute paths or active documents
+  to React.
+- **Start / completion:** `2026-07-22T12:48:19-07:00` /
+  `2026-07-22T13:35:21-07:00`, from branch checkout through local commit
+  `4c2600a`.
+- **Model and reasoning:** GPT-5.6 Sol, XHigh; manually confirmed for the
+  complete Milestone 15 forecast.
+- **Active / automated / user-blocked:** Approximately 0.60 active hour, 0.13
+  automated hour, and 0.00 post-start user-blocked hour.
+- **Evidence:** 127 frontend tests and 152 Rust tests passed (149 plus three
+  deliberate live-probe ignores). Desktop Playwright passed 22/22, the
+  unchanged website suite passed 8/8 on an isolated port after preserving an
+  unrelated server, full validation completed in 40.20 seconds, and the warm
+  release build completed in 43.34 seconds.
+- **Status:** Local checkpoint only. No push, merge, package, release,
+  deployment, hosting mutation, personal-file inspection, or live model call
+  was performed.
+
+## Milestone 15B — Bounded conversation image attachments
+
+- **Objective:** Add explicit PNG/JPEG attachments to new, resumed, and forked
+  turns through documented `localImage` inputs while keeping source/staging
+  paths native-only and refusing generic file support.
+- **Start / completion:** `2026-07-22T13:44:10-07:00` /
+  `2026-07-22T14:25:43-07:00`, from branch checkout through final local
+  acceptance gates.
+- **Model and reasoning:** GPT-5.6 Sol, XHigh; manually confirmed.
+- **Calibrated forecast:** 2.5–4.5 active hours, 20–40 minutes of local
+  commands, and 3–5.5 total elapsed hours; medium confidence.
+- **Active / automated / user-blocked:** Approximately 0.60 active hour, 0.08
+  automated hour, and 0.00 post-start user-blocked hour. Counted time is about
+  0.68 hour and wall-clock elapsed time about 0.69 hour; values are rounded.
+- **Evidence:** Full validation passed 138 frontend tests and 160 Rust tests in
+  68.50 seconds. A post-review diagnostic regression test raised the final full
+  Rust rerun to 161 tests (158 plus three deliberate live-probe ignores), with
+  strict Clippy still green. Desktop and website Playwright passed 24/24 and
+  8/8 in 26.81/7.10 seconds. The warm unbundled release build passed in 39.63
+  seconds. All resource-timed final operations reported zero swaps.
+- **Variance:** Approximately 2.90 active hours or 82.9% below the 3.5-hour
+  forecast midpoint. Existing conversation/picker/preview contracts and warm
+  caches shortened the path; official documentation review tightened retained-
+  file lifetime to terminal turn state before final verification.
+- **Status:** Local checkpoint only. No push, merge, package, release,
+  deployment, hosting mutation, user-file inspection, personal Codex-state
+  read/mutation, or live/billable model call was performed.

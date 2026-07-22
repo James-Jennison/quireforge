@@ -16,7 +16,10 @@ use serde_json::{json, Value};
 use tokio::sync::Mutex;
 use uuid::Uuid;
 
-use crate::project::{ConversationReference, ProjectExecutionError, ProjectService};
+use crate::{
+    attachment::{ResolvedConversationAttachment, MAX_CONVERSATION_ATTACHMENTS},
+    project::{ConversationReference, ProjectExecutionError, ProjectService},
+};
 
 use super::{
     app_server::{
@@ -242,7 +245,7 @@ impl ConversationService {
         request: ConversationStartRequest,
         projects: &ProjectService,
     ) -> ConversationSnapshot {
-        self.start_with_mentions(request, projects, Vec::new())
+        self.start_with_mentions(request, projects, Vec::new(), Vec::new())
             .await
     }
 
@@ -251,6 +254,7 @@ impl ConversationService {
         request: ConversationStartRequest,
         projects: &ProjectService,
         mentions: Vec<ResolvedIntegrationMention>,
+        attachments: Vec<ResolvedConversationAttachment>,
     ) -> ConversationSnapshot {
         if let Err(code) = validate_start_request(&request) {
             return ConversationSnapshot::unavailable(code);
@@ -258,6 +262,11 @@ impl ConversationService {
         if mentions.len() != request.integration_entry_ids.len() {
             return ConversationSnapshot::unavailable(
                 ConversationDiagnosticCode::IntegrationUnavailable,
+            );
+        }
+        if attachments.len() != request.attachment_ids.len() {
+            return ConversationSnapshot::unavailable(
+                ConversationDiagnosticCode::AttachmentUnavailable,
             );
         }
 
@@ -282,7 +291,7 @@ impl ConversationService {
         };
 
         match self
-            .start_reserved(&request, &cwd, projects, &mentions)
+            .start_reserved(&request, &cwd, projects, &mentions, &attachments)
             .await
         {
             Ok(active) => {
@@ -323,16 +332,20 @@ impl ConversationService {
         cwd: &Path,
         projects: &ProjectService,
         mentions: &[ResolvedIntegrationMention],
+        attachments: &[ResolvedConversationAttachment],
     ) -> Result<ActiveConversation, ConversationDiagnosticCode> {
         let mut process = AppServerProcess::spawn(self.command.clone())
             .map_err(|error| map_adapter_error(&error))?;
-        let started = match start_on_process(&mut process, request, cwd, projects, mentions).await {
-            Ok(started) => started,
-            Err(error) => {
-                let _ = process.shutdown().await;
-                return Err(error);
-            }
-        };
+        let started =
+            match start_on_process(&mut process, request, cwd, projects, mentions, attachments)
+                .await
+            {
+                Ok(started) => started,
+                Err(error) => {
+                    let _ = process.shutdown().await;
+                    return Err(error);
+                }
+            };
 
         Ok(ActiveConversation {
             conversation_id: started.conversation_id,
@@ -692,6 +705,7 @@ async fn start_on_process(
     cwd: &Path,
     projects: &ProjectService,
     mentions: &[ResolvedIntegrationMention],
+    attachments: &[ResolvedConversationAttachment],
 ) -> Result<StartedConversation, ConversationDiagnosticCode> {
     let (models, _) = process
         .discover_models()
@@ -735,6 +749,11 @@ async fn start_on_process(
         .map_err(|_| ConversationDiagnosticCode::MetadataUnavailable)?;
 
     let mut input = vec![json!({"type": "text", "text": request.prompt})];
+    input.extend(
+        attachments
+            .iter()
+            .map(ResolvedConversationAttachment::protocol_input),
+    );
     input.extend(mentions.iter().map(|mention| {
         json!({
             "type": "mention",
@@ -1429,6 +1448,7 @@ fn validate_start_request(
     validate_uuid_v7(&request.project_id)
         .map_err(|_| ConversationDiagnosticCode::InvalidRequest)?;
     validate_user_text(&request.prompt)?;
+    validate_attachment_ids(&request.attachment_ids)?;
     if request.integration_entry_ids.len() > 8
         || request
             .integration_entry_ids
@@ -1447,6 +1467,20 @@ fn validate_start_request(
     validate_protocol_choice(&request.reasoning_effort, 32)?;
     if request.sandbox_mode == ConversationSandboxMode::DangerFullAccess
         && request.approval_policy == ConversationApprovalPolicy::Never
+    {
+        return Err(ConversationDiagnosticCode::InvalidRequest);
+    }
+    Ok(())
+}
+
+pub(super) fn validate_attachment_ids(
+    attachment_ids: &[String],
+) -> Result<(), ConversationDiagnosticCode> {
+    if attachment_ids.len() > MAX_CONVERSATION_ATTACHMENTS
+        || attachment_ids
+            .iter()
+            .any(|attachment_id| validate_uuid_v7(attachment_id).is_err())
+        || attachment_ids.iter().collect::<HashSet<_>>().len() != attachment_ids.len()
     {
         return Err(ConversationDiagnosticCode::InvalidRequest);
     }
@@ -1877,6 +1911,7 @@ esac"#,
                     name: "Fixture calendar connector".to_owned(),
                     path: "app://fixture-calendar".to_owned(),
                 }],
+                Vec::new(),
             )
             .await;
         assert_eq!(started.state, ConversationState::Running);
@@ -1892,6 +1927,59 @@ esac"#,
         let encoded = serde_json::to_string(&completed).expect("snapshot must serialize");
         assert!(!encoded.contains("app://fixture-calendar"));
         assert!(!encoded.contains("connector:fixture-calendar"));
+
+        fs::remove_dir_all(directory).expect("temporary project must be removed");
+    }
+
+    #[tokio::test]
+    async fn constructs_local_image_inputs_from_native_resolved_attachments() {
+        let (projects, directory, project_id) = attached_project();
+        let attachment_id = "018f0000-0000-7000-8000-000000000099";
+        let trailing = format!(
+            r#"
+printf '%s\n' '{{"method":"turn/completed","params":{{"threadId":"{THREAD_ID}","turn":{{"id":"{TURN_ID}","status":"completed"}}}}}}'
+"#
+        );
+        let script = successful_start_script(&directory, &trailing).replacen(
+            "read -r _turn",
+            &format!(
+                r#"read -r _turn
+case "$_turn" in
+  *'"path":'*'"type":"localImage"'*) ;;
+  *) exit 84 ;;
+esac
+case "$_turn" in
+  *'{attachment_id}'*) exit 85 ;;
+  *) ;;
+esac"#
+            ),
+            1,
+        );
+        let service =
+            ConversationService::with_command(AppServerCommand::test("sh", &["-c", &script]));
+        let mut request = start_request(project_id);
+        request.attachment_ids = vec![attachment_id.to_owned()];
+
+        let started = service
+            .start_with_mentions(
+                request,
+                &projects,
+                Vec::new(),
+                vec![ResolvedConversationAttachment::for_test(
+                    directory.join("private-staged-image.png"),
+                )],
+            )
+            .await;
+        assert_eq!(started.state, ConversationState::Running);
+        let completed = service
+            .poll(
+                started
+                    .conversation_id
+                    .expect("running conversation needs an ID"),
+                &projects,
+            )
+            .await;
+        assert_eq!(completed.state, ConversationState::Completed);
 
         fs::remove_dir_all(directory).expect("temporary project must be removed");
     }
@@ -2360,6 +2448,7 @@ printf '%s\n' '{{"method":"item/agentMessage/delta","params":{{"threadId":"018f0
         ConversationStartRequest {
             project_id,
             prompt: "Review the attached project.".to_owned(),
+            attachment_ids: Vec::new(),
             integration_entry_ids: Vec::new(),
             model_id: "fixture-model".to_owned(),
             reasoning_effort: "medium".to_owned(),

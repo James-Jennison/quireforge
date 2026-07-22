@@ -33,6 +33,7 @@ describe("conversation contract", () => {
       conversationStartRequestSchema.parse({
         projectId,
         prompt: "Inspect this project without changing files.",
+        attachmentIds: [],
         modelId: "gpt-5.6-sol",
         reasoningEffort: "high",
         sandboxMode: "read-only",
@@ -46,6 +47,7 @@ describe("conversation contract", () => {
     const valid = {
       projectId,
       prompt: "Review the project.",
+      attachmentIds: [],
       modelId: "gpt-5.6-sol",
       reasoningEffort: "high",
       sandboxMode: "workspace-write" as const,

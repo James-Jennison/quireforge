@@ -23,15 +23,18 @@ describe("session lifecycle contract", () => {
       conversationContinueRequestSchema.parse({
         conversationId,
         prompt: "Continue with the verified project.",
+        attachmentIds: [],
       }),
     ).toEqual({
       conversationId,
       prompt: "Continue with the verified project.",
+      attachmentIds: [],
     });
     expect(() =>
       conversationContinueRequestSchema.parse({
         conversationId,
         prompt: "Continue.",
+        attachmentIds: [],
         threadId: "018f0000-0000-7000-8000-000000000020",
       }),
     ).toThrow();
@@ -39,6 +42,7 @@ describe("session lifecycle contract", () => {
       conversationContinueRequestSchema.parse({
         conversationId,
         prompt: "Continue.",
+        attachmentIds: [],
         cwd: "/private/raw/path",
       }),
     ).toThrow();

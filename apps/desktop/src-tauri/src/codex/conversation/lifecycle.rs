@@ -15,9 +15,10 @@ use crate::project::{
 
 use super::{
     map_adapter_error, map_project_error, parse_turn_start, sandbox_policy,
-    validate_protocol_choice, validate_user_text, ActiveConversation, ConversationService,
-    ConversationState,
+    validate_attachment_ids, validate_protocol_choice, validate_user_text, ActiveConversation,
+    ConversationService, ConversationState,
 };
+use crate::attachment::ResolvedConversationAttachment;
 use crate::codex::{
     app_server::{validate_uuid_v7, AppServerProcess},
     conversation::types::{
@@ -37,6 +38,7 @@ const MAX_SESSION_TITLE_CHARS: usize = 256;
 pub struct ConversationContinueRequest {
     pub conversation_id: String,
     pub prompt: String,
+    pub attachment_ids: Vec<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
@@ -116,6 +118,12 @@ enum ContinueMode {
     Fork,
 }
 
+#[derive(Clone, Copy)]
+struct ContinueTurnInputs<'a> {
+    mode: ContinueMode,
+    attachments: &'a [ResolvedConversationAttachment],
+}
+
 impl ConversationService {
     pub async fn sessions(
         &self,
@@ -168,21 +176,43 @@ impl ConversationService {
         )
     }
 
+    #[cfg(test)]
     pub async fn resume(
         &self,
         request: ConversationContinueRequest,
         projects: &ProjectService,
     ) -> ConversationSnapshot {
-        self.continue_conversation(request, projects, ContinueMode::Resume)
+        self.resume_with_attachments(request, projects, Vec::new())
             .await
     }
 
+    pub(crate) async fn resume_with_attachments(
+        &self,
+        request: ConversationContinueRequest,
+        projects: &ProjectService,
+        attachments: Vec<ResolvedConversationAttachment>,
+    ) -> ConversationSnapshot {
+        self.continue_conversation(request, projects, ContinueMode::Resume, attachments)
+            .await
+    }
+
+    #[cfg(test)]
     pub async fn fork(
         &self,
         request: ConversationContinueRequest,
         projects: &ProjectService,
     ) -> ConversationSnapshot {
-        self.continue_conversation(request, projects, ContinueMode::Fork)
+        self.fork_with_attachments(request, projects, Vec::new())
+            .await
+    }
+
+    pub(crate) async fn fork_with_attachments(
+        &self,
+        request: ConversationContinueRequest,
+        projects: &ProjectService,
+        attachments: Vec<ResolvedConversationAttachment>,
+    ) -> ConversationSnapshot {
+        self.continue_conversation(request, projects, ContinueMode::Fork, attachments)
             .await
     }
 
@@ -207,9 +237,15 @@ impl ConversationService {
         request: ConversationContinueRequest,
         projects: &ProjectService,
         mode: ContinueMode,
+        attachments: Vec<ResolvedConversationAttachment>,
     ) -> ConversationSnapshot {
         if validate_continue_request(&request).is_err() {
             return ConversationSnapshot::unavailable(ConversationDiagnosticCode::InvalidRequest);
+        }
+        if attachments.len() != request.attachment_ids.len() {
+            return ConversationSnapshot::unavailable(
+                ConversationDiagnosticCode::AttachmentUnavailable,
+            );
         }
 
         let reference = match projects.conversation_reference(&request.conversation_id) {
@@ -252,7 +288,17 @@ impl ConversationService {
         };
 
         let active = self
-            .continue_reserved(&request, &reference, &controls, &cwd, projects, mode)
+            .continue_reserved(
+                &request,
+                &reference,
+                &controls,
+                &cwd,
+                projects,
+                ContinueTurnInputs {
+                    mode,
+                    attachments: &attachments,
+                },
+            )
             .await;
         match active {
             Ok(active) => {
@@ -294,7 +340,7 @@ impl ConversationService {
         controls: &StoredControls,
         cwd: &Path,
         projects: &ProjectService,
-        mode: ContinueMode,
+        inputs: ContinueTurnInputs<'_>,
     ) -> Result<ActiveConversation, ConversationDiagnosticCode> {
         let mut process = AppServerProcess::spawn(self.command.clone())
             .map_err(|error| map_adapter_error(&error))?;
@@ -305,7 +351,7 @@ impl ConversationService {
             controls,
             cwd,
             projects,
-            mode,
+            inputs,
         )
         .await;
         match result {
@@ -610,7 +656,7 @@ async fn continue_on_process(
     controls: &StoredControls,
     cwd: &Path,
     projects: &ProjectService,
-    mode: ContinueMode,
+    inputs: ContinueTurnInputs<'_>,
 ) -> Result<ContinuedConversation, ConversationDiagnosticCode> {
     process
         .initialize()
@@ -618,11 +664,11 @@ async fn continue_on_process(
         .map_err(|error| map_adapter_error(&error))?;
     read_exact_thread(process, reference, cwd).await?;
 
-    let method = match mode {
+    let method = match inputs.mode {
         ContinueMode::Resume => "thread/resume",
         ContinueMode::Fork => "thread/fork",
     };
-    let params = match mode {
+    let params = match inputs.mode {
         ContinueMode::Resume => json!({
             "threadId": reference.codex_thread_id,
             "cwd": cwd,
@@ -645,14 +691,14 @@ async fn continue_on_process(
         .request(method, params)
         .await
         .map_err(|error| map_adapter_error(&error))?;
-    let expected_thread_id = match mode {
+    let expected_thread_id = match inputs.mode {
         ContinueMode::Resume => Some(reference.codex_thread_id.as_str()),
         ContinueMode::Fork => None,
     };
     let continued =
         parse_continue_response(response, expected_thread_id, reference, controls, cwd)?;
 
-    let conversation_id = match mode {
+    let conversation_id = match inputs.mode {
         ContinueMode::Resume => reference.id.clone(),
         ContinueMode::Fork => {
             let conversation_id = Uuid::now_v7().to_string();
@@ -678,12 +724,19 @@ async fn continue_on_process(
         }
     };
 
+    let mut input = vec![json!({"type": "text", "text": request.prompt})];
+    input.extend(
+        inputs
+            .attachments
+            .iter()
+            .map(ResolvedConversationAttachment::protocol_input),
+    );
     let turn_result = process
         .request(
             "turn/start",
             json!({
                 "threadId": continued.thread.id,
-                "input": [{"type": "text", "text": request.prompt}],
+                "input": input,
                 "cwd": cwd,
                 "model": reference.model_id,
                 "effort": reference.reasoning_effort,
@@ -908,7 +961,8 @@ fn validate_continue_request(
 ) -> Result<(), ConversationDiagnosticCode> {
     validate_uuid_v7(&request.conversation_id)
         .map_err(|_| ConversationDiagnosticCode::InvalidRequest)?;
-    validate_user_text(&request.prompt)
+    validate_user_text(&request.prompt)?;
+    validate_attachment_ids(&request.attachment_ids)
 }
 
 fn validate_stored_reference(
@@ -1059,6 +1113,7 @@ mod tests {
                 ConversationContinueRequest {
                     conversation_id: conversation_id.clone(),
                     prompt: "Continue safely.".to_owned(),
+                    attachment_ids: Vec::new(),
                 },
                 &projects,
             )
@@ -1075,6 +1130,45 @@ mod tests {
 
         let completed = service.poll(conversation_id, &projects).await;
         assert_eq!(completed.state, ConversationState::Completed);
+        fs::remove_dir_all(directory).expect("temporary project must be removed");
+    }
+
+    #[tokio::test]
+    async fn resume_sends_only_native_resolved_local_image_inputs() {
+        let (projects, directory, project_id) = attached_project();
+        let conversation_id = stored_reference(&projects, &project_id, None);
+        let attachment_id = "018f0000-0000-7000-8000-000000000099";
+        let cwd_json = json_string(&directory);
+        let script = lifecycle_start_script(&cwd_json, THREAD_ID, "thread/resume", "", THREAD_ID)
+            .replacen(
+                "read -r _turn",
+                &format!(
+                    r#"read -r _turn
+case "$_turn" in *'"path":'*'"type":"localImage"'*) ;; *) exit 86 ;; esac
+case "$_turn" in *'{attachment_id}'*) exit 87 ;; *) ;; esac"#
+                ),
+                1,
+            );
+        let service =
+            ConversationService::with_command(AppServerCommand::test("sh", &["-c", &script]));
+
+        let started = service
+            .resume_with_attachments(
+                ConversationContinueRequest {
+                    conversation_id: conversation_id.clone(),
+                    prompt: "Review the image safely.".to_owned(),
+                    attachment_ids: vec![attachment_id.to_owned()],
+                },
+                &projects,
+                vec![ResolvedConversationAttachment::for_test(
+                    directory.join("private-staged-image.png"),
+                )],
+            )
+            .await;
+        assert_eq!(started.state, ConversationState::Running);
+        let completed = service.poll(conversation_id, &projects).await;
+        assert_eq!(completed.state, ConversationState::Completed);
+
         fs::remove_dir_all(directory).expect("temporary project must be removed");
     }
 
@@ -1099,6 +1193,7 @@ mod tests {
                 ConversationContinueRequest {
                     conversation_id: parent_id.clone(),
                     prompt: "Try a separate approach.".to_owned(),
+                    attachment_ids: Vec::new(),
                 },
                 &projects,
             )
@@ -1293,6 +1388,7 @@ printf '%s\n' '{{"id":2,"result":{{"thread":{{"id":"{THREAD_ID}","cwd":{wrong_cw
                 ConversationContinueRequest {
                     conversation_id,
                     prompt: "Continue safely.".to_owned(),
+                    attachment_ids: Vec::new(),
                 },
                 &projects,
             )

@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { ConversationWorkspace } from "./ConversationWorkspace";
+import { scaffoldConversationAttachments } from "./lib/attachment";
 import { scaffoldCodexRuntime } from "./lib/codex";
 import {
   conversationSnapshotSchema,
@@ -61,22 +62,27 @@ function renderWorkspace(
     events: [{ type: "lifecycle", sequence: 2, phase: "interrupted" }],
   });
   const onDecideApproval = vi.fn().mockResolvedValue(runningConversation);
-  render(
-    <ConversationWorkspace
-      availability="native"
-      snapshot={scaffoldConversation}
-      events={[]}
-      runtime={scaffoldCodexRuntime}
-      integrations={scaffoldIntegrationCatalog}
-      project={project}
-      busy={false}
-      actionError={false}
-      onStart={onStart}
-      onInterrupt={onInterrupt}
-      onDecideApproval={onDecideApproval}
-      {...overrides}
-    />,
-  );
+  const props: React.ComponentProps<typeof ConversationWorkspace> = {
+    availability: "native",
+    snapshot: scaffoldConversation,
+    events: [],
+    runtime: scaffoldCodexRuntime,
+    integrations: scaffoldIntegrationCatalog,
+    project,
+    attachments: scaffoldConversationAttachments,
+    busy: false,
+    attachmentBusy: false,
+    actionError: false,
+    attachmentActionError: false,
+    onStart,
+    onInterrupt,
+    onDecideApproval,
+    onAttachmentPick: vi.fn().mockResolvedValue(undefined),
+    onAttachmentDrop: vi.fn().mockResolvedValue(undefined),
+    onAttachmentCancel: vi.fn().mockResolvedValue(undefined),
+    ...overrides,
+  };
+  render(<ConversationWorkspace {...props} />);
   return { onStart, onInterrupt, onDecideApproval };
 }
 
@@ -98,6 +104,7 @@ describe("ConversationWorkspace", () => {
       expect(onStart).toHaveBeenCalledWith({
         projectId,
         prompt: "Review the conversation UI.",
+        attachmentIds: [],
         modelId: "gpt-5.6-sol",
         reasoningEffort: "high",
         sandboxMode: "workspace-write",

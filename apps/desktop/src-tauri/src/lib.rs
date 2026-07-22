@@ -1,3 +1,4 @@
+mod attachment;
 mod codex;
 mod contract;
 mod git;
@@ -8,6 +9,13 @@ mod worktree;
 
 pub use codex::integration;
 
+use attachment::{
+    types::{
+        ConversationAttachmentCancelRequest, ConversationAttachmentDropRequest,
+        ConversationAttachmentSnapshot, ConversationAttachmentState,
+    },
+    ClaimedConversationAttachments, ConversationAttachmentService,
+};
 use codex::{
     types::CodexRuntimeSnapshot, AuthLoginMethod, CodexAuthService, CodexAuthSnapshot,
     CodexRuntimeService, ConversationApprovalDecisionRequest, ConversationContinueRequest,
@@ -307,6 +315,65 @@ async fn file_preview_pick(
 }
 
 #[tauri::command]
+fn conversation_attachment_status(
+    project_id: String,
+    service: tauri::State<'_, ConversationAttachmentService>,
+    projects: tauri::State<'_, ProjectService>,
+) -> ConversationAttachmentSnapshot {
+    service.status(project_id, &projects)
+}
+
+#[tauri::command]
+async fn conversation_attachment_pick(
+    project_id: String,
+    app: tauri::AppHandle,
+    service: tauri::State<'_, ConversationAttachmentService>,
+    projects: tauri::State<'_, ProjectService>,
+) -> Result<ConversationAttachmentSnapshot, ()> {
+    let status = service.status(project_id.clone(), &projects);
+    if status.state == ConversationAttachmentState::Unavailable {
+        return Ok(status);
+    }
+    let selection = app
+        .dialog()
+        .file()
+        .set_title("Attach images to the next Codex turn")
+        .add_filter("Supported images", &["png", "jpg", "jpeg"])
+        .blocking_pick_files();
+    let Some(selection) = selection else {
+        return Ok(status);
+    };
+    let selected_paths = selection
+        .into_iter()
+        .map(|path| path.into_path())
+        .collect::<Result<Vec<_>, _>>();
+    Ok(match selected_paths {
+        Ok(paths) => service.stage_picker_paths(project_id, paths, &projects),
+        Err(_) => ConversationAttachmentSnapshot::unavailable(
+            Some(project_id),
+            attachment::types::ConversationAttachmentDiagnosticCode::InvalidRequest,
+        ),
+    })
+}
+
+#[tauri::command]
+fn conversation_attachment_stage_drop(
+    request: ConversationAttachmentDropRequest,
+    service: tauri::State<'_, ConversationAttachmentService>,
+    projects: tauri::State<'_, ProjectService>,
+) -> ConversationAttachmentSnapshot {
+    service.stage_drop(request, &projects)
+}
+
+#[tauri::command]
+fn conversation_attachment_cancel(
+    request: ConversationAttachmentCancelRequest,
+    service: tauri::State<'_, ConversationAttachmentService>,
+) -> ConversationAttachmentSnapshot {
+    service.cancel(request)
+}
+
+#[tauri::command]
 async fn worktree_status(
     project_id: String,
     service: tauri::State<'_, WorktreeService>,
@@ -461,7 +528,17 @@ async fn conversation_start(
     service: tauri::State<'_, ConversationService>,
     projects: tauri::State<'_, ProjectService>,
     integrations: tauri::State<'_, IntegrationControlService>,
+    attachment_service: tauri::State<'_, ConversationAttachmentService>,
 ) -> Result<ConversationSnapshot, ()> {
+    let claimed =
+        match attachment_service.claim(&request.project_id, &request.attachment_ids, &projects) {
+            Ok(claimed) => claimed,
+            Err(_) => {
+                return Ok(ConversationSnapshot::unavailable(
+                    ConversationDiagnosticCode::AttachmentUnavailable,
+                ));
+            }
+        };
     let mentions = match integrations
         .resolve_mentions(&request.integration_entry_ids)
         .await
@@ -473,9 +550,15 @@ async fn conversation_start(
             ))
         }
     };
-    Ok(service
-        .start_with_mentions(request, &projects, mentions)
-        .await)
+    let snapshot = service
+        .start_with_mentions(request, &projects, mentions, claimed.resolved())
+        .await;
+    if retain_claimed_attachments(&attachment_service, claimed, &snapshot).is_err() {
+        return Ok(ConversationSnapshot::unavailable(
+            ConversationDiagnosticCode::AttachmentUnavailable,
+        ));
+    }
+    Ok(snapshot)
 }
 
 #[tauri::command]
@@ -483,8 +566,11 @@ async fn conversation_poll(
     conversation_id: String,
     service: tauri::State<'_, ConversationService>,
     projects: tauri::State<'_, ProjectService>,
+    attachment_service: tauri::State<'_, ConversationAttachmentService>,
 ) -> Result<ConversationSnapshot, ()> {
-    Ok(service.poll(conversation_id, &projects).await)
+    let snapshot = service.poll(conversation_id, &projects).await;
+    cleanup_terminal_attachments(&attachment_service, &snapshot);
+    Ok(snapshot)
 }
 
 #[tauri::command]
@@ -492,8 +578,11 @@ async fn conversation_interrupt(
     conversation_id: String,
     service: tauri::State<'_, ConversationService>,
     projects: tauri::State<'_, ProjectService>,
+    attachment_service: tauri::State<'_, ConversationAttachmentService>,
 ) -> Result<ConversationSnapshot, ()> {
-    Ok(service.interrupt(conversation_id, &projects).await)
+    let snapshot = service.interrupt(conversation_id, &projects).await;
+    cleanup_terminal_attachments(&attachment_service, &snapshot);
+    Ok(snapshot)
 }
 
 #[tauri::command]
@@ -501,8 +590,11 @@ async fn conversation_approval_decide(
     request: ConversationApprovalDecisionRequest,
     service: tauri::State<'_, ConversationService>,
     projects: tauri::State<'_, ProjectService>,
+    attachment_service: tauri::State<'_, ConversationAttachmentService>,
 ) -> Result<ConversationSnapshot, ()> {
-    Ok(service.decide_approval(request, &projects).await)
+    let snapshot = service.decide_approval(request, &projects).await;
+    cleanup_terminal_attachments(&attachment_service, &snapshot);
+    Ok(snapshot)
 }
 
 #[tauri::command]
@@ -519,8 +611,33 @@ async fn conversation_resume(
     request: ConversationContinueRequest,
     service: tauri::State<'_, ConversationService>,
     projects: tauri::State<'_, ProjectService>,
+    attachment_service: tauri::State<'_, ConversationAttachmentService>,
 ) -> Result<ConversationSnapshot, ()> {
-    Ok(service.resume(request, &projects).await)
+    let project_id = match projects.conversation_reference(&request.conversation_id) {
+        Ok(reference) => reference.project_id,
+        Err(_) => {
+            return Ok(ConversationSnapshot::unavailable(
+                ConversationDiagnosticCode::ConversationNotFound,
+            ))
+        }
+    };
+    let claimed = match attachment_service.claim(&project_id, &request.attachment_ids, &projects) {
+        Ok(claimed) => claimed,
+        Err(_) => {
+            return Ok(ConversationSnapshot::unavailable(
+                ConversationDiagnosticCode::AttachmentUnavailable,
+            ))
+        }
+    };
+    let snapshot = service
+        .resume_with_attachments(request, &projects, claimed.resolved())
+        .await;
+    if retain_claimed_attachments(&attachment_service, claimed, &snapshot).is_err() {
+        return Ok(ConversationSnapshot::unavailable(
+            ConversationDiagnosticCode::AttachmentUnavailable,
+        ));
+    }
+    Ok(snapshot)
 }
 
 #[tauri::command]
@@ -528,8 +645,60 @@ async fn conversation_fork(
     request: ConversationContinueRequest,
     service: tauri::State<'_, ConversationService>,
     projects: tauri::State<'_, ProjectService>,
+    attachment_service: tauri::State<'_, ConversationAttachmentService>,
 ) -> Result<ConversationSnapshot, ()> {
-    Ok(service.fork(request, &projects).await)
+    let project_id = match projects.conversation_reference(&request.conversation_id) {
+        Ok(reference) => reference.project_id,
+        Err(_) => {
+            return Ok(ConversationSnapshot::unavailable(
+                ConversationDiagnosticCode::ConversationNotFound,
+            ))
+        }
+    };
+    let claimed = match attachment_service.claim(&project_id, &request.attachment_ids, &projects) {
+        Ok(claimed) => claimed,
+        Err(_) => {
+            return Ok(ConversationSnapshot::unavailable(
+                ConversationDiagnosticCode::AttachmentUnavailable,
+            ))
+        }
+    };
+    let snapshot = service
+        .fork_with_attachments(request, &projects, claimed.resolved())
+        .await;
+    if retain_claimed_attachments(&attachment_service, claimed, &snapshot).is_err() {
+        return Ok(ConversationSnapshot::unavailable(
+            ConversationDiagnosticCode::AttachmentUnavailable,
+        ));
+    }
+    Ok(snapshot)
+}
+
+fn retain_claimed_attachments(
+    service: &ConversationAttachmentService,
+    claimed: ClaimedConversationAttachments,
+    snapshot: &ConversationSnapshot,
+) -> Result<(), attachment::types::ConversationAttachmentDiagnosticCode> {
+    if !snapshot.turn_in_flight() {
+        return Ok(());
+    }
+    let conversation_id = snapshot
+        .conversation_id
+        .as_deref()
+        .ok_or(attachment::types::ConversationAttachmentDiagnosticCode::InvalidRequest)?;
+    service.retain_for_conversation(conversation_id, claimed)
+}
+
+fn cleanup_terminal_attachments(
+    service: &ConversationAttachmentService,
+    snapshot: &ConversationSnapshot,
+) {
+    if snapshot.turn_in_flight() {
+        return;
+    }
+    if let Some(conversation_id) = snapshot.conversation_id.as_deref() {
+        let _ = service.cleanup_conversation(conversation_id);
+    }
 }
 
 #[tauri::command]
@@ -622,10 +791,14 @@ pub fn run() {
                 Ok(directory) => {
                     app.manage(ProjectService::open(&directory.join("metadata.sqlite3")));
                     app.manage(WorktreeService::open(&directory.join("worktrees")));
+                    app.manage(ConversationAttachmentService::open(
+                        directory.join("conversation-attachments"),
+                    ));
                 }
                 Err(_) => {
                     app.manage(ProjectService::unavailable());
                     app.manage(WorktreeService::unavailable());
+                    app.manage(ConversationAttachmentService::unavailable());
                 }
             }
             Ok(())
@@ -656,6 +829,10 @@ pub fn run() {
             project_archive,
             project_preflight,
             file_preview_pick,
+            conversation_attachment_status,
+            conversation_attachment_pick,
+            conversation_attachment_stage_drop,
+            conversation_attachment_cancel,
             worktree_status,
             worktree_create_preview,
             worktree_recover_preview,

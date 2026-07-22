@@ -1,7 +1,7 @@
 # Architecture
 
 Status: Milestone 0 application proposal with the website foundation and
-desktop work implemented locally through Milestone 15A. Packaging, deployment,
+desktop work implemented locally through Milestone 15B. Packaging, deployment,
 remaining desktop integration, and unsupported integration-management
 expansion remain subject to separately gated milestones.
 
@@ -44,6 +44,7 @@ React UI
 Rust application core
   ├── project/directory services ── SQLite metadata
   ├── file preview service ──────── bounded project files
+  ├── attachment staging service ── private conversation images
   ├── Git and PTY services ──────── git / shell processes
   ├── Codex compatibility layer ─── app-server stdio
   │                              └─ CLI JSON fallbacks
@@ -383,9 +384,37 @@ capped at 8 MiB and preview state is never persisted.
 
 The production CSP permits `data:` only for image sources so the two bounded
 image types can render. Browser preview cannot select or read a local file.
-Drag/drop and conversation attachments remain 15B; notifications, expanded
-editor/open-with behavior, and Wayland/X11 verification remain 15C. See
-[ADR 0021](DECISIONS/0021-safe-project-file-previews.md).
+Conversation attachments use the separate 15B boundary below. Notifications,
+expanded editor/open-with behavior, and Wayland/X11 verification remain 15C.
+See [ADR 0021](DECISIONS/0021-safe-project-file-previews.md).
+
+### Milestone 15B conversation-image boundary
+
+`ConversationAttachmentService` accepts either explicit paths returned by the
+native picker or bounded PNG/JPEG bytes from an HTML drag/drop event. Tauri's
+default file-drop handling is disabled so the webview never receives native
+filesystem paths. Picker paths remain in Rust; dropped browser `File` objects
+are read only after an explicit user gesture and carry bytes, a safe display
+name, and a declared image type to the fixed staging command.
+
+Rust independently validates the real PNG/JPEG structure, dimensions, MIME,
+4 MiB per-file and four-file/16 MiB aggregate limits, refuses symlinks and
+unsafe names, and writes app-owned copies beneath a mode-`0700` staging root as
+mode-`0600` UUIDv7 files. React receives only opaque draft IDs and normalized
+name/type/size/dimension metadata. Draft IDs are project-bound, expire after
+15 minutes, are consumed once by explicit start/resume/fork, and never enter
+SQLite.
+
+Immediately before a turn, native code reopens and revalidates each staged
+file's device, inode, length, type, and dimensions. It then constructs only the
+documented Codex `localImage` input from the private path. Because
+`turn/start` returns the initial turn before streamed work completes and the
+official contract gives no earlier consumption guarantee, claimed copies stay
+native-owned until the normalized turn is completed, interrupted, blocked, or
+failed. Cancellation, failed sends, expiry, and startup reconciliation provide
+the other cleanup paths. Generic files remain unsupported because the reviewed
+Codex 0.145.0 turn schema has no generic local-file input. See
+[ADR 0022](DECISIONS/0022-bounded-conversation-image-attachments.md).
 
 ## Application layers
 
@@ -404,6 +433,9 @@ previews add only opaque app-owned recovery/project IDs; React still cannot
 submit a worktree path, branch for removal, cwd, executable, or Git argument.
 File preview adds only an opaque project ID; the native picker owns the path,
 and React can consume only the strict bounded snapshot.
+Conversation attachments add only opaque project/attachment IDs plus bounded
+dragged image bytes; no source path, staged path, generic file handle, or
+arbitrary read operation crosses the boundary.
 
 ### Native application core
 
@@ -469,6 +501,9 @@ contract tests.
 - `ApprovalService`: request correlation, scope, decision validation, expiry.
 - `PreviewService`: implemented project-contained normalized text, bounded
   PNG/JPEG, and metadata-only PDF previews; no general read operation.
+- `ConversationAttachmentService`: implemented private PNG/JPEG staging,
+  one-use project-bound drafts, native `localImage` construction, and terminal-
+  turn cleanup; no generic local-file input or credential storage.
 - `SettingsService`: application settings without secret ownership.
 - `CapabilityService`: Codex/runtime/version/policy capability map.
 - `ModelSelectionService`: live catalog validation, Manual/Recommend/Automatic
