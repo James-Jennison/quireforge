@@ -71,6 +71,11 @@ Milestone 12 adds a bounded native PTY registry, controlled shell environment,
 fresh project-cwd verification, tabbed xterm presentation, byte-preserving
 input/output, resize, background-job ownership, and metadata-only restart
 recovery without exposing raw paths or process identity to React.
+Milestone 13 will add an app-owned, policy-bounded selector-control boundary so
+Codex can inspect the normalized available catalog and current selection, then
+stage a validated model and reasoning choice for the next turn. It will not
+claim that the current turn can replace its own executing model, automate the
+ChatGPT/Codex website, or bypass a user's manual lock, allowlist, or ceiling.
 
 ## Status
 
@@ -89,14 +94,15 @@ recovery without exposing raw paths or process identity to React.
 |        10 | Git status, diff review, and controlled mutations                 | Large        | Complete and verified; publication tracked by this milestone change |
 |        11 | Worktrees and parallel work                                       | Very large   | Complete through 11C and verified locally                           |
 |        12 | Integrated terminal                                               | Large        | Complete; merged to `main`; not packaged                            |
-|        13 | Integration discovery and compatibility                           | Very large   | Planned                                                             |
-|        14 | Integration Center and installation workflows                     | Very large   | Planned                                                             |
-|        15 | File previews and desktop integration                             | Large        | Planned                                                             |
-|        16 | Complete Cloudflare Pages website                                 | Very large   | Planned                                                             |
-|        17 | Scheduled tasks and advanced supported features                   | Medium–Large | Planned/dependency-gated                                            |
-|        18 | Security, accessibility, and performance hardening                | Very large   | Planned                                                             |
-|        19 | Packaging and release automation                                  | Large        | Planned                                                             |
-|        20 | Cloudflare Pages production deployment and beta release           | Very large   | Planned/approval-gated                                              |
+|        13 | Agent-directed model and reasoning selection                      | Large        | Planned                                                             |
+|        14 | Integration discovery and compatibility                           | Very large   | Planned                                                             |
+|        15 | Integration Center and installation workflows                     | Very large   | Planned                                                             |
+|        16 | File previews and desktop integration                             | Large        | Planned                                                             |
+|        17 | Complete Cloudflare Pages website                                 | Very large   | Planned                                                             |
+|        18 | Scheduled tasks and advanced supported features                   | Medium–Large | Planned/dependency-gated                                            |
+|        19 | Security, accessibility, and performance hardening                | Very large   | Planned                                                             |
+|        20 | Packaging and release automation                                  | Large        | Planned                                                             |
+|        21 | Cloudflare Pages production deployment and beta release           | Very large   | Planned/approval-gated                                              |
 
 ## Milestone definitions
 
@@ -401,13 +407,40 @@ Publication completed through
 [PR #27](https://github.com/codeframe78/quireforge/pull/27) and successful
 pull-request and `main` repository checks. No package or release was produced.
 
-### 13 — Integration Discovery and Compatibility Layer
+### 13 — Agent-Directed Model and Reasoning Selection
+
+Add a typed, app-owned selector-control boundary that lets Codex inspect the
+normalized `model/list` catalog, current effective choice, pending next-turn
+choice, and user policy. Codex may request at most one model/reasoning change
+per completed turn with a short rationale. Native code revalidates the request
+against a fresh advertised catalog and the configured policy before applying
+it to the next `turn/start`; the executing turn never claims to replace itself.
+
+Expose explicit Manual, Recommend, and Automatic ownership modes. Automatic
+mode requires deliberate user opt-in and an allowlist or model/reasoning
+ceiling. A user lock or later manual choice always wins. The UI must distinguish
+effective from pending selection and show that Codex requested the change and
+why. Prevent repeated oscillation and silent cost escalation, and persist only
+QuireForge policy and bounded provenance—not prompts, account identifiers,
+credentials, or raw protocol payloads.
+
+Use only documented Codex interfaces and normalized typed IPC. Do not automate
+the ChatGPT/Codex web selector, call private endpoints, or edit Codex-owned
+configuration behind the user's back. Validate the exact supported
+request/response lifecycle against the installed app-server schemas. If a
+stable or explicitly accepted experimental control path is unavailable,
+degrade to visible recommendation-only behavior rather than fabricating
+automatic control. Deterministic mocks must cover prompt-injection attempts,
+stale/unadvertised models, unsupported efforts, manual locks, policy ceilings,
+one-change-per-turn enforcement, restart behavior, and next-turn application.
+
+### 14 — Integration Discovery and Compatibility Layer
 
 Normalize apps/connectors, plugins, marketplaces, skills, MCP, policy, runtime
 requirements, scopes, and health. Use stable routes and deterministic mock
 catalogs; preserve unknown/blocked/degraded states.
 
-### 14 — Integration Center and Installation Workflows
+### 15 — Integration Center and Installation Workflows
 
 Implement browse/search/filter/details, permission review, CLI-backed plugin and
 marketplace operations, supported connector/MCP authorization handoff,
@@ -417,12 +450,12 @@ mentions, and supply-chain warnings.
 Completion requires a supported test-plugin lifecycle and an honest limitation
 when connector management is unavailable.
 
-### 15 — File Previews and Desktop Integration
+### 16 — File Previews and Desktop Integration
 
 Add safe previews, drag/drop and attachments, notifications, editor/open-with,
 and Wayland/X11 verification.
 
-### 16 — Complete Cloudflare Pages Website
+### 17 — Complete Cloudflare Pages Website
 
 Build Home, Features, Integrations, Downloads, Installation, Documentation,
 Compatibility, Roadmap, Changelog, Security/Privacy, Contributing, FAQ,
@@ -430,24 +463,24 @@ Troubleshooting, About, authentic screenshots, and comprehensive
 production-origin/responsive/accessibility validation. Build a verified static
 artifact and deploy only to separately approved non-production staging.
 
-### 17 — Scheduled Tasks and Advanced Features
+### 18 — Scheduled Tasks and Advanced Features
 
 Implement only capabilities exposed through supported interfaces. Distinguish
 local scheduling from hosted scheduling and defer unsupported features.
 
-### 18 — Security, Accessibility, and Performance Hardening
+### 19 — Security, Accessibility, and Performance Hardening
 
 Revisit the threat model; audit secret handling, injection, filesystem races,
 integration supply chain, credentials, Tauri permissions/CSP, accessibility,
 performance, reliability, and crash recovery.
 
-### 19 — Packaging and Release Automation
+### 20 — Packaging and Release Automation
 
 Produce AppImage and Debian packages on an appropriate baseline, checksums,
 release workflows, install/upgrade/uninstall tests, and website download data.
 Do not publish a release without approval.
 
-### 20 — Cloudflare Pages Production Deployment and Beta Release
+### 21 — Cloudflare Pages Production Deployment and Beta Release
 
 Run final website/package QA; confirm project, custom domain, artifact, DNS
 cutover, and rollback; request approval for Cloudflare production deployment;

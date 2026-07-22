@@ -104,6 +104,29 @@ and browser tests cover native/preview honesty, project selection, live byte
 polling, responsive tabs, explicit process-ending confirmation, recovery copy,
 xterm layout, axe-core, and overflow at desktop and mobile viewports.
 
+## Manual Milestone 13 checklist
+
+- Use deterministic mock catalogs and control requests; do not make a live or
+  billable model call during routine verification.
+- Verify Codex sees only normalized available models, supported efforts, the
+  current effective selection, one pending selection, and the app-owned policy.
+- Confirm a request is staged only after the current turn completes and is
+  revalidated immediately before the next `turn/start`; no surface may claim a
+  mid-turn model replacement.
+- Attempt stale, unadvertised, malformed, and unsupported model/effort values.
+  Confirm each fails closed without changing the effective selection.
+- Verify Manual, Recommend, and Automatic modes; Automatic must require explicit
+  opt-in and an allowlist or ceiling, while a user lock or later manual choice
+  always wins.
+- Submit repeated and contradictory requests in one turn. Confirm only one can
+  remain pending, cost escalation cannot exceed policy, and visible provenance
+  identifies Codex plus its bounded rationale.
+- Relaunch with a staged change and verify the documented persistence/recovery
+  rule without retaining a prompt, credential, account ID, or raw payload.
+- Run against a fixture where the supported control lifecycle is unavailable.
+  Confirm honest recommendation-only behavior and no web automation, private
+  endpoint, or fabricated success.
+
 ## Manual Milestone 12 checklist
 
 - Use an isolated QuireForge data directory and a disposable attached project.

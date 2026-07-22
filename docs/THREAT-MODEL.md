@@ -186,6 +186,31 @@ Controls:
 - Keep native thread/turn IDs out of IPC and use them as the sole source for
   exact interruption.
 
+### Agent-directed model and reasoning selection
+
+Threats include prompt injection that requests an expensive or weaker model,
+selection of stale or unadvertised identifiers, unsupported reasoning values,
+silent cost escalation, repeated model oscillation, bypass of a manual lock,
+and misleading claims that the executing turn changed its own model.
+
+Controls:
+
+- Treat selector changes as app-owned policy decisions, never arbitrary model
+  configuration writes or web-selector automation.
+- Populate choices from a fresh normalized `model/list` result and revalidate
+  both model and reasoning immediately before the next `turn/start`.
+- Apply a requested change only after the current turn completes; keep effective
+  and pending selection visibly distinct.
+- Support Manual, Recommend, and explicitly opted-in Automatic ownership modes.
+  Manual selection and user locks always win.
+- Require an allowlist or model/reasoning ceiling in Automatic mode, record a
+  bounded rationale and provenance, and permit at most one pending change per
+  turn to prevent oscillation and hidden escalation.
+- Persist no raw prompt, protocol payload, account identity, credential, or
+  Codex-owned configuration as selector metadata.
+- Degrade to recommendation-only behavior when the installed app-server does
+  not expose a validated control lifecycle.
+
 ### Authentication and secret leakage
 
 Threats include logging tokens, copying browser storage, persisting OAuth state

@@ -403,6 +403,14 @@ The implemented compatibility boundary consists of:
 - `ConversationRegistrySnapshot`: strict active-only capacity/task projection
   with no event replay or native identity.
 
+Milestone 13 plans a `ModelSelectionService` inside this boundary. It owns the
+normalized catalog, current effective selection, one pending next-turn
+selection, selector-ownership policy, and bounded provenance. A Codex request
+can only stage a change after native revalidation; the current turn continues
+on its existing model, and the pending value is applied only when constructing
+the next `turn/start`. React cannot submit an unadvertised model, private model
+identifier, raw protocol payload, or direct configuration edit.
+
 Later milestones extend recovery, approvals, and presentation without bypassing
 this normalization layer. Generated schemas and sanitized fixtures drive
 contract tests.
@@ -431,6 +439,9 @@ contract tests.
 - `PreviewService`: bounded MIME/type-aware previews.
 - `SettingsService`: application settings without secret ownership.
 - `CapabilityService`: Codex/runtime/version/policy capability map.
+- `ModelSelectionService`: live catalog validation, Manual/Recommend/Automatic
+  ownership policy, one staged next-turn selection, user-lock precedence,
+  bounded rationale/provenance, and oscillation/cost-ceiling enforcement.
 - `IntegrationCatalogService`: normalized category-preserving catalog.
 - `PluginMarketplaceService`: source inspection and supported marketplace calls.
 - `PluginInstallationService`: preview, confirmation, lifecycle, and result
