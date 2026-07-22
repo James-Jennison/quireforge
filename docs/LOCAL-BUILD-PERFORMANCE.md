@@ -667,3 +667,13 @@ mutation, integration installation/authorization, model call, or GPU workload
 occurred. The service correction from experimental plugin RPCs to stable CLI
 JSON reused warm artifacts and did not require a clean rebuild. Browser tests
 were regression coverage because 13B adds no user-facing Integration Center.
+
+Publication used the persistent self-hosted UpCloud runner. Pull-request
+workflow
+[`29890814046`](https://github.com/James-Jennison/quireforge/actions/runs/29890814046)
+completed source, website, and desktop gates in 6 seconds, 49 seconds, and 2
+minutes 39 seconds. Post-merge `main` workflow
+[`29890942589`](https://github.com/James-Jennison/quireforge/actions/runs/29890942589)
+completed them in 7 seconds, 1 minute 9 seconds, and 2 minutes 13 seconds. The
+retained caches therefore remained effective; no workflow, cache, runner, or
+host configuration change was needed.

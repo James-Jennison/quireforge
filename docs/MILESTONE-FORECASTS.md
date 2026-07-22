@@ -1070,8 +1070,13 @@ baseline while still allowing for cache eviction and runner availability.
 | Preliminary forecast | Approximately 2.5–4.5 active hours; 15–35 minutes of local commands; 3–5.5 total elapsed hours; medium confidence |
 | Calibrated forecast | Approximately 2.5–4.25 active hours; 12–30 minutes of local commands; 3–5 total elapsed hours in one or possibly two sessions; medium confidence |
 | Calibration basis | Synchronized `main` at `2833436`; CLI 0.145.0 schema/routes; approximately 43 GiB available RAM and 720 GiB free NVMe; warm Cargo/pnpm/Playwright caches; four Cargo and two Playwright workers; no GPU work |
+| Observed active execution | Approximately 0.61 hour across inspection, implementation, route-policy/security correction, tests, documentation, review, and publication operations |
+| Observed automated wait | Approximately 0.18 hour: about 5–6 minutes of measured local command waits plus 159-second pull-request and 133-second post-merge `main` workflow critical paths |
+| Observed counted / elapsed | 0.79 counted project hour / 0.79 total elapsed hour; no user-blocked interval after execution started |
+| Forecast variance | Approximately 2.59 hours (76.6%) below the 3.375-hour calibrated active-forecast midpoint when compared with counted project time |
 | Local verification | Final `pnpm validate` 37.82 seconds/about 940 MiB RSS; Playwright 24.23 seconds/about 386 MiB; warm release build 40.35 seconds/about 1.85 GiB; all zero swaps |
-| Completion status | Implementation and local verification complete; publication and post-merge timing evidence pending |
+| Hosted verification | PR workflow `29890814046` passed source/website/desktop in 6 seconds/49 seconds/2 minutes 39 seconds; post-merge `main` workflow `29890942589` passed them in 7 seconds/1 minute 9 seconds/2 minutes 13 seconds |
+| Completion status | Complete; merged by [PR #34](https://github.com/James-Jennison/quireforge/pull/34) as `007f5b7`, with successful pull-request and `main` repository checks |
 
 Critical path: exact route/schema inspection → native category normalization →
 strict IPC → deterministic invalidation/partial-failure tests → route-policy
@@ -1086,6 +1091,15 @@ The late route-policy review removed an unnecessary `app/read` call and the
 under-development plugin RPC without materially changing the calibrated
 forecast. No personal catalog, integration mutation, authorization, package,
 deployment, or model call was used.
+
+The forecast was deliberately conservative for protocol drift and failure-path
+debugging. The existing native process adapter and strict shared-fixture
+patterns made the new boundary narrower than a greenfield integration layer,
+while warm local artifacts and the persistent UpCloud runner kept every
+acceptance path short. Later read-only adapter forecasts should use these warm
+baselines with an explicit cache-eviction allowance; Milestone 14's mutation,
+authorization, supply-chain, and UI scope requires a fresh gate rather than
+reusing this result directly.
 
 ## Milestone 18 — Agent-directed model and reasoning selection
 

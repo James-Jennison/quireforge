@@ -98,7 +98,7 @@ deployed. There is no application package to install yet.
 - CI status: repository, website, and desktop quality gates are configured for
   pull requests and `main` pushes; deployment remains separately gated.
 - Current milestone: Milestone 13B live read-only integration discovery is
-  implemented and locally verified. Milestone 14 Integration Center and
+  complete, merged, and verified on `main`. Milestone 14 Integration Center and
   mutation workflows require a fresh reasoning/model/start gate.
 - Known limitations: Codex-directed model/reasoning selection is not yet
   implemented and is deferred to Milestone 18 after its integration and
