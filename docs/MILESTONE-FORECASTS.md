@@ -1028,25 +1028,27 @@ ordinary Rust/TypeScript builds are CPU/system-memory workloads.
   cache is a separately scoped optimization candidate rather than a Milestone
   12 product change.
 
-## Milestone 13 — Agent-directed model and reasoning selection
+## Milestone 18 — Agent-directed model and reasoning selection
 
-Status: planned; awaiting the manual model/reasoning confirmation and milestone
-start approval. The preliminary forecast was prepared on
-`2026-07-21T18:43:23-07:00`; the calibrated forecast and actual start timestamp
-must be recorded only after that gate.
+Status: deferred and dependency-gated behind Milestones 13–17. This section
+preserves an early planning estimate prepared on `2026-07-21T18:43:23-07:00`
+when the feature was incorrectly placed at Milestone 13. That start gate was
+withdrawn on `2026-07-21T19:08:53-07:00`; no model change or implementation was
+authorized. Milestone 18 must receive a fresh repository/system inspection,
+model recommendation, preliminary forecast, manual model confirmation,
+calibrated forecast, and start approval when its prerequisites are complete.
 
-### Milestone Reasoning Gate
+### Withdrawn early reasoning assessment
 
 - **Objective:** let Codex inspect QuireForge's normalized selector state and
   request a policy-compliant model/reasoning choice for the next turn, while
   preserving manual ownership, visible provenance, and the strict native IPC
   boundary.
-- **Recommended model/reasoning:** GPT-5.6 Sol at Extra High/XHigh. The work
-  combines protocol compatibility, state-machine design, cost and
-  prompt-injection controls, restart semantics, native concurrency, typed IPC,
-  accessible UI, and adversarial tests. XHigh is the lowest currently available
-  strength expected to handle those interactions reliably in one coherent
-  milestone.
+- **Historical recommendation:** the early pass tentatively selected GPT-5.6
+  Sol at Extra High/XHigh because the work combines protocol compatibility,
+  state-machine design, cost and prompt-injection controls, restart semantics,
+  native concurrency, typed IPC, accessible UI, and adversarial tests. This is
+  not an active recommendation and must not be reused without re-evaluation.
 - **Lower-strength risk:** High or Medium would be more likely to miss a stale
   catalog race, manual-lock precedence edge, sticky next-turn semantics,
   oscillation path, or unsupported-interface fallback. Correcting one of those
@@ -1054,30 +1056,32 @@ must be recorded only after that gate.
 - **Higher-strength benefit:** Max may marginally help the final adversarial
   review, but it is not expected to materially improve routine implementation
   enough to justify its additional latency and usage.
-- **Preparation:** no credential, connector authorization, live model call,
-  Codex configuration mutation, or website automation is required. The user
-  needs only to select or verify GPT-5.6 Sol XHigh and grant the separate start
-  approval.
+- **Prerequisites:** Milestone 13 must validate the installed app-server's
+  app-owned tool request/result lifecycle, and Milestones 14–17 must establish
+  the intervening integration and product surfaces. No model change should be
+  made for Milestone 18 now.
 
-### Preliminary system-calibrated forecast
+### Historical provisional estimate
 
-- Expected active Codex work: approximately **4–7 hours**.
-- Expected local build/test command time: approximately **30–75 minutes**, with
+- Early expected active Codex work: approximately **4–7 hours**.
+- Early expected local build/test command time: approximately **30–75 minutes**, with
   warm pnpm, Cargo, and Playwright caches preserved.
-- Expected GitHub Actions time after publication: approximately **10–25 minutes**
+- Early expected GitHub Actions time after publication: approximately **10–25 minutes**
   of runner time; hosted queue variance is outside the local baseline.
-- Expected total real-world execution after approval: approximately **6–9
+- Early expected total real-world execution after approval: approximately **6–9
   hours across one or two sessions**, low-to-medium confidence.
-- Expected user-blocked/model-change/approval time: unknown and reported
+- Expected user-blocked/model-change/approval time was unknown and reported
   separately; it is excluded from counted project time.
-- Usage intensity: high model usage, balanced local CPU/memory usage, no GPU.
+- Early usage classification: high model usage, balanced local CPU/memory usage,
+  no GPU.
 
-The forecast assumes the existing normalized `model/list` catalog, conversation
-picker, per-turn model/effort overrides, deterministic app-server mock harness,
-and warm dependency/build caches remain usable. The most important uncertainty
-is the exact supported lifecycle by which the executing Codex turn invokes an
-app-owned selector control and how that request composes with resume/sticky
-turn behavior. If that lifecycle is not reliable, the accepted fallback is
+This estimate is retained only as forecasting history and is not a current
+milestone forecast. It assumed the existing normalized `model/list` catalog,
+conversation picker, per-turn model/effort overrides, deterministic app-server
+mock harness, and warm dependency/build caches would remain usable. The audit
+showed that the application does not yet advertise an app-owned selector tool
+or implement its result lifecycle; Milestone 13 must resolve that uncertainty.
+If the lifecycle is not reliable, the accepted Milestone 18 fallback remains
 recommendation-only rather than a private or fabricated control path.
 
 The most recent generalized host profile provides approximately 42 GiB of
@@ -1099,10 +1103,11 @@ browser tests are CPU/system-memory workloads.
 | Documentation, security/diff review, commit preparation |      35–60 min | Medium     | Cross-document and fixture consistency                   | Model-bound         | Warm builds/tests                      |
 | GitHub publication and main CI                          |      10–25 min | Medium     | Hosted queue and cold runner                             | Network-bound       | Local completion review                |
 
-Critical path: validate the supported control lifecycle → define native policy
-and persistence → implement staged next-turn application → expose strict typed
-IPC and accessible selector ownership UI → adversarial and restart tests → full
-repository/browser/release/native gates → security and diff review → approved
-publication and successful `main` CI. Independent documentation and fixture
-review may overlap warm targeted builds; simultaneous release, browser, and
-native suites will be avoided to preserve responsiveness.
+Future critical path: complete the Milestone 13 lifecycle evidence and
+Milestones 14–17 prerequisites → refresh the system/model forecast → define
+native policy and persistence → implement staged next-turn application → expose
+strict typed IPC and accessible selector ownership UI → adversarial and restart
+tests → full repository/browser/release/native gates → security and diff review
+→ approved publication and successful `main` CI. Independent documentation and
+fixture review may overlap warm targeted builds; simultaneous release, browser,
+and native suites will be avoided to preserve responsiveness.

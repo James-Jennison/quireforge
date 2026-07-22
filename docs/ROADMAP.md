@@ -71,11 +71,12 @@ Milestone 12 adds a bounded native PTY registry, controlled shell environment,
 fresh project-cwd verification, tabbed xterm presentation, byte-preserving
 input/output, resize, background-job ownership, and metadata-only restart
 recovery without exposing raw paths or process identity to React.
-Milestone 13 will add an app-owned, policy-bounded selector-control boundary so
-Codex can inspect the normalized available catalog and current selection, then
-stage a validated model and reasoning choice for the next turn. It will not
-claim that the current turn can replace its own executing model, automate the
-ChatGPT/Codex website, or bypass a user's manual lock, allowlist, or ceiling.
+Agent-directed model and reasoning selection is deliberately deferred to
+Milestone 18. The current conversation runtime validates a user-selected model
+and effort, but it does not yet advertise an app-owned selector tool or own a
+validated tool-result lifecycle. Milestones 13–17 establish the integration,
+compatibility, product-surface, and advanced-feature evidence required before
+that control is designed for implementation.
 
 ## Status
 
@@ -94,12 +95,12 @@ ChatGPT/Codex website, or bypass a user's manual lock, allowlist, or ceiling.
 |        10 | Git status, diff review, and controlled mutations                 | Large        | Complete and verified; publication tracked by this milestone change |
 |        11 | Worktrees and parallel work                                       | Very large   | Complete through 11C and verified locally                           |
 |        12 | Integrated terminal                                               | Large        | Complete; merged to `main`; not packaged                            |
-|        13 | Agent-directed model and reasoning selection                      | Large        | Planned                                                             |
-|        14 | Integration discovery and compatibility                           | Very large   | Planned                                                             |
-|        15 | Integration Center and installation workflows                     | Very large   | Planned                                                             |
-|        16 | File previews and desktop integration                             | Large        | Planned                                                             |
-|        17 | Complete Cloudflare Pages website                                 | Very large   | Planned                                                             |
-|        18 | Scheduled tasks and advanced supported features                   | Medium–Large | Planned/dependency-gated                                            |
+|        13 | Integration discovery and compatibility                           | Very large   | Planned                                                             |
+|        14 | Integration Center and installation workflows                     | Very large   | Planned                                                             |
+|        15 | File previews and desktop integration                             | Large        | Planned                                                             |
+|        16 | Complete Cloudflare Pages website                                 | Very large   | Planned                                                             |
+|        17 | Scheduled tasks and advanced supported features                   | Medium–Large | Planned/dependency-gated                                            |
+|        18 | Agent-directed model and reasoning selection                      | Large        | Planned/dependency-gated                                            |
 |        19 | Security, accessibility, and performance hardening                | Very large   | Planned                                                             |
 |        20 | Packaging and release automation                                  | Large        | Planned                                                             |
 |        21 | Cloudflare Pages production deployment and beta release           | Very large   | Planned/approval-gated                                              |
@@ -407,14 +408,50 @@ Publication completed through
 [PR #27](https://github.com/codeframe78/quireforge/pull/27) and successful
 pull-request and `main` repository checks. No package or release was produced.
 
-### 13 — Agent-Directed Model and Reasoning Selection
+### 13 — Integration Discovery and Compatibility Layer
 
-Add a typed, app-owned selector-control boundary that lets Codex inspect the
-normalized `model/list` catalog, current effective choice, pending next-turn
-choice, and user policy. Codex may request at most one model/reasoning change
-per completed turn with a short rationale. Native code revalidates the request
-against a fresh advertised catalog and the configured policy before applying
-it to the next `turn/start`; the executing turn never claims to replace itself.
+Normalize apps/connectors, plugins, marketplaces, skills, MCP, policy, runtime
+requirements, scopes, and health. Use stable routes and deterministic mock
+catalogs; preserve unknown/blocked/degraded states.
+
+### 14 — Integration Center and Installation Workflows
+
+Implement browse/search/filter/details, permission review, CLI-backed plugin and
+marketplace operations, supported connector/MCP authorization handoff,
+enable/disable/update/remove where validated, health/troubleshooting, prompt
+mentions, and supply-chain warnings.
+
+Completion requires a supported test-plugin lifecycle and an honest limitation
+when connector management is unavailable.
+
+### 15 — File Previews and Desktop Integration
+
+Add safe previews, drag/drop and attachments, notifications, editor/open-with,
+and Wayland/X11 verification.
+
+### 16 — Complete Cloudflare Pages Website
+
+Build Home, Features, Integrations, Downloads, Installation, Documentation,
+Compatibility, Roadmap, Changelog, Security/Privacy, Contributing, FAQ,
+Troubleshooting, About, authentic screenshots, and comprehensive
+production-origin/responsive/accessibility validation. Build a verified static
+artifact and deploy only to separately approved non-production staging.
+
+### 17 — Scheduled Tasks and Advanced Features
+
+Implement only capabilities exposed through supported interfaces. Distinguish
+local scheduling from hosted scheduling and defer unsupported features.
+
+### 18 — Agent-Directed Model and Reasoning Selection
+
+After Milestone 13 validates the installed app-server control lifecycle and the
+intervening product surfaces are established, add a typed, app-owned
+selector-control boundary that lets Codex inspect the normalized `model/list`
+catalog, current effective choice, pending next-turn choice, and user policy.
+Codex may request at most one model/reasoning change per completed turn with a
+short rationale. Native code revalidates the request against a fresh advertised
+catalog and the configured policy before applying it to the next `turn/start`;
+the executing turn never claims to replace itself.
 
 Expose explicit Manual, Recommend, and Automatic ownership modes. Automatic
 mode requires deliberate user opt-in and an allowlist or model/reasoning
@@ -433,40 +470,6 @@ degrade to visible recommendation-only behavior rather than fabricating
 automatic control. Deterministic mocks must cover prompt-injection attempts,
 stale/unadvertised models, unsupported efforts, manual locks, policy ceilings,
 one-change-per-turn enforcement, restart behavior, and next-turn application.
-
-### 14 — Integration Discovery and Compatibility Layer
-
-Normalize apps/connectors, plugins, marketplaces, skills, MCP, policy, runtime
-requirements, scopes, and health. Use stable routes and deterministic mock
-catalogs; preserve unknown/blocked/degraded states.
-
-### 15 — Integration Center and Installation Workflows
-
-Implement browse/search/filter/details, permission review, CLI-backed plugin and
-marketplace operations, supported connector/MCP authorization handoff,
-enable/disable/update/remove where validated, health/troubleshooting, prompt
-mentions, and supply-chain warnings.
-
-Completion requires a supported test-plugin lifecycle and an honest limitation
-when connector management is unavailable.
-
-### 16 — File Previews and Desktop Integration
-
-Add safe previews, drag/drop and attachments, notifications, editor/open-with,
-and Wayland/X11 verification.
-
-### 17 — Complete Cloudflare Pages Website
-
-Build Home, Features, Integrations, Downloads, Installation, Documentation,
-Compatibility, Roadmap, Changelog, Security/Privacy, Contributing, FAQ,
-Troubleshooting, About, authentic screenshots, and comprehensive
-production-origin/responsive/accessibility validation. Build a verified static
-artifact and deploy only to separately approved non-production staging.
-
-### 18 — Scheduled Tasks and Advanced Features
-
-Implement only capabilities exposed through supported interfaces. Distinguish
-local scheduling from hosted scheduling and defer unsupported features.
 
 ### 19 — Security, Accessibility, and Performance Hardening
 

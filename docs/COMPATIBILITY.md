@@ -87,7 +87,7 @@ baseline examples in the [official AppImage guidance](https://v2.tauri.app/distr
 | Detect version                             | Implemented          | Fixed `codex --version` probe                                                 | Stable official                       |
 | List account-visible models/efforts        | Implemented          | Bounded `model/list` normalization                                            | Stable method on experimental server  |
 | Apply model/effort to the next turn        | Yes                  | Revalidated `turn/start` model/effort overrides                               | Stable method on experimental server  |
-| Agent-directed selector request lifecycle  | Present in schemas   | Typed app-owned control; exact lifecycle validation required in Milestone 13  | Experimental/dependency-gated         |
+| Agent-directed selector request lifecycle  | Present in schemas   | Milestone 13 discovery before a typed app-owned control in Milestone 18       | Experimental/dependency-gated         |
 | Start in an absolute local cwd             | Yes                  | `thread/start` / `turn/start`; CLI fallback                                   | Stable method + stable CLI            |
 | Additional writable roots                  | Yes                  | sandbox `writableRoots`; CLI `--add-dir`                                      | Stable official                       |
 | Stream turns, commands, plans, diffs       | Yes                  | app-server events                                                             | Stable methods on experimental server |

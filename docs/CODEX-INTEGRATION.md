@@ -238,7 +238,7 @@ or reasoning effort exists.
 The reviewed `turn/start` contract accepts model and effort overrides for that
 turn and subsequent turns. That creates a supported next-turn application
 point, not a way for the executing model to replace itself in the middle of a
-turn. Milestone 13 will let Codex inspect only a normalized picker catalog,
+turn. Milestone 18 will let Codex inspect only a normalized picker catalog,
 current effective selection, pending selection, and app-owned policy, then
 request at most one bounded model/reasoning change per turn with a short
 rationale.
@@ -252,11 +252,12 @@ No account identifier, credential, raw prompt, or raw app-server payload belongs
 in the selector policy or audit record.
 
 The exact app-server request/response lifecycle used for the model to invoke
-this app-owned control remains an implementation-time compatibility gate. It
-must use a documented interface and strict typed normalization. If the installed
-Codex version cannot provide that lifecycle reliably, QuireForge will expose
-recommendation-only behavior and will not automate a website selector, call a
-private endpoint, or claim automatic control.
+this app-owned control is a Milestone 13 discovery obligation and a Milestone 18
+implementation gate. It must use a documented interface and strict typed
+normalization. If the installed Codex version cannot provide that lifecycle
+reliably, QuireForge will expose recommendation-only behavior and will not
+automate a website selector, call a private endpoint, or claim automatic
+control.
 
 ## Sessions and conversation lifecycle
 

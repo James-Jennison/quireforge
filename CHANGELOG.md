@@ -199,10 +199,11 @@ released a usable application.
 
 ### Changed
 
-- Added a dedicated Milestone 13 for app-owned, policy-bounded Codex selection
-  of the next turn's model and reasoning level, and shifted only the unstarted
-  later milestones forward by one. This planning change does not modify the
-  current runtime, Codex configuration, credentials, or model selection.
+- Reserved Milestone 18 for app-owned, policy-bounded Codex selection of the
+  next turn's model and reasoning level, after integration discovery and the
+  intervening product milestones. Integration discovery remains Milestone 13;
+  this sequencing change does not modify the current runtime, Codex
+  configuration, credentials, or model selection.
 - Selected GLib's local filesystem backend at Linux process startup when the
   caller has not provided an override, preventing harmless GVFS activation
   warnings when the optional user service is masked.
