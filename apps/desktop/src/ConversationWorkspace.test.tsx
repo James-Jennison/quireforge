@@ -7,6 +7,7 @@ import {
   conversationSnapshotSchema,
   scaffoldConversation,
 } from "./lib/conversation";
+import { scaffoldIntegrationCatalog } from "./lib/integration";
 import { projectWorkspaceSchema } from "./lib/project";
 
 const projectId = "018f0000-0000-7000-8000-000000000001";
@@ -66,6 +67,7 @@ function renderWorkspace(
       snapshot={scaffoldConversation}
       events={[]}
       runtime={scaffoldCodexRuntime}
+      integrations={scaffoldIntegrationCatalog}
       project={project}
       busy={false}
       actionError={false}
@@ -100,9 +102,30 @@ describe("ConversationWorkspace", () => {
         reasoningEffort: "high",
         sandboxMode: "workspace-write",
         approvalPolicy: "on-request",
+        integrationEntryIds: [],
       }),
     );
     expect(screen.getByLabelText("Task")).toHaveValue("");
+  });
+
+  it("submits a selected healthy connector by normalized catalog ID", async () => {
+    const { onStart } = renderWorkspace();
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: "Fixture calendar connector" }),
+    );
+    fireEvent.change(screen.getByLabelText("Task"), {
+      target: { value: "Check my calendar." },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Start task" }));
+
+    await waitFor(() =>
+      expect(onStart).toHaveBeenCalledWith(
+        expect.objectContaining({
+          prompt: "Check my calendar.",
+          integrationEntryIds: ["connector:fixture-calendar"],
+        }),
+      ),
+    );
   });
 
   it("blocks an unrestricted no-approval combination before IPC", () => {

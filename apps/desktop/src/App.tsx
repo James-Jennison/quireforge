@@ -19,6 +19,7 @@ import {
   confirmProjectAttachment,
   confirmGitMutation,
   confirmIntegrationMutation,
+  confirmIntegrationControl,
   decideConversationApproval,
   detachProject,
   interruptConversation,
@@ -31,6 +32,7 @@ import {
   loadGitDiff,
   loadGitStatus,
   loadIntegrationCatalog,
+  openIntegrationControlBrowser,
   loadProjectWorkspace,
   logoutCodexAuth,
   openGitFile,
@@ -40,6 +42,9 @@ import {
   preflightProject,
   previewGitMutation,
   previewIntegrationMutation,
+  previewIntegrationControl,
+  pollIntegrationControl,
+  refreshIntegrationCatalog as refreshIntegrationCatalogNative,
   pollConversation,
   refreshCodexAuth,
   recoverGitMutation,
@@ -98,6 +103,11 @@ import {
 import {
   scaffoldIntegrationCatalog,
   type IntegrationCatalogSnapshot,
+  type IntegrationControlActionRequest,
+  type IntegrationControlConfirmationRequest,
+  type IntegrationControlPreviewRequest,
+  type IntegrationControlPreviewSnapshot,
+  type IntegrationControlResultSnapshot,
   type IntegrationMutationConfirmRequest,
   type IntegrationMutationPreviewRequest,
   type IntegrationMutationPreviewSnapshot,
@@ -245,12 +255,25 @@ interface AppProps {
     request: TerminalCloseRequest,
   ) => Promise<TerminalRegistrySnapshot>;
   loadIntegrationCatalogTask?: () => Promise<IntegrationCatalogSnapshot>;
+  refreshIntegrationCatalogTask?: () => Promise<IntegrationCatalogSnapshot>;
   previewIntegrationMutationTask?: (
     request: IntegrationMutationPreviewRequest,
   ) => Promise<IntegrationMutationPreviewSnapshot>;
   confirmIntegrationMutationTask?: (
     request: IntegrationMutationConfirmRequest,
   ) => Promise<IntegrationMutationResultSnapshot>;
+  previewIntegrationControlTask?: (
+    request: IntegrationControlPreviewRequest,
+  ) => Promise<IntegrationControlPreviewSnapshot>;
+  confirmIntegrationControlTask?: (
+    request: IntegrationControlConfirmationRequest,
+  ) => Promise<IntegrationControlResultSnapshot>;
+  openIntegrationControlTask?: (
+    request: IntegrationControlActionRequest,
+  ) => Promise<IntegrationControlResultSnapshot>;
+  pollIntegrationControlTask?: (
+    request: IntegrationControlActionRequest,
+  ) => Promise<IntegrationControlResultSnapshot>;
 }
 
 interface TrackedConversation {
@@ -444,8 +467,13 @@ export default function App({
   resizeTerminalTask = resizeTerminal,
   closeTerminalTask = closeTerminal,
   loadIntegrationCatalogTask = loadIntegrationCatalog,
+  refreshIntegrationCatalogTask = refreshIntegrationCatalogNative,
   previewIntegrationMutationTask = previewIntegrationMutation,
   confirmIntegrationMutationTask = confirmIntegrationMutation,
+  previewIntegrationControlTask = previewIntegrationControl,
+  confirmIntegrationControlTask = confirmIntegrationControl,
+  openIntegrationControlTask = openIntegrationControlBrowser,
+  pollIntegrationControlTask = pollIntegrationControl,
 }: AppProps) {
   const [bootstrap, setBootstrap] =
     useState<DesktopBootstrap>(scaffoldBootstrap);
@@ -530,6 +558,10 @@ export default function App({
     useState<IntegrationMutationPreviewSnapshot | null>(null);
   const [integrationResult, setIntegrationResult] =
     useState<IntegrationMutationResultSnapshot | null>(null);
+  const [integrationControlPreview, setIntegrationControlPreview] =
+    useState<IntegrationControlPreviewSnapshot | null>(null);
+  const [integrationControlResult, setIntegrationControlResult] =
+    useState<IntegrationControlResultSnapshot | null>(null);
   const [integrationState, setIntegrationState] =
     useState<IntegrationViewState>("checking");
   const [integrationBusy, setIntegrationBusy] = useState(false);
@@ -1559,13 +1591,20 @@ export default function App({
   }
 
   async function refreshIntegrationCatalog() {
+    if (
+      integrationControlResult?.state === "handoff-ready" ||
+      integrationControlResult?.state === "pending"
+    )
+      return;
     setIntegrationBusy(true);
     setIntegrationActionError(false);
     setIntegrationPreview(null);
+    setIntegrationControlPreview(null);
     try {
-      const result = await loadIntegrationCatalogTask();
+      const result = await refreshIntegrationCatalogTask();
       setIntegrationCatalog(result);
       setIntegrationResult(null);
+      setIntegrationControlResult(null);
       setIntegrationState("native");
     } catch (error) {
       setIntegrationActionError(true);
@@ -1578,9 +1617,16 @@ export default function App({
   async function beginIntegrationMutation(
     request: IntegrationMutationPreviewRequest,
   ) {
+    if (
+      integrationControlResult?.state === "handoff-ready" ||
+      integrationControlResult?.state === "pending"
+    )
+      return;
     setIntegrationBusy(true);
     setIntegrationActionError(false);
     setIntegrationResult(null);
+    setIntegrationControlPreview(null);
+    setIntegrationControlResult(null);
     try {
       setIntegrationPreview(await previewIntegrationMutationTask(request));
     } catch (error) {
@@ -1603,6 +1649,84 @@ export default function App({
         setIntegrationState("native");
       }
       setIntegrationResult(result);
+    } catch (error) {
+      setIntegrationActionError(true);
+      throw error;
+    } finally {
+      setIntegrationBusy(false);
+    }
+  }
+
+  async function beginIntegrationControl(
+    request: IntegrationControlPreviewRequest,
+  ) {
+    if (
+      integrationControlResult?.state === "handoff-ready" ||
+      integrationControlResult?.state === "pending"
+    )
+      return;
+    setIntegrationBusy(true);
+    setIntegrationActionError(false);
+    setIntegrationPreview(null);
+    setIntegrationResult(null);
+    setIntegrationControlResult(null);
+    try {
+      setIntegrationControlPreview(
+        await previewIntegrationControlTask(request),
+      );
+    } catch (error) {
+      setIntegrationControlPreview(null);
+      setIntegrationActionError(true);
+      throw error;
+    } finally {
+      setIntegrationBusy(false);
+    }
+  }
+
+  async function applyIntegrationControl(confirmationId: string) {
+    setIntegrationBusy(true);
+    setIntegrationActionError(false);
+    try {
+      const result = await confirmIntegrationControlTask({ confirmationId });
+      setIntegrationControlPreview(null);
+      if (result.catalogRefreshRequired) {
+        setIntegrationCatalog(await loadIntegrationCatalogTask());
+        setIntegrationState("native");
+      }
+      setIntegrationControlResult(result);
+    } catch (error) {
+      setIntegrationActionError(true);
+      throw error;
+    } finally {
+      setIntegrationBusy(false);
+    }
+  }
+
+  async function openIntegrationControl(actionId: string) {
+    setIntegrationBusy(true);
+    setIntegrationActionError(false);
+    try {
+      setIntegrationControlResult(
+        await openIntegrationControlTask({ actionId }),
+      );
+    } catch (error) {
+      setIntegrationActionError(true);
+      throw error;
+    } finally {
+      setIntegrationBusy(false);
+    }
+  }
+
+  async function checkIntegrationControl(actionId: string) {
+    setIntegrationBusy(true);
+    setIntegrationActionError(false);
+    try {
+      const result = await pollIntegrationControlTask({ actionId });
+      if (result.catalogRefreshRequired) {
+        setIntegrationCatalog(await loadIntegrationCatalogTask());
+        setIntegrationState("native");
+      }
+      setIntegrationControlResult(result);
     } catch (error) {
       setIntegrationActionError(true);
       throw error;
@@ -1964,12 +2088,21 @@ export default function App({
             snapshot={integrationCatalog}
             preview={integrationPreview}
             result={integrationResult}
+            controlPreview={integrationControlPreview}
+            controlResult={integrationControlResult}
             busy={integrationBusy}
             actionError={integrationActionError}
             onRefresh={refreshIntegrationCatalog}
             onPreview={beginIntegrationMutation}
             onConfirm={applyIntegrationMutation}
-            onCancel={() => setIntegrationPreview(null)}
+            onControlPreview={beginIntegrationControl}
+            onControlConfirm={applyIntegrationControl}
+            onControlOpen={openIntegrationControl}
+            onControlPoll={checkIntegrationControl}
+            onCancel={() => {
+              setIntegrationPreview(null);
+              setIntegrationControlPreview(null);
+            }}
           />
 
           <ConversationWorkspace
@@ -1978,6 +2111,7 @@ export default function App({
             events={conversationEvents}
             runtime={runtime}
             project={currentProject}
+            integrations={integrationCatalog}
             busy={conversationBusy}
             actionError={conversationActionError}
             onStart={beginConversation}

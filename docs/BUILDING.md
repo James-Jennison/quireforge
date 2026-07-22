@@ -1,9 +1,10 @@
 # Building QuireForge
 
-Status: the Milestone 2 website and Milestones 3–12 desktop shell, Codex,
-authentication, project attachment, conversation/runtime lifecycle, reviewed
-Git/worktree workflows, and native integrated terminal can be developed and
-built locally. An installable application package does not yet exist.
+Status: the Milestone 2 website and desktop work through Milestone 14C can be
+developed and built locally, including Codex/authentication, project and
+conversation lifecycle, reviewed Git/worktree workflows, the native terminal,
+and normalized/confirmed integration workflows. An installable application
+package does not yet exist.
 
 ## Supported development baseline
 
@@ -121,9 +122,18 @@ the native folder picker; later actions accept opaque project IDs, and no
 source-deletion or general filesystem command is exposed. No arbitrary shell,
 process, configuration, or integration command is exposed. Conversation start
 accepts only an opaque project ID, bounded prompt, and closed model/reasoning,
-sandbox, and approval values; cwd and native Codex IDs never enter from the
-webview. Poll and interrupt accept only QuireForge's application conversation
-ID. The main window retains an empty direct plugin-permission list.
+sandbox, and approval values plus up to eight normalized connector catalog IDs;
+cwd, `app://` paths, and native Codex IDs never enter from the webview. Poll and
+interrupt accept only QuireForge's application conversation ID.
+
+The integration surface is also fixed-purpose:
+`integration_catalog_read`/`integration_catalog_refresh`, closed
+preview/confirm plugin-marketplace mutation commands, and closed 14C control
+preview/confirm/browser/status commands. The browser command accepts only an
+opaque UUIDv7 action ID; its validated authorization URL remains native-held.
+Skill paths, MCP names, raw app IDs, configuration values, and arbitrary
+commands are not frontend inputs. The main window retains an empty direct
+plugin-permission list.
 
 ## Refresh the reviewed Codex schemas
 

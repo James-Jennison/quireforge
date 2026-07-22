@@ -1,8 +1,9 @@
 # Codex Integration Findings
 
-Status: Milestone 0 discovery with implementation through Milestone 14B,
+Status: Milestone 0 discovery with implementation through Milestone 14C,
 including the native read-only catalog, confirmed plugin/marketplace lifecycle,
-and user-facing Integration Center validated locally
+user-facing Integration Center, and confirmed authorization/control boundary
+validated locally
 Observed: initial discovery 2026-07-19; protocol refresh 2026-07-21
 Installed CLI evidence: `codex-cli 0.144.6` baseline and `codex-cli 0.145.0`
 current refresh
@@ -156,8 +157,9 @@ from connector/MCP authorization. See
 Routine tests use deterministic temporary fixtures. The separately invoked
 real-CLI proof uses temporary `CODEX_HOME` and `HOME` with one local fixture
 marketplace/plugin and does not touch personal Codex state. Plugin
-enable/disable, connector/MCP authorization, skill configuration, prompt
-mentions, and health repair remain later gated work.
+enable/disable and unsupported generic management remain later gated work.
+Connector/MCP authorization, skill configuration, prompt mentions, and
+explicit refresh are handled only by the separately confirmed 14C boundary.
 
 ## Milestone 14B Integration Center
 
@@ -177,11 +179,48 @@ shows source, permissions, warnings, destructive status, and separate hook
 trust before the one-use confirmation is submitted. Applied results trigger a
 fresh catalog read.
 
-Unsupported connector/MCP authorization, enable/disable, skill configuration,
-prompt mentions, and repair operations are explicitly unavailable rather than
-mapped to a generic command. Browser preview uses the sanitized catalog fixture;
-routine component and browser tests do not inspect or mutate personal Codex
-integration state.
+Unsupported management is explicitly unavailable rather than mapped to a
+generic command. Browser preview uses the sanitized catalog fixture; routine
+component and browser tests do not inspect or mutate personal Codex integration
+state.
+
+## Milestone 14C authorization and integration controls
+
+`IntegrationControlService` exposes four closed native operations:
+`connector-authorize`, `mcp-authorize`, `skill-enable`, and `skill-disable`.
+React sends only one operation and opaque normalized entry ID. It cannot send a
+URL, app path, skill path, MCP name, configuration key/value, protocol method,
+or raw result.
+
+Preview requires the matching capability to be both upstream-available and
+implemented, checks eligible normalized state and policy, then resolves fresh
+native evidence through the reviewed 0.145.x app-server routes. A ready preview
+stores exact evidence behind a five-minute one-use UUIDv7. Confirmation
+re-resolves that evidence and then:
+
+- opens a connector authorization URL only when `app/list` returned it;
+- starts MCP OAuth only with `mcpServer/oauth/login` and accepts only the exact
+  `mcpServer/oauthLogin/completed` server-name correlation; or
+- writes one skill's effective enabled state with `skills/config/write`, then
+  requires both the exact effective-state response and a fresh `skills/list`
+  postcondition.
+
+Authorization URLs are bounded credential-free HTTPS, or loopback HTTP for a
+callback, with no fragment. The URL remains native-only, is opened by Tauri
+from a process-local opaque action ID, and is never logged, stored in SQLite,
+or serialized to React. Completion refreshes the normalized catalog; users can
+also invoke a fixed-purpose catalog/health refresh without mutation.
+
+The conversation composer lists only normalized connectors that are connected,
+enabled, and healthy. It can submit up to eight unique opaque entry IDs. Native
+code rechecks `app/list` and `app/installed`, requires accessible, enabled, and
+callable state, and constructs the documented `mention` item with its `app://`
+path. The webview never supplies or receives that path.
+
+Generic connector install/configuration, plugin enable/disable, MCP
+add/remove/logout/configuration, arbitrary health repair, and generic config
+editing remain unavailable. See
+[ADR 0020](DECISIONS/0020-confirmed-integration-authorization-and-controls.md).
 
 ## Required CLI inspection
 
@@ -551,6 +590,10 @@ The desktop app must preserve scope and provenance: built-in, personal,
 project, repository-provided, or plugin-bundled. A project suggestion must not
 silently enable a global skill.
 
+Milestone 14C uses only the exact native path returned by `skills/list`, behind
+a fresh preview and one-use confirmation. React receives scope and normalized
+state but never the manifest path.
+
 ## MCP servers
 
 The CLI provides list/get/add/remove/login/logout commands. App-server provides
@@ -565,6 +608,10 @@ MCP OAuth stays owned by Codex. The desktop app may open an authorization URL
 and render status, but it must not log codes/tokens or save them to SQLite.
 Local MCP commands and remote endpoints are executable/security-sensitive and
 must be presented separately from connector and filesystem permissions.
+
+Milestone 14C implements that OAuth handoff with native URL ownership and exact
+completion-name correlation. It does not expose MCP endpoint configuration,
+add/remove/logout, tool definitions, or credentials.
 
 ## Managed policy
 

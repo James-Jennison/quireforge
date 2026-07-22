@@ -1,8 +1,8 @@
 # Architecture
 
 Status: Milestone 0 application proposal with the website foundation and
-desktop work implemented locally through Milestone 14B. Packaging, deployment,
-and later integration authorization/configuration remain subject to separately
+desktop work implemented locally through Milestone 14C. Packaging, deployment,
+and unsupported integration-management expansion remain subject to separately
 gated milestones.
 
 QuireForge is an unofficial native Linux workspace for Codex. It is not made,
@@ -507,9 +507,32 @@ status, and separate hook trust, and refresh the catalog after an applied
 result. Browser preview uses sanitized deterministic fixtures and never claims
 live native state.
 
-Connector/MCP authorization, plugin enable/disable, skill configuration,
-prompt mentions, health repair, and the app-owned dynamic tool remain
-unimplemented.
+Milestone 14C adds `IntegrationControlService` as the serialized native owner
+for four closed controls: connector authorization, MCP authorization, skill
+enable, and skill disable. Preview resolves one opaque catalog ID to fresh
+native evidence and places it behind a five-minute one-use UUIDv7. Confirmation
+revalidates the ready capability, catalog state, and exact evidence before it
+uses a Codex-returned connector URL, `mcpServer/oauth/login`, or
+`skills/config/write`. Skill results require an exact effective-state response
+and fresh list postcondition. Authorization URLs remain native-only and are
+opened through Tauri from a ten-minute opaque action; MCP completion must match
+the exact native server name. The corresponding fixed IPC surface is
+`integration_catalog_refresh`, `integration_control_preview`,
+`integration_control_confirm`, `integration_control_open_browser`, and
+`integration_control_status`. See
+[ADR 0020](DECISIONS/0020-confirmed-integration-authorization-and-controls.md).
+
+Conversation start can include at most eight unique normalized connector entry
+IDs. The control service re-resolves each against `app/list` and
+`app/installed`, requires accessible, enabled, and callable state, and returns
+native-held display/path evidence to the conversation service. Only native code
+constructs the documented `mention` item and `app://` path. Neither the raw app
+ID/path nor the authorization URL is persisted or serialized to React.
+
+Explicit refresh is non-destructive and rebuilds the normalized catalog and
+health state. Plugin enable/disable, generic connector installation or
+configuration, MCP add/remove/logout/configuration, arbitrary health repair,
+generic config editing, and the app-owned dynamic tool remain unimplemented.
 
 The future app-owned dynamic-tool boundary registers a closed schema through
 `thread/start`, accepts only the correlated `item/tool/call` server request,

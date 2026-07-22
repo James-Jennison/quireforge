@@ -1200,6 +1200,43 @@ passed. Future established-contract presentation checkpoints should start from
 the measured sub-hour path while authentication/configuration work retains a
 larger security and interface-uncertainty allowance.
 
+## Milestone 14C — Confirmed integration authorization and controls
+
+| Field                | Record                                                                                                                                                                                                          |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Forecast date        | 2026-07-22                                                                                                                                                                                                      |
+| Selected model       | GPT-5.6 Sol, XHigh reasoning; manually confirmed                                                                                                                                                                |
+| Preliminary forecast | Approximately 5–9 active hours; 20–50 minutes of local commands; 5.5–10.5 total elapsed hours across one or two sessions; medium-to-low confidence                                                              |
+| Calibrated forecast  | Approximately 4.5–8 active hours; 15–40 minutes of local commands; 4–10 minutes hosted CI critical path; 5–9.5 total elapsed hours across one or two sessions; medium confidence                                |
+| Calibration basis    | Synchronized `main` at `91e256a`; reviewed Codex CLI 0.145.0 routes and fresh official manual; 43 GiB available RAM and 718 GiB free storage; low load; warm Cargo/pnpm caches; four Cargo workers; no GPU work |
+| Preflight commands   | Desktop TypeScript check 1.68 seconds/about 263 MiB; four-worker Cargo check 1.42 seconds/about 502 MiB; both passed with zero swaps                                                                            |
+| Current status       | Implementation and all required local repository, browser, visual, and release checks complete on `feat/milestone-14c-integration-control`; publication and hosted checks remain pending                        |
+| Observed local work  | Approximately 0.68 active hour and 0.18 automated hour from branch creation through the verified local checkpoint; 0.86 hour total elapsed and no user-blocked interval                                         |
+| Acceptance timings   | Full validation 40.98 seconds/about 997 MiB; combined browser suites 23.62 seconds/about 447 MiB; warm unbundled desktop release build 36.38 seconds/about 2.23 GiB; zero test failures                         |
+
+Critical path: fresh official route review → closed authorization/control
+contract → native evidence/confirmation coordinator → native-only browser
+handoff and exact completion correlation → connector mention construction →
+Integration Center/composer wiring → deterministic security and UI tests →
+complete repository/browser/release gates → security/diff review → publication
+and successful `main` CI. Heavy browser and release gates remain sequential;
+documentation may overlap only short warm commands. The RTX 3050 is
+intentionally unused.
+
+The calibrated range is below the preliminary range because 13B/14A/14B already
+provide the normalized catalog, process adapter, confirmation patterns, and
+Integration Center. The upper allowance remains intentionally large for
+authorization URL ownership, app-server notification drift, scope-sensitive
+skill writes, stale evidence, browser-handoff lifecycle, prompt mention
+construction, responsive/accessibility review, and fail-closed tests. Routine
+verification uses deterministic fixtures and no personal integration state,
+real third-party authorization, billable model call, package, release,
+deployment, or hosting mutation. The local checkpoint completed in 0.68 active
+hour, approximately 5.57 hours or 89.1% below the 6.25-hour calibrated active
+midpoint. Existing closed contracts and warm caches compressed implementation;
+strict lint and Clippy still caught one React state-derivation issue and two
+Rust representation issues before acceptance.
+
 ## Milestone 18 — Agent-directed model and reasoning selection
 
 Status: deferred and dependency-gated behind Milestones 13–17. This section

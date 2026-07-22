@@ -13,6 +13,7 @@ import {
   type ConversationActivityView,
 } from "./lib/conversationView";
 import type { ProjectWorkspaceSnapshot } from "./lib/project";
+import type { IntegrationCatalogSnapshot } from "./lib/integration";
 
 type ConversationAvailability = "checking" | "native" | "preview";
 type Project = ProjectWorkspaceSnapshot["projects"][number];
@@ -23,6 +24,7 @@ interface ConversationWorkspaceProps {
   events: ConversationEvent[];
   runtime: CodexRuntimeSnapshot;
   project: Project | undefined;
+  integrations: IntegrationCatalogSnapshot;
   busy: boolean;
   actionError: boolean;
   onStart: (request: ConversationStartRequest) => Promise<ConversationSnapshot>;
@@ -73,6 +75,8 @@ const diagnosticMessages: Record<
   "runtime-unavailable": "The native Codex runtime is unavailable.",
   "model-unavailable": "The selected model is no longer available.",
   "reasoning-unavailable": "The selected reasoning level is unavailable.",
+  "integration-unavailable":
+    "A selected connector is no longer authorized, enabled, or callable.",
   "metadata-unavailable":
     "QuireForge could not read its conversation metadata.",
   "approval-required": "Codex needs an approval before it can continue.",
@@ -240,6 +244,7 @@ export function ConversationWorkspace({
   events,
   runtime,
   project,
+  integrations,
   busy,
   actionError,
   onStart,
@@ -257,6 +262,9 @@ export function ConversationWorkspace({
     useState<ConversationStartRequest["sandboxMode"]>("workspace-write");
   const [approvalPolicy, setApprovalPolicy] =
     useState<ConversationStartRequest["approvalPolicy"]>("on-request");
+  const [selectedConnectorIds, setSelectedConnectorIds] = useState<Set<string>>(
+    new Set(),
+  );
   const [expandedActivities, setExpandedActivities] = useState<Set<string>>(
     new Set(),
   );
@@ -300,10 +308,43 @@ export function ConversationWorkspace({
   );
   const unsafeCombination =
     sandboxMode === "danger-full-access" && approvalPolicy === "never";
+  const availableConnectors = useMemo(
+    () =>
+      integrations.entries.filter(
+        (entry) =>
+          entry.kind === "connector" &&
+          entry.authentication === "connected" &&
+          entry.enablement === "enabled" &&
+          entry.health.state === "ready",
+      ),
+    [integrations.entries],
+  );
+  const availableConnectorIds = useMemo(
+    () => new Set(availableConnectors.map((entry) => entry.id)),
+    [availableConnectors],
+  );
+  const effectiveSelectedConnectorIds = useMemo(
+    () =>
+      new Set(
+        [...selectedConnectorIds].filter((entryId) =>
+          availableConnectorIds.has(entryId),
+        ),
+      ),
+    [availableConnectorIds, selectedConnectorIds],
+  );
+  const integrationEntryIds = useMemo(
+    () =>
+      availableConnectors
+        .filter((entry) => effectiveSelectedConnectorIds.has(entry.id))
+        .slice(0, 8)
+        .map((entry) => entry.id),
+    [availableConnectors, effectiveSelectedConnectorIds],
+  );
   const request = useMemo(
     () => ({
       projectId: project?.id ?? "",
       prompt,
+      integrationEntryIds,
       modelId: effectiveModelId,
       reasoningEffort: effectiveReasoningEffort,
       sandboxMode,
@@ -315,6 +356,7 @@ export function ConversationWorkspace({
       effectiveReasoningEffort,
       project?.id,
       prompt,
+      integrationEntryIds,
       sandboxMode,
     ],
   );
@@ -425,6 +467,44 @@ export function ConversationWorkspace({
             disabled={active || busy}
             onChange={(event) => setPrompt(event.target.value)}
           />
+          <fieldset className="conversation-integrations">
+            <legend>Connected integrations</legend>
+            {availableConnectors.length ? (
+              availableConnectors.map((entry) => (
+                <label key={entry.id}>
+                  <input
+                    type="checkbox"
+                    checked={effectiveSelectedConnectorIds.has(entry.id)}
+                    disabled={
+                      active ||
+                      busy ||
+                      availability !== "native" ||
+                      (!effectiveSelectedConnectorIds.has(entry.id) &&
+                        integrationEntryIds.length >= 8)
+                    }
+                    onChange={(event) => {
+                      setSelectedConnectorIds((current) => {
+                        const next = new Set(
+                          [...current].filter((entryId) =>
+                            availableConnectorIds.has(entryId),
+                          ),
+                        );
+                        if (event.target.checked) next.add(entry.id);
+                        else next.delete(entry.id);
+                        return next;
+                      });
+                    }}
+                  />
+                  <span>{entry.displayName}</span>
+                </label>
+              ))
+            ) : (
+              <p>
+                No authorized, enabled, and healthy connector is available for
+                this task.
+              </p>
+            )}
+          </fieldset>
           <div className="conversation-controls">
             <label>
               <span>Model</span>

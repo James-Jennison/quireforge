@@ -6,6 +6,7 @@ use thiserror::Error;
 pub const INTEGRATION_SCHEMA_VERSION: u16 = 1;
 pub const INTEGRATION_ADAPTER_VERSION: &str = "codex-integration-v1";
 pub const INTEGRATION_MUTATION_SCHEMA_VERSION: u16 = 1;
+pub const INTEGRATION_CONTROL_SCHEMA_VERSION: u16 = 1;
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
@@ -677,6 +678,153 @@ pub enum IntegrationMutationDiagnosticCode {
     PostconditionFailed,
 }
 
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum IntegrationControlOperation {
+    ConnectorAuthorize,
+    SkillEnable,
+    SkillDisable,
+    McpAuthorize,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
+#[serde(rename_all = "camelCase")]
+pub struct IntegrationControlPreviewRequest {
+    pub operation: IntegrationControlOperation,
+    pub target_entry_id: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
+#[serde(rename_all = "camelCase")]
+pub struct IntegrationControlConfirmationRequest {
+    pub confirmation_id: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
+#[serde(rename_all = "camelCase")]
+pub struct IntegrationControlActionRequest {
+    pub action_id: String,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum IntegrationControlPreviewState {
+    Ready,
+    Blocked,
+    Unavailable,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum IntegrationControlResultState {
+    Applied,
+    HandoffReady,
+    Pending,
+    Completed,
+    Unavailable,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum IntegrationControlWarning {
+    OpensExternalBrowser,
+    AccountAuthorization,
+    NetworkAuthorization,
+    ChangesCodexConfiguration,
+    ProjectScoped,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum IntegrationControlDiagnosticCode {
+    InvalidRequest,
+    CliUnavailable,
+    VersionUnsupported,
+    CatalogUnavailable,
+    TargetNotFound,
+    OperationUnavailable,
+    PolicyBlocked,
+    CapacityReached,
+    ConfirmationExpired,
+    StalePreview,
+    HandoffUnavailable,
+    AuthorizationFailed,
+    MutationFailed,
+    ResponseInvalid,
+    PostconditionFailed,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+#[serde(rename_all = "camelCase")]
+pub struct IntegrationControlPreviewSnapshot {
+    pub schema_version: u16,
+    pub state: IntegrationControlPreviewState,
+    pub operation: IntegrationControlOperation,
+    pub target_entry_id: String,
+    pub target_display_name: Option<String>,
+    pub permissions: Vec<IntegrationPermission>,
+    pub warnings: Vec<IntegrationControlWarning>,
+    pub confirmation_id: Option<String>,
+    pub diagnostic_code: Option<IntegrationControlDiagnosticCode>,
+}
+
+impl IntegrationControlPreviewSnapshot {
+    pub fn unavailable(
+        request: &IntegrationControlPreviewRequest,
+        state: IntegrationControlPreviewState,
+        diagnostic_code: IntegrationControlDiagnosticCode,
+    ) -> Self {
+        Self {
+            schema_version: INTEGRATION_CONTROL_SCHEMA_VERSION,
+            state,
+            operation: request.operation,
+            target_entry_id: request.target_entry_id.clone(),
+            target_display_name: None,
+            permissions: Vec::new(),
+            warnings: Vec::new(),
+            confirmation_id: None,
+            diagnostic_code: Some(diagnostic_code),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+#[serde(rename_all = "camelCase")]
+pub struct IntegrationControlResultSnapshot {
+    pub schema_version: u16,
+    pub state: IntegrationControlResultState,
+    pub operation: Option<IntegrationControlOperation>,
+    pub target_entry_id: Option<String>,
+    pub action_id: Option<String>,
+    pub browser_handoff_available: bool,
+    pub catalog_refresh_required: bool,
+    pub diagnostic_code: Option<IntegrationControlDiagnosticCode>,
+}
+
+impl IntegrationControlResultSnapshot {
+    pub fn unavailable(
+        operation: Option<IntegrationControlOperation>,
+        target_entry_id: Option<String>,
+        diagnostic_code: IntegrationControlDiagnosticCode,
+    ) -> Self {
+        Self {
+            schema_version: INTEGRATION_CONTROL_SCHEMA_VERSION,
+            state: IntegrationControlResultState::Unavailable,
+            operation,
+            target_entry_id,
+            action_id: None,
+            browser_handoff_available: false,
+            catalog_refresh_required: false,
+            diagnostic_code: Some(diagnostic_code),
+        }
+    }
+}
+
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
 #[serde(rename_all = "camelCase")]
@@ -760,6 +908,13 @@ mod tests {
         result: IntegrationMutationResultSnapshot,
     }
 
+    #[derive(Deserialize, Serialize)]
+    #[serde(deny_unknown_fields)]
+    struct IntegrationControlFixture {
+        preview: IntegrationControlPreviewSnapshot,
+        result: IntegrationControlResultSnapshot,
+    }
+
     #[test]
     fn shared_fixture_matches_the_native_contract() {
         let raw = include_str!("../../../fixtures/integration-catalog.json");
@@ -772,7 +927,7 @@ mod tests {
 
         assert_eq!(snapshot.schema_version, INTEGRATION_SCHEMA_VERSION);
         assert_eq!(snapshot.adapter_version, INTEGRATION_ADAPTER_VERSION);
-        assert_eq!(snapshot.capabilities.len(), 14);
+        assert_eq!(snapshot.capabilities.len(), 15);
         assert_eq!(snapshot.entries.len(), 5);
         assert!(!snapshot.dynamic_tool.current_turn_model_mutable);
         snapshot.validate().expect("shared fixture must be strict");
@@ -792,7 +947,12 @@ mod tests {
 
         let mut snapshot: IntegrationCatalogSnapshot =
             serde_json::from_str(raw).expect("integration fixture must match native types");
-        snapshot.capabilities[3].requires_confirmation = false;
+        snapshot
+            .capabilities
+            .iter_mut()
+            .find(|capability| capability.id == "plugin.install")
+            .expect("fixture must include plugin installation")
+            .requires_confirmation = false;
         assert_eq!(
             snapshot.validate(),
             Err(IntegrationContractError::ConfirmationRequired)
@@ -844,6 +1004,28 @@ mod tests {
         assert_eq!(
             fixture.result.state,
             IntegrationMutationResultState::Applied
+        );
+        assert_eq!(round_trip, original);
+    }
+
+    #[test]
+    fn shared_control_fixture_matches_the_native_contract() {
+        let raw = include_str!("../../../fixtures/integration-control.json");
+        let fixture: IntegrationControlFixture =
+            serde_json::from_str(raw).expect("control fixture must match native types");
+        let original: serde_json::Value =
+            serde_json::from_str(raw).expect("control fixture must be valid JSON");
+        let round_trip =
+            serde_json::to_value(&fixture).expect("normalized control contract must serialize");
+
+        assert_eq!(
+            fixture.preview.schema_version,
+            INTEGRATION_CONTROL_SCHEMA_VERSION
+        );
+        assert_eq!(fixture.preview.state, IntegrationControlPreviewState::Ready);
+        assert_eq!(
+            fixture.result.state,
+            IntegrationControlResultState::HandoffReady
         );
         assert_eq!(round_trip, original);
     }

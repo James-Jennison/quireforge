@@ -1,4 +1,5 @@
 import integrationFixture from "../../fixtures/integration-catalog.json";
+import integrationControlFixture from "../../fixtures/integration-control.json";
 import integrationMutationFixture from "../../fixtures/integration-mutation.json";
 import { z } from "zod";
 
@@ -585,3 +586,182 @@ export const scaffoldIntegrationMutationPreview =
   integrationMutationPreviewSchema.parse(integrationMutationFixture.preview);
 export const scaffoldIntegrationMutationResult =
   integrationMutationResultSchema.parse(integrationMutationFixture.result);
+
+export const integrationControlOperationSchema = z.enum([
+  "connector-authorize",
+  "skill-enable",
+  "skill-disable",
+  "mcp-authorize",
+]);
+
+const integrationControlWarningSchema = z.enum([
+  "opens-external-browser",
+  "account-authorization",
+  "network-authorization",
+  "changes-codex-configuration",
+  "project-scoped",
+]);
+
+const integrationControlDiagnosticSchema = z.enum([
+  "invalid-request",
+  "cli-unavailable",
+  "version-unsupported",
+  "catalog-unavailable",
+  "target-not-found",
+  "operation-unavailable",
+  "policy-blocked",
+  "capacity-reached",
+  "confirmation-expired",
+  "stale-preview",
+  "handoff-unavailable",
+  "authorization-failed",
+  "mutation-failed",
+  "response-invalid",
+  "postcondition-failed",
+]);
+
+export const integrationControlPreviewRequestSchema = z
+  .object({
+    operation: integrationControlOperationSchema,
+    targetEntryId: identifierSchema,
+  })
+  .strict()
+  .superRefine((request, context) => {
+    const expectedPrefix = request.operation.startsWith("connector")
+      ? "connector:"
+      : request.operation.startsWith("skill")
+        ? "skill:"
+        : "mcp:";
+    if (!request.targetEntryId.startsWith(expectedPrefix)) {
+      context.addIssue({
+        code: "custom",
+        message: "Integration control target category is inconsistent",
+        path: ["targetEntryId"],
+      });
+    }
+  });
+
+export const integrationControlConfirmationRequestSchema = z
+  .object({ confirmationId: confirmationIdSchema })
+  .strict();
+
+export const integrationControlActionRequestSchema = z
+  .object({ actionId: confirmationIdSchema })
+  .strict();
+
+export const integrationControlPreviewSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    state: z.enum(["ready", "blocked", "unavailable"]),
+    operation: integrationControlOperationSchema,
+    targetEntryId: identifierSchema,
+    targetDisplayName: displayTextSchema(128).nullable(),
+    permissions: z.array(permissionSchema).max(64),
+    warnings: z.array(integrationControlWarningSchema).max(8),
+    confirmationId: confirmationIdSchema.nullable(),
+    diagnosticCode: integrationControlDiagnosticSchema.nullable(),
+  })
+  .strict()
+  .superRefine((preview, context) => {
+    const ready = preview.state === "ready";
+    if (
+      (ready &&
+        (preview.targetDisplayName === null ||
+          preview.confirmationId === null ||
+          preview.diagnosticCode !== null)) ||
+      (!ready &&
+        (preview.targetDisplayName !== null ||
+          preview.confirmationId !== null ||
+          preview.permissions.length !== 0 ||
+          preview.warnings.length !== 0 ||
+          preview.diagnosticCode === null)) ||
+      new Set(preview.warnings).size !== preview.warnings.length
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "Integration control preview fields are inconsistent",
+      });
+    }
+  });
+
+export const integrationControlResultSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    state: z.enum([
+      "applied",
+      "handoff-ready",
+      "pending",
+      "completed",
+      "unavailable",
+    ]),
+    operation: integrationControlOperationSchema.nullable(),
+    targetEntryId: identifierSchema.nullable(),
+    actionId: confirmationIdSchema.nullable(),
+    browserHandoffAvailable: z.boolean(),
+    catalogRefreshRequired: z.boolean(),
+    diagnosticCode: integrationControlDiagnosticSchema.nullable(),
+  })
+  .strict()
+  .superRefine((result, context) => {
+    const targetPresent =
+      result.operation !== null && result.targetEntryId !== null;
+    const valid =
+      (result.state === "applied" &&
+        targetPresent &&
+        result.actionId === null &&
+        !result.browserHandoffAvailable &&
+        result.catalogRefreshRequired &&
+        result.diagnosticCode === null) ||
+      (result.state === "handoff-ready" &&
+        targetPresent &&
+        result.actionId !== null &&
+        result.browserHandoffAvailable &&
+        !result.catalogRefreshRequired &&
+        result.diagnosticCode === null) ||
+      (result.state === "pending" &&
+        targetPresent &&
+        result.actionId !== null &&
+        !result.catalogRefreshRequired &&
+        result.diagnosticCode === null) ||
+      (result.state === "completed" &&
+        targetPresent &&
+        result.actionId === null &&
+        !result.browserHandoffAvailable &&
+        result.catalogRefreshRequired &&
+        result.diagnosticCode === null) ||
+      (result.state === "unavailable" &&
+        result.actionId === null &&
+        !result.browserHandoffAvailable &&
+        !result.catalogRefreshRequired &&
+        result.diagnosticCode !== null);
+    if (!valid) {
+      context.addIssue({
+        code: "custom",
+        message: "Integration control result fields are inconsistent",
+      });
+    }
+  });
+
+export type IntegrationControlOperation = z.infer<
+  typeof integrationControlOperationSchema
+>;
+export type IntegrationControlPreviewRequest = z.infer<
+  typeof integrationControlPreviewRequestSchema
+>;
+export type IntegrationControlConfirmationRequest = z.infer<
+  typeof integrationControlConfirmationRequestSchema
+>;
+export type IntegrationControlActionRequest = z.infer<
+  typeof integrationControlActionRequestSchema
+>;
+export type IntegrationControlPreviewSnapshot = z.infer<
+  typeof integrationControlPreviewSchema
+>;
+export type IntegrationControlResultSnapshot = z.infer<
+  typeof integrationControlResultSchema
+>;
+
+export const scaffoldIntegrationControlPreview =
+  integrationControlPreviewSchema.parse(integrationControlFixture.preview);
+export const scaffoldIntegrationControlResult =
+  integrationControlResultSchema.parse(integrationControlFixture.result);

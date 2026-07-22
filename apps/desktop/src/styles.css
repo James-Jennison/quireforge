@@ -2041,6 +2041,39 @@ button:disabled {
   color: var(--text-subtle);
 }
 
+.conversation-integrations {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin: 14px 0 0;
+  padding: 11px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.conversation-integrations legend {
+  padding: 0 5px;
+  color: var(--text-subtle);
+  font-size: 8px;
+  font-weight: 750;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.conversation-integrations label {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  color: var(--text-muted);
+  font-size: 9px;
+}
+
+.conversation-integrations p {
+  margin: 0;
+  color: var(--text-subtle);
+  font-size: 9px;
+}
+
 .conversation-controls {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

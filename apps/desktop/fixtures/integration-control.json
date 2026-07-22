@@ -1,0 +1,30 @@
+{
+  "preview": {
+    "schemaVersion": 1,
+    "state": "ready",
+    "operation": "mcp-authorize",
+    "targetEntryId": "mcp:fixture-knowledge",
+    "targetDisplayName": "Fixture knowledge server",
+    "permissions": [
+      {
+        "kind": "network",
+        "access": "authorize",
+        "target": "Configured MCP endpoint",
+        "required": true
+      }
+    ],
+    "warnings": ["opens-external-browser", "network-authorization"],
+    "confirmationId": "018f0000-0000-7000-8000-000000000014",
+    "diagnosticCode": null
+  },
+  "result": {
+    "schemaVersion": 1,
+    "state": "handoff-ready",
+    "operation": "mcp-authorize",
+    "targetEntryId": "mcp:fixture-knowledge",
+    "actionId": "018f0000-0000-7000-8000-000000000015",
+    "browserHandoffAvailable": true,
+    "catalogRefreshRequired": false,
+    "diagnosticCode": null
+  }
+}

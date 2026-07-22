@@ -37,6 +37,7 @@ describe("conversation contract", () => {
         reasoningEffort: "high",
         sandboxMode: "read-only",
         approvalPolicy: "untrusted",
+        integrationEntryIds: [],
       }),
     ).toMatchObject({ projectId, sandboxMode: "read-only" });
   });
@@ -49,6 +50,7 @@ describe("conversation contract", () => {
       reasoningEffort: "high",
       sandboxMode: "workspace-write" as const,
       approvalPolicy: "on-request" as const,
+      integrationEntryIds: [],
     };
 
     expect(() =>

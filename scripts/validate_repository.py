@@ -46,6 +46,7 @@ REQUIRED_PATHS = (
     "apps/desktop/fixtures/codex-model-list-response.json",
     "apps/desktop/fixtures/codex-runtime.json",
     "apps/desktop/fixtures/integration-catalog.json",
+    "apps/desktop/fixtures/integration-control.json",
     "apps/desktop/fixtures/integration-mutation.json",
     "apps/desktop/fixtures/codex-auth.json",
     "apps/desktop/fixtures/conversation.json",
@@ -134,6 +135,7 @@ REQUIRED_PATHS = (
     "apps/desktop/src-tauri/tauri.conf.json",
     "apps/desktop/src-tauri/src/codex/app_server.rs",
     "apps/desktop/src-tauri/src/codex/integration.rs",
+    "apps/desktop/src-tauri/src/codex/integration_control.rs",
     "apps/desktop/src-tauri/src/codex/integration_mutation.rs",
     "apps/desktop/src-tauri/src/codex/integration_service.rs",
     "apps/desktop/src-tauri/src/codex/conversation/lifecycle.rs",
@@ -164,6 +166,7 @@ REQUIRED_PATHS = (
     "docs/DECISIONS/0012-read-only-git-review-boundary.md",
     "docs/DECISIONS/0018-normalized-integration-contracts.md",
     "docs/DECISIONS/0019-confirmed-integration-mutations.md",
+    "docs/DECISIONS/0020-confirmed-integration-authorization-and-controls.md",
     "scripts/generate_codex_schema_fixtures.py",
 )
 
@@ -218,7 +221,13 @@ IDENTITY_EXPECTATIONS = {
         "codex_runtime_probe",
         "CodexRuntimeService::default()",
         "integration_catalog_read",
+        "integration_catalog_refresh",
         "IntegrationCatalogService::default()",
+        "integration_control_preview",
+        "integration_control_confirm",
+        "integration_control_open_browser",
+        "integration_control_status",
+        "IntegrationControlService::default()",
         "integration_mutation_preview",
         "integration_mutation_confirm",
         "IntegrationMutationService::default()",
@@ -578,6 +587,34 @@ def validate() -> list[str]:
             if forbidden_field in serialized_fixture:
                 errors.append(
                     "Integration mutation fixture contains raw field: "
+                    f"{forbidden_field}"
+                )
+
+    integration_control_fixture_path = (
+        ROOT / "apps/desktop/fixtures/integration-control.json"
+    )
+    if integration_control_fixture_path.is_file():
+        integration_control_fixture = json.loads(
+            integration_control_fixture_path.read_text(encoding="utf-8")
+        )
+        serialized_fixture = json.dumps(integration_control_fixture)
+        for forbidden_field in (
+            "accountId",
+            "authorizationUrl",
+            "accessToken",
+            "apiKey",
+            "rawProtocolPayload",
+            "arguments",
+            "sourcePath",
+            "skillPath",
+            "appPath",
+            "mcpServerName",
+            "threadId",
+            "turnId",
+        ):
+            if forbidden_field in serialized_fixture:
+                errors.append(
+                    "Integration control fixture contains raw field: "
                     f"{forbidden_field}"
                 )
 

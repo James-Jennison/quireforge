@@ -8,6 +8,7 @@ pub const CONVERSATION_REGISTRY_SCHEMA_VERSION: u16 = 1;
 pub struct ConversationStartRequest {
     pub project_id: String,
     pub prompt: String,
+    pub integration_entry_ids: Vec<String>,
     pub model_id: String,
     pub reasoning_effort: String,
     pub sandbox_mode: ConversationSandboxMode,
@@ -86,6 +87,7 @@ pub enum ConversationDiagnosticCode {
     RuntimeUnavailable,
     ModelUnavailable,
     ReasoningUnavailable,
+    IntegrationUnavailable,
     MetadataUnavailable,
     ApprovalRequired,
     ApprovalNotFound,

@@ -19,7 +19,10 @@ import {
 } from "./lib/project";
 import {
   integrationCatalogSchema,
+  integrationControlResultSchema,
   scaffoldIntegrationCatalog,
+  scaffoldIntegrationControlPreview,
+  scaffoldIntegrationControlResult,
   scaffoldIntegrationMutationPreview,
   scaffoldIntegrationMutationResult,
 } from "./lib/integration";
@@ -91,6 +94,21 @@ const readyIntegrationCatalog = integrationCatalogSchema.parse({
   ...scaffoldIntegrationCatalog,
   capabilities: scaffoldIntegrationCatalog.capabilities.map((capability) =>
     ["plugin.install", "plugin.remove", "marketplace.configure"].includes(
+      capability.id,
+    )
+      ? {
+          ...capability,
+          availability: "ready",
+          implementation: "ready",
+          diagnosticCode: null,
+        }
+      : capability,
+  ),
+});
+const controlReadyIntegrationCatalog = integrationCatalogSchema.parse({
+  ...readyIntegrationCatalog,
+  capabilities: readyIntegrationCatalog.capabilities.map((capability) =>
+    ["connector.authorize", "skill.configure", "mcp.authorize"].includes(
       capability.id,
     )
       ? {
@@ -785,5 +803,89 @@ describe("QuireForge desktop shell", () => {
     await waitFor(() =>
       expect(loadIntegrationCatalogTask).toHaveBeenCalledTimes(2),
     );
+  });
+
+  it("keeps authorization URLs native while advancing an opaque control action", async () => {
+    const pending = integrationControlResultSchema.parse({
+      ...scaffoldIntegrationControlResult,
+      state: "pending",
+      browserHandoffAvailable: false,
+    });
+    const completed = integrationControlResultSchema.parse({
+      ...scaffoldIntegrationControlResult,
+      state: "completed",
+      actionId: null,
+      browserHandoffAvailable: false,
+      catalogRefreshRequired: true,
+    });
+    const loadIntegrationCatalogTask = vi
+      .fn()
+      .mockResolvedValue(controlReadyIntegrationCatalog);
+    const previewIntegrationControlTask = vi
+      .fn()
+      .mockResolvedValue(scaffoldIntegrationControlPreview);
+    const confirmIntegrationControlTask = vi
+      .fn()
+      .mockResolvedValue(scaffoldIntegrationControlResult);
+    const openIntegrationControlTask = vi.fn().mockResolvedValue(pending);
+    const pollIntegrationControlTask = vi.fn().mockResolvedValue(completed);
+
+    render(
+      <App
+        loadBootstrap={() => Promise.resolve(scaffoldBootstrap)}
+        loadRuntime={() => Promise.resolve(scaffoldCodexRuntime)}
+        loadAuth={() => Promise.resolve(scaffoldCodexAuth)}
+        loadProjects={() => Promise.resolve(scaffoldProjectWorkspace)}
+        loadIntegrationCatalogTask={loadIntegrationCatalogTask}
+        previewIntegrationControlTask={previewIntegrationControlTask}
+        confirmIntegrationControlTask={confirmIntegrationControlTask}
+        openIntegrationControlTask={openIntegrationControlTask}
+        pollIntegrationControlTask={pollIntegrationControlTask}
+      />,
+    );
+
+    await screen.findByRole("heading", {
+      name: "Inspect trust before changing state.",
+    });
+    fireEvent.change(screen.getByLabelText("Category"), {
+      target: { value: "mcp-server" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Authorize MCP server" }),
+    );
+    await waitFor(() =>
+      expect(previewIntegrationControlTask).toHaveBeenCalledWith({
+        operation: "mcp-authorize",
+        targetEntryId: "mcp:fixture-knowledge",
+      }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Confirm action" }));
+    await waitFor(() =>
+      expect(confirmIntegrationControlTask).toHaveBeenCalledWith({
+        confirmationId: scaffoldIntegrationControlPreview.confirmationId,
+      }),
+    );
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "Open authorization in browser",
+      }),
+    );
+    await waitFor(() =>
+      expect(openIntegrationControlTask).toHaveBeenCalledWith({
+        actionId: scaffoldIntegrationControlResult.actionId,
+      }),
+    );
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Check authorization" }),
+    );
+    await waitFor(() =>
+      expect(pollIntegrationControlTask).toHaveBeenCalledWith({
+        actionId: scaffoldIntegrationControlResult.actionId,
+      }),
+    );
+    expect(
+      await screen.findByText(/completed and the catalog was refreshed/u),
+    ).toBeInTheDocument();
+    expect(loadIntegrationCatalogTask).toHaveBeenCalledTimes(2);
   });
 });

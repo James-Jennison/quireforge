@@ -78,9 +78,11 @@ registration, invocation, and result lifecycle needed for a future selector
 control. Milestone 13B establishes live read-only integration discovery.
 Milestone 14A establishes the confirmed native plugin and marketplace mutation
 boundary. Milestone 14B adds the user-facing Integration Center over that
-boundary without broadening it. Later Milestone 14 checkpoints and Milestones
-15–17 still need to establish authorization, configuration, and advanced-
-feature prerequisites before that control is implemented.
+boundary without broadening it. Milestone 14C adds only reviewed connector/MCP
+authorization, skill enablement, refresh, and connector prompt mentions. Later
+Milestone 14 work and Milestones 15–17 still need to establish remaining
+supported management and advanced-feature prerequisites before that control is
+implemented.
 
 ## Status
 
@@ -100,7 +102,7 @@ feature prerequisites before that control is implemented.
 |        11 | Worktrees and parallel work                                       | Very large   | Complete through 11C and verified locally                           |
 |        12 | Integrated terminal                                               | Large        | Complete; merged to `main`; not packaged                            |
 |        13 | Integration discovery and compatibility                           | Very large   | Complete through 13B; verified locally                              |
-|        14 | Integration Center and installation workflows                     | Very large   | In progress; 14A and 14B complete and merged to `main`              |
+|        14 | Integration Center and installation workflows                     | Very large   | In progress; 14A/14B merged, 14C implemented locally                |
 |        15 | File previews and desktop integration                             | Large        | Planned                                                             |
 |        16 | Complete Cloudflare Pages website                                 | Very large   | Planned                                                             |
 |        17 | Scheduled tasks and advanced supported features                   | Medium–Large | Planned/dependency-gated                                            |
@@ -509,6 +511,27 @@ release, deployment, or hosting change was made. A later separately gated
 Milestone 14 checkpoint must handle only supported connector/MCP authorization,
 enable/disable or update flows, health/troubleshooting, and prompt mentions;
 unsupported management must remain visibly unavailable.
+
+Milestone 14C implements the supported portion of that next gate. A closed
+native preview/confirm service authorizes a connector only through the official
+URL returned by Codex, starts MCP OAuth only through
+`mcpServer/oauth/login`, and changes skill enablement only through
+`skills/config/write` with an exact postcondition. Browser handoff URLs, raw
+connector IDs/paths, MCP names, and skill manifest paths remain native-only.
+The Integration Center exposes those controls only for capability-ready,
+eligible rows; explicit refresh rebuilds normalized health/catalog state.
+
+New conversation turns may select up to eight authorized, enabled, healthy
+connectors by opaque catalog ID. Native code re-resolves callable state and
+constructs the documented `mention` plus `app://` path; the webview cannot
+supply a path or raw Codex identifier. Generic connector installation or
+configuration, plugin enable/disable, MCP add/remove/logout/configuration,
+arbitrary health repair, and generic config writes remain unavailable. Routine
+tests use deterministic fixtures only and do not read or mutate personal Codex
+or integration state. See
+[ADR 0020](DECISIONS/0020-confirmed-integration-authorization-and-controls.md).
+Implementation and local verification are complete on the milestone branch;
+publication and hosted checks remain pending.
 
 ### 15 — File Previews and Desktop Integration
 

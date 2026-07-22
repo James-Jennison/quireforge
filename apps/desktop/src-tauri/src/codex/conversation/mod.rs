@@ -29,6 +29,7 @@ use super::{
         ConversationTurnStatus as WireTurnStatus,
     },
     error::CodexAdapterError,
+    integration_control::ResolvedIntegrationMention,
 };
 use presentation::{present_path, sanitize_display_text, sanitize_label};
 use types::{
@@ -235,13 +236,29 @@ impl ConversationService {
         state.remember(snapshot);
     }
 
+    #[cfg(test)]
     pub async fn start(
         &self,
         request: ConversationStartRequest,
         projects: &ProjectService,
     ) -> ConversationSnapshot {
+        self.start_with_mentions(request, projects, Vec::new())
+            .await
+    }
+
+    pub(crate) async fn start_with_mentions(
+        &self,
+        request: ConversationStartRequest,
+        projects: &ProjectService,
+        mentions: Vec<ResolvedIntegrationMention>,
+    ) -> ConversationSnapshot {
         if let Err(code) = validate_start_request(&request) {
             return ConversationSnapshot::unavailable(code);
+        }
+        if mentions.len() != request.integration_entry_ids.len() {
+            return ConversationSnapshot::unavailable(
+                ConversationDiagnosticCode::IntegrationUnavailable,
+            );
         }
 
         {
@@ -264,7 +281,10 @@ impl ConversationService {
             }
         };
 
-        match self.start_reserved(&request, &cwd, projects).await {
+        match self
+            .start_reserved(&request, &cwd, projects, &mentions)
+            .await
+        {
             Ok(active) => {
                 let events = vec![
                     ConversationEvent::Lifecycle {
@@ -302,10 +322,11 @@ impl ConversationService {
         request: &ConversationStartRequest,
         cwd: &Path,
         projects: &ProjectService,
+        mentions: &[ResolvedIntegrationMention],
     ) -> Result<ActiveConversation, ConversationDiagnosticCode> {
         let mut process = AppServerProcess::spawn(self.command.clone())
             .map_err(|error| map_adapter_error(&error))?;
-        let started = match start_on_process(&mut process, request, cwd, projects).await {
+        let started = match start_on_process(&mut process, request, cwd, projects, mentions).await {
             Ok(started) => started,
             Err(error) => {
                 let _ = process.shutdown().await;
@@ -670,6 +691,7 @@ async fn start_on_process(
     request: &ConversationStartRequest,
     cwd: &Path,
     projects: &ProjectService,
+    mentions: &[ResolvedIntegrationMention],
 ) -> Result<StartedConversation, ConversationDiagnosticCode> {
     let (models, _) = process
         .discover_models()
@@ -712,12 +734,20 @@ async fn start_on_process(
         })
         .map_err(|_| ConversationDiagnosticCode::MetadataUnavailable)?;
 
+    let mut input = vec![json!({"type": "text", "text": request.prompt})];
+    input.extend(mentions.iter().map(|mention| {
+        json!({
+            "type": "mention",
+            "name": mention.name,
+            "path": mention.path,
+        })
+    }));
     let turn_result = process
         .request(
             "turn/start",
             json!({
                 "threadId": thread.thread.id,
-                "input": [{"type": "text", "text": request.prompt}],
+                "input": input,
                 "cwd": cwd,
                 "model": request.model_id,
                 "effort": request.reasoning_effort,
@@ -823,6 +853,7 @@ fn apply_notification(
         }
         AppServerNotification::AccountLoginCompleted { .. }
         | AppServerNotification::AccountUpdated
+        | AppServerNotification::McpOauthLoginCompleted { .. }
         | AppServerNotification::IntegrationRefresh(_) => return Ok((None, None)),
     };
     match notification {
@@ -1398,12 +1429,47 @@ fn validate_start_request(
     validate_uuid_v7(&request.project_id)
         .map_err(|_| ConversationDiagnosticCode::InvalidRequest)?;
     validate_user_text(&request.prompt)?;
+    if request.integration_entry_ids.len() > 8
+        || request
+            .integration_entry_ids
+            .iter()
+            .any(|entry_id| validate_integration_entry_id(entry_id).is_err())
+        || request
+            .integration_entry_ids
+            .iter()
+            .collect::<HashSet<_>>()
+            .len()
+            != request.integration_entry_ids.len()
+    {
+        return Err(ConversationDiagnosticCode::InvalidRequest);
+    }
     validate_protocol_choice(&request.model_id, 128)?;
     validate_protocol_choice(&request.reasoning_effort, 32)?;
     if request.sandbox_mode == ConversationSandboxMode::DangerFullAccess
         && request.approval_policy == ConversationApprovalPolicy::Never
     {
         return Err(ConversationDiagnosticCode::InvalidRequest);
+    }
+    Ok(())
+}
+
+fn validate_integration_entry_id(value: &str) -> Result<(), ()> {
+    let Some(suffix) = value.strip_prefix("connector:") else {
+        return Err(());
+    };
+    if value.len() > 128
+        || suffix.is_empty()
+        || !suffix
+            .bytes()
+            .next()
+            .is_some_and(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit())
+        || !value.bytes().all(|byte| {
+            byte.is_ascii_lowercase()
+                || byte.is_ascii_digit()
+                || matches!(byte, b'.' | b'_' | b':' | b'-')
+        })
+    {
+        return Err(());
     }
     Ok(())
 }
@@ -1769,6 +1835,63 @@ printf '%s\n' '{{"method":"turn/completed","params":{{"threadId":"{THREAD_ID}","
             projects.archive(project_id).diagnostic_code,
             Some(crate::project::types::ProjectDiagnosticCode::ProjectBusy)
         );
+
+        fs::remove_dir_all(directory).expect("temporary project must be removed");
+    }
+
+    #[tokio::test]
+    async fn constructs_connector_mentions_natively_without_forwarding_catalog_ids() {
+        let (projects, directory, project_id) = attached_project();
+        let trailing = format!(
+            r#"
+printf '%s\n' '{{"method":"turn/completed","params":{{"threadId":"{THREAD_ID}","turn":{{"id":"{TURN_ID}","status":"completed"}}}}}}'
+"#
+        );
+        let script = successful_start_script(&directory, &trailing).replacen(
+            "read -r _turn",
+            r#"read -r _turn
+case "$_turn" in
+  *'"type":"mention"'*) ;;
+  *) exit 81 ;;
+esac
+case "$_turn" in
+  *'"name":"Fixture calendar connector"'*'"path":"app://fixture-calendar"'*) ;;
+  *) exit 82 ;;
+esac
+case "$_turn" in
+  *'connector:fixture-calendar'*) exit 83 ;;
+  *) ;;
+esac"#,
+            1,
+        );
+        let service =
+            ConversationService::with_command(AppServerCommand::test("sh", &["-c", &script]));
+        let mut request = start_request(project_id);
+        request.integration_entry_ids = vec!["connector:fixture-calendar".to_owned()];
+
+        let started = service
+            .start_with_mentions(
+                request,
+                &projects,
+                vec![ResolvedIntegrationMention {
+                    name: "Fixture calendar connector".to_owned(),
+                    path: "app://fixture-calendar".to_owned(),
+                }],
+            )
+            .await;
+        assert_eq!(started.state, ConversationState::Running);
+        let completed = service
+            .poll(
+                started
+                    .conversation_id
+                    .expect("running conversation needs an ID"),
+                &projects,
+            )
+            .await;
+        assert_eq!(completed.state, ConversationState::Completed);
+        let encoded = serde_json::to_string(&completed).expect("snapshot must serialize");
+        assert!(!encoded.contains("app://fixture-calendar"));
+        assert!(!encoded.contains("connector:fixture-calendar"));
 
         fs::remove_dir_all(directory).expect("temporary project must be removed");
     }
@@ -2237,6 +2360,7 @@ printf '%s\n' '{{"method":"item/agentMessage/delta","params":{{"threadId":"018f0
         ConversationStartRequest {
             project_id,
             prompt: "Review the attached project.".to_owned(),
+            integration_entry_ids: Vec::new(),
             model_id: "fixture-model".to_owned(),
             reasoning_effort: "medium".to_owned(),
             sandbox_mode: ConversationSandboxMode::ReadOnly,

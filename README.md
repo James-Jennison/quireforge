@@ -74,8 +74,12 @@ marketplace install/remove/add/upgrade operations, with one-use confirmations,
 fresh catalog revalidation, and exact postcondition checks. Milestone 14B adds
 the responsive Integration Center: category-preserving search, filters and
 details, normalized trust review, and accessible confirmation for only those
-14A operations whose capability is ready. Unsupported connector, MCP, skill,
-enablement, and authorization management remains visibly unavailable.
+14A operations whose capability is ready. Milestone 14C adds confirmed
+connector and MCP authorization handoffs, confirmed skill enable/disable,
+explicit catalog/health refresh, and native-constructed connector mentions on
+new turns. URLs, skill paths, MCP names, and `app://` paths remain native-only;
+unsupported generic configuration, plugin enablement, connector installation
+RPCs, MCP management, and repair paths stay unavailable.
 Cloudflare Pages is the selected production host, but the site has not been
 deployed. There is no application package to install yet.
 
@@ -89,9 +93,9 @@ deployed. There is no application package to install yet.
   fixtures and now includes a reviewed 0.145.0 integration schema subset.
   Account status and Codex-managed authentication are implemented; the 13A
   catalog/dynamic-tool contract, 13B native read-only discovery service, and
-  14A native plugin/marketplace lifecycle are complete and merged. The 14B
-  Integration Center is complete, merged, and verified on `main`; later
-  authorization/configuration workflows remain gated.
+  14A native plugin/marketplace lifecycle and 14B Integration Center are
+  complete and merged. Milestone 14C authorization, skill controls, refresh,
+  and prompt mentions are implemented locally; publication remains pending.
 - Desktop: the Tauri 2, React, TypeScript, and Rust shell builds and launches
   locally with narrow typed IPC, a supervised non-billable Codex runtime and
   account-status probe, a verified native project-attachment workflow, and a
@@ -104,13 +108,14 @@ deployed. There is no application package to install yet.
   Milestone 11C clean managed-worktree cleanup, plus the Milestone 12 native
   integrated terminal, the Milestone 13B normalized read-only integration
   catalog boundary, the Milestone 14A confirmed native plugin/marketplace
-  mutation boundary, and the Milestone 14B accessible Integration Center.
+  mutation boundary, the Milestone 14B accessible Integration Center, and the
+  locally implemented Milestone 14C confirmed authorization/control boundary.
 - CI status: repository, website, and desktop quality gates are configured for
   pull requests and `main` pushes; deployment remains separately gated.
-- Current milestone: Milestone 14B's user-facing Integration Center is
-  complete, merged, and verified on `main`. Later Milestone 14 authorization,
-  configuration, health, and prompt-mention work requires a separate
-  reasoning/model/start gate.
+- Current milestone: Milestone 14C's supported connector/MCP authorization,
+  skill enablement, catalog refresh, and connector prompt-mention work is
+  implemented and verified locally; publication is pending. Remaining
+  unsupported integration-management paths require separate future gates.
 - Known limitations: Codex-directed model/reasoning selection is not yet
   implemented and is deferred to Milestone 18 after its integration and
   advanced-feature prerequisites; the current turn cannot replace its own
@@ -137,6 +142,7 @@ deployed. There is no application package to install yet.
 - [Milestone real-world time ledger](docs/MILESTONE_TIME_LEDGER.md)
 - [Normalized integration contracts decision](docs/DECISIONS/0018-normalized-integration-contracts.md)
 - [Confirmed integration mutations decision](docs/DECISIONS/0019-confirmed-integration-mutations.md)
+- [Confirmed integration authorization and controls decision](docs/DECISIONS/0020-confirmed-integration-authorization-and-controls.md)
 - [Superseded GitHub Pages plan](docs/GITHUB-PAGES.md)
 - [Permanent identity decision](docs/DECISIONS/0003-permanent-quireforge-identity.md)
 - [Native approval and activity decision](docs/DECISIONS/0011-native-approvals-and-activity-contract.md)

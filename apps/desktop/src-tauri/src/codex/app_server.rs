@@ -67,6 +67,10 @@ pub(crate) enum AppServerNotification {
         success: bool,
     },
     AccountUpdated,
+    McpOauthLoginCompleted {
+        name: String,
+        success: bool,
+    },
     Conversation(ConversationNotification),
     ConversationRequest(ConversationServerRequest),
     IntegrationRefresh(IntegrationRefreshReason),
@@ -540,7 +544,7 @@ fn parse_notification(message: &Value) -> Result<Option<AppServerNotification>, 
     match method {
         "account/login/completed" => {
             #[derive(Deserialize)]
-            #[serde(rename_all = "camelCase")]
+            #[serde(deny_unknown_fields, rename_all = "camelCase")]
             struct LoginCompleted {
                 login_id: Option<String>,
                 success: bool,
@@ -574,6 +578,36 @@ fn parse_notification(message: &Value) -> Result<Option<AppServerNotification>, 
             }))
         }
         "account/updated" => Ok(Some(AppServerNotification::AccountUpdated)),
+        "mcpServer/oauthLogin/completed" => {
+            #[derive(Deserialize)]
+            #[serde(rename_all = "camelCase")]
+            struct McpOauthCompleted {
+                name: String,
+                success: bool,
+                #[serde(default)]
+                error: Option<Value>,
+                #[serde(default)]
+                thread_id: Option<Value>,
+            }
+
+            let params: McpOauthCompleted = notification_params(message)?;
+            validate_protocol_identifier(&params.name, 128)?;
+            if params
+                .error
+                .as_ref()
+                .is_some_and(|error| !error.is_null() && !error.is_string())
+                || params
+                    .thread_id
+                    .as_ref()
+                    .is_some_and(|thread_id| !thread_id.is_null() && !thread_id.is_string())
+            {
+                return Err(CodexAdapterError::InvalidProtocolMessage);
+            }
+            Ok(Some(AppServerNotification::McpOauthLoginCompleted {
+                name: params.name,
+                success: params.success,
+            }))
+        }
         "app/list/updated" => {
             let params = message
                 .get("params")

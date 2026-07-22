@@ -30,11 +30,21 @@ import { codexRuntimeSchema, type CodexRuntimeSnapshot } from "./codex";
 import { desktopBootstrapSchema, type DesktopBootstrap } from "./contract";
 import {
   integrationCatalogSchema,
+  integrationControlActionRequestSchema,
+  integrationControlConfirmationRequestSchema,
+  integrationControlPreviewRequestSchema,
+  integrationControlPreviewSchema,
+  integrationControlResultSchema,
   integrationMutationConfirmRequestSchema,
   integrationMutationPreviewRequestSchema,
   integrationMutationPreviewSchema,
   integrationMutationResultSchema,
   type IntegrationCatalogSnapshot,
+  type IntegrationControlActionRequest,
+  type IntegrationControlConfirmationRequest,
+  type IntegrationControlPreviewRequest,
+  type IntegrationControlPreviewSnapshot,
+  type IntegrationControlResultSnapshot,
   type IntegrationMutationConfirmRequest,
   type IntegrationMutationPreviewRequest,
   type IntegrationMutationPreviewSnapshot,
@@ -107,6 +117,15 @@ export const CODEX_AUTH_LOGOUT_COMMAND = "codex_auth_logout";
 export const CODEX_AUTH_OPEN_BROWSER_COMMAND = "codex_auth_open_browser";
 export const DESKTOP_BOOTSTRAP_COMMAND = "desktop_bootstrap";
 export const INTEGRATION_CATALOG_READ_COMMAND = "integration_catalog_read";
+export const INTEGRATION_CATALOG_REFRESH_COMMAND =
+  "integration_catalog_refresh";
+export const INTEGRATION_CONTROL_PREVIEW_COMMAND =
+  "integration_control_preview";
+export const INTEGRATION_CONTROL_CONFIRM_COMMAND =
+  "integration_control_confirm";
+export const INTEGRATION_CONTROL_OPEN_BROWSER_COMMAND =
+  "integration_control_open_browser";
+export const INTEGRATION_CONTROL_STATUS_COMMAND = "integration_control_status";
 export const INTEGRATION_MUTATION_PREVIEW_COMMAND =
   "integration_mutation_preview";
 export const INTEGRATION_MUTATION_CONFIRM_COMMAND =
@@ -178,6 +197,59 @@ export async function loadIntegrationCatalog(
 ): Promise<IntegrationCatalogSnapshot> {
   const payload = await invokeFunction(INTEGRATION_CATALOG_READ_COMMAND);
   return integrationCatalogSchema.parse(payload);
+}
+
+export async function refreshIntegrationCatalog(
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<IntegrationCatalogSnapshot> {
+  const payload = await invokeFunction(INTEGRATION_CATALOG_REFRESH_COMMAND);
+  return integrationCatalogSchema.parse(payload);
+}
+
+export async function previewIntegrationControl(
+  request: IntegrationControlPreviewRequest,
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<IntegrationControlPreviewSnapshot> {
+  const reviewedRequest = integrationControlPreviewRequestSchema.parse(request);
+  const payload = await invokeFunction(INTEGRATION_CONTROL_PREVIEW_COMMAND, {
+    request: reviewedRequest,
+  });
+  return integrationControlPreviewSchema.parse(payload);
+}
+
+export async function confirmIntegrationControl(
+  request: IntegrationControlConfirmationRequest,
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<IntegrationControlResultSnapshot> {
+  const reviewedRequest =
+    integrationControlConfirmationRequestSchema.parse(request);
+  const payload = await invokeFunction(INTEGRATION_CONTROL_CONFIRM_COMMAND, {
+    request: reviewedRequest,
+  });
+  return integrationControlResultSchema.parse(payload);
+}
+
+export async function openIntegrationControlBrowser(
+  request: IntegrationControlActionRequest,
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<IntegrationControlResultSnapshot> {
+  const reviewedRequest = integrationControlActionRequestSchema.parse(request);
+  const payload = await invokeFunction(
+    INTEGRATION_CONTROL_OPEN_BROWSER_COMMAND,
+    { request: reviewedRequest },
+  );
+  return integrationControlResultSchema.parse(payload);
+}
+
+export async function pollIntegrationControl(
+  request: IntegrationControlActionRequest,
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<IntegrationControlResultSnapshot> {
+  const reviewedRequest = integrationControlActionRequestSchema.parse(request);
+  const payload = await invokeFunction(INTEGRATION_CONTROL_STATUS_COMMAND, {
+    request: reviewedRequest,
+  });
+  return integrationControlResultSchema.parse(payload);
 }
 
 export async function previewIntegrationMutation(

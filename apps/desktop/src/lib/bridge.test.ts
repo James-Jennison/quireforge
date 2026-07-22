@@ -24,6 +24,7 @@ import {
   confirmProjectAttachment,
   confirmWorktree,
   confirmGitMutation,
+  confirmIntegrationControl,
   confirmIntegrationMutation,
   decideConversationApproval,
   CONVERSATION_APPROVAL_DECIDE_COMMAND,
@@ -89,15 +90,26 @@ import {
   startConversation,
   interruptConversation,
   INTEGRATION_CATALOG_READ_COMMAND,
+  INTEGRATION_CATALOG_REFRESH_COMMAND,
+  INTEGRATION_CONTROL_CONFIRM_COMMAND,
+  INTEGRATION_CONTROL_OPEN_BROWSER_COMMAND,
+  INTEGRATION_CONTROL_PREVIEW_COMMAND,
+  INTEGRATION_CONTROL_STATUS_COMMAND,
   INTEGRATION_MUTATION_CONFIRM_COMMAND,
   INTEGRATION_MUTATION_PREVIEW_COMMAND,
   loadIntegrationCatalog,
+  openIntegrationControlBrowser,
+  pollIntegrationControl,
+  previewIntegrationControl,
   previewIntegrationMutation,
+  refreshIntegrationCatalog,
 } from "./bridge";
 import { scaffoldBootstrap } from "./contract";
 import { scaffoldProjectWorkspace } from "./project";
 import {
   scaffoldIntegrationCatalog,
+  scaffoldIntegrationControlPreview,
+  scaffoldIntegrationControlResult,
   scaffoldIntegrationMutationPreview,
   scaffoldIntegrationMutationResult,
 } from "./integration";
@@ -178,6 +190,44 @@ describe("desktop bridge", () => {
       INTEGRATION_MUTATION_CONFIRM_COMMAND,
       { request: confirmationRequest },
     );
+  });
+
+  it("uses fixed opaque commands for confirmed integration controls", async () => {
+    const previewRequest = {
+      operation: "mcp-authorize" as const,
+      targetEntryId: "mcp:fixture-knowledge",
+    };
+    const confirmationRequest = {
+      confirmationId: scaffoldIntegrationControlPreview.confirmationId!,
+    };
+    const actionRequest = {
+      actionId: scaffoldIntegrationControlResult.actionId!,
+    };
+    const invoke = vi
+      .fn()
+      .mockResolvedValueOnce(scaffoldIntegrationCatalog)
+      .mockResolvedValueOnce(scaffoldIntegrationControlPreview)
+      .mockResolvedValueOnce(scaffoldIntegrationControlResult)
+      .mockResolvedValueOnce({
+        ...scaffoldIntegrationControlResult,
+        state: "pending",
+        browserHandoffAvailable: false,
+      })
+      .mockResolvedValueOnce(scaffoldIntegrationControlResult);
+
+    await refreshIntegrationCatalog(invoke);
+    await previewIntegrationControl(previewRequest, invoke);
+    await confirmIntegrationControl(confirmationRequest, invoke);
+    await openIntegrationControlBrowser(actionRequest, invoke);
+    await pollIntegrationControl(actionRequest, invoke);
+
+    expect(invoke.mock.calls).toEqual([
+      [INTEGRATION_CATALOG_REFRESH_COMMAND],
+      [INTEGRATION_CONTROL_PREVIEW_COMMAND, { request: previewRequest }],
+      [INTEGRATION_CONTROL_CONFIRM_COMMAND, { request: confirmationRequest }],
+      [INTEGRATION_CONTROL_OPEN_BROWSER_COMMAND, { request: actionRequest }],
+      [INTEGRATION_CONTROL_STATUS_COMMAND, { request: actionRequest }],
+    ]);
   });
 
   it("rejects raw integration source data at the bridge boundary", async () => {
@@ -455,6 +505,7 @@ describe("desktop bridge", () => {
       reasoningEffort: "high",
       sandboxMode: "read-only" as const,
       approvalPolicy: "untrusted" as const,
+      integrationEntryIds: [],
     };
     const invoke = vi
       .fn()
