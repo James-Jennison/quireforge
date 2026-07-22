@@ -441,6 +441,15 @@ Milestone 13A publication completed through
 checkpoint produced no live integration discovery, installation, authorization,
 package, release, or deployment.
 
+Milestone 13B publication completed through
+[PR #34](https://github.com/James-Jennison/quireforge/pull/34), merge commit
+`007f5b7`, and successful pull-request workflow
+[`29890814046`](https://github.com/James-Jennison/quireforge/actions/runs/29890814046)
+and post-merge `main` workflow
+[`29890942589`](https://github.com/James-Jennison/quireforge/actions/runs/29890942589).
+This checkpoint made no integration, account, package, release, deployment, or
+hosting mutation.
+
 ### 14 — Integration Center and Installation Workflows
 
 Implement browse/search/filter/details, permission review, CLI-backed plugin and
