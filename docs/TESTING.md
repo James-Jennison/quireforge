@@ -104,7 +104,7 @@ and browser tests cover native/preview honesty, project selection, live byte
 polling, responsive tabs, explicit process-ending confirmation, recovery copy,
 xterm layout, axe-core, and overflow at desktop and mobile viewports.
 
-## Manual Milestone 13 checklist
+## Planned manual Milestone 18 checklist
 
 - Use deterministic mock catalogs and control requests; do not make a live or
   billable model call during routine verification.

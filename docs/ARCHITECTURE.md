@@ -403,7 +403,8 @@ The implemented compatibility boundary consists of:
 - `ConversationRegistrySnapshot`: strict active-only capacity/task projection
   with no event replay or native identity.
 
-Milestone 13 plans a `ModelSelectionService` inside this boundary. It owns the
+Milestone 18 plans a `ModelSelectionService` inside this boundary after
+Milestone 13 validates the required app-server lifecycle. The service owns the
 normalized catalog, current effective selection, one pending next-turn
 selection, selector-ownership policy, and bounded provenance. A Codex request
 can only stage a change after native revalidation; the current turn continues
