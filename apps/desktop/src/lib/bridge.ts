@@ -28,6 +28,7 @@ import {
 } from "./auth";
 import { codexRuntimeSchema, type CodexRuntimeSnapshot } from "./codex";
 import { desktopBootstrapSchema, type DesktopBootstrap } from "./contract";
+import { filePreviewSchema, type FilePreviewSnapshot } from "./filePreview";
 import {
   integrationCatalogSchema,
   integrationControlActionRequestSchema,
@@ -138,6 +139,7 @@ export const PROJECT_CANCEL_ATTACHMENT_COMMAND = "project_cancel_attachment";
 export const PROJECT_DETACH_COMMAND = "project_detach";
 export const PROJECT_ARCHIVE_COMMAND = "project_archive";
 export const PROJECT_PREFLIGHT_COMMAND = "project_preflight";
+export const FILE_PREVIEW_PICK_COMMAND = "file_preview_pick";
 export const WORKTREE_STATUS_COMMAND = "worktree_status";
 export const WORKTREE_CREATE_PREVIEW_COMMAND = "worktree_create_preview";
 export const WORKTREE_RECOVER_PREVIEW_COMMAND = "worktree_recover_preview";
@@ -408,6 +410,22 @@ export async function preflightProject(
     projectId,
   });
   return projectPreflightSchema.parse(payload);
+}
+
+export async function pickFilePreview(
+  projectId: string,
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<FilePreviewSnapshot> {
+  const reviewedProjectId = z
+    .string()
+    .regex(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u,
+    )
+    .parse(projectId);
+  const payload = await invokeFunction(FILE_PREVIEW_PICK_COMMAND, {
+    projectId: reviewedProjectId,
+  });
+  return filePreviewSchema.parse(payload);
 }
 
 export async function loadWorktreeStatus(

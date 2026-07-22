@@ -11,6 +11,8 @@ Milestone 13B adds live read-only native discovery, strict CLI/app-server
 normalization, invalidation, partial-failure, version-gate, and IPC tests.
 Milestones 14A–14C add confirmed lifecycle, Integration Center, authorization,
 skill-control, refresh, and connector-mention coverage.
+Milestone 15A adds a strict bounded file-preview contract, temporary-file
+native tests, and honest browser/native presentation coverage.
 
 ## Repository, website, and desktop checks
 
@@ -163,6 +165,16 @@ status polling, catalog refresh, and composer selection. No routine test reads
 or changes personal Codex/integration state, opens a real authorization page,
 or makes a model call.
 
+Milestone 15A adds a strict shared Rust/TypeScript preview fixture. Native tests
+use only temporary attached directories and cover identity/containment,
+symlinks, binary refusal, malformed project IDs, text normalization, byte/line
+and image-dimension bounds, metadata-only PDF handling, and a full-file APNG
+marker beyond the sniff window. TypeScript rejects absolute paths, unsafe
+controls, unknown fields, oversized content, and inconsistent kind/rendering
+payloads. Bridge, component, application, and browser tests verify the one
+fixed opaque-ID command, native-picker ownership, browser honesty, axe-core,
+and overflow. They never read a user's project files.
+
 ## Milestone 13A contract checklist
 
 - Confirm the generated manifest identifies CLI 0.145.0, hashes every selected
@@ -269,6 +281,26 @@ or makes a model call.
   overflow assertions, visual review, and a warm unbundled native release
   build. Do not inspect or mutate personal integration state or complete a real
   third-party authorization during routine validation.
+
+## Milestone 15A safe file-preview checklist
+
+- Confirm React supplies only a canonical project UUIDv7; native code opens the
+  picker only after validating it and never serializes an absolute path.
+- Confirm every selection reloads attachment metadata, revalidates readable
+  identity, canonical containment, symlink/regular-file status, and the opened
+  device/inode under `O_NOFOLLOW`.
+- Confirm the source, text byte/line, image byte/dimension/pixel, IPC data-URL,
+  path, and schema collection limits fail closed with stable diagnostics.
+- Confirm controls and bidi overrides are normalized from UTF-8 text; only
+  PNG/JPEG can produce image data; APNG, unknown binary content, and malformed
+  images are refused; HTML/SVG source remains inert text; PDF bytes never enter
+  the webview.
+- Confirm the production CSP permits `data:` only for `img-src`, the preview is
+  never persisted, and browser preview has no local picker/input simulation.
+- Run strict contracts, native temporary-file tests, bridge/component/app unit
+  tests, desktop/mobile Playwright with axe-core/overflow, complete repository
+  gates, and a warm unbundled release build. Do not inspect a user's files or
+  create a package, release, deployment, or hosting change.
 
 ## Planned manual Milestone 18 checklist
 

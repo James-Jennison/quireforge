@@ -477,7 +477,20 @@ Controls:
   capability allowlisting, and narrow validated IPC instead of claiming a
   hardening control the shipped frontend cannot execute under.
 - Treat previews as untrusted data; no arbitrary active HTML execution.
-- MIME/extension/size limits and safe text/image/PDF renderers.
+- File selection remains native; React supplies only a canonical app-owned
+  UUIDv7 project ID and never a path, URL, claimed MIME type, or renderer.
+- Reload and revalidate attachment identity/readability, canonical containment,
+  symlink and regular-file status, then retain an identity-checked root
+  directory descriptor. Open the relative target through that descriptor with
+  `O_NOFOLLOW` and recheck the resolved `/proc/self/fd` path/device/inode.
+- Cap source files at 8 MiB; normalize UTF-8 text to at most 128 KiB/2,000
+  lines while replacing controls and bidi overrides.
+- Admit only bounded PNG/JPEG data URLs after pre/post-read type, dimension,
+  byte, pixel, and APNG checks. Permit `data:` under `img-src` only.
+- Recognize PDF as metadata only. Do not send PDF bytes, unknown binary
+  content, absolute paths, or active-document URLs to the webview. HTML/SVG
+  source may cross only as normalized inert text, never active markup.
+- Keep preview state transient; browser preview cannot select/read local files.
 - Allowlisted external URL opening with visible destination.
 - No remote content receives privileged Tauri access.
 

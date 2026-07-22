@@ -89,6 +89,12 @@ impl DesktopBootstrap {
                     state: CapabilityState::Ready,
                     milestone: 14,
                 },
+                CapabilitySummary {
+                    id: "safe-file-previews",
+                    label: "Safe file previews",
+                    state: CapabilityState::Ready,
+                    milestone: 15,
+                },
             ],
         }
     }

@@ -1252,6 +1252,46 @@ passed. Existing closed contracts and warm caches compressed the implementation
 path, while strict lint and Clippy found the remaining state-derivation and Rust
 representation issues before publication.
 
+## Milestone 15 — File previews and desktop integration
+
+| Field                | Record                                                                                                                                                                                                           |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Forecast date        | 2026-07-22                                                                                                                                                                                                       |
+| Selected model       | GPT-5.6 Sol, XHigh reasoning; manually confirmed                                                                                                                                                                 |
+| Preliminary forecast | Approximately 4–7 active hours; 20–45 minutes of local commands; 4.5–8 total elapsed hours; medium confidence                                                                                                    |
+| Calibrated forecast  | Approximately 4.5–8 active hours; 25–55 minutes of local commands; 4–10 minutes hosted CI critical path; 5–9.5 total elapsed hours across 15A–15C; medium confidence                                             |
+| Calibration basis    | Synchronized clean `main` at `f99c078`; 44 GiB available RAM and 718 GiB free storage; low load; 12 logical CPUs; warm Cargo/pnpm caches; no GPU work; split into three independently reviewable checkpoints     |
+| Preflight commands   | Desktop TypeScript check 1.67 seconds/about 266 MiB; four-worker Cargo check 0.25 second/about 109 MiB; both passed with zero swaps                                                                              |
+| Current status       | Milestone 15A implemented and verified locally on `feat/milestone-15a-safe-file-previews`; publication remains separately approval-gated and 15B–15C remain gated                                                |
+| Observed local work  | Approximately 0.60 active hour and 0.13 automated-wait hour from branch creation through final local verification; 0.73 hour total elapsed and no user-blocked interval                                          |
+| Acceptance timings   | Full validation 40.20 seconds/about 1.01 GiB; sequential desktop/website browser suites 31.27 seconds/about 435/253 MiB; warm unbundled native release build 43.34 seconds/about 1.97 GiB; zero product failures |
+
+Critical path: safe preview threat/format decision → native picker and
+attachment-contained read boundary → strict shared contract → responsive
+text/image/PDF presentation → temporary-file and browser security tests →
+complete repository/browser/release gates → review/publication → 15B attachment
+design → 15C desktop handoffs and Wayland/X11 verification. Browser and release
+gates remain sequential; the RTX 3050 is intentionally unused.
+
+The calibrated range is slightly above the preliminary range because the
+single Milestone 15 description concealed three distinct trust boundaries.
+Milestone 15A is limited to native-selected, bounded, transient previews;
+15B owns drag/drop and conversation-attachment lifecycle; 15C owns
+notifications, expanded editor/open-with handoff, and Linux display-session
+verification. No dependency addition, personal-file inspection, Codex state
+access, model call, package, release, deployment, or hosting mutation is
+required for 15A routine validation.
+
+The 15A local checkpoint completed approximately 5.65 hours or 90.4% below the
+6.25-hour calibrated active midpoint for the complete three-part milestone.
+That comparison is directional because 15B and 15C remain unstarted. Focused
+review still caught a project-ID fixture mismatch, exact normalized-byte and
+line-limit edge cases, a growing-file allocation risk, and a UTF-8 sniff-boundary
+case before acceptance. The repository's parallel root browser command attached
+the website suite to an unrelated preview already occupying port 4321; no
+external process was stopped. Desktop passed 22/22, and the unchanged website
+suite passed 8/8 when rerun sequentially on an isolated temporary port.
+
 ## Milestone 18 — Agent-directed model and reasoning selection
 
 Status: deferred and dependency-gated behind Milestones 13–17. This section

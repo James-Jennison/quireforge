@@ -41,6 +41,7 @@ import {
   DESKTOP_BOOTSTRAP_COMMAND,
   detachProject,
   forkConversation,
+  FILE_PREVIEW_PICK_COMMAND,
   loadCodexAuth,
   loadCodexRuntime,
   loadConversationStatus,
@@ -54,6 +55,7 @@ import {
   openCodexAuthBrowser,
   openGitFile,
   pickProjectDirectory,
+  pickFilePreview,
   pickProjectRelink,
   pickWorktreeAttach,
   preflightProject,
@@ -105,6 +107,7 @@ import {
   refreshIntegrationCatalog,
 } from "./bridge";
 import { scaffoldBootstrap } from "./contract";
+import { sharedFilePreviewFixture } from "./filePreview";
 import { scaffoldProjectWorkspace } from "./project";
 import {
   scaffoldIntegrationCatalog,
@@ -341,6 +344,21 @@ describe("desktop bridge", () => {
     });
 
     await expect(loadProjectWorkspace(invoke)).rejects.toThrow();
+  });
+
+  it("uses one fixed file picker command with only an opaque project ID", async () => {
+    const projectId = "018f6f24-8b71-7c72-9b41-4e0b8ce4c61a";
+    const invoke = vi.fn().mockResolvedValue(sharedFilePreviewFixture);
+
+    await expect(pickFilePreview(projectId, invoke)).resolves.toEqual(
+      sharedFilePreviewFixture,
+    );
+    expect(invoke).toHaveBeenCalledWith(FILE_PREVIEW_PICK_COMMAND, {
+      projectId,
+    });
+
+    await expect(pickFilePreview("/private/path", invoke)).rejects.toThrow();
+    expect(invoke).toHaveBeenCalledTimes(1);
   });
 
   it("uses fixed worktree commands without frontend cwd, refs, or argv", async () => {

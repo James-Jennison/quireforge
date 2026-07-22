@@ -50,6 +50,12 @@
       "label": "Integration Center",
       "state": "ready",
       "milestone": 14
+    },
+    {
+      "id": "safe-file-previews",
+      "label": "Safe file previews",
+      "state": "ready",
+      "milestone": 15
     }
   ]
 }

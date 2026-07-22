@@ -802,3 +802,27 @@ seconds, and 1 minute 55 seconds. Post-merge `main` workflow
 completed them in 7 seconds, 1 minute 18 seconds, and 1 minute 40 seconds. Both
 hosted gates passed without a cache, workflow, runner, or host configuration
 change.
+
+## Milestone 15A measurements
+
+The safe file-preview checkpoint reused warm Cargo, pnpm, Vite, Astro, and
+browser caches. It added no dependency, clean build, cache reset, linker,
+driver, CUDA, swap, or zram change, and the RTX 3050 remained unused.
+
+| Operation                                       | Observed wall time | Approximate peak RSS | Result                                                                                  |
+| ----------------------------------------------- | -----------------: | -------------------: | --------------------------------------------------------------------------------------- |
+| Desktop TypeScript preflight                    |       1.67 seconds |        about 266 MiB | Passed with zero swaps                                                                  |
+| Four-worker Cargo preflight                     |       0.25 seconds |        about 109 MiB | Passed with zero swaps                                                                  |
+| Complete desktop unit suite                     |      10.51 seconds |                  n/a | Passed 127 tests across 22 files                                                        |
+| Final complete non-browser `pnpm validate` gate |      40.20 seconds |       about 1.01 GiB | Passed 127 frontend tests and 152 Rust tests; 149 passed and 3 live probes were ignored |
+| Final desktop Playwright regression             |      24.04 seconds |        about 435 MiB | Passed 22 desktop/mobile checks, including preview, accessibility, and overflow         |
+| Isolated website Playwright regression          |       7.23 seconds |        about 253 MiB | Passed 8 desktop/mobile checks on temporary port 14321                                  |
+| Final warm unbundled native release build       |      43.34 seconds |       about 1.97 GiB | Passed, including a 39.22-second optimized compile/link                                 |
+
+The combined root Playwright command could not validate the website because a
+separate user-owned Astro preview from another working directory already held
+port 4321 and the local Playwright configuration reused it. QuireForge's
+desktop suite still passed 22/22. The external process was preserved, and the
+unchanged website suite then passed 8/8 on an isolated temporary port. This is
+an orchestration/environment collision, not a product-test failure; generated
+preview suites remain safest when sequenced with verified port ownership.

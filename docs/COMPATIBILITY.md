@@ -1,9 +1,9 @@
 # Compatibility
 
-Status: desktop work through Milestone 14C is implemented and verified on the
-discovery host. Milestone 13 defines the Codex 0.145.0 integration contract and
-read-only catalog; Milestones 14A–14C add fixed lifecycle, UI, authorization,
-skill-control, refresh, and connector-mention paths.
+Status: desktop work through Milestone 15A is implemented and verified on the discovery
+host. Milestone 13 defines the Codex 0.145.0 integration contract and read-only
+catalog; Milestones 14A–14C add fixed integration workflows, and Milestone 15A
+adds native-selected bounded project-file previews.
 
 ## Identity compatibility contract
 
@@ -214,6 +214,22 @@ to the Rust attachment service for validation; the frontend supplies no path.
 Portal availability does not establish filesystem access. The service must
 still check metadata, read/write expectations, mount state, Git state, and the
 selected sandbox before saving an association or starting a task.
+
+## Native file-preview compatibility
+
+Milestone 15A reuses Tauri 2's native file dialog after a selected project is
+available. The frontend passes only the app-owned project ID; the native path
+is revalidated against the stored attachment and is never serialized. Readable
+read-only attachments are eligible because preview does not mutate content.
+
+The current renderer set is intentionally independent of desktop MIME handlers:
+normalized UTF-8 text, bounded PNG/JPEG data, and metadata-only PDF recognition.
+It does not depend on a PDF engine, image metadata helper, external command, or
+editor association. APNG, unknown binary content, and files above the native
+byte/dimension limits are refused; UTF-8 HTML/SVG source is shown only as inert
+normalized text. The native picker compiles on the discovery Wayland host;
+interactive Wayland and X11 behavior remains a 15C manual verification
+obligation rather than an automated claim.
 
 ## Website-host compatibility
 

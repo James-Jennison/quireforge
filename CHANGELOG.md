@@ -243,6 +243,16 @@ released a usable application.
   Generic connector installation/configuration, plugin enablement, MCP
   management, arbitrary repair, package, release, and deployment remain
   unavailable.
+- The Milestone 15A safe project-file preview foundation: one native-picker
+  command with opaque project identity, fresh attachment and opened-file
+  revalidation, strict shared Rust/TypeScript snapshots, bounded normalized
+  UTF-8 text and PNG/JPEG rendering, metadata-only PDF recognition, stable
+  failure diagnostics, honest browser degradation, responsive UI, and
+  deterministic temporary-file/unit/Playwright accessibility coverage. Absolute
+  paths, active HTML/SVG/APNG rendering, unknown binary content, PDF bytes,
+  persistence, drag/drop, conversation attachments, generic filesystem reads,
+  packages, releases, and deployments remain excluded. UTF-8 markup can appear
+  only as inert normalized text.
 
 ### Changed
 

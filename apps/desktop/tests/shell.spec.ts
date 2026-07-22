@@ -4,6 +4,7 @@ import { expect, test } from "@playwright/test";
 import integrationCatalogFixture from "../fixtures/integration-catalog.json" with { type: "json" };
 import integrationControlFixture from "../fixtures/integration-control.json" with { type: "json" };
 import integrationMutationFixture from "../fixtures/integration-mutation.json" with { type: "json" };
+import filePreviewFixture from "../fixtures/file-preview.json" with { type: "json" };
 
 const nativeIntegrationCatalog = {
   ...integrationCatalogFixture,
@@ -80,6 +81,12 @@ const nativeResponses = {
         state: "ready",
         milestone: 14,
       },
+      {
+        id: "safe-file-previews",
+        label: "Safe file previews",
+        state: "ready",
+        milestone: 15,
+      },
     ],
   },
   codex_runtime_probe: {
@@ -113,6 +120,10 @@ const nativeResponses = {
     pendingMethod: null,
     handoff: null,
     diagnosticCode: null,
+  },
+  file_preview_pick: {
+    ...filePreviewFixture,
+    projectId: "018f0000-0000-7000-8000-000000000001",
   },
   integration_catalog_read: nativeIntegrationCatalog,
   integration_catalog_refresh: nativeIntegrationCatalog,
@@ -529,6 +540,14 @@ test("desktop preview renders the honest semantic shell", async ({ page }) => {
   ).toBeVisible();
   await expect(
     page.getByText(
+      "Browser preview cannot select or read local project files.",
+    ),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Choose project file" }),
+  ).toBeDisabled();
+  await expect(
+    page.getByText(
       /Browser preview cannot inspect or create local Git worktrees/u,
     ),
   ).toBeVisible();
@@ -603,6 +622,29 @@ test("native session fixture renders grouping, tabs, and bounded controls", asyn
   await expect(
     page.getByRole("checkbox", { name: "Fixture calendar connector" }),
   ).toBeEnabled();
+
+  const results = await new AxeBuilder({ page }).analyze();
+  expect(results.violations).toEqual([]);
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - window.innerWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(1);
+});
+
+test("native file preview uses the bounded shared contract", async ({
+  page,
+}) => {
+  await installNativeFixture(page);
+  await page.goto("/");
+
+  await page.getByRole("button", { name: "Choose project file" }).click();
+  await expect(
+    page.getByRole("article", { name: "Preview of docs/preview.md" }),
+  ).toBeVisible();
+  await expect(page.getByText("48 B")).toBeVisible();
+  await expect(page.locator(".file-preview-text code")).toContainText(
+    "Paths remain native-only.",
+  );
 
   const results = await new AxeBuilder({ page }).analyze();
   expect(results.violations).toEqual([]);

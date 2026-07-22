@@ -8,6 +8,7 @@ import App from "./App";
 import { codexAuthSchema, scaffoldCodexAuth } from "./lib/auth";
 import { scaffoldCodexRuntime } from "./lib/codex";
 import { scaffoldBootstrap } from "./lib/contract";
+import { sharedFilePreviewFixture } from "./lib/filePreview";
 import {
   type ConversationSnapshot,
   conversationSnapshotSchema,
@@ -148,7 +149,7 @@ describe("QuireForge desktop shell", () => {
     expect(
       await screen.findByRole("button", { name: "Continue in browser" }),
     ).toBeInTheDocument();
-    expect(screen.getAllByText("ready")).toHaveLength(7);
+    expect(screen.getAllByText("ready")).toHaveLength(8);
     expect(screen.queryByText("planned")).not.toBeInTheDocument();
     expect(
       screen.getByText(
@@ -199,6 +200,32 @@ describe("QuireForge desktop shell", () => {
     expect(window.localStorage.getItem("quireforge-theme")).toBe(
       document.documentElement.dataset.theme,
     );
+  });
+
+  it("previews one native-selected file through an opaque project ID", async () => {
+    const pickFilePreviewTask = vi
+      .fn()
+      .mockResolvedValue({ ...sharedFilePreviewFixture, projectId });
+    render(
+      <App
+        loadBootstrap={() => Promise.resolve(scaffoldBootstrap)}
+        loadRuntime={() => Promise.resolve(scaffoldCodexRuntime)}
+        loadAuth={() => Promise.resolve(scaffoldCodexAuth)}
+        loadProjects={() => Promise.resolve(attachedProject)}
+        pickFilePreviewTask={pickFilePreviewTask}
+      />,
+    );
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Choose project file" }),
+    );
+
+    expect(
+      await screen.findByRole("article", {
+        name: "Preview of docs/preview.md",
+      }),
+    ).toBeInTheDocument();
+    expect(pickFilePreviewTask).toHaveBeenCalledWith(projectId);
   });
 
   it("renders a device-code handoff and cancels through fixed actions", async () => {

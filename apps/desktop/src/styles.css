@@ -3794,6 +3794,165 @@ button:disabled {
   color: #f0b1a8;
 }
 
+.file-preview-workspace {
+  max-width: 1132px;
+  margin: 0 auto 54px;
+  padding: 34px 38px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background:
+    linear-gradient(145deg, var(--accent-soft), transparent 42%), var(--surface);
+  box-shadow: 0 18px 48px color-mix(in srgb, var(--shadow) 48%, transparent);
+}
+
+.file-preview-workspace .section-heading {
+  align-items: flex-start;
+}
+
+.file-preview-workspace .section-heading > div:first-child {
+  max-width: 48rem;
+}
+
+.file-preview-workspace .section-heading h2 {
+  margin: 0;
+}
+
+.file-preview-workspace .section-heading p:not(.eyebrow) {
+  margin: 12px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.file-preview-workspace .section-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
+}
+
+.file-preview-workspace .ghost-action {
+  height: 42px;
+  padding: 0 13px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.file-preview-workspace .ghost-action:disabled,
+.file-preview-workspace .secondary-action:disabled {
+  opacity: 0.5;
+}
+
+.file-preview-workspace .inline-notice,
+.file-preview-workspace .inline-error {
+  margin: 16px 0 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  color: var(--text-muted);
+  font-size: 10px;
+  line-height: 1.55;
+}
+
+.file-preview-workspace .inline-error {
+  border-color: color-mix(in srgb, #b84b42 45%, var(--border));
+  background: color-mix(in srgb, #b84b42 11%, var(--surface));
+  color: #e9aaa1;
+}
+
+.file-preview-workspace .detail-kicker {
+  color: var(--accent-bright);
+  font-size: 8px;
+  font-weight: 750;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.file-preview-card,
+.file-preview-empty {
+  margin-top: 20px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  background: var(--surface-soft);
+}
+
+.file-preview-card > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.file-preview-card h3 {
+  margin: 5px 0 0;
+  overflow-wrap: anywhere;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 21px;
+  font-weight: 500;
+}
+
+.file-preview-card > header > span,
+.file-preview-image figcaption {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.file-preview-text {
+  max-height: 540px;
+  margin: 0;
+  overflow: auto;
+  padding: 22px;
+  background: color-mix(in srgb, var(--surface) 84%, #050504);
+  color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.65;
+  tab-size: 2;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.file-preview-image {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  margin: 0;
+  padding: 24px;
+}
+
+.file-preview-image img {
+  display: block;
+  max-width: 100%;
+  max-height: 540px;
+  object-fit: contain;
+}
+
+.file-preview-pdf,
+.file-preview-empty {
+  padding: 22px;
+}
+
+.file-preview-pdf p,
+.file-preview-empty p {
+  max-width: 46rem;
+  margin: 7px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.file-preview-empty strong,
+.file-preview-pdf strong {
+  font-size: 13px;
+}
+
 @keyframes pulse {
   50% {
     opacity: 0.45;
@@ -3827,6 +3986,11 @@ button:disabled {
   }
 
   .project-workspace {
+    margin-right: 36px;
+    margin-left: 36px;
+  }
+
+  .file-preview-workspace {
     margin-right: 36px;
     margin-left: 36px;
   }
@@ -3922,6 +4086,11 @@ button:disabled {
   }
 
   .project-workspace {
+    margin: 0 24px 42px;
+    padding: 26px 22px;
+  }
+
+  .file-preview-workspace {
     margin: 0 24px 42px;
     padding: 26px 22px;
   }
@@ -4070,6 +4239,14 @@ button:disabled {
   .attachment-review__heading,
   .project-card__heading {
     display: grid;
+  }
+
+  .file-preview-workspace .section-heading {
+    display: grid;
+  }
+
+  .file-preview-workspace .section-actions {
+    flex-wrap: wrap;
   }
 
   .project-workspace__heading > .auth-button {

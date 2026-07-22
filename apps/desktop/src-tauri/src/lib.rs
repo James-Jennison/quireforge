@@ -1,6 +1,7 @@
 mod codex;
 mod contract;
 mod git;
+mod preview;
 mod project;
 mod terminal;
 mod worktree;
@@ -23,6 +24,7 @@ use git::{
     },
     GitService,
 };
+use preview::{types::FilePreviewSnapshot, FilePreviewService};
 use project::{
     types::{ProjectPreflightSnapshot, ProjectWorkspaceSnapshot},
     ProjectService,
@@ -272,6 +274,36 @@ fn project_preflight(
     service: tauri::State<'_, ProjectService>,
 ) -> ProjectPreflightSnapshot {
     service.preflight(project_id)
+}
+
+#[tauri::command]
+async fn file_preview_pick(
+    project_id: String,
+    app: tauri::AppHandle,
+    service: tauri::State<'_, FilePreviewService>,
+    projects: tauri::State<'_, ProjectService>,
+) -> Result<FilePreviewSnapshot, ()> {
+    if !preview::valid_project_id(&project_id) {
+        return Ok(FilePreviewSnapshot::unavailable(
+            None,
+            preview::types::FilePreviewDiagnosticCode::InvalidRequest,
+        ));
+    }
+    let selection = app
+        .dialog()
+        .file()
+        .set_title("Preview a project file")
+        .blocking_pick_file();
+    Ok(match selection {
+        Some(path) => match path.into_path() {
+            Ok(path) => service.preview_selected(project_id, path, &projects),
+            Err(_) => FilePreviewSnapshot::unavailable(
+                Some(project_id),
+                preview::types::FilePreviewDiagnosticCode::PickerUnavailable,
+            ),
+        },
+        None => FilePreviewSnapshot::empty(Some(project_id)),
+    })
 }
 
 #[tauri::command]
@@ -583,6 +615,7 @@ pub fn run() {
         .manage(IntegrationMutationService::default())
         .manage(ConversationService::default())
         .manage(GitService::default())
+        .manage(FilePreviewService)
         .manage(TerminalService::default())
         .setup(|app| {
             match app.path().app_data_dir() {
@@ -622,6 +655,7 @@ pub fn run() {
             project_detach,
             project_archive,
             project_preflight,
+            file_preview_pick,
             worktree_status,
             worktree_create_preview,
             worktree_recover_preview,

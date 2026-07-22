@@ -1,10 +1,10 @@
 # Building QuireForge
 
-Status: the Milestone 2 website and desktop work through Milestone 14C can be
+Status: the Milestone 2 website and desktop work through Milestone 15A can be
 developed and built locally, including Codex/authentication, project and
 conversation lifecycle, reviewed Git/worktree workflows, the native terminal,
-and normalized/confirmed integration workflows. An installable application
-package does not yet exist.
+normalized/confirmed integration workflows, and bounded project-file previews.
+An installable application package does not yet exist.
 
 ## Supported development baseline
 
@@ -125,6 +125,13 @@ accepts only an opaque project ID, bounded prompt, and closed model/reasoning,
 sandbox, and approval values plus up to eight normalized connector catalog IDs;
 cwd, `app://` paths, and native Codex IDs never enter from the webview. Poll and
 interrupt accept only QuireForge's application conversation ID.
+
+`file_preview_pick` also accepts only an opaque project ID. The file path comes
+from the native picker and remains in Rust while attachment containment,
+identity, file type, size, and content limits are checked. The response contains
+only a relative display path and bounded normalized text or PNG/JPEG data; PDF
+is metadata-only. Browser preview cannot use this command or a browser file
+input to simulate local access.
 
 The integration surface is also fixed-purpose:
 `integration_catalog_read`/`integration_catalog_refresh`, closed

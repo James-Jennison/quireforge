@@ -80,8 +80,9 @@ Milestone 14A establishes the confirmed native plugin and marketplace mutation
 boundary. Milestone 14B adds the user-facing Integration Center over that
 boundary without broadening it. Milestone 14C adds only reviewed connector/MCP
 authorization, skill enablement, refresh, and connector prompt mentions. Later
-Milestones 15–17 still need to establish the remaining desktop and advanced-
-feature prerequisites before that control is implemented.
+Milestone 15A adds the first bounded local-file preview surface. Milestones
+15B–17 still need to establish the remaining desktop and advanced-feature
+prerequisites before that control is implemented.
 
 ## Status
 
@@ -102,7 +103,7 @@ feature prerequisites before that control is implemented.
 |        12 | Integrated terminal                                               | Large        | Complete; merged to `main`; not packaged                            |
 |        13 | Integration discovery and compatibility                           | Very large   | Complete through 13B; verified locally                              |
 |        14 | Integration Center and installation workflows                     | Very large   | Complete through 14C; merged and verified on `main`                 |
-|        15 | File previews and desktop integration                             | Large        | Planned                                                             |
+|        15 | File previews and desktop integration                             | Large        | In progress; 15A implemented and verified locally                   |
 |        16 | Complete Cloudflare Pages website                                 | Very large   | Planned                                                             |
 |        17 | Scheduled tasks and advanced supported features                   | Medium–Large | Planned/dependency-gated                                            |
 |        18 | Agent-directed model and reasoning selection                      | Large        | Planned/dependency-gated                                            |
@@ -540,8 +541,28 @@ release, deployment, or hosting change was made.
 
 ### 15 — File Previews and Desktop Integration
 
-Add safe previews, drag/drop and attachments, notifications, editor/open-with,
-and Wayland/X11 verification.
+Split this milestone so each security/desktop boundary is independently
+reviewable:
+
+- **15A — safe project-file previews:** use a native picker and opaque project
+  ID; revalidate attachment identity, containment, symlink/regular-file state,
+  and opened file identity. Return only attachment-relative names and bounded
+  normalized UTF-8 text, PNG/JPEG data, or metadata-only PDF state through a
+  strict contract. Browser preview cannot select or read local files. See
+  [ADR 0021](DECISIONS/0021-safe-project-file-previews.md).
+- **15B — drag/drop and conversation attachments:** define source ownership,
+  staging/retention, model-interface support, explicit send semantics, size and
+  count limits, cancellation, and cleanup without turning drag/drop into a
+  general path bridge.
+- **15C — desktop handoffs and Linux verification:** add notifications and
+  reviewed editor/open-with behavior, then verify native picker/handoff behavior
+  on supported Wayland and X11 sessions. External destinations stay visible and
+  allowlisted; no generic opener or arbitrary command IPC is allowed.
+
+Milestone 15A is implemented and verified locally with no dependency addition,
+persistence, user-file test access, package, release, or deployment. The broader
+Milestone 15 acceptance remains open until 15B and 15C are implemented and
+verified.
 
 ### 16 — Complete Cloudflare Pages Website
 

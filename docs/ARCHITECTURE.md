@@ -1,9 +1,9 @@
 # Architecture
 
 Status: Milestone 0 application proposal with the website foundation and
-desktop work implemented locally through Milestone 14C. Packaging, deployment,
-and unsupported integration-management expansion remain subject to separately
-gated milestones.
+desktop work implemented locally through Milestone 15A. Packaging, deployment,
+remaining desktop integration, and unsupported integration-management
+expansion remain subject to separately gated milestones.
 
 QuireForge is an unofficial native Linux workspace for Codex. It is not made,
 endorsed, supported, or distributed by OpenAI.
@@ -43,6 +43,7 @@ React UI
   ▼
 Rust application core
   ├── project/directory services ── SQLite metadata
+  ├── file preview service ──────── bounded project files
   ├── Git and PTY services ──────── git / shell processes
   ├── Codex compatibility layer ─── app-server stdio
   │                              └─ CLI JSON fallbacks
@@ -360,6 +361,32 @@ the metadata while the directory and inventory entry remain absent. Generic
 prune is unavailable because Git cannot scope it to one app-owned target. See
 [ADR 0016](DECISIONS/0016-safe-managed-worktree-cleanup.md).
 
+### Milestone 15A safe file-preview boundary
+
+`FilePreviewService` is stateless and accepts one app-owned project UUIDv7 plus
+the path returned directly by the native picker. Before any content crosses
+IPC, Rust reloads the attachment, revalidates directory identity and readable
+accessibility, canonicalizes the selection, requires attachment containment,
+rejects symlinks/non-regular files, retains an identity-checked root directory
+descriptor, opens the relative target through that descriptor with
+`O_NOFOLLOW`, and rechecks the opened path/device/inode. Absolute paths never
+enter React.
+
+The closed schema distinguishes normalized UTF-8 text, bounded PNG/JPEG image,
+and metadata-only PDF presentation. Text is capped at 128 KiB/2,000 lines and
+has controls and bidi overrides replaced. Images are capped at 4 MiB, 8,192
+pixels per dimension, and 16 million pixels; type/dimensions are checked before
+and after the full read, and APNG is refused. PDF bytes, unknown binary content,
+and active documents never enter the privileged webview. HTML/SVG markup can
+appear only as inert normalized text, never as active markup. Source files are
+capped at 8 MiB and preview state is never persisted.
+
+The production CSP permits `data:` only for image sources so the two bounded
+image types can render. Browser preview cannot select or read a local file.
+Drag/drop and conversation attachments remain 15B; notifications, expanded
+editor/open-with behavior, and Wayland/X11 verification remain 15C. See
+[ADR 0021](DECISIONS/0021-safe-project-file-previews.md).
+
 ## Application layers
 
 ### Frontend
@@ -375,6 +402,8 @@ bounded branch name; existing paths come from the native picker, and every
 worktree confirmation supplies only its native-held token. Recovery and cleanup
 previews add only opaque app-owned recovery/project IDs; React still cannot
 submit a worktree path, branch for removal, cwd, executable, or Git argument.
+File preview adds only an opaque project ID; the native picker owns the path,
+and React can consume only the strict bounded snapshot.
 
 ### Native application core
 
@@ -438,7 +467,8 @@ contract tests.
   snapshots.
 - `TerminalService`: independent PTY sessions rooted in verified directories.
 - `ApprovalService`: request correlation, scope, decision validation, expiry.
-- `PreviewService`: bounded MIME/type-aware previews.
+- `PreviewService`: implemented project-contained normalized text, bounded
+  PNG/JPEG, and metadata-only PDF previews; no general read operation.
 - `SettingsService`: application settings without secret ownership.
 - `CapabilityService`: Codex/runtime/version/policy capability map.
 - `ModelSelectionService`: live catalog validation, Manual/Recommend/Automatic

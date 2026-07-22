@@ -407,6 +407,46 @@ impl ProjectService {
         self.review_root_with_archived(project_id, false)
     }
 
+    pub(crate) fn content_root(&self, project_id: &str) -> Result<PathBuf, ProjectExecutionError> {
+        if !valid_id(project_id) {
+            return Err(ProjectExecutionError::InvalidProjectId);
+        }
+        let repository_guard = self
+            .repository
+            .lock()
+            .map_err(|_| ProjectExecutionError::MetadataUnavailable)?;
+        let repository = repository_guard
+            .as_ref()
+            .ok_or(ProjectExecutionError::MetadataUnavailable)?;
+        let project = repository
+            .project(project_id)
+            .map_err(|error| match error {
+                StorageError::ProjectNotFound => ProjectExecutionError::ProjectNotFound,
+                _ => ProjectExecutionError::MetadataUnavailable,
+            })?;
+        if project.archived {
+            return Err(ProjectExecutionError::ProjectNotFound);
+        }
+        let association = project
+            .association
+            .ok_or(ProjectExecutionError::DirectoryUnavailable)?;
+        drop(repository_guard);
+
+        let identity = inspect_directory(Path::new(&association.selected_path))
+            .map_err(|_| ProjectExecutionError::DirectoryUnavailable)?;
+        if !same_stored_identity(&association, &identity) {
+            return Err(ProjectExecutionError::IdentityChanged);
+        }
+        if !matches!(
+            identity.accessibility,
+            DirectoryAccessibilityState::ConnectedAccessible
+                | DirectoryAccessibilityState::ConnectedReadOnly
+        ) {
+            return Err(ProjectExecutionError::DirectoryUnavailable);
+        }
+        Ok(identity.resolved_path)
+    }
+
     pub(crate) fn cleanup_worktree_root(
         &self,
         project_id: &str,

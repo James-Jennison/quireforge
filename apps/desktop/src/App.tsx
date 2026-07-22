@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import brandMark from "../../../assets/brand/quireforge-app-icon.svg";
 import { ConversationWorkspace } from "./ConversationWorkspace";
+import { FilePreviewWorkspace } from "./FilePreviewWorkspace";
 import { GitWorkspace } from "./GitWorkspace";
 import { IntegrationCenter } from "./IntegrationCenter";
 import { ProjectWorkspace } from "./ProjectWorkspace";
@@ -36,6 +37,7 @@ import {
   loadProjectWorkspace,
   logoutCodexAuth,
   openGitFile,
+  pickFilePreview,
   openCodexAuthBrowser,
   pickProjectDirectory,
   pickProjectRelink,
@@ -74,6 +76,10 @@ import {
 } from "./lib/auth";
 import { scaffoldCodexRuntime, type CodexRuntimeSnapshot } from "./lib/codex";
 import { scaffoldBootstrap, type DesktopBootstrap } from "./lib/contract";
+import {
+  scaffoldFilePreview,
+  type FilePreviewSnapshot,
+} from "./lib/filePreview";
 import {
   scaffoldConversation,
   type ConversationApprovalDecisionRequest,
@@ -178,6 +184,7 @@ interface AppProps {
   preflightProjectDirectory?: (
     projectId: string,
   ) => Promise<ProjectPreflightSnapshot>;
+  pickFilePreviewTask?: (projectId: string) => Promise<FilePreviewSnapshot>;
   loadWorktreesTask?: (projectId: string) => Promise<WorktreeWorkspaceSnapshot>;
   previewWorktreeCreateTask?: (
     request: WorktreeCreatePreviewRequest,
@@ -287,6 +294,13 @@ const navigation = [
     milestone: 3,
     icon: "grid",
     target: "workspace-top",
+    ready: true,
+  },
+  {
+    label: "Files",
+    milestone: 15,
+    icon: "folder",
+    target: "files",
     ready: true,
   },
   {
@@ -436,6 +450,7 @@ export default function App({
   detachProjectDirectory = detachProject,
   archiveProjectMetadata = archiveProject,
   preflightProjectDirectory = preflightProject,
+  pickFilePreviewTask = pickFilePreview,
   loadWorktreesTask = loadWorktreeStatus,
   previewWorktreeCreateTask = previewWorktreeCreate,
   previewWorktreeRecoverTask = previewWorktreeRecover,
@@ -496,6 +511,10 @@ export default function App({
   const [projectPreflights, setProjectPreflights] = useState<
     Record<string, ProjectPreflightSnapshot>
   >({});
+  const [filePreview, setFilePreview] =
+    useState<FilePreviewSnapshot>(scaffoldFilePreview);
+  const [filePreviewBusy, setFilePreviewBusy] = useState(false);
+  const [filePreviewActionError, setFilePreviewActionError] = useState(false);
   const [worktrees, setWorktrees] = useState<WorktreeWorkspaceSnapshot>(
     scaffoldWorktreeWorkspace,
   );
@@ -1360,10 +1379,25 @@ export default function App({
 
   function selectProject(projectId: string) {
     setSelectedProjectId(projectId);
+    setFilePreview(scaffoldFilePreview);
+    setFilePreviewActionError(false);
     const tracked = trackedConversations[projectId];
     setConversation(tracked?.snapshot ?? scaffoldConversation);
     setConversationEvents(tracked?.events ?? []);
     setConversationActionError(false);
+  }
+
+  async function chooseFilePreview(projectId: string) {
+    setFilePreviewBusy(true);
+    setFilePreviewActionError(false);
+    try {
+      setFilePreview(await pickFilePreviewTask(projectId));
+    } catch {
+      setFilePreview(scaffoldFilePreview);
+      setFilePreviewActionError(true);
+    } finally {
+      setFilePreviewBusy(false);
+    }
   }
 
   async function beginConversation(
@@ -1993,6 +2027,19 @@ export default function App({
               applyProjectAction(() => archiveProjectMetadata(projectId))
             }
             onPreflight={verifyProject}
+          />
+
+          <FilePreviewWorkspace
+            availability={projectState}
+            project={currentProject}
+            snapshot={filePreview}
+            busy={filePreviewBusy}
+            actionError={filePreviewActionError}
+            onPick={chooseFilePreview}
+            onClear={() => {
+              setFilePreview(scaffoldFilePreview);
+              setFilePreviewActionError(false);
+            }}
           />
 
           <WorktreeWorkspace

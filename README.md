@@ -80,6 +80,14 @@ explicit catalog/health refresh, and native-constructed connector mentions on
 new turns. URLs, skill paths, MCP names, and `app://` paths remain native-only;
 unsupported generic configuration, plugin enablement, connector installation
 RPCs, MCP management, and repair paths stay unavailable.
+Milestone 15A adds a native-selected safe file-preview surface. Rust revalidates
+the selected project attachment and file identity, keeps absolute paths native,
+and sends React only bounded normalized UTF-8 text, PNG/JPEG data, or
+metadata-only PDF state. Active HTML/SVG rendering, APNG, unknown binary
+content, oversized files, and browser-side local selection remain unavailable;
+UTF-8 markup can appear only as inert normalized text. Drag/drop and conversation
+attachments, notifications, expanded open-with behavior, and Wayland/X11
+verification remain Milestones 15B–15C.
 Cloudflare Pages is the selected production host, but the site has not been
 deployed. There is no application package to install yet.
 
@@ -108,13 +116,15 @@ deployed. There is no application package to install yet.
   integrated terminal, the Milestone 13B normalized read-only integration
   catalog boundary, the Milestone 14A confirmed native plugin/marketplace
   mutation boundary, the Milestone 14B accessible Integration Center, and the
-  Milestone 14C confirmed authorization/control boundary.
+  Milestone 14C confirmed authorization/control boundary, plus the Milestone
+  15A bounded project-file preview surface.
 - CI status: repository, website, and desktop quality gates are configured for
   pull requests and `main` pushes; deployment remains separately gated.
-- Current milestone: Milestone 14 is complete through 14C and verified on
-  `main`. Milestone 15 file previews and desktop integration require a fresh
-  reasoning, model, forecast, and start gate. Unsupported generic integration-
-  management paths remain unavailable.
+- Current milestone: Milestone 15 is in progress. The 15A safe file-preview
+  foundation is implemented and verified locally on its feature branch; 15B
+  drag/drop and conversation attachments and 15C desktop handoffs/Linux
+  verification remain. Unsupported generic integration-management paths remain
+  unavailable.
 - Known limitations: Codex-directed model/reasoning selection is not yet
   implemented and is deferred to Milestone 18 after its integration and
   advanced-feature prerequisites; the current turn cannot replace its own
