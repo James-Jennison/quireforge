@@ -96,7 +96,7 @@ implemented.
 |        10 | Git status, diff review, and controlled mutations                 | Large        | Complete and verified; publication tracked by this milestone change |
 |        11 | Worktrees and parallel work                                       | Very large   | Complete through 11C and verified locally                           |
 |        12 | Integrated terminal                                               | Large        | Complete; merged to `main`; not packaged                            |
-|        13 | Integration discovery and compatibility                           | Very large   | 13A implemented and locally verified; 13B planned                   |
+|        13 | Integration discovery and compatibility                           | Very large   | 13A complete and merged; 13B planned                                |
 |        14 | Integration Center and installation workflows                     | Very large   | Planned                                                             |
 |        15 | File previews and desktop integration                             | Large        | Planned                                                             |
 |        16 | Complete Cloudflare Pages website                                 | Very large   | Planned                                                             |
@@ -428,6 +428,12 @@ an Integration Center UI. See
 Milestone 13B implements the read-only native discovery/normalization service,
 strict IPC, version/capability routing, invalidation refresh, and deterministic
 partial-failure tests against these contracts. Mutation remains Milestone 14.
+
+Milestone 13A publication completed through
+[PR #32](https://github.com/James-Jennison/quireforge/pull/32), merge commit
+`7bc5f5f`, and successful pull-request and `main` repository checks. This
+checkpoint produced no live integration discovery, installation, authorization,
+package, release, or deployment.
 
 ### 14 — Integration Center and Installation Workflows
 
