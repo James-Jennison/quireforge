@@ -10,9 +10,9 @@ pub use codex::integration;
 use codex::{
     types::CodexRuntimeSnapshot, AuthLoginMethod, CodexAuthService, CodexAuthSnapshot,
     CodexRuntimeService, ConversationApprovalDecisionRequest, ConversationContinueRequest,
-    ConversationRegistrySnapshot, ConversationService, ConversationSnapshot,
-    ConversationStartRequest, IntegrationCatalogService, IntegrationMutationService,
-    SessionLifecycleSnapshot,
+    ConversationDiagnosticCode, ConversationRegistrySnapshot, ConversationService,
+    ConversationSnapshot, ConversationStartRequest, IntegrationCatalogService,
+    IntegrationControlService, IntegrationMutationService, SessionLifecycleSnapshot,
 };
 use contract::DesktopBootstrap;
 use git::{
@@ -63,6 +63,64 @@ async fn integration_catalog_read(
     service: tauri::State<'_, IntegrationCatalogService>,
 ) -> Result<integration::IntegrationCatalogSnapshot, ()> {
     Ok(service.snapshot().await)
+}
+
+#[tauri::command]
+async fn integration_catalog_refresh(
+    service: tauri::State<'_, IntegrationCatalogService>,
+) -> Result<integration::IntegrationCatalogSnapshot, ()> {
+    Ok(service.refresh().await)
+}
+
+#[tauri::command]
+async fn integration_control_preview(
+    request: integration::IntegrationControlPreviewRequest,
+    service: tauri::State<'_, IntegrationControlService>,
+    catalog: tauri::State<'_, IntegrationCatalogService>,
+) -> Result<integration::IntegrationControlPreviewSnapshot, ()> {
+    let snapshot = catalog.refresh().await;
+    Ok(service.preview(request, &snapshot).await)
+}
+
+#[tauri::command]
+async fn integration_control_confirm(
+    request: integration::IntegrationControlConfirmationRequest,
+    service: tauri::State<'_, IntegrationControlService>,
+    catalog: tauri::State<'_, IntegrationCatalogService>,
+) -> Result<integration::IntegrationControlResultSnapshot, ()> {
+    let snapshot = catalog.refresh().await;
+    let result = service.confirm(request, &snapshot).await;
+    if result.catalog_refresh_required {
+        let _ = catalog.refresh().await;
+    }
+    Ok(result)
+}
+
+#[tauri::command]
+async fn integration_control_open_browser(
+    request: integration::IntegrationControlActionRequest,
+    app: tauri::AppHandle,
+    service: tauri::State<'_, IntegrationControlService>,
+) -> Result<integration::IntegrationControlResultSnapshot, ()> {
+    let (url, result) = service.claim_handoff(&request).await.map_err(|_| ())?;
+    if app.opener().open_url(url, None::<&str>).is_err() {
+        service.restore_handoff(&request).await;
+        return Err(());
+    }
+    Ok(result)
+}
+
+#[tauri::command]
+async fn integration_control_status(
+    request: integration::IntegrationControlActionRequest,
+    service: tauri::State<'_, IntegrationControlService>,
+    catalog: tauri::State<'_, IntegrationCatalogService>,
+) -> Result<integration::IntegrationControlResultSnapshot, ()> {
+    let result = service.status(request).await;
+    if result.catalog_refresh_required {
+        let _ = catalog.refresh().await;
+    }
+    Ok(result)
 }
 
 #[tauri::command]
@@ -370,8 +428,22 @@ async fn conversation_start(
     request: ConversationStartRequest,
     service: tauri::State<'_, ConversationService>,
     projects: tauri::State<'_, ProjectService>,
+    integrations: tauri::State<'_, IntegrationControlService>,
 ) -> Result<ConversationSnapshot, ()> {
-    Ok(service.start(request, &projects).await)
+    let mentions = match integrations
+        .resolve_mentions(&request.integration_entry_ids)
+        .await
+    {
+        Ok(mentions) => mentions,
+        Err(_) => {
+            return Ok(ConversationSnapshot::unavailable(
+                ConversationDiagnosticCode::IntegrationUnavailable,
+            ))
+        }
+    };
+    Ok(service
+        .start_with_mentions(request, &projects, mentions)
+        .await)
 }
 
 #[tauri::command]
@@ -507,6 +579,7 @@ pub fn run() {
         .manage(CodexRuntimeService::default())
         .manage(CodexAuthService::default())
         .manage(IntegrationCatalogService::default())
+        .manage(IntegrationControlService::default())
         .manage(IntegrationMutationService::default())
         .manage(ConversationService::default())
         .manage(GitService::default())
@@ -528,6 +601,11 @@ pub fn run() {
             desktop_bootstrap,
             codex_runtime_probe,
             integration_catalog_read,
+            integration_catalog_refresh,
+            integration_control_preview,
+            integration_control_confirm,
+            integration_control_open_browser,
+            integration_control_status,
             integration_mutation_preview,
             integration_mutation_confirm,
             codex_auth_status,

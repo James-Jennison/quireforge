@@ -37,11 +37,15 @@ const INVALIDATION_POLL: Duration = Duration::from_millis(2);
 const CLI_JSON_TIMEOUT: Duration = Duration::from_secs(15);
 const MAX_CLI_JSON_BYTES: usize = 1024 * 1024;
 
-const CONNECTOR_CAPABILITIES: &[&str] = &["connector.catalog", "connector.installed"];
+const CONNECTOR_CAPABILITIES: &[&str] = &[
+    "connector.catalog",
+    "connector.installed",
+    "connector.authorize",
+];
 const PLUGIN_CAPABILITIES: &[&str] = &["plugin.catalog", "plugin.install", "plugin.remove"];
 const MARKETPLACE_CAPABILITIES: &[&str] = &["marketplace.catalog", "marketplace.configure"];
-const SKILL_CAPABILITIES: &[&str] = &["skill.catalog"];
-const MCP_CAPABILITIES: &[&str] = &["mcp.health"];
+const SKILL_CAPABILITIES: &[&str] = &["skill.catalog", "skill.configure"];
+const MCP_CAPABILITIES: &[&str] = &["mcp.health", "mcp.authorize"];
 const REQUIREMENT_CAPABILITIES: &[&str] = &["policy.requirements"];
 const PROFILE_CAPABILITIES: &[&str] = &["permission.profiles"];
 
@@ -320,6 +324,9 @@ async fn collect_refresh_reasons(
             | AppServerNotification::AccountLoginCompleted { .. } => {
                 Some(IntegrationRefreshReason::AppListUpdated)
             }
+            AppServerNotification::McpOauthLoginCompleted { .. } => {
+                Some(IntegrationRefreshReason::McpStatusUpdated)
+            }
             AppServerNotification::Conversation(_)
             | AppServerNotification::ConversationRequest(_) => {
                 return Err(CodexAdapterError::UnexpectedServerRequest);
@@ -526,6 +533,7 @@ fn normalize_connectors(apps: &[Value], installed: &HashMap<String, (bool, bool)
             capability_ids: vec![
                 "connector.catalog".to_owned(),
                 "connector.installed".to_owned(),
+                "connector.authorize".to_owned(),
             ],
             permissions: Vec::new(),
             requirements,
@@ -1360,7 +1368,7 @@ fn apps_enabled_from_config(value: Value) -> Option<bool> {
     }
 }
 
-async fn paginated_request(
+pub(crate) async fn paginated_request(
     process: &mut AppServerProcess,
     method: &str,
     base_params: Value,
@@ -1423,13 +1431,16 @@ fn template_snapshot(cli_version: &str) -> IntegrationCatalogSnapshot {
             capability.id.as_str(),
             "connector.catalog"
                 | "connector.installed"
+                | "connector.authorize"
                 | "plugin.catalog"
                 | "plugin.install"
                 | "plugin.remove"
                 | "marketplace.catalog"
                 | "marketplace.configure"
                 | "skill.catalog"
+                | "skill.configure"
                 | "mcp.health"
+                | "mcp.authorize"
                 | "policy.requirements"
                 | "permission.profiles"
         ) {
@@ -1527,7 +1538,10 @@ fn finalize_catalog_state(snapshot: &mut IntegrationCatalogSnapshot) {
     };
 }
 
-fn known_object<'a>(value: &'a Value, allowed: &[&str]) -> Option<&'a Map<String, Value>> {
+pub(crate) fn known_object<'a>(
+    value: &'a Value,
+    allowed: &[&str],
+) -> Option<&'a Map<String, Value>> {
     let object = value.as_object()?;
     object
         .keys()
@@ -1535,7 +1549,7 @@ fn known_object<'a>(value: &'a Value, allowed: &[&str]) -> Option<&'a Map<String
         .then_some(object)
 }
 
-fn normalized_entry_id(prefix: &str, raw: &str) -> Option<String> {
+pub(crate) fn normalized_entry_id(prefix: &str, raw: &str) -> Option<String> {
     let mut suffix = String::new();
     let mut separator = false;
     for character in raw.chars() {
@@ -1600,7 +1614,7 @@ fn normalized_version(value: &str) -> Option<String> {
     .then(|| value.to_owned())
 }
 
-fn supports_integration_routes(version: &str) -> bool {
+pub(crate) fn supports_integration_routes(version: &str) -> bool {
     let core = version
         .split_once(['-', '+'])
         .map_or(version, |(core, _)| core);

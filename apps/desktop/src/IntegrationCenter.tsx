@@ -9,6 +9,10 @@ import {
 import {
   integrationMutationPreviewRequestSchema,
   type IntegrationCatalogSnapshot,
+  type IntegrationControlOperation,
+  type IntegrationControlPreviewRequest,
+  type IntegrationControlPreviewSnapshot,
+  type IntegrationControlResultSnapshot,
   type IntegrationMutationOperation,
   type IntegrationMutationPreviewRequest,
   type IntegrationMutationPreviewSnapshot,
@@ -25,11 +29,19 @@ interface IntegrationCenterProps {
   snapshot: IntegrationCatalogSnapshot;
   preview: IntegrationMutationPreviewSnapshot | null;
   result: IntegrationMutationResultSnapshot | null;
+  controlPreview: IntegrationControlPreviewSnapshot | null;
+  controlResult: IntegrationControlResultSnapshot | null;
   busy: boolean;
   actionError: boolean;
   onRefresh: () => Promise<void>;
   onPreview: (request: IntegrationMutationPreviewRequest) => Promise<void>;
   onConfirm: (confirmationId: string) => Promise<void>;
+  onControlPreview: (
+    request: IntegrationControlPreviewRequest,
+  ) => Promise<void>;
+  onControlConfirm: (confirmationId: string) => Promise<void>;
+  onControlOpen: (actionId: string) => Promise<void>;
+  onControlPoll: (actionId: string) => Promise<void>;
   onCancel: () => void;
 }
 
@@ -55,6 +67,28 @@ const operationLabels: Record<IntegrationMutationOperation, string> = {
   "marketplace-add": "Add marketplace",
   "marketplace-remove": "Remove marketplace",
   "marketplace-upgrade": "Update marketplace snapshot",
+};
+
+const controlOperationLabels: Record<IntegrationControlOperation, string> = {
+  "connector-authorize": "Authorize connector",
+  "skill-enable": "Enable skill",
+  "skill-disable": "Disable skill",
+  "mcp-authorize": "Authorize MCP server",
+};
+
+const controlWarningLabels: Record<
+  IntegrationControlPreviewSnapshot["warnings"][number],
+  string
+> = {
+  "opens-external-browser":
+    "QuireForge will open the exact authorization URL returned by Codex.",
+  "account-authorization":
+    "The external service controls the account permissions you approve.",
+  "network-authorization":
+    "The configured MCP service will receive the approved OAuth access.",
+  "changes-codex-configuration":
+    "Codex will update this skill's enabled state in its own configuration.",
+  "project-scoped": "This skill is scoped to the current project context.",
 };
 
 const warningLabels: Record<
@@ -130,6 +164,39 @@ function operationsFor(
   return [];
 }
 
+function controlOperationsFor(
+  entry: IntegrationEntry,
+  snapshot: IntegrationCatalogSnapshot,
+): IntegrationControlOperation[] {
+  if (entry.policy.state === "blocked") return [];
+  if (
+    entry.kind === "connector" &&
+    entry.authentication === "required" &&
+    entry.capabilityIds.includes("connector.authorize") &&
+    capabilityReady(snapshot, "connector.authorize")
+  ) {
+    return ["connector-authorize"];
+  }
+  if (
+    entry.kind === "mcp-server" &&
+    entry.authentication === "required" &&
+    entry.capabilityIds.includes("mcp.authorize") &&
+    capabilityReady(snapshot, "mcp.authorize")
+  ) {
+    return ["mcp-authorize"];
+  }
+  if (
+    entry.kind === "skill" &&
+    entry.scope !== "managed" &&
+    entry.capabilityIds.includes("skill.configure") &&
+    capabilityReady(snapshot, "skill.configure")
+  ) {
+    if (entry.enablement === "enabled") return ["skill-disable"];
+    if (entry.enablement === "disabled") return ["skill-enable"];
+  }
+  return [];
+}
+
 function statusSummary(entry: IntegrationEntry): string {
   if (entry.health.state !== "ready") return healthLabels[entry.health.state];
   if (entry.authentication === "required") return "Authorization required";
@@ -142,11 +209,17 @@ export function IntegrationCenter({
   snapshot,
   preview,
   result,
+  controlPreview,
+  controlResult,
   busy,
   actionError,
   onRefresh,
   onPreview,
   onConfirm,
+  onControlPreview,
+  onControlConfirm,
+  onControlOpen,
+  onControlPoll,
   onCancel,
 }: IntegrationCenterProps) {
   const [query, setQuery] = useState("");
@@ -178,6 +251,12 @@ export function IntegrationCenter({
   const selectedOperations = selectedEntry
     ? operationsFor(selectedEntry, snapshot)
     : [];
+  const selectedControlOperations = selectedEntry
+    ? controlOperationsFor(selectedEntry, snapshot)
+    : [];
+  const controlInFlight =
+    controlResult?.state === "handoff-ready" ||
+    controlResult?.state === "pending";
   const marketplaceAddRequest = {
     operation: "marketplace-add" as const,
     targetEntryId: null,
@@ -186,23 +265,24 @@ export function IntegrationCenter({
   };
   const marketplaceAddReady =
     availability === "native" &&
+    !controlInFlight &&
     snapshot.policy.installation !== "blocked" &&
     capabilityReady(snapshot, "marketplace.configure") &&
     integrationMutationPreviewRequestSchema.safeParse(marketplaceAddRequest)
       .success;
 
   useEffect(() => {
-    if (!preview) return;
+    if (!preview && !controlPreview) return;
     const previousFocus =
       document.activeElement instanceof HTMLElement
         ? document.activeElement
         : null;
     dialogFocusRef.current?.focus();
     return () => previousFocus?.focus();
-  }, [preview]);
+  }, [controlPreview, preview]);
 
   useEffect(() => {
-    if (!preview) return;
+    if (!preview && !controlPreview) return;
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key !== "Escape" || busy) return;
       event.preventDefault();
@@ -210,7 +290,7 @@ export function IntegrationCenter({
     };
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
-  }, [busy, onCancel, preview]);
+  }, [busy, controlPreview, onCancel, preview]);
 
   async function runAction(action: () => Promise<void>) {
     try {
@@ -246,6 +326,16 @@ export function IntegrationCenter({
         targetEntryId: selectedEntry.id,
         repository: null,
         reference: null,
+      }),
+    );
+  }
+
+  async function requestControlPreview(operation: IntegrationControlOperation) {
+    if (!selectedEntry) return;
+    await runAction(() =>
+      onControlPreview({
+        operation,
+        targetEntryId: selectedEntry.id,
       }),
     );
   }
@@ -318,7 +408,7 @@ export function IntegrationCenter({
         <button
           className="integration-refresh"
           type="button"
-          disabled={availability !== "native" || busy}
+          disabled={availability !== "native" || busy || controlInFlight}
           onClick={() => void runAction(onRefresh)}
         >
           {busy ? "Refreshing…" : "Refresh catalog"}
@@ -362,6 +452,55 @@ export function IntegrationCenter({
       {result?.state === "unavailable" && (
         <p className="integration-alert integration-alert--error" role="alert">
           The requested change was not applied ({result.diagnosticCode}).
+        </p>
+      )}
+      {(controlResult?.state === "applied" ||
+        controlResult?.state === "completed") && (
+        <p
+          className="integration-alert integration-alert--success"
+          role="status"
+        >
+          {controlResult.operation
+            ? controlOperationLabels[controlResult.operation]
+            : "The integration action"}{" "}
+          completed and the catalog was refreshed.
+        </p>
+      )}
+      {controlResult?.state === "handoff-ready" && controlResult.actionId && (
+        <div className="integration-alert" role="status">
+          <p>
+            The native authorization handoff is ready. QuireForge will not
+            display or persist the returned URL.
+          </p>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() =>
+              void runAction(() => onControlOpen(controlResult.actionId!))
+            }
+          >
+            Open authorization in browser
+          </button>
+        </div>
+      )}
+      {controlResult?.state === "pending" && controlResult.actionId && (
+        <div className="integration-alert" role="status">
+          <p>Complete authorization in the browser, then check its status.</p>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() =>
+              void runAction(() => onControlPoll(controlResult.actionId!))
+            }
+          >
+            Check authorization
+          </button>
+        </div>
+      )}
+      {controlResult?.state === "unavailable" && (
+        <p className="integration-alert integration-alert--error" role="alert">
+          The integration action did not complete (
+          {controlResult.diagnosticCode}).
         </p>
       )}
 
@@ -515,19 +654,33 @@ export function IntegrationCenter({
                   <button
                     type="button"
                     key={operation}
-                    disabled={availability !== "native" || busy}
+                    disabled={
+                      availability !== "native" || busy || controlInFlight
+                    }
                     onClick={() => void requestPreview(operation)}
                   >
                     {operationLabels[operation]}
                   </button>
                 ))}
-                {selectedOperations.length === 0 && (
-                  <p>
-                    No supported management action is available. Authorization,
-                    enablement, and skill configuration remain outside this
-                    checkpoint.
-                  </p>
-                )}
+                {selectedControlOperations.map((operation) => (
+                  <button
+                    type="button"
+                    key={operation}
+                    disabled={
+                      availability !== "native" || busy || controlInFlight
+                    }
+                    onClick={() => void requestControlPreview(operation)}
+                  >
+                    {controlOperationLabels[operation]}
+                  </button>
+                ))}
+                {selectedOperations.length === 0 &&
+                  selectedControlOperations.length === 0 && (
+                    <p>
+                      No supported management action is available. Unsupported
+                      configuration and repair paths remain unavailable.
+                    </p>
+                  )}
               </div>
             </>
           ) : (
@@ -559,7 +712,7 @@ export function IntegrationCenter({
             maxLength={160}
             placeholder="owner/repository"
             autoComplete="off"
-            disabled={availability !== "native" || busy}
+            disabled={availability !== "native" || busy || controlInFlight}
             onChange={(event) => setRepository(event.target.value)}
           />
         </label>
@@ -572,7 +725,7 @@ export function IntegrationCenter({
             placeholder="40- or 64-character commit"
             autoComplete="off"
             spellCheck={false}
-            disabled={availability !== "native" || busy}
+            disabled={availability !== "native" || busy || controlInFlight}
             onChange={(event) => setReference(event.target.value)}
           />
         </label>
@@ -671,6 +824,82 @@ export function IntegrationCenter({
                       : "Confirm change"}
                 </button>
               )}
+            </div>
+          </dialog>
+        </div>
+      )}
+
+      {controlPreview && (
+        <div className="integration-dialog-backdrop">
+          <dialog
+            ref={dialogRef}
+            open
+            className="integration-dialog"
+            aria-modal="true"
+            aria-labelledby="integration-control-dialog-title"
+            aria-describedby="integration-control-dialog-summary"
+            onKeyDown={trapDialogFocus}
+          >
+            <p className="eyebrow">Fresh native control preview</p>
+            <h3 id="integration-control-dialog-title">
+              {controlOperationLabels[controlPreview.operation]}
+            </h3>
+            <p id="integration-control-dialog-summary">
+              {controlPreview.state === "ready"
+                ? `${controlPreview.targetDisplayName} was revalidated against the current catalog, policy, and native evidence.`
+                : `The operation is ${controlPreview.state} (${controlPreview.diagnosticCode}).`}
+            </p>
+            {controlPreview.state === "ready" && (
+              <>
+                <section>
+                  <h4>Permissions reviewed</h4>
+                  {controlPreview.permissions.length ? (
+                    <ul>
+                      {controlPreview.permissions.map((permission) => (
+                        <li
+                          key={`${permission.kind}:${permission.access}:${permission.target}`}
+                        >
+                          {sentenceCase(permission.access)} {permission.target}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p>No additional normalized permissions were declared.</p>
+                  )}
+                </section>
+                <section>
+                  <h4>Warnings</h4>
+                  <ul>
+                    {controlPreview.warnings.map((warning) => (
+                      <li key={warning}>{controlWarningLabels[warning]}</li>
+                    ))}
+                  </ul>
+                </section>
+              </>
+            )}
+            <div className="integration-dialog__actions">
+              <button
+                ref={dialogFocusRef}
+                type="button"
+                disabled={busy}
+                onClick={onCancel}
+              >
+                {controlPreview.state === "ready" ? "Cancel" : "Close"}
+              </button>
+              {controlPreview.state === "ready" &&
+                controlPreview.confirmationId && (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() =>
+                      void runAction(() =>
+                        onControlConfirm(controlPreview.confirmationId!),
+                      )
+                    }
+                  >
+                    {busy ? "Applying…" : "Confirm action"}
+                  </button>
+                )}
             </div>
           </dialog>
         </div>

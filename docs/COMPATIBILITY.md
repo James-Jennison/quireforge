@@ -1,9 +1,9 @@
 # Compatibility
 
-Status: desktop work through Milestone 13B is implemented and verified on the
-discovery host. Milestone 13A refreshes the Codex 0.145.0 protocol evidence and
-defines the integration contract; 13B implements its live read-only native
-catalog.
+Status: desktop work through Milestone 14C is implemented and verified on the
+discovery host. Milestone 13 defines the Codex 0.145.0 integration contract and
+read-only catalog; Milestones 14A–14C add fixed lifecycle, UI, authorization,
+skill-control, refresh, and connector-mention paths.
 
 ## Identity compatibility contract
 
@@ -96,12 +96,12 @@ baseline examples in the [official AppImage guidance](https://v2.tauri.app/distr
 | Search/list conversations                  | Partial              | stable thread title/cwd filters; experimental deeper paging                                                    | Mixed                                 |
 | Codex-managed ChatGPT login                | Implemented          | Bounded app-server browser/device flow, cancel, logout, and normalized events                                  | Stable official                       |
 | List skills by cwd                         | Yes                  | `skills/list`                                                                                                  | Stable method on experimental server  |
-| Enable/disable skills                      | Yes                  | `skills/config/write`                                                                                          | Stable method on experimental server  |
+| Enable/disable skills                      | Implemented          | 14C native preview/confirmation, exact `skills/config/write`, and list postcondition                           | Stable method on experimental server  |
 | List apps/connectors                       | Yes                  | `app/list`                                                                                                     | Stable method on experimental server  |
-| Attach app to prompt                       | Yes                  | documented `mention` item                                                                                      | Stable method on experimental server  |
-| General connector authorization RPC        | Not established      | Official returned URL/browser handoff                                                                          | Limited                               |
+| Attach app to prompt                       | Implemented          | 14C native re-resolution and constructed documented `mention`/`app://` item                                    | Stable method on experimental server  |
+| General connector authorization RPC        | Not established      | 14C confirmed official returned-URL handoff plus refreshed accessibility state                                 | Limited                               |
 | MCP list/status/tools/auth                 | Yes                  | app-server + CLI                                                                                               | Stable official                       |
-| MCP OAuth                                  | Yes                  | app-server/CLI official flow                                                                                   | Stable official                       |
+| MCP OAuth                                  | Implemented          | 14C native URL ownership and exact `mcpServer/oauthLogin/completed` correlation                                | Stable official                       |
 | Plugin catalog via CLI JSON                | Implemented          | Bounded `plugin list --available --json` adapter                                                               | Supported CLI                         |
 | Plugin install/remove via CLI JSON         | Implemented          | 14A fixed-command source review, one-use confirmation, and postcondition                                       | Supported CLI 0.145.x                 |
 | Plugin app-server management               | Present              | Disabled in production                                                                                         | Under development                     |
@@ -151,6 +151,17 @@ must return the exact closed JSON shape and satisfy a follow-up list
 postcondition. Other CLI minors remain unavailable pending route review.
 Built-in/default marketplace rows are read-only; removal is exposed only when
 the fresh CLI record identifies an explicitly configured source.
+
+Milestone 14C enables only the reviewed connector/MCP authorization and skill
+configuration paths. Connector authorization uses the exact URL returned by
+Codex because no general stable install RPC is established; completion requires
+fresh accessible state. MCP OAuth uses the app-server login method and exact
+completion-name correlation. Skill enable/disable uses only the native path
+returned by `skills/list`, an expiring one-use confirmation, the exact effective
+response, and a fresh list postcondition. Conversation mentions accept only
+opaque normalized connector IDs and are converted natively to documented
+`app://` mention paths after accessible/enabled/callable revalidation. Other
+CLI minors and generic configuration or management paths remain unavailable.
 
 Milestones 4–5 commit only the CLI 0.144.6 initialize, `model/list`, and stable
 account-lifecycle generated schemas, their hashes, and sanitized deterministic

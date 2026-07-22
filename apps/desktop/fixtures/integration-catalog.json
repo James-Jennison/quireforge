@@ -29,6 +29,18 @@
       "diagnosticCode": null
     },
     {
+      "id": "connector.authorize",
+      "domain": "connector",
+      "operation": "authorize",
+      "route": "native",
+      "stability": "stable-method-experimental-server",
+      "availability": "ready",
+      "implementation": "contract-only",
+      "mutating": true,
+      "requiresConfirmation": true,
+      "diagnosticCode": null
+    },
+    {
       "id": "plugin.catalog",
       "domain": "plugin",
       "operation": "discover",
@@ -186,7 +198,11 @@
       "authentication": "connected",
       "version": null,
       "publisher": "Fixture publisher",
-      "capabilityIds": ["connector.catalog", "connector.installed"],
+      "capabilityIds": [
+        "connector.catalog",
+        "connector.installed",
+        "connector.authorize"
+      ],
       "permissions": [
         {
           "kind": "account",

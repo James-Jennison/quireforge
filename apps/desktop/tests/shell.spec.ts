@@ -2,14 +2,20 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 
 import integrationCatalogFixture from "../fixtures/integration-catalog.json" with { type: "json" };
+import integrationControlFixture from "../fixtures/integration-control.json" with { type: "json" };
 import integrationMutationFixture from "../fixtures/integration-mutation.json" with { type: "json" };
 
 const nativeIntegrationCatalog = {
   ...integrationCatalogFixture,
   capabilities: integrationCatalogFixture.capabilities.map((capability) =>
-    ["plugin.install", "plugin.remove", "marketplace.configure"].includes(
-      capability.id,
-    )
+    [
+      "connector.authorize",
+      "plugin.install",
+      "plugin.remove",
+      "marketplace.configure",
+      "skill.configure",
+      "mcp.authorize",
+    ].includes(capability.id)
       ? {
           ...capability,
           availability: "ready",
@@ -109,6 +115,21 @@ const nativeResponses = {
     diagnosticCode: null,
   },
   integration_catalog_read: nativeIntegrationCatalog,
+  integration_catalog_refresh: nativeIntegrationCatalog,
+  integration_control_preview: integrationControlFixture.preview,
+  integration_control_confirm: integrationControlFixture.result,
+  integration_control_open_browser: {
+    ...integrationControlFixture.result,
+    state: "pending",
+    browserHandoffAvailable: false,
+  },
+  integration_control_status: {
+    ...integrationControlFixture.result,
+    state: "completed",
+    actionId: null,
+    browserHandoffAvailable: false,
+    catalogRefreshRequired: true,
+  },
   integration_mutation_preview: integrationMutationFixture.preview,
   integration_mutation_confirm: integrationMutationFixture.result,
   project_workspace_status: {
@@ -579,6 +600,9 @@ test("native session fixture renders grouping, tabs, and bounded controls", asyn
     page.getByRole("button", { name: "New terminal" }),
   ).toBeEnabled();
   await expect(page.getByText("No terminal open")).toBeVisible();
+  await expect(
+    page.getByRole("checkbox", { name: "Fixture calendar connector" }),
+  ).toBeEnabled();
 
   const results = await new AxeBuilder({ page }).analyze();
   expect(results.violations).toEqual([]);
@@ -645,6 +669,26 @@ test("native Integration Center reviews trust before a fixed mutation", async ({
   await expect(
     page.getByText(/Install plugin completed and the catalog was refreshed/u),
   ).toBeVisible();
+
+  await page.getByLabel("Category").selectOption("mcp-server");
+  await page.getByRole("button", { name: "Authorize MCP server" }).click();
+  const authorization = page.getByRole("dialog", {
+    name: "Authorize MCP server",
+  });
+  await expect(authorization).toContainText(
+    "exact authorization URL returned by Codex",
+  );
+  await authorization.getByRole("button", { name: "Confirm action" }).click();
+  await page
+    .getByRole("button", { name: "Open authorization in browser" })
+    .click();
+  await page.getByRole("button", { name: "Check authorization" }).click();
+  await expect(
+    page.getByText(
+      /Authorize MCP server completed and the catalog was refreshed/u,
+    ),
+  ).toBeVisible();
+  await expect(page.getByText(/authorizationUrl/u)).toHaveCount(0);
 
   const results = await new AxeBuilder({ page }).analyze();
   expect(results.violations).toEqual([]);

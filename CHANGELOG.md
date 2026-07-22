@@ -232,6 +232,17 @@ released a usable application.
   read or mutate personal integration state. Connector/MCP authorization,
   enable/disable, skill configuration, prompt mentions, package, release, and
   deployment remain outside this checkpoint.
+- The Milestone 14C confirmed integration-control boundary: fixed native
+  preview/confirm operations for connector authorization, MCP OAuth, and skill
+  enable/disable; one-use UUIDv7 evidence; native-only validated browser
+  handoffs; exact MCP completion correlation; skill postconditions; explicit
+  catalog/health refresh; and native-constructed connector mentions for new
+  turns. Strict Rust/TypeScript fixtures and deterministic process/UI tests keep
+  authorization URLs, app paths, skill paths, MCP names, credentials, and raw
+  protocol/configuration outside IPC and personal state outside routine tests.
+  Generic connector installation/configuration, plugin enablement, MCP
+  management, arbitrary repair, package, release, and deployment remain
+  unavailable.
 
 ### Changed
 

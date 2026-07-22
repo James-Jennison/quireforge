@@ -6,8 +6,10 @@ Milestone 6 native directory-attachment controls, Milestone 7 native
 conversation controls, Milestone 8A native lifecycle/recovery controls, and
 Milestone 9 approval/activity controls, Milestone 10 reviewed Git controls,
 Milestone 11A–11C managed-worktree/parallel-execution/cleanup controls, and
-Milestone 12 native PTY controls applied. It must be revisited before
-integrations, packaging, and release milestones.
+Milestone 12 native PTY controls applied, plus Milestones 13–14C normalized
+integration discovery, mutation, authorization, and prompt-mention controls.
+It must be revisited before packaging and release milestones or any expansion
+of the supported integration-management surface.
 
 ## Assets
 
@@ -301,6 +303,26 @@ Controls:
   Contain and restore focus so keyboard users cannot accidentally interact with
   obscured controls, and refresh normalized catalog state after an applied
   result.
+- Accept only connector authorization, MCP authorization, skill enable, or
+  skill disable as closed 14C controls. Resolve the opaque entry ID to fresh
+  native app-server evidence before preview and again after consuming a
+  five-minute one-use confirmation; serialize control/handoff state and cap
+  pending previews.
+- Never accept an authorization URL, skill path, MCP name, config key/value,
+  app path, or protocol method from React. Keep the Codex-returned values only
+  in process memory and open a URL only from its opaque native action ID.
+- Permit credential-free HTTPS authorization URLs and loopback HTTP callbacks
+  only; reject credentials, fragments, oversized values, mismatched MCP
+  completion names, and raw completion errors. Never serialize, persist, log,
+  or copy the URL, code, token, skill path, or MCP name.
+- Treat skill mutation success as an exact effective-state response plus a
+  fresh list postcondition. Treat connector completion as fresh accessibility,
+  not browser return or process exit. Refresh normalized catalog state after a
+  completed control.
+- Accept at most eight unique normalized connector IDs on conversation start.
+  Native code must re-resolve accessible, enabled, and callable state and
+  construct the documented `mention`/`app://` item; the webview cannot provide
+  or receive that path.
 
 ### MCP and connector tool side effects
 
@@ -316,6 +338,11 @@ Controls:
 - Destructive annotated calls always require approval.
 - Show service and account/workspace when safely available.
 - Confirm connector accessibility through supported refreshed state.
+- Correlate MCP OAuth completion to the exact native-held server name and keep
+  the OAuth URL, codes, tokens, endpoints, and raw errors outside IPC and
+  SQLite.
+- Do not infer a generic connector install/configuration API from a returned
+  authorization URL. Unsupported management remains unavailable.
 
 ### App-server protocol drift
 

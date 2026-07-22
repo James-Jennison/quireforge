@@ -54,6 +54,15 @@ export const conversationStartRequestSchema = z
   .object({
     projectId: conversationIdSchema,
     prompt: conversationPromptSchema,
+    integrationEntryIds: z
+      .array(
+        z
+          .string()
+          .min(11)
+          .max(128)
+          .regex(/^connector:[a-z0-9][a-z0-9._-]*$/u),
+      )
+      .max(8),
     modelId: conversationProtocolChoiceSchema,
     reasoningEffort: conversationProtocolChoiceSchema.max(32),
     sandboxMode: conversationSandboxModeSchema,
@@ -61,6 +70,16 @@ export const conversationStartRequestSchema = z
   })
   .strict()
   .superRefine((request, context) => {
+    if (
+      new Set(request.integrationEntryIds).size !==
+      request.integrationEntryIds.length
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "Connector mentions must be unique",
+        path: ["integrationEntryIds"],
+      });
+    }
     if (
       request.sandboxMode === "danger-full-access" &&
       request.approvalPolicy === "never"
@@ -214,6 +233,7 @@ export const conversationDiagnosticSchema = z.enum([
   "runtime-unavailable",
   "model-unavailable",
   "reasoning-unavailable",
+  "integration-unavailable",
   "metadata-unavailable",
   "approval-required",
   "approval-not-found",

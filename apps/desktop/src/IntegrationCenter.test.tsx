@@ -4,9 +4,12 @@ import { describe, expect, it, vi } from "vitest";
 import { IntegrationCenter } from "./IntegrationCenter";
 import {
   integrationCatalogSchema,
+  integrationControlResultSchema,
   integrationMutationPreviewSchema,
   integrationMutationResultSchema,
   scaffoldIntegrationCatalog,
+  scaffoldIntegrationControlPreview,
+  scaffoldIntegrationControlResult,
   scaffoldIntegrationMutationPreview,
 } from "./lib/integration";
 
@@ -14,6 +17,22 @@ const readyCatalog = integrationCatalogSchema.parse({
   ...scaffoldIntegrationCatalog,
   capabilities: scaffoldIntegrationCatalog.capabilities.map((capability) =>
     ["plugin.install", "plugin.remove", "marketplace.configure"].includes(
+      capability.id,
+    )
+      ? {
+          ...capability,
+          availability: "ready",
+          implementation: "ready",
+          diagnosticCode: null,
+        }
+      : capability,
+  ),
+});
+
+const controlReadyCatalog = integrationCatalogSchema.parse({
+  ...readyCatalog,
+  capabilities: readyCatalog.capabilities.map((capability) =>
+    ["connector.authorize", "skill.configure", "mcp.authorize"].includes(
       capability.id,
     )
       ? {
@@ -34,16 +53,22 @@ function renderCenter(
     snapshot: readyCatalog,
     preview: null,
     result: null,
+    controlPreview: null,
+    controlResult: null,
     busy: false,
     actionError: false,
     onRefresh: vi.fn().mockResolvedValue(undefined),
     onPreview: vi.fn().mockResolvedValue(undefined),
     onConfirm: vi.fn().mockResolvedValue(undefined),
+    onControlPreview: vi.fn().mockResolvedValue(undefined),
+    onControlConfirm: vi.fn().mockResolvedValue(undefined),
+    onControlOpen: vi.fn().mockResolvedValue(undefined),
+    onControlPoll: vi.fn().mockResolvedValue(undefined),
     onCancel: vi.fn(),
     ...overrides,
   };
-  render(<IntegrationCenter {...props} />);
-  return props;
+  const view = render(<IntegrationCenter {...props} />);
+  return Object.assign(props, { unmount: view.unmount });
 }
 
 describe("IntegrationCenter", () => {
@@ -139,6 +164,90 @@ describe("IntegrationCenter", () => {
     );
   });
 
+  it("reviews and advances an official MCP authorization handoff", async () => {
+    const props = renderCenter({
+      snapshot: controlReadyCatalog,
+      controlPreview: scaffoldIntegrationControlPreview,
+    });
+
+    expect(screen.getByRole("dialog")).toHaveAccessibleName(
+      "Authorize MCP server",
+    );
+    expect(
+      screen.getByText(/exact authorization URL returned by Codex/u),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Confirm action" }));
+    await waitFor(() =>
+      expect(props.onControlConfirm).toHaveBeenCalledWith(
+        scaffoldIntegrationControlPreview.confirmationId,
+      ),
+    );
+  });
+
+  it("opens and polls only the opaque authorization action", async () => {
+    const props = renderCenter({
+      snapshot: controlReadyCatalog,
+      controlResult: scaffoldIntegrationControlResult,
+    });
+    expect(
+      screen.getByRole("button", { name: "Refresh catalog" }),
+    ).toBeDisabled();
+    fireEvent.change(screen.getByLabelText("Category"), {
+      target: { value: "plugin" },
+    });
+    expect(
+      screen.getByRole("button", { name: "Install plugin" }),
+    ).toBeDisabled();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Open authorization in browser" }),
+    );
+    await waitFor(() =>
+      expect(props.onControlOpen).toHaveBeenCalledWith(
+        scaffoldIntegrationControlResult.actionId,
+      ),
+    );
+    props.unmount();
+
+    const pending = integrationControlResultSchema.parse({
+      ...scaffoldIntegrationControlResult,
+      state: "pending",
+      browserHandoffAvailable: false,
+    });
+    const secondProps = {
+      ...props,
+      controlResult: pending,
+    };
+    render(
+      <IntegrationCenter
+        {...secondProps}
+        controlPreview={null}
+        controlResult={pending}
+      />,
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Check authorization" }),
+    );
+    await waitFor(() =>
+      expect(props.onControlPoll).toHaveBeenCalledWith(pending.actionId),
+    );
+  });
+
+  it("requests only catalog-backed integration controls", async () => {
+    const props = renderCenter({ snapshot: controlReadyCatalog });
+    fireEvent.change(screen.getByLabelText("Category"), {
+      target: { value: "mcp-server" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Authorize MCP server" }),
+    );
+    await waitFor(() =>
+      expect(props.onControlPreview).toHaveBeenCalledWith({
+        operation: "mcp-authorize",
+        targetEntryId: "mcp:fixture-knowledge",
+      }),
+    );
+  });
+
   it("keeps unsupported management unavailable and reports bounded failures", () => {
     const unavailable = integrationMutationResultSchema.parse({
       schemaVersion: 1,
@@ -154,7 +263,7 @@ describe("IntegrationCenter", () => {
       target: { value: "mcp-server" },
     });
     expect(
-      screen.getByText(/Authorization, enablement, and skill configuration/u),
+      screen.getByText(/Unsupported configuration and repair paths/u),
     ).toBeInTheDocument();
     expect(
       screen.getByText(/No raw error or integration configuration/u),

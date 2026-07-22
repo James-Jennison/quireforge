@@ -9,6 +9,8 @@ plus a native PTY boundary and integrated terminal interface.
 Milestone 13A adds versioned integration and dynamic-tool contract tests.
 Milestone 13B adds live read-only native discovery, strict CLI/app-server
 normalization, invalidation, partial-failure, version-gate, and IPC tests.
+Milestones 14A–14C add confirmed lifecycle, Integration Center, authorization,
+skill-control, refresh, and connector-mention coverage.
 
 ## Repository, website, and desktop checks
 
@@ -148,6 +150,19 @@ authentication, or integration state and makes no model call. A separate
 redacted shape-only read during security review returned no names, paths, URLs,
 or account data and is not part of routine validation.
 
+Milestone 14C adds a third strict shared Rust/TypeScript fixture for control
+preview/result state. Deterministic app-server shell fixtures verify exact
+`skills/config/write` and `mcpServer/oauth/login` requests, skill
+postconditions, one-use confirmations, native-only handoff URLs, exact MCP
+completion-name correlation, unsafe-URL refusal, and authorized/enabled/
+callable connector mention resolution. Conversation tests assert that native
+code constructs the documented mention while the normalized catalog ID and
+`app://` path do not enter serialized snapshots. Component, bridge, and
+application tests exercise permission/warning review, opaque browser actions,
+status polling, catalog refresh, and composer selection. No routine test reads
+or changes personal Codex/integration state, opens a real authorization page,
+or makes a model call.
+
 ## Milestone 13A contract checklist
 
 - Confirm the generated manifest identifies CLI 0.145.0, hashes every selected
@@ -226,6 +241,34 @@ or account data and is not part of routine validation.
   gates, desktop/mobile Playwright with axe-core and overflow assertions, visual
   review in both viewports, and a warm unbundled native release build. Do not
   read or mutate personal integration state.
+
+## Milestone 14C authorization and control checklist
+
+- Confirm React can request only connector authorization, MCP authorization,
+  skill enable, or skill disable with an opaque normalized entry ID; URLs,
+  paths, MCP names, config values, and protocol methods are rejected or absent.
+- Confirm preview requires ready capability/current eligible state and creates
+  a bounded one-use UUIDv7. Confirmation must re-resolve identical native
+  evidence, serialize control execution, and refuse expiry, replay, staleness,
+  policy changes, or malformed upstream responses.
+- Confirm skill enable/disable uses the exact native manifest path from
+  `skills/list`, accepts only the expected effective response, and verifies a
+  fresh list postcondition.
+- Confirm connector/MCP authorization keeps the returned URL native-only,
+  allows credential-free HTTPS or loopback HTTP only, opens it solely from an
+  opaque action ID, and correlates completion to fresh connector accessibility
+  or the exact MCP completion name.
+- Confirm conversation start accepts no more than eight unique normalized
+  connector IDs and native code requires accessible, enabled, callable state
+  before constructing the documented mention and `app://` path.
+- Confirm explicit refresh is fixed-purpose/non-destructive and unsupported
+  generic configuration, plugin enablement, connector install/configuration,
+  MCP management, and repair remain visibly unavailable.
+- Run strict contract, native process, bridge, component, and application tests,
+  complete repository gates, desktop/mobile Playwright with axe-core and
+  overflow assertions, visual review, and a warm unbundled native release
+  build. Do not inspect or mutate personal integration state or complete a real
+  third-party authorization during routine validation.
 
 ## Planned manual Milestone 18 checklist
 
