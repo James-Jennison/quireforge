@@ -24,24 +24,24 @@ Definitions used here:
 
 ## Cumulative project totals
 
-Last updated: `2026-07-23T06:44:00-07:00`
+Last updated: `2026-07-23T11:22:11-07:00`
 
 | Measure                                   | Cumulative record                                                                                                                                                 |
 | ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Total milestones planned                  | 22 major milestones (0–21); Milestones 13 and 14 use separately gated submilestones                                                                               |
-| Total milestone entries completed         | 29 (Milestones 0–12 and submilestones 13A–20); Milestone 20 is complete locally                                                                                   |
-| Milestones in progress                    | None; Milestone 21 publication/download activation is next and remains separately approval-gated                                                                  |
-| Confirmed/reconstructed active execution  | Approximately 28.09–35.17 hours; uninstrumented Milestone 16 work excluded                                                                                        |
-| Confirmed/reconstructed automated wait    | Approximately 7.77–8.69 hours; early and Milestone 16 uninstrumented waits excluded                                                                               |
+| Total milestone entries completed         | 30 (Milestones 0–12 and submilestones 13A–21A); Milestone 21A is complete locally                                                                                 |
+| Milestones in progress                    | None; Milestone 21B publication/download activation is next and remains separately approval-gated                                                                 |
+| Confirmed/reconstructed active execution  | Approximately 28.51–35.59 hours; uninstrumented Milestone 16 work excluded                                                                                        |
+| Confirmed/reconstructed automated wait    | Approximately 7.86–8.78 hours; early and Milestone 16 uninstrumented waits excluded                                                                               |
 | Reconstructed user-blocked time           | At least 11.73 hours, plus unmeasured early approvals/prerequisites                                                                                               |
-| Counted project time                      | Approximately 35.86–43.86 hours                                                                                                                                   |
-| Total elapsed across completed milestones | At least 43.69 evidenced hours; exact historical total is unknown                                                                                                 |
-| Average counted time                      | Approximately 1.43–1.75 hours across the 25 timed completed entries                                                                                               |
+| Counted project time                      | Approximately 36.37–44.37 hours                                                                                                                                   |
+| Total elapsed across completed milestones | At least 44.20 evidenced hours; exact historical total is unknown                                                                                                 |
+| Average counted time                      | Approximately 1.40–1.71 hours across the 26 timed completed entries                                                                                               |
 | Median counted time                       | Approximately 0.80 hour using reconstructed range midpoints                                                                                                       |
 | Longest completed milestone               | Milestone 11, approximately 5.45–7.72 counted hours                                                                                                               |
 | Shortest completed milestone              | Milestone 0, approximately 0.15 counted hours                                                                                                                     |
-| Comparable forecast versus actual         | Timed Milestones 3–20 forecast 105.25–181.50 active hours in aggregate and used approximately 32.33–40.30 counted hours, about 62%–82% below the forecast envelope |
-| Confidence classifications                | 11 Confirmed, 11 Reconstructed, 2 Estimated, 4 Unknown completed entries                                                                                          |
+| Comparable forecast versus actual         | Timed Milestones 3–21A forecast 109.75–189.00 active hours in aggregate and used approximately 32.84–40.81 counted hours, about 63%–83% below the forecast envelope |
+| Confidence classifications                | 13 Confirmed, 11 Reconstructed, 2 Estimated, 4 Unknown completed entries                                                                                          |
 
 The cumulative active and automated ranges are derived from historical reports
 and workflow evidence that were recorded with different granularity. They are
@@ -81,6 +81,8 @@ range endpoints.
 | 17A       | Local    | `2026-07-22T21:01:38-07:00` | `2026-07-22T21:31:08-07:00` | 2.5–4.5 h active; 3–5.5 h elapsed    |     ~0.39 h |        ~0.10 h |                    0.00 h |               0.49 h |        0.49 h | ~3.11 h / 88.9% below midpoint               | Confirmed     |
 | 18        | Local    | `2026-07-22T21:41:56-07:00` | `2026-07-22T22:43:34-07:00` | 4–6.5 h active; 5–8 h elapsed        |     ~0.85 h |        ~0.18 h |                    0.00 h |               1.03 h |        1.03 h | ~4.40 h / 83.8% below midpoint               | Confirmed     |
 | 19        | Local    | `2026-07-23T04:23:14-07:00` | `2026-07-23T05:30:09-07:00` | 4.5–7.5 h active; 5.5–9.5 h elapsed  |     ~0.90 h |        ~0.21 h |                    0.00 h |               1.11 h |        1.12 h | ~5.10 h / 85.0% below midpoint               | Confirmed     |
+| 20        | Local    | `2026-07-23T05:34:59-07:00` | `2026-07-23T06:44:00-07:00` | 4.5–7.5 h active; 6–11 h elapsed     |     ~0.90 h |        ~0.25 h |                    0.00 h |               1.15 h |        1.15 h | ~5.10 h / 85.0% below midpoint               | Confirmed     |
+| 21A       | Local    | `2026-07-23T10:51:27-07:00` | `2026-07-23T11:22:11-07:00` | 4.5–7.5 h active; 5.5–9.5 h elapsed  |     ~0.42 h |        ~0.09 h |                    0.00 h |               0.51 h |        0.51 h | ~5.58 h / 93.0% below midpoint               | Confirmed     |
 
 Variance uses the midpoint of the historical forecast and counted-time ranges.
 It is included only where a recorded forecast exists and should not be read as
@@ -1053,3 +1055,45 @@ greater precision than the underlying ranges.
   but no push, merge, GitHub workflow dispatch, release, attestation, website
   activation, deployment, host package installation, external authentication,
   personal Codex-state mutation, or live/billable model call occurred.
+
+## Milestone 21A — Product readiness and usage visibility
+
+- **Objective:** Replace internal milestone scaffolding with an authenticated,
+  original QuireForge product hierarchy and display only documented read-only
+  remaining Codex usage before any beta publication.
+- **Start / completion:** `2026-07-23T10:51:27-07:00` /
+  `2026-07-23T11:22:11-07:00`, from the first product-readiness commit through
+  the isolated native visual closure.
+- **Model and reasoning:** GPT-5.6 Sol, XHigh; retained for the approved local
+  product-readiness pass.
+- **Calibrated forecast:** 4.5–7.5 active hours, 30–75 minutes of local
+  commands, and 5.5–9.5 total elapsed hours; medium confidence.
+- **Active / automated / user-blocked:** Approximately 0.42 active hour, 0.09
+  automated hour, and 0.00 user-blocked hour. Counted project and wall-clock
+  elapsed time are approximately 0.51 hour.
+- **Evidence:** The aggregate gate passed 157 desktop tests, six website tests,
+  and 178 runnable Rust tests with three deliberate live probes ignored. All
+  34 desktop Playwright desktop/mobile scenarios passed. Repository, package,
+  type, lint, format, production build, dist-budget, Rust check, and
+  warning-denying Clippy gates passed.
+- **Security and visual review:** Pre-authentication tests prove that no
+  project, conversation, active-task, session, terminal, integration, Git,
+  worktree, or usage loader starts behind the gate. The rate-limit boundary
+  discards account, plan, balance, spend-control, reset-credit, and raw
+  protocol metadata. Dark desktop and light mobile visual inspection passed;
+  the rebuilt unbundled native executable painted a stable signed-out gate
+  after an eight-second settle with no black frame or refused-loopback
+  evidence.
+- **Variance:** Approximately 5.58 active hours, or 93.0%, below the six-hour
+  calibrated midpoint. Existing authentication, app-server, fixture, and
+  responsive-shell seams compressed the implementation, while aggregate
+  validation still caught asynchronous startup-test races and a real
+  light-theme mobile contrast issue.
+- **Confidence:** **Confirmed** from the prospective forecast, branch
+  timestamp, aggregate gates, desktop/mobile browser runs, and isolated native
+  pixel capture.
+- **Status:** Complete and verified locally. No push, merge, package
+  publication, release, deployment, website activation, external
+  authentication, live account-usage read, reset-credit operation, personal
+  Codex-state mutation, or live/billable model call occurred. Milestone 21B
+  remains separately approval-gated.

@@ -304,6 +304,30 @@ The external-token and API-key login variants are deliberately not offered. A
 live validation invoked only `account/read`; real login, browser handoff, and
 logout remain user-driven and were not exercised by Codex.
 
+### Implemented Milestone 21A subset
+
+Product readiness adds one documented account read without broadening the
+authentication or credential boundary:
+
+- `account/rateLimits/read` is called through the supervised app-server only
+  after normalized Codex access is granted;
+- the native service returns at most eight meters with primary/secondary
+  windows, integer used and remaining percentages, bounded duration/reset
+  values, a sanitized label/identifier, and a coarse reached state;
+- plan type, credit balance, spend controls, account metadata,
+  `rateLimitResetCredits`, reset-credit IDs, and raw protocol payloads are
+  intentionally not represented in IPC;
+- sparse responses become an honest not-metered state, while malformed or
+  rejected responses become unavailable rather than a locally calculated
+  estimate; and
+- status is cached for startup stability while refresh remains an explicit
+  read-only action.
+
+The reviewed Codex 0.145.0 generated subset now includes
+`v2/GetAccountRateLimitsResponse.json`. Routine tests use sanitized fixtures;
+no live account usage read, reset-credit operation, login, or billable turn was
+performed for this implementation.
+
 ### Implemented Milestone 7A subset
 
 The native conversation checkpoint adds only the reviewed start, stream, and
@@ -524,7 +548,15 @@ redacted before logging or display.
 The implemented UI shows a login URL and optional one-time device code only
 while the exact attempt is pending. Completion or cancellation clears both.
 Email, plan, login ID, and raw completion errors never cross the native
-boundary. Logout requires a second explicit action.
+boundary. Logout requires a second explicit action. Milestone 21A additionally
+keeps every project and Codex work surface behind that normalized account gate;
+pre-authentication startup does not begin workspace/session/integration reads.
+
+Remaining usage is read only through documented
+`account/rateLimits/read`. QuireForge displays the reported window percentages
+and reset times but does not infer tokens, messages, costs, or future
+availability; inspect Codex credential files; scrape ChatGPT; call a private
+endpoint; or redeem rate-limit reset credits.
 
 ## Apps and connectors
 

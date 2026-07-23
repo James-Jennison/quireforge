@@ -119,6 +119,33 @@ required for user handoff; they disappear after completion or cancellation.
 Logout requires a second explicit UI action. QuireForge does not read Codex
 credential files or browser storage and creates no authentication database.
 
+### Milestone 21A product-readiness boundary
+
+The desktop startup path renders only the local bootstrap, Codex runtime probe,
+and Codex-owned authentication state until access is granted. Project,
+conversation, active-task, session, terminal, integration, Git, worktree, and
+usage readers do not start behind the sign-in gate. The accepted account state
+is normalized by Codex: ChatGPT browser or device login remains the preferred
+OpenAI flow, while an already configured API-key or managed provider can report
+authenticated or no-additional-login-required state without QuireForge reading
+or storing its credential.
+
+The fixed `codex_usage_status` and `codex_usage_refresh` commands invoke only
+the documented `account/rateLimits/read` method after app-server
+initialization. Rust normalizes at most eight named meters and two windows per
+meter into integer used/remaining percentages, bounded durations, bounded Unix
+reset times, and a coarse limit-reached boolean. It discards plan type, credit
+balance, spend controls, account metadata, reset-credit inventory and IDs, and
+all unreviewed fields. Unknown enums, malformed labels/identifiers, impossible
+percentages, and invalid timestamps fail closed. The UI never predicts quota
+or offers reset-credit redemption.
+
+The authenticated React shell is a presentation hierarchy, not a new backend
+capability: Home summarizes existing project and reference-only session state,
+then links to the established fixed-purpose workspaces. Internal roadmap
+milestones remain repository metadata and are not rendered as product
+navigation.
+
 ### Milestone 6 implementation boundary
 
 The native `ProjectService` owns migrated QuireForge SQLite metadata and native

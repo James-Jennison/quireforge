@@ -794,6 +794,34 @@ Confirm either test leaves no additional `codex app-server` process. It must
 not start a thread or turn, write configuration, inspect session content, or
 print the account-visible catalog.
 
+## Manual Milestone 21A checklist
+
+- Start with an unauthenticated fixture and confirm only bootstrap, runtime, and
+  account-status reads occur; project, conversation, active-task, session,
+  terminal, integration, Git, worktree, and usage readers must remain idle.
+- Exercise existing-authenticated, unauthenticated, browser-pending,
+  device-code-pending, unavailable, browser-preview, API-key, managed-provider,
+  and no-additional-login-required normalized states without using a personal
+  login.
+- Confirm the signed-out surface exposes no workspace navigation, projects,
+  session titles, account metadata, task controls, or simulated native state.
+- Validate `account/rateLimits/read` with sanitized single- and multi-meter
+  fixtures, missing windows, invalid percentages/timestamps/durations,
+  duplicate or malformed identifiers, control/bidirectional labels, unknown
+  reached-state enums, oversized meter sets, timeout, RPC rejection, and
+  process failure.
+- Inspect serialized usage snapshots and confirm plan, balance, spend-control,
+  account, reset-credit, credential, and raw protocol fields are absent.
+- Confirm the usage UI reports only returned remaining percentages and reset
+  times; unmetered and unavailable states must not display a calculated
+  estimate or a reset-credit action.
+- Inspect Home in light and dark desktop layouts and the stacked mobile layout.
+  Confirm the permanent QuireForge identity, project/actions/recent/usage
+  hierarchy, milestone-label absence, focus, reduced motion, forced colors,
+  no horizontal overflow, and zero automated accessibility violations.
+- Do not run a live account usage read, login/logout, reset-credit operation, or
+  billable model turn without separate approval.
+
 ## Manual Milestone 8A checklist
 
 - Use deterministic mock app-server fixtures only; do not resume or fork a

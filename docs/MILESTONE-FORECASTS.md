@@ -1643,7 +1643,10 @@ and production download activation remain Milestone 21 approval gates.
 | Start approval           | The user's attached UI reference and explicit requirements authorize the scoped local product-readiness implementation; external publication, deployment, push, merge, authentication, and website activation remain unauthorized |
 | Expected usage intensity | High model usage; moderate local CPU/memory use; no GPU workload, external mutation, live login, billable model call, reset-credit redemption, or personal Codex-state mutation                                |
 | Completion boundary      | Authenticated startup gate, original QuireForge home/workspace shell, removal of user-facing milestone scaffolding, normalized read-only usage display, deterministic tests, docs, visual review, and local commits |
-| Completion status        | In progress locally                                                                                                                                                                                            |
+| Observed completion      | `2026-07-23T11:22:11-07:00`; approximately 0.42 active hour, 0.09 automated-wait hour, 0.00 user-blocked hour, and 0.51 counted/wall-clock hour from branch start through native visual closure |
+| Accepted evidence        | 157 desktop and six website tests; 178 runnable Rust tests with three deliberate live probes ignored; 34 desktop browser scenarios; repository/package/build/dist/Clippy gates; rebuilt visible native X11 launch |
+| Variance                 | Approximately 5.58 active hours, or 93.0%, below the six-hour calibrated midpoint; established auth/UI/IPC seams compressed implementation while browser/native checks caught real async and contrast regressions |
+| Completion status        | Complete and verified locally; Milestone 21B publication remains separately approval-gated                                                                                                                      |
 
 The existing Codex-owned authentication service, strict app-server process
 boundary, project/session fixtures, and established visual test harness reduce
@@ -1669,3 +1672,12 @@ state → replace internal milestone presentation with the QuireForge home shell
 native, accessibility, build, and visual gates → record local completion.
 Package publication and website activation remain a separately approved
 Milestone 21B operation.
+
+The accepted pass preserved the documented Codex authentication boundary,
+added a closed rate-limit contract, and prevented all workspace/account-data
+loaders from starting behind the sign-in gate. Full validation caught and
+corrected asynchronous authenticated-startup races in existing component tests
+and a light-theme mobile contrast regression in the new task affordance. The
+final isolated native launch painted the complete signed-out gate after an
+eight-second settle, emitted no refused-loopback evidence, and used isolated
+home/XDG roots with no personal credentials.

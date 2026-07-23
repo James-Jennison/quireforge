@@ -111,7 +111,7 @@ discovery; scheduling management and execution remain unsupported.
 |        18 | Agent-directed model and reasoning selection                      | Large        | Complete and verified locally; not published                             |
 |        19 | Security, accessibility, and performance hardening                | Very large   | Complete and verified locally                                            |
 |        20 | Packaging and release automation                                  | Large        | Complete and verified locally; not published                             |
-|        21 | Product readiness, beta publication, and download activation       | Very large   | 21A in progress locally; publication remains approval-gated              |
+|        21 | Product readiness, beta publication, and download activation       | Very large   | 21A complete locally; 21B publication remains approval-gated             |
 
 ## Milestone definitions
 
@@ -710,6 +710,17 @@ reference, and display read-only remaining Codex usage only when the documented
 app-server rate-limit endpoint provides it. QuireForge must not scrape a
 website, estimate quota, read Codex credential files, expose raw account
 metadata, or redeem reset credits.
+
+Milestone 21A is complete locally. The desktop now opens on a Codex-owned
+authentication gate, starts workspace and account-data reads only after the
+normalized account state grants access, and presents an original responsive
+QuireForge home with project, recent-thread, quick-action, account, and
+remaining-usage regions. Remaining percentages and reset times come only from
+the documented `account/rateLimits/read` response and degrade to an honest
+unavailable or not-metered state. Raw plan, balance, account, reset-credit, and
+protocol metadata are discarded in Rust. User-facing milestone labels are no
+longer rendered. See the
+[Milestone 21A product-readiness report](MILESTONE_21A_PRODUCT_READINESS.md).
 
 Milestone 21B retains the external release boundary:
 

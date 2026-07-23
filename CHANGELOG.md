@@ -7,6 +7,19 @@ released a usable application.
 
 ### Added
 
+- Milestone 21A product readiness: an authenticated startup gate, original
+  responsive QuireForge home and three-region workspace hierarchy, internal
+  milestone-label removal, account summary, recent threads, project and quick
+  actions, and compact/full remaining-usage presentation.
+- A fixed read-only `account/rateLimits/read` native service and strict
+  TypeScript contract that expose only bounded usage percentages, reset times,
+  window durations, labels, and reached state. Plan, balance, account,
+  reset-credit, and raw protocol metadata are discarded; unavailable and
+  unmetered states are never estimated.
+- Pre-authentication loader gating and deterministic desktop/mobile coverage
+  proving that workspace, project, conversation, session, terminal,
+  integration, and usage reads do not start before normalized Codex access is
+  granted.
 - Milestone 20 local Linux packaging for `0.1.0-beta.1`: normalized x86_64
   AppImage and Debian candidates, canonical desktop/AppStream metadata,
   checksums, a strict release manifest, and an Ubuntu 22.04 baseline container

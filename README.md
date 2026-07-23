@@ -127,6 +127,14 @@ candidates built and launched on a pinned Ubuntu 22.04 baseline. Their package
 identity, checksums, GLIBC baseline, install/upgrade/uninstall behavior, and
 data-preserving removal are verified. The manual release workflow remains
 publication-gated, and website download data remains inactive.
+Milestone 21A adds the product startup experience: an authenticated
+Codex-owned access gate, a responsive QuireForge home informed by the approved
+three-region visual reference, product navigation without internal milestone
+labels, and documented read-only remaining usage with honest unmetered and
+unavailable states. Workspace and account-data readers do not start until the
+normalized Codex account state grants access. QuireForge does not store
+credentials, scrape ChatGPT, estimate quota, expose raw account data, or redeem
+reset credits.
 Webuzo is the selected static origin host, with Cloudflare retained as the DNS,
 TLS, and cache edge. The reviewed static site is publicly deployed at
 `https://quireforge.jamesjennison.net` through the approved proxied Cloudflare
@@ -173,7 +181,9 @@ download yet. The repository and development activity remain private.
   Milestone 18's policy-bounded next-turn selector and Milestone 19's security,
   accessibility, performance, and recovery hardening are complete locally.
   Milestone 20's package candidates and guarded release automation are also
-  complete and verified locally.
+  complete and verified locally. Milestone 21A's authenticated startup gate,
+  home/workspace redesign, milestone-label removal, and normalized remaining
+  usage are complete and verified locally.
 - CI status: repository, website, and desktop quality gates are configured for
   pull requests and `main` pushes; deployment remains separately gated.
 - Current milestone: Milestone 15 is implemented and verified locally, the
@@ -182,9 +192,9 @@ download yet. The repository and development activity remain private.
   verified locally. Milestone 18's policy-bounded next-turn model selector is
   also implemented and verified locally. Milestone 19's pre-packaging
   hardening pass and Milestone 20 packaging/release automation are implemented
-  and verified locally. Milestone 21 beta publication, supported-platform QA,
-  and website download activation are next and remain separately
-  approval-gated.
+  and verified locally. Milestone 21A product readiness is also implemented and
+  verified locally. Milestone 21B beta publication, supported-platform QA, and
+  website download activation are next and remain separately approval-gated.
   Native Wayland evidence covers project, file, and image pickers, bounded
   preview, a real Nautilus image drop, and fixed-copy notification delivery;
   complete XWayland and true-X11 handoff paths remain separately recorded.
