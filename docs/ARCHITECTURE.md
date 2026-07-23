@@ -1,6 +1,6 @@
 # Architecture
 
-Status: desktop implementation is locally verified through Milestone 15 and
+Status: desktop implementation is locally verified through Milestone 17A and
 the static website is complete through production Milestone 16. Packaging,
 release publication, and unsupported integration-management expansion remain
 subject to separately gated work.
@@ -630,6 +630,22 @@ Explicit refresh is non-destructive and rebuilds the normalized catalog and
 health state. Plugin enable/disable, generic connector installation or
 configuration, MCP add/remove/logout/configuration, arbitrary health repair,
 generic config editing, and the app-owned dynamic tool remain unimplemented.
+
+Milestone 17A advances the catalog boundary to `codex-integration-v2` and adds
+`scheduledTasks` without adding a second IPC surface. The service derives a
+bounded native-only lookup list from installed, enabled plugin rows and exact
+marketplace roots, then calls stable `plugin/read` on the already-owned
+app-server process. It accepts only the reviewed plugin detail and schedule
+shapes, binds every task to an existing normalized plugin entry, bounds global
+and per-plugin counts, collapses prompts to inert single-line previews, and
+removes unsafe control/directional characters. Raw paths, plugin loader
+metadata, and protocol errors never cross IPC.
+
+The Scheduled React workspace consumes only schema-v2 task metadata and has no
+mutation bridge or action control. A degraded task response does not erase
+unrelated catalog categories. QuireForge does not persist or execute task
+prompts and implements no local or hosted scheduler. See
+[ADR 0025](DECISIONS/0025-read-only-scheduled-task-catalog.md).
 
 The future app-owned dynamic-tool boundary registers a closed schema through
 `thread/start`, accepts only the correlated `item/tool/call` server request,

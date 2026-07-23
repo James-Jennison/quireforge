@@ -83,8 +83,8 @@ boundary without broadening it. Milestone 14C adds only reviewed connector/MCP
 authorization, skill enablement, refresh, and connector prompt mentions. Later
 Milestones 15A–15C complete the bounded local preview, conversation-image, and
 desktop-integration surfaces. Milestone 16 completes the production static
-website. Milestone 17 still needs to establish the remaining advanced-feature
-prerequisites before that control is implemented.
+website. Milestone 17A establishes read-only installed-plugin task-template
+discovery; scheduling management and execution remain unsupported.
 
 ## Status
 
@@ -107,7 +107,7 @@ prerequisites before that control is implemented.
 |        14 | Integration Center and installation workflows                     | Very large   | Complete through 14C; merged and verified on `main`                 |
 |        15 | File previews and desktop integration                             | Large        | Complete through 15C; verified locally                              |
 |        16 | Complete Webuzo-hosted static website                              | Very large   | Complete through 16D; production and automatic origin TLS renewal active |
-|        17 | Scheduled tasks and advanced supported features                   | Medium–Large | Planned/dependency-gated                                            |
+|        17 | Scheduled tasks and advanced supported features                   | Medium–Large | Complete through 17A locally; management/execution deferred         |
 |        18 | Agent-directed model and reasoning selection                      | Large        | Planned/dependency-gated                                            |
 |        19 | Security, accessibility, and performance hardening                | Very large   | Planned                                                             |
 |        20 | Packaging and release automation                                  | Large        | Planned                                                             |
@@ -603,6 +603,22 @@ control.
 
 Implement only capabilities exposed through supported interfaces. Distinguish
 local scheduling from hosted scheduling and defer unsupported features.
+
+Milestone 17A implements the supported read-only portion. The native
+integration service queries stable `plugin/read` only for installed, enabled
+plugins already established by the CLI catalog. Raw marketplace roots and
+lookup values remain native-only. Scheduled task names and prompts are treated
+as untrusted plugin content, normalized into bounded inert previews, and paired
+with a strict hourly/daily/weekdays/weekly schedule. The existing integration
+catalog read/refresh IPC advances to schema version 2, and the Scheduled
+workspace exposes no action controls.
+
+The reviewed stable request set and plugin CLI provide no task create, edit,
+enable, run, pause, or delete route. QuireForge therefore implements no local
+scheduler, hosted scheduler, official-client automation, or private web
+integration. Those capabilities remain deferred pending a separately reviewed
+supported interface and explicit approval. See
+[ADR 0025](DECISIONS/0025-read-only-scheduled-task-catalog.md).
 
 ### 18 — Agent-Directed Model and Reasoning Selection
 

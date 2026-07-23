@@ -1370,6 +1370,50 @@ pickers, bounded README preview, and a real Nautilus drop that staged normalized
 supplied native compositor input and was closed immediately afterward; it did
 not widen QuireForge's product permissions. This completed Milestone 15 locally.
 
+## Milestone 17A — Read-only scheduled task catalog
+
+| Field                     | Record                                                                                                                                                    |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Forecast date             | 2026-07-22                                                                                                                                                |
+| Selected model            | GPT-5.6 Sol, XHigh reasoning; manually confirmed                                                                                                          |
+| Start authorization       | Approved at `2026-07-22T21:01:38-07:00`                                                                                                                   |
+| Preliminary forecast      | 2.5–4.5 active hours; 15–35 minutes of local commands; about 3–5.5 total elapsed hours; medium confidence                                                 |
+| Calibration basis         | Clean commit `e5e8dcf`, warm Rust/Node caches, installed Codex CLI `0.145.0`, reviewed stable schemas, and the existing normalized integration catalog     |
+| Supported-interface scope | Read installed, enabled plugin task templates through stable `plugin/read`; no create, edit, enable, run, pause, delete, hosted scheduler, or local runner |
+| Usage intensity           | High model activity; moderate CPU and low memory pressure expected; no GPU                                                                                |
+| Observed active execution | Approximately 30 minutes from authorized start through implementation, documentation, validation, visual review, and commit preparation                   |
+| Observed command time     | Approximately 6–8 minutes across focused checks, corrected full gates, release build, browser suite, and visual capture                                   |
+| Completion status         | Complete locally on `feat/milestone-17a-scheduled-task-catalog`; not pushed, merged, packaged, deployed, or released                                      |
+
+The calibrated scope is narrower than the roadmap label. Stable
+`PluginReadResponse` exposes optional task templates and typed schedules, but
+the reviewed stable request set contains no scheduled-task mutation or
+execution method. The supported plugin CLI likewise exposes catalog management
+only. Current official documentation assigns scheduled-task management to
+official ChatGPT web and desktop surfaces and requires the official desktop
+application for local execution.
+
+Milestone 17A therefore extends the existing integration catalog with bounded,
+sanitized, read-only task metadata. Raw marketplace paths stay native-only and
+plugin prompts are rendered as inert untrusted text. Any scheduler, management
+control, hosted-task claim, or execution path remains deferred behind a future
+supported-interface review and explicit approval.
+
+The forecast overestimated implementation time. The existing normalized
+integration service, already-retained `PluginRead` schemas, deterministic shell
+fixture, warm caches, and narrow read-only boundary compressed the work without
+reducing scope. The final non-browser gate completed in 48.23 seconds at about
+1.10 GiB peak RSS; the embedded production desktop build completed in 38.74
+seconds at about 2.51 GiB peak RSS; and all 26 desktop/mobile browser scenarios
+completed in 29.01 seconds at about 471 MiB peak RSS. The final suites passed
+143 desktop frontend tests, five website tests, and 166 Rust tests with three
+deliberate live probes ignored.
+
+Iterative validation caught a Fast Refresh export-policy issue, strict optional
+fixture indexing, and both TypeScript and Rust bootstrap-count/fixture drift.
+Each was corrected before acceptance. The rendered Scheduled section was also
+inspected directly after accessibility and overflow checks passed.
+
 ## Milestone 18 — Agent-directed model and reasoning selection
 
 Status: deferred and dependency-gated behind Milestones 13–17. This section

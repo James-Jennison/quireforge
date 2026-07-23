@@ -1,6 +1,6 @@
 # Compatibility
 
-Status: desktop work through Milestone 15 is implemented and verified locally,
+Status: desktop work through Milestone 17A is implemented and verified locally,
 and the static website is complete through production Milestone 16.
 Milestone 15C has production native Wayland picker, preview, real-drop, and
 fixed-copy notification evidence plus separately recorded complete XWayland and
@@ -9,6 +9,8 @@ Milestone 13 defines the Codex 0.145.0 integration contract and read-only
 catalog; Milestones 14A–14C add fixed integration workflows, and Milestones
 15A–15C add bounded local-file, conversation-image, and desktop-integration
 contracts.
+Milestone 17A adds read-only installed-plugin scheduled-template compatibility;
+task management and execution remain unsupported.
 
 ## Identity compatibility contract
 
@@ -116,7 +118,8 @@ baseline examples in the [official AppImage guidance](https://v2.tauri.app/distr
 | Permission profile discovery               | Yes                  | `permissionProfile/list` with bounded summaries                                                                | Stable method on experimental server  |
 | Client-owned dynamic tools                 | Contract validated   | `thread/start` registration and correlated `item/tool/call` server request                                     | Stable methods on experimental server |
 | Integrated process API                     | Present              | Do not use as default terminal                                                                                 | Experimental/outside Codex sandbox    |
-| Scheduled hosted tasks                     | Not established      | Defer                                                                                                          | Unsupported until discovered          |
+| Plugin scheduled task templates            | Implemented read-only | Bounded stable `plugin/read` metadata for installed, enabled plugins                                           | Stable method on experimental server  |
+| Scheduled task management/execution        | Not established      | No create/edit/enable/run/pause/delete route; no QuireForge scheduler                                          | Unsupported until discovered          |
 | Repository status and staged/worktree diff | Git 2.53.0 available | Fixed native shell-free Git service over a revalidated attachment                                              | Implemented locally in Milestone 10A  |
 | Stage, unstage, bounded revert, and commit | Git 2.53.0 available | Native-held preview/confirmation plans with fixed Git operations                                               | Implemented locally in Milestone 10B  |
 
@@ -168,6 +171,14 @@ response, and a fresh list postcondition. Conversation mentions accept only
 opaque normalized connector IDs and are converted natively to documented
 `app://` mention paths after accessible/enabled/callable revalidation. Other
 CLI minors and generic configuration or management paths remain unavailable.
+
+Milestone 17A uses stable `plugin/read` only after the supported CLI plugin and
+marketplace catalogs identify an installed, enabled plugin and its native
+marketplace root. The schema-v2 catalog exposes only normalized task identity,
+source plugin identity, bounded inert prompt preview, truncation state, and a
+strict typed schedule. A malformed response degrades this capability without
+exposing paths or raw diagnostics. Current reviewed interfaces do not establish
+task mutation, task execution, hosted scheduling, or a local runner.
 
 Milestones 4–5 commit only the CLI 0.144.6 initialize, `model/list`, and stable
 account-lifecycle generated schemas, their hashes, and sanitized deterministic

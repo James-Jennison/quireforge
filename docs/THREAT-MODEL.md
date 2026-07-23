@@ -270,6 +270,15 @@ Controls:
 - Treat invalidation notifications only as closed category-refresh reasons;
   discard app rows, MCP names/failures, config paths/details, and every other raw
   notification field before caching or IPC.
+- Query scheduled templates only for installed, enabled plugins resolved from
+  the supported CLI catalog and keep their marketplace roots and lookup values
+  native-only. Cap lookup targets and task counts.
+- Treat scheduled task names and prompts as malicious publisher content:
+  normalize controls and whitespace, bound and label prompt previews as inert,
+  bind every task to an existing normalized plugin, and never submit, persist,
+  interpolate, or execute the prompt.
+- Expose no scheduled-task mutation or runner. A template is not proof of
+  eligibility, enablement, execution, hosting, or official-client state.
 - Treat dynamic tool arguments as native-only untrusted input. Correlate the
   exact thread, turn, request, namespace, and tool; validate one closed
   app-owned schema; and return only bounded result content.

@@ -3452,6 +3452,195 @@ button:disabled {
     var(--surface);
 }
 
+.scheduled-workspace {
+  position: relative;
+  margin: 0 52px 48px;
+  padding: 34px;
+  border: 1px solid var(--border);
+  border-radius: 15px;
+  background:
+    radial-gradient(circle at 10% 0, var(--accent-soft), transparent 32%),
+    var(--surface);
+}
+
+.scheduled-workspace__intro {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 0.72fr);
+  gap: 42px;
+  align-items: end;
+}
+
+.scheduled-workspace__intro h2,
+.scheduled-workspace__intro p,
+.scheduled-boundary p,
+.scheduled-card h3,
+.scheduled-card p,
+.scheduled-empty p {
+  margin: 0;
+}
+
+.scheduled-workspace__intro h2 {
+  max-width: 680px;
+  margin-top: 7px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(29px, 3vw, 43px);
+  font-weight: 500;
+  line-height: 1.04;
+}
+
+.scheduled-workspace__intro > p {
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.scheduled-boundary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+  margin-top: 26px;
+  padding: 15px 17px;
+  border: 1px solid color-mix(in srgb, var(--accent) 38%, var(--border));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent-soft) 60%, var(--surface-raised));
+}
+
+.scheduled-boundary strong {
+  color: var(--accent-bright);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.scheduled-boundary p {
+  color: var(--text-muted);
+  font-size: 10px;
+  line-height: 1.6;
+}
+
+.scheduled-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 15px;
+  color: var(--text-subtle);
+  font-size: 9px;
+}
+
+.scheduled-status > span {
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface-raised) 72%, transparent);
+}
+
+.scheduled-state--ready {
+  color: var(--green);
+}
+
+.scheduled-state--degraded,
+.scheduled-state--unknown {
+  color: var(--accent-bright);
+}
+
+.scheduled-state--blocked,
+.scheduled-state--unavailable {
+  color: #e59a90;
+}
+
+.scheduled-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 13px;
+  margin-top: 18px;
+}
+
+.scheduled-card,
+.scheduled-empty {
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--surface-raised) 82%, transparent);
+}
+
+.scheduled-card {
+  min-width: 0;
+  padding: 18px;
+}
+
+.scheduled-card__heading {
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.scheduled-card__heading span,
+.scheduled-prompt > span {
+  color: var(--text-subtle);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.scheduled-card__heading h3 {
+  margin-top: 5px;
+  font-size: 15px;
+}
+
+.scheduled-card__heading > strong {
+  flex: 0 0 auto;
+  max-width: 180px;
+  padding: 6px 9px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--accent-bright);
+  font-size: 9px;
+  line-height: 1.35;
+  text-align: right;
+}
+
+.scheduled-prompt {
+  margin-top: 16px;
+  padding: 13px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--background) 42%, transparent);
+}
+
+.scheduled-prompt p {
+  margin-top: 7px;
+  overflow-wrap: anywhere;
+  color: var(--text-muted);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 10px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+}
+
+.scheduled-truncated {
+  margin-top: 9px !important;
+  color: var(--text-subtle);
+  font-size: 8px;
+}
+
+.scheduled-empty {
+  margin-top: 18px;
+  padding: 22px;
+}
+
+.scheduled-empty strong {
+  font-size: 12px;
+}
+
+.scheduled-empty p {
+  margin-top: 6px;
+  color: var(--text-muted);
+  font-size: 10px;
+  line-height: 1.6;
+}
+
 .integration-center__intro {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(260px, 0.72fr);
@@ -4179,6 +4368,11 @@ button:disabled {
     margin-left: 36px;
   }
 
+  .scheduled-workspace {
+    margin-right: 36px;
+    margin-left: 36px;
+  }
+
   .integration-toolbar,
   .marketplace-add {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -4343,6 +4537,21 @@ button:disabled {
   .integration-center {
     margin: 0 24px 42px;
     padding: 26px 22px;
+  }
+
+  .scheduled-workspace {
+    margin: 0 24px 42px;
+    padding: 26px 22px;
+  }
+
+  .scheduled-workspace__intro,
+  .scheduled-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .scheduled-boundary,
+  .scheduled-card__heading {
+    display: grid;
   }
 
   .integration-center__intro,

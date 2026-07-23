@@ -17,6 +17,7 @@ const nativeIntegrationCatalog = {
       "marketplace.configure",
       "skill.configure",
       "mcp.authorize",
+      "scheduled-task.catalog",
     ].includes(capability.id)
       ? {
           ...capability,
@@ -99,6 +100,12 @@ const nativeResponses = {
         label: "Reviewed desktop integration",
         state: "ready",
         milestone: 15,
+      },
+      {
+        id: "scheduled-task-catalog",
+        label: "Read-only scheduled task catalog",
+        state: "ready",
+        milestone: 17,
       },
     ],
   },
@@ -801,6 +808,46 @@ test("native Integration Center reviews trust before a fixed mutation", async ({
   await expect(page.getByText(/authorizationUrl/u)).toHaveCount(0);
 
   const results = await new AxeBuilder({ page }).analyze();
+  expect(results.violations).toEqual([]);
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - window.innerWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(1);
+});
+
+test("native Scheduled catalog presents inert plugin task templates", async ({
+  page,
+}) => {
+  await installNativeFixture(page);
+  await page.goto("/");
+
+  const navigation = page.getByRole("button", { name: /Scheduled/u });
+  if (await navigation.isVisible()) {
+    await expect(navigation).toBeEnabled();
+    await navigation.click();
+  } else {
+    await page.locator("#scheduled").scrollIntoViewIfNeeded();
+  }
+
+  const scheduled = page.locator("#scheduled");
+  await expect(
+    scheduled.getByRole("heading", {
+      name: "Review task templates without handing over control.",
+    }),
+  ).toBeVisible();
+  await expect(scheduled.getByText("Weekly review")).toBeVisible();
+  await expect(scheduled.getByText("Mon, Thu at 09:30")).toBeVisible();
+  await expect(scheduled.getByText("Untrusted prompt preview")).toBeVisible();
+  await expect(
+    scheduled.getByText(
+      /cannot create, edit, enable, run, pause, or delete scheduled tasks/u,
+    ),
+  ).toBeVisible();
+  await expect(scheduled.getByRole("button")).toHaveCount(0);
+
+  const results = await new AxeBuilder({ page })
+    .include("#scheduled")
+    .analyze();
   expect(results.violations).toEqual([]);
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth - window.innerWidth,

@@ -18,6 +18,9 @@ component, and browser coverage.
 Milestone 15C adds opaque one-use handoff, native revalidation, fixed-copy
 notification, focus/deduplication state-machine, component, and bridge coverage;
 real display-session results remain separately labeled manual evidence.
+Milestone 17A adds schema-v2 scheduled-template contract, installed-plugin
+lookup, strict `plugin/read` normalization, prompt/schedule safety, component,
+responsive browser, overflow, and axe-core coverage.
 
 ## Repository, website, and desktop checks
 
@@ -139,6 +142,18 @@ from serialized snapshots. The TypeScript bridge test validates the one fixed
 `integration_catalog_read` command against the same strict schema. No routine
 test reads a personal integration catalog, installs an integration, starts an
 authorization flow, changes Codex configuration, or makes a model call.
+
+Milestone 17A extends that deterministic fixture with one installed, enabled
+plugin and one stable `plugin/read` response. Rust tests verify native-only
+marketplace paths, strict plugin/source correlation, bounded counts, unsafe
+prompt control removal, whitespace normalization, truncation, schedule
+validation, stable partial-failure diagnostics, and path-free serialization.
+The shared Rust/TypeScript fixture rejects orphaned plugins, duplicate task IDs
+and weekdays, invalid times/intervals, unsafe display content, unknown fields,
+and schema drift. Component and desktop/mobile Playwright tests assert the
+read-only boundary, absence of task action buttons, inert prompt labeling,
+responsive overflow, and axe-core accessibility. Routine tests neither inspect
+personal plugins nor create, execute, mutate, or authorize a task.
 
 Milestone 14A adds a second shared Rust/TypeScript fixture for the closed
 mutation preview/result contract and strict bridge requests. Deterministic
@@ -399,6 +414,26 @@ contained only QuireForge identity plus the fixed title/body. The normal
 artifact was rebuilt afterward and contains no probe flag or delivery string.
 This closes the Milestone 15 display-session gate; native Wayland, XWayland, and
 true X11 remain accurately distinguished.
+
+## Milestone 17A read-only scheduled-template checklist
+
+- Confirm only installed, enabled plugins become `plugin/read` targets and raw
+  marketplace roots never serialize through IPC.
+- Reject unsupported CLI minors, unknown response fields, mismatched plugin or
+  marketplace identity, oversized collections, duplicate task/weekday
+  identity, invalid hourly intervals/times, and unsafe display controls.
+- Confirm task prompts are whitespace-normalized, bounded, visibly labeled
+  untrusted/inert, never persisted or submitted, and accurately marked when
+  truncated.
+- Degrade only `scheduled-task.catalog` for a malformed read while retaining
+  valid unrelated integration categories and safe task entries.
+- Parse the shared schema-v2 fixture in Rust and TypeScript and verify every
+  task references an existing plugin entry.
+- Run component and desktop/mobile browser checks for all schedule labels,
+  empty/degraded states, absence of task action buttons, responsive overflow,
+  and axe-core accessibility.
+- Make no personal plugin/account read, task mutation, task execution, hosted
+  scheduler request, official-client automation, or billable model call.
 
 ## Planned manual Milestone 18 checklist
 

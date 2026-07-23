@@ -6,6 +6,7 @@ import { FilePreviewWorkspace } from "./FilePreviewWorkspace";
 import { GitWorkspace } from "./GitWorkspace";
 import { IntegrationCenter } from "./IntegrationCenter";
 import { ProjectWorkspace } from "./ProjectWorkspace";
+import { ScheduledWorkspace } from "./ScheduledWorkspace";
 import { SessionWorkspace } from "./SessionWorkspace";
 import { TerminalWorkspace } from "./TerminalWorkspace";
 import {
@@ -368,6 +369,13 @@ const navigation = [
     target: "integrations",
     ready: true,
   },
+  {
+    label: "Scheduled",
+    milestone: 17,
+    icon: "clock",
+    target: "scheduled",
+    ready: true,
+  },
 ] as const;
 
 function initialTheme(): Theme {
@@ -398,6 +406,12 @@ function Glyph({ name }: { name: string }) {
       <>
         <path d="m8 3 4 2.3v4.6L8 12.2 4 9.9V5.3L8 3ZM16 11.8l4 2.3v4.6L16 21l-4-2.3v-4.6l4-2.3Z" />
         <path d="m16 3 4 2.3v4.6l-4 2.3-4-2.3V5.3L16 3ZM8 11.8l4 2.3v4.6L8 21l-4-2.3v-4.6l4-2.3Z" />
+      </>
+    ),
+    clock: (
+      <>
+        <circle cx="12" cy="12" r="9" />
+        <path d="M12 7v5l3.5 2" />
       </>
     ),
     git: (
@@ -2386,6 +2400,11 @@ export default function App({
               setIntegrationPreview(null);
               setIntegrationControlPreview(null);
             }}
+          />
+
+          <ScheduledWorkspace
+            availability={integrationState}
+            snapshot={integrationCatalog}
           />
 
           <ConversationWorkspace

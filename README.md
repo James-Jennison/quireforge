@@ -80,6 +80,12 @@ explicit catalog/health refresh, and native-constructed connector mentions on
 new turns. URLs, skill paths, MCP names, and `app://` paths remain native-only;
 unsupported generic configuration, plugin enablement, connector installation
 RPCs, MCP management, and repair paths stay unavailable.
+Milestone 17A advances the normalized integration catalog to version 2 and adds
+read-only discovery of scheduled task templates declared by installed, enabled
+plugins through stable `plugin/read`. React receives only a normalized plugin
+reference, bounded inert prompt preview, truncation state, and typed schedule.
+Marketplace roots stay native-only, and QuireForge exposes no task creation,
+editing, enablement, execution, pause, or deletion control.
 Milestone 15A adds a native-selected safe file-preview surface. Rust revalidates
 the selected project attachment and file identity, keeps absolute paths native,
 and sends React only bounded normalized UTF-8 text, PNG/JPEG data, or
@@ -117,6 +123,8 @@ install yet. The repository and development activity remain private.
   catalog/dynamic-tool contract, 13B native read-only discovery service, and
   14A native plugin/marketplace lifecycle, 14B Integration Center, and 14C
   authorization/control boundary are complete, merged, and verified on `main`.
+  The schema-v2 Milestone 17A scheduled-template catalog is implemented and
+  verified locally on its feature branch.
 - Desktop: the Tauri 2, React, TypeScript, and Rust shell builds and launches
   locally with narrow typed IPC, a supervised non-billable Codex runtime and
   account-status probe, a verified native project-attachment workflow, and a
@@ -134,16 +142,19 @@ install yet. The repository and development activity remain private.
   15A bounded project-file preview surface and Milestone 15B bounded
   conversation-image staging and explicit attachment flow, plus the Milestone
   15C reviewed default-application handoff and privacy-safe notification code
-  checkpoint.
+  checkpoint, plus the Milestone 17A read-only scheduled-template workspace.
 - CI status: repository, website, and desktop quality gates are configured for
   pull requests and `main` pushes; deployment remains separately gated.
-- Current milestone: Milestone 15 is implemented and verified locally, and the
-  Webuzo-hosted static website is complete through production Milestone 16.
+- Current milestone: Milestone 15 is implemented and verified locally, the
+  Webuzo-hosted static website is complete through production Milestone 16,
+  and Milestone 17A's read-only scheduled task catalog is implemented and
+  verified locally.
   Native Wayland evidence covers project, file, and image pickers, bounded
   preview, a real Nautilus image drop, and fixed-copy notification delivery;
   complete XWayland and true-X11 handoff paths remain separately recorded.
-  Milestone 17 is next. Unsupported generic openers, generic file attachments,
-  and integration-management paths remain unavailable.
+  Scheduled-task management/execution and other unsupported advanced features
+  remain deferred. Unsupported generic openers, generic file attachments, and
+  integration-management paths remain unavailable.
 - Known limitations: Codex-directed model/reasoning selection is not yet
   implemented and is deferred to Milestone 18 after its integration and
   advanced-feature prerequisites; the current turn cannot replace its own
@@ -162,6 +173,7 @@ install yet. The repository and development activity remain private.
 - [Historical Cloudflare Pages capability audit](docs/CLOUDFLARE-PAGES-CAPABILITY-AUDIT.md)
 - [Webuzo deployment](docs/WEBUZO-DEPLOYMENT.md)
 - [Webuzo static-hosting decision](docs/DECISIONS/0024-webuzo-static-website-hosting.md)
+- [Read-only scheduled task decision](docs/DECISIONS/0025-read-only-scheduled-task-catalog.md)
 - [Milestone 16A website reconciliation](docs/MILESTONE_16A_WEBSITE_RECONCILIATION.md)
 - [Milestone 16B origin-only staging](docs/MILESTONE_16B_ORIGIN_STAGING.md)
 - [Milestone 16C production activation](docs/MILESTONE_16C_PRODUCTION_ACTIVATION.md)

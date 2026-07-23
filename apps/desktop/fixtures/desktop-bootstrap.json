@@ -68,6 +68,12 @@
       "label": "Reviewed desktop integration",
       "state": "ready",
       "milestone": 15
+    },
+    {
+      "id": "scheduled-task-catalog",
+      "label": "Read-only scheduled task catalog",
+      "state": "ready",
+      "milestone": 17
     }
   ]
 }

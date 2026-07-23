@@ -299,6 +299,13 @@ released a usable application.
   disabled-by-default native-only probe verifies real desktop notification
   delivery with fixed production copy and no webview command or arbitrary
   content; the normal artifact is rebuilt without that feature after the probe.
+- The Milestone 17A read-only scheduled task catalog: a schema-v2 shared
+  Rust/TypeScript contract, installed-and-enabled plugin lookup through stable
+  `plugin/read`, native-only marketplace roots, bounded and sanitized inert
+  prompt previews, strict typed schedules, independent degraded diagnostics,
+  and a responsive accessible Scheduled workspace with no create, edit, enable,
+  run, pause, or delete controls. Deterministic native/component/browser tests
+  use no personal plugin state and perform no task mutation or execution.
 
 ### Changed
 

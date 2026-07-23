@@ -107,6 +107,12 @@ impl DesktopBootstrap {
                     state: CapabilityState::Ready,
                     milestone: 15,
                 },
+                CapabilitySummary {
+                    id: "scheduled-task-catalog",
+                    label: "Read-only scheduled task catalog",
+                    state: CapabilityState::Ready,
+                    milestone: 17,
+                },
             ],
         }
     }
