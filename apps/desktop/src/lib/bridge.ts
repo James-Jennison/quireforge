@@ -35,6 +35,7 @@ import {
   type CodexAuthSnapshot,
 } from "./auth";
 import { codexRuntimeSchema, type CodexRuntimeSnapshot } from "./codex";
+import { codexUsageSchema, type CodexUsageSnapshot } from "./usage";
 import { desktopBootstrapSchema, type DesktopBootstrap } from "./contract";
 import {
   filePreviewHandoffRequestSchema,
@@ -139,6 +140,8 @@ export const CODEX_AUTH_START_COMMAND = "codex_auth_start";
 export const CODEX_AUTH_CANCEL_COMMAND = "codex_auth_cancel";
 export const CODEX_AUTH_LOGOUT_COMMAND = "codex_auth_logout";
 export const CODEX_AUTH_OPEN_BROWSER_COMMAND = "codex_auth_open_browser";
+export const CODEX_USAGE_STATUS_COMMAND = "codex_usage_status";
+export const CODEX_USAGE_REFRESH_COMMAND = "codex_usage_refresh";
 export const DESKTOP_BOOTSTRAP_COMMAND = "desktop_bootstrap";
 export const INTEGRATION_CATALOG_READ_COMMAND = "integration_catalog_read";
 export const INTEGRATION_CATALOG_REFRESH_COMMAND =
@@ -355,6 +358,20 @@ export async function openCodexAuthBrowser(
   invokeFunction: InvokeFunction = invokeTauri,
 ): Promise<void> {
   await invokeFunction(CODEX_AUTH_OPEN_BROWSER_COMMAND);
+}
+
+export async function loadCodexUsage(
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<CodexUsageSnapshot> {
+  const payload = await invokeFunction(CODEX_USAGE_STATUS_COMMAND);
+  return codexUsageSchema.parse(payload);
+}
+
+export async function refreshCodexUsage(
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<CodexUsageSnapshot> {
+  const payload = await invokeFunction(CODEX_USAGE_REFRESH_COMMAND);
+  return codexUsageSchema.parse(payload);
 }
 
 async function invokeProjectWorkspace(

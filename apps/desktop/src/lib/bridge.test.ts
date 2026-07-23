@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { scaffoldCodexAuth } from "./auth";
+import { scaffoldCodexUsage } from "./usage";
 import { sharedConversationAttachmentFixture } from "./attachment";
 import { scaffoldCodexRuntime } from "./codex";
 import { scaffoldConversation } from "./conversation";
@@ -54,6 +55,7 @@ import {
   FILE_PREVIEW_OPEN_COMMAND,
   FILE_PREVIEW_PICK_COMMAND,
   loadCodexAuth,
+  loadCodexUsage,
   loadCodexRuntime,
   loadConversationStatus,
   loadActiveConversations,
@@ -66,6 +68,7 @@ import {
   loadWorktreeStatus,
   notifyConversation,
   openCodexAuthBrowser,
+  refreshCodexUsage,
   openFilePreview,
   openGitFile,
   pickProjectDirectory,
@@ -300,6 +303,17 @@ describe("desktop bridge", () => {
     });
     expect(invoke).toHaveBeenNthCalledWith(3, CODEX_AUTH_CANCEL_COMMAND);
     expect(invoke).toHaveBeenNthCalledWith(4, CODEX_AUTH_OPEN_BROWSER_COMMAND);
+  });
+
+  it("uses fixed read-only usage commands", async () => {
+    const invoke = vi.fn().mockResolvedValue(scaffoldCodexUsage);
+
+    await expect(loadCodexUsage(invoke)).resolves.toEqual(scaffoldCodexUsage);
+    await expect(refreshCodexUsage(invoke)).resolves.toEqual(
+      scaffoldCodexUsage,
+    );
+    expect(invoke).toHaveBeenNthCalledWith(1, "codex_usage_status");
+    expect(invoke).toHaveBeenNthCalledWith(2, "codex_usage_refresh");
   });
 
   it("rejects raw authentication payloads", async () => {

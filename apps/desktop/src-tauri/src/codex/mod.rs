@@ -12,6 +12,7 @@ mod mock;
 mod model_selection;
 mod probe;
 pub mod types;
+mod usage;
 
 pub use auth::types::{AuthLoginMethod, CodexAuthSnapshot};
 pub use auth::CodexAuthService;
@@ -31,3 +32,4 @@ pub use model_selection::{
     ModelSelectionDiagnosticCode, ModelSelectionSnapshot, ModelSelectionUpdateRequest,
 };
 pub use probe::CodexRuntimeService;
+pub use usage::{CodexUsageService, CodexUsageSnapshot};

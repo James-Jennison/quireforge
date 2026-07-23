@@ -19,11 +19,12 @@ use attachment::{
 };
 use codex::{
     types::CodexRuntimeSnapshot, AuthLoginMethod, CodexAuthService, CodexAuthSnapshot,
-    CodexRuntimeService, ConversationApprovalDecisionRequest, ConversationContinueRequest,
-    ConversationDiagnosticCode, ConversationRegistrySnapshot, ConversationService,
-    ConversationSnapshot, ConversationStartRequest, IntegrationCatalogService,
-    IntegrationControlService, IntegrationMutationService, ModelSelectionDiagnosticCode,
-    ModelSelectionSnapshot, ModelSelectionUpdateRequest, SessionLifecycleSnapshot,
+    CodexRuntimeService, CodexUsageService, CodexUsageSnapshot,
+    ConversationApprovalDecisionRequest, ConversationContinueRequest, ConversationDiagnosticCode,
+    ConversationRegistrySnapshot, ConversationService, ConversationSnapshot,
+    ConversationStartRequest, IntegrationCatalogService, IntegrationControlService,
+    IntegrationMutationService, ModelSelectionDiagnosticCode, ModelSelectionSnapshot,
+    ModelSelectionUpdateRequest, SessionLifecycleSnapshot,
 };
 use contract::DesktopBootstrap;
 use desktop::{
@@ -210,6 +211,20 @@ async fn codex_auth_open_browser(
 ) -> Result<(), ()> {
     let url = service.handoff_url().await.ok_or(())?;
     app.opener().open_url(url, None::<&str>).map_err(|_| ())
+}
+
+#[tauri::command]
+async fn codex_usage_status(
+    service: tauri::State<'_, CodexUsageService>,
+) -> Result<CodexUsageSnapshot, ()> {
+    Ok(service.snapshot().await)
+}
+
+#[tauri::command]
+async fn codex_usage_refresh(
+    service: tauri::State<'_, CodexUsageService>,
+) -> Result<CodexUsageSnapshot, ()> {
+    Ok(service.refresh().await)
 }
 
 #[tauri::command]
@@ -901,6 +916,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .manage(CodexRuntimeService::default())
         .manage(CodexAuthService::default())
+        .manage(CodexUsageService::default())
         .manage(IntegrationCatalogService::default())
         .manage(IntegrationControlService::default())
         .manage(IntegrationMutationService::default())
@@ -967,6 +983,8 @@ pub fn run() {
             codex_auth_cancel,
             codex_auth_logout,
             codex_auth_open_browser,
+            codex_usage_status,
+            codex_usage_refresh,
             project_workspace_status,
             project_pick_directory,
             project_pick_relink,
