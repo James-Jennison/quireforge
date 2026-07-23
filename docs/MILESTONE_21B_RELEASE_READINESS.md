@@ -34,9 +34,10 @@ The clean preflight manifest records:
 - exactly one AppImage and one Debian artifact plus `SHA256SUMS`.
 
 That preflight source precedes the dormant website hardening and is not the
-terminal publication source. The eventual publication handoff must perform one
-more clean authoritative build after the final local commit and accept only
-the source commit and hashes in that resulting manifest.
+terminal publication source. The generated release manifest, rather than this
+version-controlled report, is the authoritative terminal source/hash record. A
+publication handoff is valid only when that manifest names the exact clean
+commit selected for the tag and all four files still match it.
 
 Accepted preflight behavior includes:
 
