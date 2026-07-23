@@ -1262,8 +1262,8 @@ representation issues before publication.
 | Calibrated forecast  | Approximately 4.5–8 active hours; 25–55 minutes of local commands; 4–10 minutes hosted CI critical path; 5–9.5 total elapsed hours across 15A–15C; medium confidence                                             |
 | Calibration basis    | Synchronized clean `main` at `f99c078`; 44 GiB available RAM and 718 GiB free storage; low load; 12 logical CPUs; warm Cargo/pnpm caches; no GPU work; split into three independently reviewable checkpoints     |
 | Preflight commands   | Desktop TypeScript check 1.67 seconds/about 266 MiB; four-worker Cargo check 0.25 second/about 109 MiB; both passed with zero swaps                                                                              |
-| Current status       | Milestones 15A and 15B implemented and verified locally; 15C code/automated gates, Wayland notification delivery, and XWayland/true-X11 handoffs are verified, while interactive Wayland picker/attachment acceptance remains open |
-| Observed local work  | 15A: approximately 0.60 active/0.13 automated hour. 15B: approximately 0.60 active/0.08 automated hour. 15C timing remains in progress. None had a post-start user-blocked interval                                                         |
+| Current status       | Milestones 15A–15C implemented and verified locally; native Wayland and separately recorded XWayland/true-X11 display-session gates are complete                                                                                 |
+| Observed local work  | 15A: approximately 0.60 active/0.13 automated hour. 15B: approximately 0.60 active/0.08 automated hour. 15C: approximately 3.01 active/0.18 automated hours. None had a post-start user-blocked interval                  |
 | Acceptance timings   | Latest 15C validation 62.29 seconds/about 1.34 GiB; 143 frontend tests; 167 Rust tests/164 passed/3 ignored; browser suites 27.18/7.02 seconds; corrected guest release build 37.38 seconds; zero product failures                         |
 
 Critical path: safe preview threat/format decision → native picker and
@@ -1329,8 +1329,8 @@ revalidation before the final green gates.
 | Selected model      | GPT-5.6 Sol, XHigh reasoning; manually confirmed                                                                                                                                                                                                                                                        |
 | Calibrated forecast | Approximately 2–4 active hours; 15–35 minutes of local commands; 2.5–5 total elapsed hours in one session, excluding any logout/login needed for a true X11 session; medium confidence                                                                                                                  |
 | Calibration basis   | Finished 15B branch at `390434b`; closed 15A preview and conversation-state contracts; warm Cargo/pnpm/browser caches; GNOME Wayland host with XWayland but no true X11 login; TypeScript preflight 1.61 seconds/about 271 MiB and Cargo preflight 1.72 seconds/about 588 MiB, both with zero swaps         |
-| Current status      | Code and automated gates verified locally on `feat/milestone-15c-desktop-handoffs`; production Wayland launch/fixed-copy notification and complete XWayland/true-X11 picker, preview, attachment, and default-application handoffs verified; interactive Wayland picker/attachment remains open         |
-| Observed local work | In-progress timing from the `2026-07-22T14:30:59-07:00` branch start; no post-start user-blocked interval, package, release, deployment, hosting mutation, personal Codex-state access, or live model call                                                                                                  |
+| Current status      | Implemented and verified locally on `feat/milestone-15c-desktop-handoffs`; native Wayland project/file/image picker, preview, real-drop, and notification evidence plus complete XWayland/true-X11 handoff evidence close the display-session gate |
+| Observed local work | Approximately 3.01 active and 0.18 automated-wait hours from the `2026-07-22T14:30:59-07:00` branch start through `2026-07-22T17:42:22-07:00`; approximately 3.19 counted/elapsed hours with no post-start user-blocked interval, package, release, deployment, hosting mutation, personal Codex-state access, or live model call |
 | Acceptance timings  | Latest full validation 62.29 seconds/about 1.34 GiB; 140 desktop and 3 website frontend tests; default Rust 167 tests/164 passed/3 ignored; browser 24/24 in 27.18 seconds and 8/8 in 7.02 seconds; corrected/probe/restored/final guest compiles 37.38/40.15/37.94/37.81 seconds; zero swaps          |
 
 The design narrowed “open with” to the system default application for exactly
@@ -1363,7 +1363,12 @@ GTK capture corrected the real compatibility failure without exposing paths to
 React. The corrected production build staged normalized `drag drop` metadata,
 and the fixed-copy notification probe delivered through the X11 session bus.
 The normal artifact was restored afterward. Only interactive Wayland picker/
-attachment evidence remains open.
+attachment evidence remained. The final native Wayland pass used the configured
+production artifact and disposable XDG data to complete project/file/image
+pickers, bounded README preview, and a real Nautilus drop that staged normalized
+`drag drop` metadata. An approved test-only XDG Remote Desktop portal session
+supplied native compositor input and was closed immediately afterward; it did
+not widen QuireForge's product permissions. This completed Milestone 15 locally.
 
 ## Milestone 18 — Agent-directed model and reasoning selection
 

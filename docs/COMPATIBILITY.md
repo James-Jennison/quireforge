@@ -1,10 +1,9 @@
 # Compatibility
 
-Status: desktop work through Milestone 15B is implemented and verified on the
-discovery host. Milestone 15C's reviewed handoff and notification code is
-implemented; its production Wayland launch and fixed-copy notification delivery
-plus the complete XWayland and true-X11 handoff/attachment paths are verified,
-while interactive Wayland picker/attachment acceptance remains open.
+Status: desktop work through Milestone 15 is implemented and verified locally.
+Milestone 15C has production native Wayland picker, preview, real-drop, and
+fixed-copy notification evidence plus separately recorded complete XWayland and
+true-X11 handoff/attachment paths.
 Milestone 13 defines the Codex 0.145.0 integration contract and read-only
 catalog; Milestones 14A–14C add fixed integration workflows, and Milestones
 15A–15C add bounded local-file, conversation-image, and desktop-integration
@@ -77,8 +76,8 @@ identity.
 
 The portal executables live under the distribution's libexec directory rather
 than the interactive shell `PATH`. The native dialog dependency and fixed
-picker command compile into the verified release executable; interactive
-portal selection remains a manual host check rather than an automated test.
+picker command compile into the verified release executable; display-session
+picker acceptance is recorded separately from automated tests.
 
 The host is newer than the intended packaging baseline. Tauri recommends
 building AppImages on the oldest supported compatible distribution to avoid
@@ -233,9 +232,9 @@ normalized UTF-8 text, bounded PNG/JPEG data, and metadata-only PDF recognition.
 It does not depend on a PDF engine, image metadata helper, external command, or
 editor association. APNG, unknown binary content, and files above the native
 byte/dimension limits are refused; UTF-8 HTML/SVG source is shown only as inert
-normalized text. The native picker compiles on the discovery Wayland host;
-interactive Wayland and X11 behavior is recorded separately because a compile
-or browser test is not display-session evidence.
+normalized text. Native Wayland, XWayland, and true-X11 picker behavior is
+recorded separately because a compile or browser test is not display-session
+evidence.
 
 ## Conversation-image compatibility
 
@@ -253,8 +252,8 @@ WebKitGTK produced an empty HTML `FileList` for a real Nautilus drop. The
 corrected Linux path captures the GTK URI list for at most 30 seconds in Rust
 and consumes it once through a path-free fixed command from the visible drop
 zone. Source and staged paths remain native-only; React receives only normalized
-metadata. Interactive Wayland picker/drop behavior remains part of the 15C
-manual compatibility gate.
+metadata. Interactive native Wayland and true-X11 picker/drop behavior is
+verified as part of the 15C compatibility record.
 
 ## Desktop handoff and notification compatibility
 
@@ -311,8 +310,19 @@ Freedesktop service. Its filtered D-Bus capture contained the `quireforge`
 identity and the same fixed title/body; session evidence was recorded alongside
 the active Xorg process. The normal production artifact was rebuilt afterward
 and excluded the probe-only flag and log marker. This closes the true-X11
-manual gate without relabeling XWayland. The interactive Wayland picker/
-attachment pass remains open.
+manual gate without relabeling XWayland.
+
+The final native Wayland acceptance pass used the configured production
+artifact with `GDK_BACKEND=wayland`, `XDG_SESSION_TYPE=wayland`,
+`WAYLAND_DISPLAY=wayland-0`, and disposable QuireForge XDG data. Native dialogs
+attached the repository after review, selected `README.md` for bounded preview,
+and staged `icon.png` through the image picker. A real native Nautilus drag then
+staged the same image as normalized `drag drop` metadata, exercising the Linux
+GTK URI capture when WebKitGTK supplied no usable browser path. A test-only,
+portal-approved Remote Desktop session supplied compositor-native pointer input
+for this pass and was closed immediately afterward; it is not a product
+dependency or permission. No source path entered React or QuireForge metadata,
+and the draft attachment was removed without changing the selected source.
 
 ## Website-host compatibility
 

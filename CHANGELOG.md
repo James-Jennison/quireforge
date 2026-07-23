@@ -273,10 +273,10 @@ released a usable application.
   provide neither a path nor an application/command, the webview receives no
   direct opener/notification plugin permission, and full display-session
   acceptance remains separately evidenced. The configured production artifact
-  now has a verified native Wayland launch and complete XWayland and true-X11
-  picker, preview, confirmation, default-application, attachment, and
-  consumed-action paths; interactive Wayland picker/attachment evidence remains
-  open. A
+  now has verified native Wayland project/file/image picker, bounded-preview,
+  real Nautilus-drop, and notification evidence plus complete XWayland and
+  true-X11 picker, preview, confirmation, default-application, attachment, and
+  consumed-action paths. A
   disabled-by-default native-only probe verifies real desktop notification
   delivery with fixed production copy and no webview command or arbitrary
   content; the normal artifact is rebuilt without that feature after the probe.

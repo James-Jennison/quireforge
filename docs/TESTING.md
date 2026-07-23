@@ -378,9 +378,14 @@ deterministic mock app-server processes and make no live model call.
   release, deployment, or hosting change.
 
 Current display evidence: the configured unbundled Tauri production artifact
-starts under native Wayland. It completed the attached-project picker, file
-picker, bounded README preview, second confirmation, system-default opener, and
-consumed-action state under XWayland with disposable app data. In a separate
+starts under native Wayland. With disposable app data it completed project
+attach/review, the `README.md` picker and bounded preview, the native image
+picker, and a real Nautilus image drop that staged normalized `drag drop`
+metadata. Test-only compositor input came from an approved XDG Remote Desktop
+portal session that was closed after the pass; the product did not gain a
+remote-control permission or dependency. It separately completed the attached-
+project picker, file picker, bounded README preview, second confirmation,
+system-default opener, and consumed-action state under XWayland. In a separate
 Ubuntu 24.04 GNOME 46 `ubuntu-xorg` QA guest, `loginctl` reported `Type=x11`, an
 Xorg server owned display `:0`, and the shell environment had no
 `WAYLAND_DISPLAY`. Against the attached repository mounted in place, the
@@ -392,8 +397,8 @@ a source path. The feature-gated probe delivered the fixed completed-task copy
 through the X11 session's Freedesktop service, and a filtered D-Bus capture
 contained only QuireForge identity plus the fixed title/body. The normal
 artifact was rebuilt afterward and contains no probe flag or delivery string.
-Interactive Wayland picker/attachment flow remains unchecked; XWayland is still
-recorded separately and was not relabeled as true X11.
+This closes the Milestone 15 display-session gate; native Wayland, XWayland, and
+true X11 remain accurately distinguished.
 
 ## Planned manual Milestone 18 checklist
 

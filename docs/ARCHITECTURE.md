@@ -1,9 +1,9 @@
 # Architecture
 
 Status: Milestone 0 application proposal with the website foundation and
-desktop implementation through the Milestone 15C code checkpoint. Packaging,
-deployment, interactive Wayland/true-X11 acceptance, and unsupported
-integration-management expansion remain subject to separately gated work.
+desktop implementation through the locally verified Milestone 15. Packaging,
+deployment, and unsupported integration-management expansion remain subject to
+separately gated work.
 
 QuireForge is an unofficial native Linux workspace for Codex. It is not made,
 endorsed, supported, or distributed by OpenAI.

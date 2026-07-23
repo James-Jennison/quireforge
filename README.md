@@ -131,13 +131,13 @@ deployed. There is no application package to install yet.
   checkpoint.
 - CI status: repository, website, and desktop quality gates are configured for
   pull requests and `main` pushes; deployment remains separately gated.
-- Current milestone: Milestone 15 is in progress. The 15A safe file-preview and
-  15B conversation-image attachment checkpoints are implemented and verified
-  locally; the 15C handoff/notification code checkpoint is implemented and its
-  production Wayland launch, fixed-copy notification delivery, and complete
-  XWayland and true-X11 handoff paths are verified. Interactive Wayland
-  picker/attachment evidence remains open. Unsupported generic openers, file
-  attachments, and integration-management paths remain unavailable.
+- Current milestone: Milestone 15 is implemented and verified locally. Native
+  Wayland evidence now covers project, file, and image pickers, bounded preview,
+  a real Nautilus image drop, and fixed-copy notification delivery; complete
+  XWayland and true-X11 handoff paths remain separately recorded. Milestone 16,
+  the complete static Cloudflare Pages website, is next. Unsupported generic
+  openers, generic file attachments, and integration-management paths remain
+  unavailable.
 - Known limitations: Codex-directed model/reasoning selection is not yet
   implemented and is deferred to Milestone 18 after its integration and
   advanced-feature prerequisites; the current turn cannot replace its own

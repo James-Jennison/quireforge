@@ -884,6 +884,7 @@ driver, CUDA, swap, or zram change was made, and the RTX 3050 remained unused.
 | Post-X11-fix complete default `pnpm validate`    |      62.29 seconds |       about 1.34 GiB | Passed 143 frontend tests and 167 Rust tests; 164 passed and 3 deliberate live probes were ignored       |
 | Post-X11-fix desktop Playwright regression       |      27.18 seconds |        about 443 MiB | Passed 24 desktop/mobile checks, including attachment metadata, accessibility, and overflow              |
 | Post-X11-fix website Playwright regression       |       7.02 seconds |        about 250 MiB | Passed 8 desktop/mobile checks after verifying port 4321 ownership                                       |
+| Final native-Wayland acceptance build            |      40.67 seconds |       about 2.38 GiB | Configured production artifact built the exact reviewed tree before the interactive Wayland pass         |
 
 Every resource-timed final operation reported zero swaps. The desktop bundle
 is 788.43 kB/211.88 kB gzip and retains the existing chunk-size warning. The
@@ -907,4 +908,12 @@ The corrected host gates and both browser suites then passed with zero swaps as
 recorded above. A final configured build of the exact reviewed tree compiled in
 37.81 seconds and again excluded the probe-only markers. No package, release,
 deployment, host desktop-package change, or live model call was made.
-Interactive Wayland picker/attachment evidence remains open.
+
+The final native Wayland pass first rebuilt the configured production artifact
+in 40.67 seconds at about 2.38 GiB with zero swaps. Against disposable XDG data,
+it completed project/file/image pickers, bounded README preview, and a real
+Nautilus image drop that staged normalized `drag drop` metadata. A portal-
+approved Remote Desktop session supplied test-only compositor input and was
+closed after the pass; it added no QuireForge dependency or permission. This
+closed the remaining Milestone 15 display-session evidence without a package,
+release, deployment, hosting mutation, or live model call.

@@ -565,18 +565,18 @@ reviewable:
   allowlisted; no generic opener or arbitrary command IPC is allowed. The code
   checkpoint uses native-held one-use preview actions, an explicit system-
   default-application review, and fixed privacy-safe background notifications;
-  Linux display-session evidence remains the final acceptance gate. See
+  the completed final Linux display-session gate is recorded below. See
   [ADR 0023](DECISIONS/0023-reviewed-desktop-handoffs-and-notifications.md).
 
-Milestones 15A and 15B are implemented and verified locally. The 15C handoff
-and notification code checkpoint is implemented with the official Tauri
-notification plugin, a Linux binding already present in the Tauri stack, and no
-source-path persistence, unrelated user-file access, billable model call,
-package, release, or deployment. Its production Wayland launch and fixed-copy
-notification delivery plus the complete XWayland and true-X11 picker/preview/
-default-application/attachment paths are verified against the attached
-discovery repository. The broader Milestone 15 acceptance remains open only
-for an interactive Wayland picker/attachment pass.
+Milestones 15A–15C are implemented and verified locally. The 15C handoff and
+notification checkpoint uses the official Tauri notification plugin, a Linux
+binding already present in the Tauri stack, and no source-path persistence,
+unrelated user-file access, billable model call, package, release, or
+deployment. Its production native Wayland project/file/image picker, bounded-
+preview, real Nautilus-drop, and fixed-copy notification evidence is complete
+against disposable app data. Complete XWayland and true-X11 picker/preview/
+default-application/attachment paths remain separately recorded. Milestone 16
+is the next planned implementation milestone.
 
 ### 16 — Complete Cloudflare Pages Website
 

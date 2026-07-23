@@ -69,4 +69,5 @@ native-drop claiming, and cancellation:
   startup if the webview disappears. They are app-owned cache-like data, never
   a credential or source-of-record store.
 - Interactive native picker and drag/drop behavior on supported Wayland and X11
-  sessions remains a Milestone 15C verification obligation.
+  sessions is a Milestone 15C verification obligation recorded separately from
+  this attachment contract.

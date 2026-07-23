@@ -24,24 +24,24 @@ Definitions used here:
 
 ## Cumulative project totals
 
-Last updated: `2026-07-22T16:54:58-07:00`
+Last updated: `2026-07-22T17:42:22-07:00`
 
 | Measure                                   | Cumulative record                                                                                                                                            |
 | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Total milestones planned                  | 22 major milestones (0–21); Milestones 13 and 14 use separately gated submilestones                                                                          |
-| Total milestone entries completed         | 20 (Milestones 0–12, 13A–13B, 14A–14C, and local 15A–15B checkpoints); Milestone 15 remains open through 15C                                                |
-| Milestones in progress                    | Milestone 15; 15A–15B are complete locally, while 15C code/Wayland-notification/XWayland/true-X11 evidence is complete and its Wayland picker/attachment gate remains open |
-| Confirmed/reconstructed active execution  | Approximately 22.04–29.12 hours                                                                                                                              |
-| Confirmed/reconstructed automated wait    | Approximately 6.85–7.74 hours; early uninstrumented waits excluded                                                                                           |
+| Total milestone entries completed         | 21 (Milestones 0–12, 13A–13B, 14A–14C, and local 15A–15C checkpoints); Milestone 15 is complete locally                                                      |
+| Milestones in progress                    | None; Milestone 16 is the next planned milestone                                                                                                              |
+| Confirmed/reconstructed active execution  | Approximately 25.05–32.13 hours                                                                                                                              |
+| Confirmed/reconstructed automated wait    | Approximately 7.03–7.92 hours; early uninstrumented waits excluded                                                                                           |
 | Reconstructed user-blocked time           | At least 11.73 hours, plus unmeasured early approvals/prerequisites                                                                                          |
-| Counted project time                      | Approximately 28.89–36.86 hours                                                                                                                              |
-| Total elapsed across completed milestones | At least 36.71 evidenced hours; exact historical total is unknown                                                                                            |
-| Average counted time                      | Approximately 1.44–1.84 hours per completed milestone entry                                                                                                  |
+| Counted project time                      | Approximately 32.08–40.05 hours                                                                                                                              |
+| Total elapsed across completed milestones | At least 39.90 evidenced hours; exact historical total is unknown                                                                                            |
+| Average counted time                      | Approximately 1.53–1.91 hours per completed milestone entry                                                                                                  |
 | Median counted time                       | Approximately 0.81 hour using reconstructed range midpoints                                                                                                  |
 | Longest completed milestone               | Milestone 11, approximately 5.45–7.72 counted hours                                                                                                          |
 | Shortest completed milestone              | Milestone 0, approximately 0.15 counted hours                                                                                                                |
-| Comparable forecast versus actual         | Milestones 3–15B forecast 87.75–151.50 active hours in aggregate and used approximately 25.36–33.33 counted hours, about 62%–83% below the forecast envelope |
-| Confidence classifications                | 7 Confirmed, 11 Reconstructed, 2 Estimated, 0 Unknown completed entries                                                                                      |
+| Comparable forecast versus actual         | Milestones 3–15C forecast 89.75–155.50 active hours in aggregate and used approximately 28.55–36.52 counted hours, about 59%–82% below the forecast envelope |
+| Confidence classifications                | 8 Confirmed, 11 Reconstructed, 2 Estimated, 0 Unknown completed entries                                                                                      |
 
 The cumulative active and automated ranges are derived from historical reports
 and workflow evidence that were recorded with different granularity. They are
@@ -73,6 +73,7 @@ range endpoints.
 | 14C       | Complete | `2026-07-22T10:42:02-07:00` | `2026-07-22T12:30:42-07:00` | 4.5–8 h active; 5–9.5 h elapsed      |     ~0.70 h |        ~0.24 h |                   ~0.87 h |               0.94 h |        1.81 h | ~5.55 h / 88.8% below midpoint  | Confirmed     |
 | 15A       | Local    | `2026-07-22T12:48:19-07:00` | `2026-07-22T13:35:21-07:00` | M15 aggregate: 4.5–8 h active        |     ~0.60 h |        ~0.13 h |                    0.00 h |               0.73 h |        0.78 h | Directionally 90.4% below aggregate midpoint | Confirmed |
 | 15B       | Local    | `2026-07-22T13:44:10-07:00` | `2026-07-22T14:25:43-07:00` | 2.5–4.5 h active; 3–5.5 h elapsed    |     ~0.60 h |        ~0.08 h |                    0.00 h |               0.68 h |        0.69 h | ~2.90 h / 82.9% below midpoint  | Confirmed     |
+| 15C       | Local    | `2026-07-22T14:30:59-07:00` | `2026-07-22T17:42:22-07:00` | 2–4 h active; 2.5–5 h elapsed        |     ~3.01 h |        ~0.18 h |                    0.00 h |               3.19 h |        3.19 h | ~0.01 h / 0.3% above midpoint   | Confirmed     |
 
 Variance uses the midpoint of the historical forecast and counted-time ranges.
 It is included only where a recorded forecast exists and should not be read as
@@ -786,16 +787,16 @@ greater precision than the underlying ranges.
   deployment, hosting mutation, user-file inspection, personal Codex-state
   read/mutation, or live/billable model call was performed.
 
-## Milestone 15C — Reviewed desktop handoffs and Linux verification (in progress)
+## Milestone 15C — Reviewed desktop handoffs and Linux verification
 
 - **Objective:** Add one-use, system-default-application handoff for an already
   reviewed project file plus focused-window-suppressed, deduplicated, fixed-copy
   task notifications; verify supported Wayland and X11-family sessions without
   widening the webview capability boundary.
-- **Start / current checkpoint:** Started at
-  `2026-07-22T14:30:59-07:00`, the reflog-recorded branch checkout from finished
-  15B commit `390434b`. Completion is intentionally unset while interactive
-  Wayland picker/attachment remains open.
+- **Start / completion:** Started at `2026-07-22T14:30:59-07:00`, the reflog-
+  recorded branch checkout from finished 15B commit `390434b`, and completed
+  locally at `2026-07-22T17:42:22-07:00` after the native Wayland pass and
+  repository validation.
 - **Model and reasoning:** GPT-5.6 Sol, XHigh; manually confirmed.
 - **Calibrated forecast:** 2–4 active hours, 15–35 minutes of local commands,
   and 2.5–5 total elapsed hours, excluding logout/login time required to reach
@@ -808,6 +809,13 @@ greater precision than the underlying ranges.
   attachment/file pickers, bounded preview, second default-application
   confirmation, registered viewer launch, and consumed-action state under
   XWayland with disposable app data.
+- **Native-Wayland evidence:** The exact configured production tree rebuilt in
+  40.67 seconds at about 2.38 GiB, then ran with `GDK_BACKEND=wayland`,
+  `XDG_SESSION_TYPE=wayland`, and `WAYLAND_DISPLAY=wayland-0` against disposable
+  XDG data. It completed project/file/image pickers, bounded README preview, and
+  a real Nautilus image drop that staged normalized `drag drop` metadata. The
+  approved test-only Remote Desktop portal session supplied compositor-native
+  pointer input and was closed afterward; it added no product permission.
 - **Notification delivery evidence:** A disabled-by-default native-only probe
   reused the production fixed completed-task copy without a conversation,
   arbitrary input, webview command, or live model call. Its feature build passed
@@ -828,8 +836,9 @@ greater precision than the underlying ranges.
   GTK capture in Rust and returns only normalized metadata to React. The normal
   feature-disabled artifact was restored after the probe, then the exact final
   reviewed tree was rebuilt and checked for absence of probe-only markers.
-- **Status:** In progress, so no completion time, counted-project-time value,
-  variance, confidence classification, or cumulative completed-entry increment
-  is recorded yet. No push, merge, package, release, deployment, hosting
-  mutation, personal Codex-state access, or live/billable model call was
-  performed.
+- **Observed timing:** Approximately 3.01 active hours plus 0.18 automated-wait
+  hour, or 3.19 counted/elapsed hours, with no post-start user-blocked interval.
+  The result approximately matched the 3-hour calibrated active midpoint.
+- **Status:** Completed locally with Confirmed confidence. No push, merge,
+  package, release, deployment, hosting mutation, personal Codex-state access,
+  or live/billable model call was performed.
