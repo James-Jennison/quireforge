@@ -1596,6 +1596,10 @@ All accepted commands reported zero swaps.
 | Start approval           | Full local Milestone 20 explicitly approved by the user's “Proceed”; publication, website activation, push, merge, deployment, host package installation, and external release mutation remain unauthorized                                             |
 | Expected usage intensity | High model usage; high local CPU/storage/network use for the cold baseline image and dependency graph; no GPU workload, external authentication, billable model call, or personal Codex-state mutation                                                   |
 | Completion boundary      | Reproducible local AppImage/Debian artifacts, checksums and manifest, guarded immutable-SHA workflow source, disposable package lifecycle tests, inactive website download data, documentation, audits, and focused local commits; no public release |
+| Observed completion      | `2026-07-23T06:44:00-07:00`; approximately 0.90 active hour, 0.25 automated-wait hour, 0.00 user-blocked hour, and 1.15 counted/wall-clock hours from branch creation through the clean authoritative package pass                                           |
+| Accepted evidence        | Clean pinned Ubuntu 22.04 release-candidate build; identical repeated normalization; six package tests; 152 desktop, six website, and 174 runnable Rust tests; 32 desktop and eight website browser scenarios; Node/RustSec audits; isolated package launches |
+| Variance                 | Approximately 5.10 active hours, or 85.0%, below the six-hour calibrated midpoint; established Tauri/product contracts and warm dependency caches compressed the path, while baseline/MSRV/tool-drift gates caught real issues before release              |
+| Completion status       | Complete and verified locally with focused commits; not pushed, merged, published, attested, deployed, installed on the host, or activated on the website                                                                                                  |
 
 The calibrated range is wider than the preliminary command-time range because
 the development host is newer than the selected Ubuntu 22.04 packaging

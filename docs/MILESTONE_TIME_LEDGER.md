@@ -24,23 +24,23 @@ Definitions used here:
 
 ## Cumulative project totals
 
-Last updated: `2026-07-23T05:30:09-07:00`
+Last updated: `2026-07-23T06:44:00-07:00`
 
 | Measure                                   | Cumulative record                                                                                                                                                 |
 | ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Total milestones planned                  | 22 major milestones (0–21); Milestones 13 and 14 use separately gated submilestones                                                                               |
-| Total milestone entries completed         | 28 (Milestones 0–12 and submilestones 13A–19); Milestone 19 is complete locally                                                                                   |
-| Milestones in progress                    | None; Milestone 20 is the next planned milestone and remains separately approval-gated                                                                            |
-| Confirmed/reconstructed active execution  | Approximately 27.19–34.27 hours; uninstrumented Milestone 16 work excluded                                                                                        |
-| Confirmed/reconstructed automated wait    | Approximately 7.52–8.44 hours; early and Milestone 16 uninstrumented waits excluded                                                                               |
+| Total milestone entries completed         | 29 (Milestones 0–12 and submilestones 13A–20); Milestone 20 is complete locally                                                                                   |
+| Milestones in progress                    | None; Milestone 21 publication/download activation is next and remains separately approval-gated                                                                  |
+| Confirmed/reconstructed active execution  | Approximately 28.09–35.17 hours; uninstrumented Milestone 16 work excluded                                                                                        |
+| Confirmed/reconstructed automated wait    | Approximately 7.77–8.69 hours; early and Milestone 16 uninstrumented waits excluded                                                                               |
 | Reconstructed user-blocked time           | At least 11.73 hours, plus unmeasured early approvals/prerequisites                                                                                               |
-| Counted project time                      | Approximately 34.71–42.71 hours                                                                                                                                   |
-| Total elapsed across completed milestones | At least 42.54 evidenced hours; exact historical total is unknown                                                                                                 |
-| Average counted time                      | Approximately 1.45–1.78 hours across the 24 timed completed entries                                                                                               |
+| Counted project time                      | Approximately 35.86–43.86 hours                                                                                                                                   |
+| Total elapsed across completed milestones | At least 43.69 evidenced hours; exact historical total is unknown                                                                                                 |
+| Average counted time                      | Approximately 1.43–1.75 hours across the 25 timed completed entries                                                                                               |
 | Median counted time                       | Approximately 0.80 hour using reconstructed range midpoints                                                                                                       |
 | Longest completed milestone               | Milestone 11, approximately 5.45–7.72 counted hours                                                                                                               |
 | Shortest completed milestone              | Milestone 0, approximately 0.15 counted hours                                                                                                                     |
-| Comparable forecast versus actual         | Timed Milestones 3–19 forecast 100.75–174.00 active hours in aggregate and used approximately 31.18–39.15 counted hours, about 61%–82% below the forecast envelope |
+| Comparable forecast versus actual         | Timed Milestones 3–20 forecast 105.25–181.50 active hours in aggregate and used approximately 32.33–40.30 counted hours, about 62%–82% below the forecast envelope |
 | Confidence classifications                | 11 Confirmed, 11 Reconstructed, 2 Estimated, 4 Unknown completed entries                                                                                          |
 
 The cumulative active and automated ranges are derived from historical reports
@@ -1010,3 +1010,46 @@ greater precision than the underlying ranges.
   publication, deployment, integration authorization, personal Codex-state
   mutation, or live/billable model call was performed. The accepted final
   native probe used an isolated Codex home.
+
+## Milestone 20 — Packaging and release automation
+
+- **Objective:** Produce reproducible local x86_64 AppImage and Debian
+  candidates on an appropriate baseline, with exact checksums/manifest,
+  disposable lifecycle and launch validation, inactive website download data,
+  and a separately guarded release workflow.
+- **Start / completion:** `2026-07-23T05:34:59-07:00` /
+  `2026-07-23T06:44:00-07:00`, from branch creation through the clean
+  authoritative Ubuntu 22.04 package pass.
+- **Model and reasoning:** GPT-5.6 Sol, XHigh; retained for the approved
+  autonomous local pass.
+- **Calibrated forecast:** 4.5–7.5 active hours, 60–150 minutes of local
+  commands, and 6–11 total elapsed hours; medium confidence.
+- **Active / automated / user-blocked:** Approximately 0.90 active hour, 0.25
+  automated hour, and 0.00 post-start user-blocked hour. Counted project and
+  wall-clock elapsed time are approximately 1.15 hours.
+- **Evidence:** A clean pinned Ubuntu 22.04 build produced
+  `release-candidate` AppImage/Debian artifacts, exact manifest, and checksums.
+  Repeating normalization from the same raw bundles produced identical hashes.
+  Six package-contract tests, 152 desktop tests, six website tests, and 174
+  runnable Rust tests passed with three deliberate live probes ignored. All 32
+  desktop and eight website browser scenarios passed. Fresh high-severity Node
+  and warning-denying RustSec audits reported no findings.
+- **Package and visual review:** Exact Debian/AppImage identity, AppStream
+  metadata, GLIBC 2.35 ceiling, install/upgrade/uninstall, project/metadata
+  preservation, and isolated visible X11 launches passed. A 12-second
+  current-session AppImage capture reached the full workspace with more than
+  fifteen thousand colors, `Native IPC verified`, and `v0.1.0-beta.1`. That
+  probe caught and closed a prerelease-schema fallback that had displayed
+  browser-preview `v0.0.0`.
+- **Variance:** Approximately 5.10 active hours, or 85.0%, below the six-hour
+  calibrated midpoint. Existing typed boundaries and warm dependency caches
+  shortened implementation, while fail-closed tool hashes, baseline compiler
+  requirements, AppImage metadata, canonical Debian naming, and real package
+  launch checks caught substantive release defects.
+- **Confidence:** **Confirmed** from the branch reflog, prospective forecast,
+  clean source manifest, pinned baseline build, repeated artifact hashes,
+  resource-timed gates, lifecycle output, and native pixel capture.
+- **Status:** Complete and verified locally. Local candidates were produced,
+  but no push, merge, GitHub workflow dispatch, release, attestation, website
+  activation, deployment, host package installation, external authentication,
+  personal Codex-state mutation, or live/billable model call occurred.
