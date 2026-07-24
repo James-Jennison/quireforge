@@ -36,6 +36,20 @@ Milestone 21B adds repeated byte-equality evidence, current-host package launch
 review, signed-out package pixels, and dormant same-origin website publication
 validation while keeping the committed download state inactive.
 
+## Validation selection
+
+Use targeted checks while implementing a scoped change. Use the full
+non-browser gate for meaningful milestone closure. Run desktop E2E only for UI
+behavior changes, and use package-container validation only for
+packaging-sensitive changes.
+
+| Scope | Existing commands |
+| --- | --- |
+| Targeted desktop | `pnpm --filter @quireforge/desktop check`<br>`pnpm --filter @quireforge/desktop lint`<br>`pnpm --filter @quireforge/desktop format:check`<br>`pnpm --filter @quireforge/desktop test`<br>`pnpm --filter @quireforge/desktop build`<br>`pnpm --filter @quireforge/desktop validate:dist` |
+| Rust | `cargo fmt --all --check`<br>`pnpm rust:check`<br>`pnpm rust:clippy`<br>`pnpm rust:test` |
+| Full non-browser | `pnpm validate` |
+| Additional when relevant | `pnpm --filter @quireforge/desktop test:e2e`<br>`pnpm desktop:build`<br>`./scripts/run_linux_package_container.sh` |
+
 ## Repository, website, and desktop checks
 
 Run these commands from the repository root after installing locked

@@ -112,6 +112,7 @@ discovery; scheduling management and execution remain unsupported.
 |        19 | Security, accessibility, and performance hardening                | Very large   | Complete and verified locally                                            |
 |        20 | Packaging and release automation                                  | Large        | Complete and verified locally; not published                             |
 |        21 | Product readiness, beta publication, and download activation       | Very large   | 21A complete; 21B local preflight passed, publication approval-gated      |
+|        23 | UI platform feasibility decision                                    | Medium       | Next; read-only decision evidence required                                |
 
 ## Milestone definitions
 
@@ -778,6 +779,17 @@ runnable Rust tests with three deliberate live probes ignored, 38 desktop and
 mobile Playwright scenarios, production asset budgets, and local Debian and
 AppImage packaging. See the
 [Milestone 22 completion report](MILESTONE_22_ROUTED_DESKTOP_WORKSPACE.md).
+
+### 23 — UI Platform Feasibility Decision
+
+This is a read-only decision milestone. Map the Tauri façade against reusable
+Rust services, define the smallest safe core/facade boundary, and evaluate
+retaining Tauri versus a Qt 6 migration. Assess Linux, Windows, and macOS
+implications, including packaging, platform adapters, accessibility, terminal,
+file picker, notifications, and CI. Produce the evidence required by ADR 0028.
+
+This milestone creates no code, dependencies, prototypes, migrations, package
+changes, or full repository audit.
 
 ## Forecast policy
 
