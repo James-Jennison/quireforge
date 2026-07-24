@@ -281,7 +281,7 @@ export function ModelSelectionPanel({
       <div className="model-selection-panel__heading">
         <div>
           <p className="eyebrow">Next-turn selector</p>
-          <h3 id={`model-selection-${conversationId}`}>Model ownership</h3>
+          <h2 id={`model-selection-${conversationId}`}>Model ownership</h2>
         </div>
         <span data-availability={selection.availability}>
           {selection.availability === "ready"

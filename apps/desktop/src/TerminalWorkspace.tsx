@@ -392,7 +392,9 @@ export function TerminalWorkspace({
       <div className="integrated-terminal__heading">
         <div>
           <p className="eyebrow">Integrated terminal</p>
-          <h2 id="terminal-title">A real shell, rooted where you work.</h2>
+          <h1 id="terminal-title" data-workspace-heading tabIndex={-1}>
+            A real shell, rooted where you work.
+          </h1>
           <p>
             Every tab starts in a freshly verified attached directory. Terminal
             input runs directly with your Linux account privileges and is

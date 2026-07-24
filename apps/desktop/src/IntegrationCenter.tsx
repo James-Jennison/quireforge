@@ -357,7 +357,9 @@ export function IntegrationCenter({
       <div className="integration-center__intro">
         <div>
           <p className="eyebrow">Integration Center</p>
-          <h2 id="integrations-title">Inspect trust before changing state.</h2>
+          <h1 id="integrations-title" data-workspace-heading tabIndex={-1}>
+            Inspect trust before changing state.
+          </h1>
         </div>
         <p>
           Codex remains authoritative. QuireForge presents a normalized catalog
@@ -549,7 +551,7 @@ export function IntegrationCenter({
               <div className="integration-detail__heading">
                 <div>
                   <p className="eyebrow">{kindLabels[selectedEntry.kind]}</p>
-                  <h3>{selectedEntry.displayName}</h3>
+                  <h2>{selectedEntry.displayName}</h2>
                   <p>{selectedEntry.summary}</p>
                 </div>
                 <span
@@ -606,7 +608,7 @@ export function IntegrationCenter({
 
               <div className="integration-review-grid">
                 <section aria-labelledby="integration-permissions-title">
-                  <h4 id="integration-permissions-title">Permissions</h4>
+                  <h3 id="integration-permissions-title">Permissions</h3>
                   {selectedEntry.permissions.length ? (
                     <ul>
                       {selectedEntry.permissions.map((permission) => (
@@ -626,7 +628,7 @@ export function IntegrationCenter({
                   )}
                 </section>
                 <section aria-labelledby="integration-requirements-title">
-                  <h4 id="integration-requirements-title">Requirements</h4>
+                  <h3 id="integration-requirements-title">Requirements</h3>
                   {selectedEntry.requirements.length ? (
                     <ul>
                       {selectedEntry.requirements.map((requirement) => (
@@ -698,7 +700,7 @@ export function IntegrationCenter({
       >
         <div>
           <p className="eyebrow">Pinned marketplace source</p>
-          <h3>Add a repository marketplace</h3>
+          <h2>Add a repository marketplace</h2>
           <p>
             Only an owner/repository identifier and an exact 40- or 64-character
             hexadecimal reference can enter the native preview boundary.

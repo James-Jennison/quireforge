@@ -147,7 +147,9 @@ export function WorktreeWorkspace({
       <div className="worktree-workspace__heading">
         <div>
           <p className="eyebrow">Isolated workspaces</p>
-          <h2 id="worktrees-title">Give each line of work its own checkout.</h2>
+          <h1 id="worktrees-title" data-workspace-heading tabIndex={-1}>
+            Give each line of work its own checkout.
+          </h1>
           <p>
             Create or attach isolated projects, run up to four distinct Codex
             tasks, review normalized live activity, recover retained managed
@@ -206,7 +208,7 @@ export function WorktreeWorkspace({
         <div className="worktree-executions__heading">
           <div>
             <span className="project-kicker">Parallel task monitor</span>
-            <h3 id="worktree-executions-title">Worktree execution status</h3>
+            <h2 id="worktree-executions-title">Worktree execution status</h2>
           </div>
           <span>
             {
@@ -331,7 +333,7 @@ export function WorktreeWorkspace({
                   ? "Destructive cleanup preview"
                   : "Non-destructive preview"}
               </span>
-              <h3 id="worktree-preview-title">
+              <h2 id="worktree-preview-title">
                 {preview.operation === "create"
                   ? `Create ${preview.branchName}`
                   : preview.operation === "attach"
@@ -341,7 +343,7 @@ export function WorktreeWorkspace({
                       : preview.destructive
                         ? `Remove ${preview.branchName ?? "managed worktree"}`
                         : "Finalize managed-worktree metadata"}
-              </h3>
+              </h2>
             </div>
             <span className="directory-state directory-state--connected-accessible">
               Confirmation required
@@ -391,7 +393,7 @@ export function WorktreeWorkspace({
         <div className="project-empty">
           <span aria-hidden="true">⑂</span>
           <div>
-            <h3>No native worktree inventory</h3>
+            <h2>No native worktree inventory</h2>
             <p>
               Attach a Git repository to inspect its source checkout and linked
               worktrees.
@@ -411,7 +413,7 @@ export function WorktreeWorkspace({
                 <span className="project-kicker">
                   {worktree.ownership} checkout
                 </span>
-                <h3>{worktree.displayName}</h3>
+                <h2>{worktree.displayName}</h2>
                 <code>{worktree.displayPath}</code>
               </div>
               <div className="worktree-card__meta">

@@ -501,7 +501,9 @@ export function ConversationWorkspace({
       <div className="conversation-workspace__intro">
         <div>
           <p className="eyebrow">Native conversation</p>
-          <h2 id="conversation-title">Start a focused Codex task.</h2>
+          <h1 id="conversation-title" data-workspace-heading tabIndex={-1}>
+            Start a focused Codex task.
+          </h1>
         </div>
         <p>
           Work stays scoped to the attached directory. QuireForge displays a

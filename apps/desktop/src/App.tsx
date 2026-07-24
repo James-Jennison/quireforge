@@ -4,6 +4,9 @@ import {
   useEffect,
   useRef,
   useState,
+  type CSSProperties,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
 
@@ -17,6 +20,7 @@ import { IntegrationCenter } from "./IntegrationCenter";
 import { ProjectWorkspace } from "./ProjectWorkspace";
 import { ScheduledWorkspace } from "./ScheduledWorkspace";
 import { SessionWorkspace } from "./SessionWorkspace";
+import { SettingsWorkspace } from "./SettingsWorkspace";
 import { UsagePanel } from "./UsagePanel";
 import {
   WorktreeWorkspace,
@@ -177,8 +181,21 @@ import {
   type WorktreeResultSnapshot,
   type WorktreeWorkspaceSnapshot,
 } from "./lib/worktree";
+import {
+  defaultWorkspaceLocation,
+  parseWorkspaceHash,
+  workspaceLocationFor,
+  workspaceLocationHash,
+  workspaceNavigation,
+  workspaceNavigationItem,
+  type SettingsSection,
+  type WorkspaceLocation,
+  type WorkspaceRoute,
+} from "./workspaceNavigation";
 
 import "./styles.css";
+
+/* eslint-disable jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/no-noninteractive-tabindex -- WAI-ARIA's vertical separator pattern requires a focusable, keyboard-operable separator element. */
 
 const TerminalWorkspace = lazy(() =>
   import("./TerminalWorkspace").then(({ TerminalWorkspace: workspace }) => ({
@@ -199,6 +216,11 @@ type TerminalViewState = "checking" | "native" | "preview";
 type IntegrationViewState = "checking" | "native" | "preview";
 type UsageViewState = "checking" | "native" | "preview";
 type Theme = "light" | "dark";
+const workspaceStorageKey = "quireforge-workspace-location";
+const inspectorWidthStorageKey = "quireforge-inspector-width";
+const sidebarCompactStorageKey = "quireforge-sidebar-compact";
+const inspectorWidthMinimum = 280;
+const inspectorWidthMaximum = 520;
 
 interface AppProps {
   loadBootstrap?: () => Promise<DesktopBootstrap>;
@@ -348,59 +370,6 @@ interface TrackedConversation {
   events: ConversationEvent[];
 }
 
-const navigation = [
-  {
-    label: "Home",
-    icon: "grid",
-    target: "home",
-  },
-  {
-    label: "New task",
-    icon: "plus",
-    target: "conversation",
-  },
-  {
-    label: "Projects",
-    icon: "folder",
-    target: "projects",
-  },
-  {
-    label: "Threads",
-    icon: "thread",
-    target: "sessions",
-  },
-  {
-    label: "Scheduled",
-    icon: "clock",
-    target: "scheduled",
-  },
-  {
-    label: "Integrations",
-    icon: "blocks",
-    target: "integrations",
-  },
-  {
-    label: "Files",
-    icon: "folder",
-    target: "files",
-  },
-  {
-    label: "Changes",
-    icon: "git",
-    target: "changes",
-  },
-  {
-    label: "Worktrees",
-    icon: "git",
-    target: "worktrees",
-  },
-  {
-    label: "Terminal",
-    icon: "terminal",
-    target: "terminal",
-  },
-] as const;
-
 function initialTheme(): Theme {
   const stored = window.localStorage.getItem("quireforge-theme");
   if (stored === "light" || stored === "dark") return stored;
@@ -409,12 +378,59 @@ function initialTheme(): Theme {
     : "dark";
 }
 
-function scrollToWorkspace(target: string): void {
-  document.getElementById(target)?.scrollIntoView({
-    behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
-      ? "auto"
-      : "smooth",
-  });
+function initialWorkspaceLocation(): WorkspaceLocation {
+  const fromHash = parseWorkspaceHash(window.location.hash);
+  if (fromHash) return fromHash;
+  if (window.location.hash) return defaultWorkspaceLocation;
+  const fromStorage = parseWorkspaceHash(
+    window.localStorage.getItem(workspaceStorageKey) ?? "",
+  );
+  return fromStorage ?? defaultWorkspaceLocation;
+}
+
+function initialInspectorWidth(): number {
+  const parsed = Number.parseInt(
+    window.localStorage.getItem(inspectorWidthStorageKey) ?? "",
+    10,
+  );
+  if (!Number.isFinite(parsed)) return 330;
+  return Math.min(
+    inspectorWidthMaximum,
+    Math.max(inspectorWidthMinimum, parsed),
+  );
+}
+
+function initialSidebarCompact(): boolean {
+  return window.localStorage.getItem(sidebarCompactStorageKey) === "true";
+}
+
+function initialInspectorOpen(): boolean {
+  return (
+    window.matchMedia?.("(min-width: 1181px)").matches ??
+    window.innerWidth > 1180
+  );
+}
+
+function WorkspaceView({
+  route,
+  active,
+  children,
+}: {
+  route: WorkspaceRoute;
+  active: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <div
+      className="workspace-view"
+      data-workspace-view={route}
+      hidden={!active}
+      aria-hidden={!active}
+      tabIndex={-1}
+    >
+      {children}
+    </div>
+  );
 }
 
 function Glyph({ name }: { name: string }) {
@@ -484,6 +500,18 @@ function Glyph({ name }: { name: string }) {
     ),
     check: <path d="m5 12 4.2 4.2L19 6.5" />,
     chevron: <path d="m9 18 6-6-6-6" />,
+    sidebar: (
+      <>
+        <rect x="3" y="4" width="18" height="16" rx="2.5" />
+        <path d="M9 4v16" />
+      </>
+    ),
+    gear: (
+      <>
+        <circle cx="12" cy="12" r="3" />
+        <path d="M19 13.5v-3l-2-.7a7 7 0 0 0-.7-1.6l.9-1.9-2.1-2.1-1.9.9a7 7 0 0 0-1.6-.7L10.5 3h-3l-.7 2a7 7 0 0 0-1.6.7l-1.9-.9-2.1 2.1.9 1.9a7 7 0 0 0-.7 1.6l-2 .7v3l2 .7a7 7 0 0 0 .7 1.6l-.9 1.9 2.1 2.1 1.9-.9a7 7 0 0 0 1.6.7l.7 2h3l.7-2a7 7 0 0 0 1.6-.7l1.9.9 2.1-2.1-.9-1.9a7 7 0 0 0 .7-1.6l2-.7Z" />
+      </>
+    ),
   };
 
   return (
@@ -687,6 +715,15 @@ export default function App({
     null,
   );
   const [theme, setTheme] = useState<Theme>(initialTheme);
+  const [workspaceLocation, setWorkspaceLocation] = useState<WorkspaceLocation>(
+    initialWorkspaceLocation,
+  );
+  const [inspectorWidth, setInspectorWidth] = useState(initialInspectorWidth);
+  const [inspectorOpen, setInspectorOpen] = useState(initialInspectorOpen);
+  const [sidebarCompact, setSidebarCompact] = useState(initialSidebarCompact);
+  const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
+  const workspaceMainRef = useRef<HTMLElement>(null);
+  const focusWorkspaceAfterNavigation = useRef(false);
   const accessGranted =
     authState === "authenticated" || authState === "not-required";
 
@@ -1219,6 +1256,80 @@ export default function App({
     window.localStorage.setItem("quireforge-theme", theme);
   }, [theme]);
 
+  useEffect(() => {
+    const synchronizeLocation = () => {
+      const next =
+        parseWorkspaceHash(window.location.hash) ?? defaultWorkspaceLocation;
+      setWorkspaceLocation(next);
+      setMobileNavigationOpen(false);
+    };
+    const initialHash = parseWorkspaceHash(window.location.hash);
+    if (!initialHash) {
+      window.history.replaceState(
+        null,
+        "",
+        workspaceLocationHash(initialWorkspaceLocation()),
+      );
+    }
+    window.addEventListener("hashchange", synchronizeLocation);
+    window.addEventListener("popstate", synchronizeLocation);
+    return () => {
+      window.removeEventListener("hashchange", synchronizeLocation);
+      window.removeEventListener("popstate", synchronizeLocation);
+    };
+  }, []);
+
+  useEffect(() => {
+    const hash = workspaceLocationHash(workspaceLocation);
+    window.localStorage.setItem(workspaceStorageKey, hash);
+    if (!focusWorkspaceAfterNavigation.current) return;
+    focusWorkspaceAfterNavigation.current = false;
+    const frame = window.requestAnimationFrame(() => {
+      const view = document.querySelector<HTMLElement>(
+        `[data-workspace-view="${workspaceLocation.route}"]`,
+      );
+      const target =
+        view?.querySelector<HTMLElement>("[data-workspace-heading]") ?? view;
+      target?.focus();
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [workspaceLocation]);
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      inspectorWidthStorageKey,
+      String(inspectorWidth),
+    );
+  }, [inspectorWidth]);
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      sidebarCompactStorageKey,
+      String(sidebarCompact),
+    );
+  }, [sidebarCompact]);
+
+  useEffect(() => {
+    if (!mobileNavigationOpen) return;
+    const previous = document.activeElement as HTMLElement | null;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      setMobileNavigationOpen(false);
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    const frame = window.requestAnimationFrame(() => {
+      document
+        .querySelector<HTMLElement>(".sidebar .nav-item--active")
+        ?.focus();
+    });
+    return () => {
+      window.cancelAnimationFrame(frame);
+      document.removeEventListener("keydown", handleKeyDown);
+      if (previous?.isConnected) previous.focus();
+    };
+  }, [mobileNavigationOpen]);
+
   const bridgeLabel = {
     connecting: "Checking native bridge",
     native: "Native IPC verified",
@@ -1233,15 +1344,56 @@ export default function App({
     preview: "Native probe unavailable",
   }[runtimeState];
 
-  const authLabel = {
-    checking: "Checking Codex account",
-    authenticated: "Codex account connected",
-    unauthenticated: "Codex sign-in available",
-    "login-pending": "Codex sign-in pending",
-    "not-required": "Provider sign-in not required",
-    unavailable: "Codex authentication unavailable",
-    preview: "Native authentication unavailable",
-  }[authState];
+  function navigateWorkspace(
+    route: WorkspaceRoute,
+    settingsSection: SettingsSection = "accounts",
+  ) {
+    const next = workspaceLocationFor(route, settingsSection);
+    const nextHash = workspaceLocationHash(next);
+    focusWorkspaceAfterNavigation.current = true;
+    if (window.location.hash === nextHash) {
+      setWorkspaceLocation(next);
+    } else {
+      window.history.pushState(null, "", nextHash);
+      setWorkspaceLocation(next);
+    }
+    setMobileNavigationOpen(false);
+    setInspectorOpen(initialInspectorOpen());
+  }
+
+  function beginInspectorResize(event: ReactPointerEvent<HTMLDivElement>) {
+    event.preventDefault();
+    const resize = (pointerEvent: PointerEvent) => {
+      const nextWidth = window.innerWidth - pointerEvent.clientX;
+      setInspectorWidth(
+        Math.min(
+          inspectorWidthMaximum,
+          Math.max(inspectorWidthMinimum, nextWidth),
+        ),
+      );
+    };
+    const stop = () => {
+      document.removeEventListener("pointermove", resize);
+      document.removeEventListener("pointerup", stop);
+    };
+    document.addEventListener("pointermove", resize);
+    document.addEventListener("pointerup", stop);
+  }
+
+  function resizeInspectorFromKeyboard(
+    event: ReactKeyboardEvent<HTMLDivElement>,
+  ) {
+    const delta =
+      event.key === "ArrowLeft" ? 20 : event.key === "ArrowRight" ? -20 : 0;
+    if (!delta) return;
+    event.preventDefault();
+    setInspectorWidth((current) =>
+      Math.min(
+        inspectorWidthMaximum,
+        Math.max(inspectorWidthMinimum, current + delta),
+      ),
+    );
+  }
 
   async function applyAuthAction(
     action: () => Promise<CodexAuthSnapshot>,
@@ -2216,42 +2368,452 @@ export default function App({
     })
     .sort((left, right) => left.projectName.localeCompare(right.projectName));
 
+  const activeNavigationItem = workspaceNavigationItem(workspaceLocation.route);
+  const activeWorkspaceTitle =
+    workspaceLocation.route === "settings"
+      ? "Settings"
+      : (activeNavigationItem?.label ?? "Home");
+  const activeWorkspaceDescription =
+    workspaceLocation.route === "settings"
+      ? "Local preferences and supported connections"
+      : (activeNavigationItem?.description ??
+        "Dashboard and starting workspace");
+  const recentSessions = [...sessions.sessions]
+    .sort((left, right) => right.updatedAtMs - left.updatedAtMs)
+    .slice(0, 5);
+  const activeProjectPath = currentProject?.directory?.displayPath ?? null;
+  const activeProjectState =
+    currentProject?.directory?.state ?? "No directory attached";
+  const conflictCount = gitSnapshot.changes.filter(
+    (change) => change.conflict,
+  ).length;
+  const runningTerminalCount = terminals.terminals.filter(
+    (terminal) => terminal.live,
+  ).length;
+  const inspectorContent: ReactNode = (() => {
+    switch (workspaceLocation.route) {
+      case "home":
+        return (
+          <>
+            <section
+              className="context-section"
+              aria-labelledby="context-recent-title"
+            >
+              <div className="context-section__heading">
+                <div>
+                  <span>History</span>
+                  <h2 id="context-recent-title">Recent threads</h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => navigateWorkspace("sessions")}
+                >
+                  View all
+                </button>
+              </div>
+              {recentSessions.length ? (
+                <ul className="context-list">
+                  {recentSessions.map((session) => (
+                    <li key={session.conversationId}>
+                      <button
+                        type="button"
+                        onClick={() => navigateWorkspace("sessions")}
+                      >
+                        <strong>
+                          {session.title ?? "Untitled Codex task"}
+                        </strong>
+                        <span>
+                          {new Intl.DateTimeFormat(undefined, {
+                            month: "short",
+                            day: "numeric",
+                            hour: "numeric",
+                            minute: "2-digit",
+                          }).format(session.updatedAtMs)}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="context-empty">
+                  Completed and resumable threads will appear here.
+                </p>
+              )}
+            </section>
+            <UsagePanel
+              snapshot={usage}
+              state={usageState}
+              busy={usageBusy}
+              onRefresh={() => void refreshUsageStatus()}
+            />
+          </>
+        );
+      case "conversation":
+        return (
+          <section className="context-section">
+            <p className="eyebrow">Task context</p>
+            <h2>{currentProject?.displayName ?? "No project selected"}</h2>
+            <dl className="context-facts">
+              <div>
+                <dt>Project access</dt>
+                <dd>{activeProjectState}</dd>
+              </div>
+              <div>
+                <dt>Task state</dt>
+                <dd>{conversation.state}</dd>
+              </div>
+              <div>
+                <dt>Approvals</dt>
+                <dd>
+                  {conversation.state === "waiting-for-approval"
+                    ? "Decision required"
+                    : "No decision pending"}
+                </dd>
+              </div>
+            </dl>
+            <p className="context-note">
+              Task execution uses the verified project directory and the visible
+              sandbox and approval controls.
+            </p>
+          </section>
+        );
+      case "projects":
+        if (!currentProject) return null;
+        return (
+          <section className="context-section">
+            <p className="eyebrow">Selected project</p>
+            <h2>{currentProject.displayName}</h2>
+            <p className="context-path">
+              {activeProjectPath ?? "No directory attached"}
+            </p>
+            <dl className="context-facts">
+              <div>
+                <dt>Access</dt>
+                <dd>{activeProjectState}</dd>
+              </div>
+              <div>
+                <dt>Git</dt>
+                <dd>
+                  {currentProject.directory?.git.isRepository
+                    ? "Repository"
+                    : "Not detected"}
+                </dd>
+              </div>
+              <div>
+                <dt>Guidance</dt>
+                <dd>
+                  {currentProject.directory?.hasAgentsGuidance
+                    ? "AGENTS.md detected"
+                    : "No AGENTS.md detected"}
+                </dd>
+              </div>
+            </dl>
+          </section>
+        );
+      case "sessions":
+        if (sessions.sessions.length === 0) return null;
+        return (
+          <section className="context-section">
+            <p className="eyebrow">Thread library</p>
+            <h2>{sessions.sessions.length} app-owned threads</h2>
+            <dl className="context-facts">
+              <div>
+                <dt>Running</dt>
+                <dd>
+                  {
+                    sessions.sessions.filter(
+                      (session) => session.state === "running",
+                    ).length
+                  }
+                </dd>
+              </div>
+              <div>
+                <dt>Archived</dt>
+                <dd>
+                  {
+                    sessions.sessions.filter(
+                      (session) => session.state === "archived",
+                    ).length
+                  }
+                </dd>
+              </div>
+              <div>
+                <dt>Authority</dt>
+                <dd>Codex threads</dd>
+              </div>
+            </dl>
+          </section>
+        );
+      case "integrations":
+        if (integrationCatalog.entries.length === 0) return null;
+        return (
+          <section className="context-section">
+            <p className="eyebrow">Integration catalog</p>
+            <h2>{integrationCatalog.entries.length} discovered entries</h2>
+            <dl className="context-facts">
+              <div>
+                <dt>Catalog</dt>
+                <dd>{integrationCatalog.catalogState}</dd>
+              </div>
+              <div>
+                <dt>Codex CLI</dt>
+                <dd>{integrationCatalog.cliVersion ?? "Not reported"}</dd>
+              </div>
+              <div>
+                <dt>Control boundary</dt>
+                <dd>Preview and confirmation</dd>
+              </div>
+            </dl>
+          </section>
+        );
+      case "files":
+        if (!currentProject) return null;
+        return (
+          <section className="context-section">
+            <p className="eyebrow">File context</p>
+            <h2>
+              {filePreview.displayPath ??
+                (filePreview.state === "empty"
+                  ? "No file selected"
+                  : "Preview unavailable")}
+            </h2>
+            <dl className="context-facts">
+              <div>
+                <dt>Project</dt>
+                <dd>{currentProject.displayName}</dd>
+              </div>
+              <div>
+                <dt>Preview</dt>
+                <dd>{filePreview.state}</dd>
+              </div>
+              <div>
+                <dt>Rendering</dt>
+                <dd>{filePreview.rendering ?? "Not selected"}</dd>
+              </div>
+            </dl>
+          </section>
+        );
+      case "changes":
+        if (!currentProject || gitSnapshot.state === "unavailable") return null;
+        return (
+          <section className="context-section">
+            <p className="eyebrow">Source control</p>
+            <h2>{currentProject.displayName}</h2>
+            <dl className="context-facts">
+              <div>
+                <dt>Branch</dt>
+                <dd>
+                  {gitSnapshot.branch?.head ??
+                    (gitSnapshot.branch?.detached
+                      ? "Detached HEAD"
+                      : "Unknown")}
+                </dd>
+              </div>
+              <div>
+                <dt>Changes</dt>
+                <dd>{gitSnapshot.changes.length}</dd>
+              </div>
+              <div>
+                <dt>Conflicts</dt>
+                <dd>{conflictCount}</dd>
+              </div>
+              {gitSelectedRequest && (
+                <div>
+                  <dt>Reviewing</dt>
+                  <dd>{gitSelectedRequest.path}</dd>
+                </div>
+              )}
+            </dl>
+          </section>
+        );
+      case "worktrees":
+        if (worktrees.state === "unavailable") return null;
+        return (
+          <section className="context-section">
+            <p className="eyebrow">Worktree activity</p>
+            <h2>{worktrees.worktrees.length} discovered worktrees</h2>
+            <dl className="context-facts">
+              <div>
+                <dt>Managed</dt>
+                <dd>
+                  {
+                    worktrees.worktrees.filter(
+                      (worktree) => worktree.ownership === "managed",
+                    ).length
+                  }
+                </dd>
+              </div>
+              <div>
+                <dt>Active tasks</dt>
+                <dd>{worktreeExecutions.length}</dd>
+              </div>
+              <div>
+                <dt>Conflict reports</dt>
+                <dd>
+                  {worktreeExecutions.reduce(
+                    (total, execution) =>
+                      total + (execution.conflictCount ?? 0),
+                    0,
+                  )}
+                </dd>
+              </div>
+            </dl>
+          </section>
+        );
+      case "terminal":
+        if (!currentProject && terminals.terminals.length === 0) return null;
+        return (
+          <section className="context-section">
+            <p className="eyebrow">Terminal processes</p>
+            <h2>
+              {terminals.terminals.length
+                ? `${terminals.terminals.length} open terminal${
+                    terminals.terminals.length === 1 ? "" : "s"
+                  }`
+                : "No terminal open"}
+            </h2>
+            <dl className="context-facts">
+              <div>
+                <dt>Running</dt>
+                <dd>{runningTerminalCount}</dd>
+              </div>
+              <div>
+                <dt>Capacity</dt>
+                <dd>
+                  {terminals.terminals.length} of {terminals.capacity}
+                </dd>
+              </div>
+              <div>
+                <dt>Default project</dt>
+                <dd>{currentProject?.displayName ?? "None"}</dd>
+              </div>
+            </dl>
+            <p className="context-note">
+              Terminal input uses your Linux account and remains separate from
+              Codex approvals.
+            </p>
+          </section>
+        );
+      default:
+        return null;
+    }
+  })();
+  const inspectorAvailable = inspectorContent !== null;
+
   return (
-    <div className="app-shell">
-      <a className="skip-link" href="#workspace-top">
+    <div
+      className={[
+        "app-shell",
+        sidebarCompact ? "app-shell--sidebar-compact" : "",
+        mobileNavigationOpen ? "app-shell--mobile-navigation-open" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      style={
+        {
+          "--inspector-width": `${inspectorWidth}px`,
+        } as CSSProperties
+      }
+    >
+      <a
+        className="skip-link"
+        href="#workspace-main"
+        onClick={(event) => {
+          event.preventDefault();
+          workspaceMainRef.current?.focus();
+        }}
+      >
         Skip to workspace
       </a>
-      <aside className="sidebar">
+      <button
+        className="sidebar-scrim"
+        type="button"
+        aria-label="Close navigation"
+        tabIndex={mobileNavigationOpen ? 0 : -1}
+        onClick={() => setMobileNavigationOpen(false)}
+      />
+      <aside className="sidebar" aria-label="QuireForge navigation">
         <div className="brand-lockup">
           <img src={brandMark} alt="" className="brand-mark" />
           <div>
             <strong>{bootstrap.product.name}</strong>
-            <span>Codex for Linux</span>
+            <span>Build boldly. Work locally.</span>
           </div>
+          <button
+            className="sidebar-close"
+            type="button"
+            aria-label="Close navigation"
+            onClick={() => setMobileNavigationOpen(false)}
+          >
+            ×
+          </button>
         </div>
 
         <nav className="primary-nav" aria-label="Primary navigation">
           <p className="nav-label">Main</p>
-          {navigation.slice(0, 6).map((item, index) => (
-            <a
-              className={`nav-item ${index === 0 ? "nav-item--active" : ""}`}
-              href={`#${item.target}`}
-              key={item.label}
-            >
-              <Glyph name={item.icon} />
-              <span>{item.label}</span>
-            </a>
-          ))}
+          {workspaceNavigation
+            .filter((item) => item.group === "main")
+            .map((item) => (
+              <a
+                className={
+                  workspaceLocation.route === item.route
+                    ? "nav-item nav-item--active"
+                    : "nav-item"
+                }
+                href={workspaceLocationHash(workspaceLocationFor(item.route))}
+                key={item.route}
+                aria-current={
+                  workspaceLocation.route === item.route ? "page" : undefined
+                }
+                aria-label={item.label}
+                title={item.description}
+                onClick={(event) => {
+                  event.preventDefault();
+                  navigateWorkspace(item.route);
+                }}
+              >
+                <Glyph name={item.icon} />
+                <span>{item.label}</span>
+              </a>
+            ))}
           <p className="nav-label nav-label--secondary">Workspace</p>
-          {navigation.slice(6).map((item) => (
-            <a className="nav-item" href={`#${item.target}`} key={item.label}>
-              <Glyph name={item.icon} />
-              <span>{item.label}</span>
-            </a>
-          ))}
+          {workspaceNavigation
+            .filter((item) => item.group === "workspace")
+            .map((item) => (
+              <a
+                className={
+                  workspaceLocation.route === item.route
+                    ? "nav-item nav-item--active"
+                    : "nav-item"
+                }
+                href={workspaceLocationHash(workspaceLocationFor(item.route))}
+                key={item.route}
+                aria-current={
+                  workspaceLocation.route === item.route ? "page" : undefined
+                }
+                aria-label={item.label}
+                title={item.description}
+                onClick={(event) => {
+                  event.preventDefault();
+                  navigateWorkspace(item.route);
+                }}
+              >
+                <Glyph name={item.icon} />
+                <span>{item.label}</span>
+              </a>
+            ))}
         </nav>
 
-        <div className="project-panel">
+        <button
+          className="project-panel"
+          type="button"
+          aria-label={
+            currentProject
+              ? `Open projects. Current project: ${currentProject.displayName}`
+              : "Open projects"
+          }
+          onClick={() => navigateWorkspace("projects")}
+        >
           <div className="project-icon">
             <Glyph name="folder" />
           </div>
@@ -2266,7 +2828,7 @@ export default function App({
                   : "Attach an original local directory in place.")}
             </span>
           </div>
-        </div>
+        </button>
 
         <UsagePanel
           snapshot={usage}
@@ -2276,7 +2838,25 @@ export default function App({
           onRefresh={() => void refreshUsageStatus()}
         />
 
-        <a className="account-summary" href="#account">
+        <button
+          className={
+            workspaceLocation.route === "settings" &&
+            workspaceLocation.settingsSection === "accounts"
+              ? "account-summary account-summary--active"
+              : "account-summary"
+          }
+          type="button"
+          aria-label="Open Codex account and connection settings"
+          aria-current={
+            workspaceLocation.route === "settings" &&
+            workspaceLocation.settingsSection === "accounts"
+              ? "page"
+              : undefined
+          }
+          onClick={() => {
+            navigateWorkspace("settings", "accounts");
+          }}
+        >
           <span aria-hidden="true">Q</span>
           <div>
             <strong>Codex connected</strong>
@@ -2289,7 +2869,7 @@ export default function App({
             </small>
           </div>
           <Glyph name="chevron" />
-        </a>
+        </button>
 
         <div className="sidebar-footer">
           <div className="bridge-status" role="status" aria-live="polite">
@@ -2300,13 +2880,90 @@ export default function App({
         </div>
       </aside>
 
-      <main className="workspace" id="workspace-top" tabIndex={-1}>
+      <main
+        className="workspace"
+        id="workspace-main"
+        tabIndex={-1}
+        ref={workspaceMainRef}
+      >
         <header className="topbar">
-          <div className="breadcrumb" aria-label="Current location">
-            <Glyph name="grid" />
-            <strong>Home</strong>
+          <div className="topbar-location">
+            <button
+              className="mobile-navigation-toggle"
+              type="button"
+              aria-label="Open navigation"
+              aria-expanded={mobileNavigationOpen}
+              onClick={() => setMobileNavigationOpen(true)}
+            >
+              <Glyph name="grid" />
+            </button>
+            <button
+              className="sidebar-compact-toggle"
+              type="button"
+              aria-label={
+                sidebarCompact ? "Expand navigation" : "Compact navigation"
+              }
+              aria-pressed={sidebarCompact}
+              onClick={() => setSidebarCompact((current) => !current)}
+            >
+              <Glyph name="sidebar" />
+            </button>
+            <div className="breadcrumb" aria-label="Current location">
+              <Glyph name={activeNavigationItem?.icon ?? "gear"} />
+              <div>
+                <strong>{activeWorkspaceTitle}</strong>
+                <span>{activeWorkspaceDescription}</span>
+              </div>
+            </div>
           </div>
           <div className="topbar-actions">
+            {workspaceLocation.route === "home" && (
+              <button
+                className="topbar-button topbar-button--primary"
+                type="button"
+                onClick={() => navigateWorkspace("conversation")}
+              >
+                <Glyph name="plus" />
+                New task
+              </button>
+            )}
+            {workspaceLocation.route === "projects" && (
+              <button
+                className="topbar-button"
+                type="button"
+                disabled={projectBusy || projectState !== "native"}
+                onClick={() => void applyProjectAction(pickProject)}
+              >
+                <Glyph name="plus" />
+                Attach project
+              </button>
+            )}
+            {workspaceLocation.route === "changes" && (
+              <button
+                className="topbar-button"
+                type="button"
+                disabled={gitBusy || !currentProject}
+                onClick={() => void refreshGitReview()}
+              >
+                <Glyph name="refresh" />
+                Refresh
+              </button>
+            )}
+            {inspectorAvailable && (
+              <button
+                className="topbar-icon-button"
+                type="button"
+                aria-label={
+                  inspectorOpen
+                    ? "Hide context inspector"
+                    : "Show context inspector"
+                }
+                aria-expanded={inspectorOpen}
+                onClick={() => setInspectorOpen((current) => !current)}
+              >
+                <Glyph name="sidebar" />
+              </button>
+            )}
             <span className="foundation-badge">Native Linux</span>
             <button
               className="theme-toggle"
@@ -2321,394 +2978,350 @@ export default function App({
           </div>
         </header>
 
-        <div className="workspace-scroll">
-          <HomeDashboard
-            projects={projects}
-            sessions={sessions}
-            usage={usage}
-            usageState={usageState}
-            usageBusy={usageBusy}
-            onRefreshUsage={() => void refreshUsageStatus()}
-            onNewTask={() => scrollToWorkspace("conversation")}
-            onAttachProject={() => void applyProjectAction(pickProject)}
-            onOpenProjects={() => scrollToWorkspace("projects")}
-            onOpenSessions={() => scrollToWorkspace("sessions")}
-            onOpenIntegrations={() => scrollToWorkspace("integrations")}
-            onOpenTerminal={() => scrollToWorkspace("terminal")}
-          />
+        <div
+          className={
+            inspectorAvailable && inspectorOpen
+              ? "workspace-body workspace-body--inspector-open"
+              : "workspace-body"
+          }
+        >
+          <div className="workspace-stage">
+            <WorkspaceView
+              route="home"
+              active={workspaceLocation.route === "home"}
+            >
+              <HomeDashboard
+                projects={projects}
+                onNewTask={() => navigateWorkspace("conversation")}
+                onAttachProject={() => void applyProjectAction(pickProject)}
+                onOpenProjects={() => navigateWorkspace("projects")}
+                onOpenSessions={() => navigateWorkspace("sessions")}
+                onOpenIntegrations={() => navigateWorkspace("integrations")}
+                onOpenTerminal={() => navigateWorkspace("terminal")}
+              />
+            </WorkspaceView>
 
-          <ProjectWorkspace
-            availability={projectState}
-            snapshot={projects}
-            busy={projectBusy}
-            actionError={projectActionError}
-            preflights={projectPreflights}
-            onPick={() => applyProjectAction(pickProject)}
-            onPickRelink={(projectId) =>
-              applyProjectAction(() => pickRelink(projectId))
-            }
-            onConfirm={() => applyProjectAction(confirmProject)}
-            onCancel={() => applyProjectAction(cancelProject)}
-            onDetach={(projectId) =>
-              applyProjectAction(() => detachProjectDirectory(projectId))
-            }
-            onArchive={(projectId) =>
-              applyProjectAction(() => archiveProjectMetadata(projectId))
-            }
-            onPreflight={verifyProject}
-          />
+            <WorkspaceView
+              route="projects"
+              active={workspaceLocation.route === "projects"}
+            >
+              <ProjectWorkspace
+                availability={projectState}
+                snapshot={projects}
+                busy={projectBusy}
+                actionError={projectActionError}
+                preflights={projectPreflights}
+                onPick={() => applyProjectAction(pickProject)}
+                onPickRelink={(projectId) =>
+                  applyProjectAction(() => pickRelink(projectId))
+                }
+                onConfirm={() => applyProjectAction(confirmProject)}
+                onCancel={() => applyProjectAction(cancelProject)}
+                onDetach={(projectId) =>
+                  applyProjectAction(() => detachProjectDirectory(projectId))
+                }
+                onArchive={(projectId) =>
+                  applyProjectAction(() => archiveProjectMetadata(projectId))
+                }
+                onPreflight={verifyProject}
+              />
+            </WorkspaceView>
 
-          <FilePreviewWorkspace
-            availability={projectState}
-            project={currentProject}
-            snapshot={filePreview}
-            busy={filePreviewBusy}
-            actionError={filePreviewActionError}
-            onPick={chooseFilePreview}
-            onOpen={openSelectedFilePreview}
-            onClear={discardFilePreview}
-          />
+            <WorkspaceView
+              route="files"
+              active={workspaceLocation.route === "files"}
+            >
+              <FilePreviewWorkspace
+                availability={projectState}
+                project={currentProject}
+                snapshot={filePreview}
+                busy={filePreviewBusy}
+                actionError={filePreviewActionError}
+                onPick={chooseFilePreview}
+                onOpen={openSelectedFilePreview}
+                onClear={discardFilePreview}
+              />
+            </WorkspaceView>
 
-          <WorktreeWorkspace
-            availability={worktreeState}
-            projectName={currentProject?.displayName ?? null}
-            snapshot={worktrees}
-            preview={worktreePreview}
-            result={worktreeResult}
-            busy={worktreeBusy || conversationActive || gitBusy}
-            selectionBusy={worktreeBusy}
-            actionError={worktreeActionError}
-            executions={worktreeExecutions}
-            onRefresh={refreshWorktrees}
-            onCreate={beginWorktreeCreate}
-            onPickAttach={beginWorktreeAttach}
-            onRecover={beginWorktreeRecover}
-            onRemove={beginWorktreeRemove}
-            onConfirm={applyWorktree}
-            onCancel={cancelWorktreePreview}
-            onSelectProject={selectProject}
-            onOpenExecution={(projectId) => {
-              selectProject(projectId);
-              window.setTimeout(() => scrollToWorkspace("conversation"), 0);
-            }}
-          />
+            <WorkspaceView
+              route="worktrees"
+              active={workspaceLocation.route === "worktrees"}
+            >
+              <WorktreeWorkspace
+                availability={worktreeState}
+                projectName={currentProject?.displayName ?? null}
+                snapshot={worktrees}
+                preview={worktreePreview}
+                result={worktreeResult}
+                busy={worktreeBusy || conversationActive || gitBusy}
+                selectionBusy={worktreeBusy}
+                actionError={worktreeActionError}
+                executions={worktreeExecutions}
+                onRefresh={refreshWorktrees}
+                onCreate={beginWorktreeCreate}
+                onPickAttach={beginWorktreeAttach}
+                onRecover={beginWorktreeRecover}
+                onRemove={beginWorktreeRemove}
+                onConfirm={applyWorktree}
+                onCancel={cancelWorktreePreview}
+                onSelectProject={selectProject}
+                onOpenExecution={(projectId) => {
+                  selectProject(projectId);
+                  window.setTimeout(() => navigateWorkspace("conversation"), 0);
+                }}
+              />
+            </WorkspaceView>
 
-          <Suspense
-            fallback={
-              <section
-                className="workspace-loading"
-                id="terminal"
-                aria-labelledby="terminal-loading-title"
-                aria-busy="true"
+            <WorkspaceView
+              route="terminal"
+              active={workspaceLocation.route === "terminal"}
+            >
+              <Suspense
+                fallback={
+                  <section
+                    className="workspace-loading"
+                    id="terminal"
+                    aria-labelledby="terminal-loading-title"
+                    aria-busy="true"
+                  >
+                    <p className="eyebrow">Integrated terminal</p>
+                    <h2 id="terminal-loading-title">
+                      Preparing the terminal view.
+                    </h2>
+                    <p role="status" aria-live="polite">
+                      Loading the local terminal renderer.
+                    </p>
+                  </section>
+                }
               >
-                <p className="eyebrow">Integrated terminal</p>
-                <h2 id="terminal-loading-title">
-                  Preparing the terminal view.
-                </h2>
-                <p role="status" aria-live="polite">
-                  Loading the local terminal renderer.
-                </p>
-              </section>
-            }
-          >
-            <TerminalWorkspace
-              availability={terminalState}
-              registry={terminals}
-              projects={projects}
-              busy={terminalBusy}
-              actionError={terminalActionError}
-              onStart={beginTerminal}
-              onPoll={pollActiveTerminal}
-              onWrite={writeActiveTerminal}
-              onResize={resizeActiveTerminal}
-              onClose={endTerminal}
-              onSnapshot={trackTerminal}
-            />
-          </Suspense>
-
-          <GitWorkspace
-            availability={gitState}
-            projectName={currentProject?.displayName ?? null}
-            snapshot={gitSnapshot}
-            diff={gitDiff}
-            selectedRequest={gitSelectedRequest}
-            mutationPreview={gitMutationPreview}
-            mutationResult={gitMutationResult}
-            busy={gitBusy || conversationActive}
-            actionError={gitActionError}
-            onRefresh={refreshGitReview}
-            onReview={reviewGitDiff}
-            onOpen={openReviewedGitFile}
-            onPreviewMutation={beginGitMutation}
-            onConfirmMutation={applyGitMutation}
-            onCancelMutation={() => setGitMutationPreview(null)}
-            onRecoverMutation={recoverGitRevert}
-          />
-
-          <SessionWorkspace
-            availability={sessionState}
-            snapshot={sessions}
-            runtime={runtime}
-            projects={projects.projects}
-            activeConversationId={conversation.conversationId}
-            attachments={conversationAttachments}
-            busy={sessionBusy || conversationBusy || conversationActive}
-            attachmentBusy={conversationAttachmentBusy}
-            actionError={sessionActionError}
-            attachmentActionError={conversationAttachmentActionError}
-            searchTerm={sessionSearchTerm}
-            onSearch={refreshSessions}
-            onRefresh={() => refreshSessions()}
-            onSelect={(session) => selectProject(session.projectId)}
-            onResume={(request) =>
-              continueHistoricalConversation(resumeConversationTask, request)
-            }
-            onFork={(request) =>
-              continueHistoricalConversation(forkConversationTask, request)
-            }
-            onArchive={(conversationId) =>
-              mutateSession(() => archiveConversationTask(conversationId))
-            }
-            onRestore={(conversationId) =>
-              mutateSession(() => restoreConversationTask(conversationId))
-            }
-            onUpdateModelSelection={applyModelSelection}
-            onAttachmentPick={chooseConversationAttachments}
-            onAttachmentDrop={stageConversationAttachmentDrop}
-            onAttachmentCancel={removeConversationAttachment}
-          />
-
-          <IntegrationCenter
-            availability={integrationState}
-            snapshot={integrationCatalog}
-            preview={integrationPreview}
-            result={integrationResult}
-            controlPreview={integrationControlPreview}
-            controlResult={integrationControlResult}
-            busy={integrationBusy}
-            actionError={integrationActionError}
-            onRefresh={refreshIntegrationCatalog}
-            onPreview={beginIntegrationMutation}
-            onConfirm={applyIntegrationMutation}
-            onControlPreview={beginIntegrationControl}
-            onControlConfirm={applyIntegrationControl}
-            onControlOpen={openIntegrationControl}
-            onControlPoll={checkIntegrationControl}
-            onCancel={() => {
-              setIntegrationPreview(null);
-              setIntegrationControlPreview(null);
-            }}
-          />
-
-          <ScheduledWorkspace
-            availability={integrationState}
-            snapshot={integrationCatalog}
-          />
-
-          <ConversationWorkspace
-            availability={conversationState}
-            snapshot={conversation}
-            events={conversationEvents}
-            runtime={runtime}
-            project={currentProject}
-            integrations={integrationCatalog}
-            attachments={conversationAttachments}
-            busy={conversationBusy}
-            attachmentBusy={conversationAttachmentBusy}
-            actionError={conversationActionError}
-            attachmentActionError={conversationAttachmentActionError}
-            onStart={beginConversation}
-            onInterrupt={stopConversation}
-            onDecideApproval={applyConversationApproval}
-            onUpdateModelSelection={applyModelSelection}
-            onAttachmentPick={chooseConversationAttachments}
-            onAttachmentDrop={stageConversationAttachmentDrop}
-            onAttachmentCancel={removeConversationAttachment}
-          />
-
-          <section
-            className="auth-onboarding"
-            id="account"
-            aria-labelledby="auth-title"
-          >
-            <div className="auth-onboarding__intro">
-              <p className="eyebrow">Codex account</p>
-              <h2 id="auth-title">Authentication stays with Codex.</h2>
-              <p>
-                QuireForge receives only a bounded connection state. Email,
-                tokens, account identifiers, raw errors, and completed sign-in
-                URLs do not enter application state or logs.
-              </p>
-            </div>
-
-            <div className="auth-card" aria-live="polite">
-              <div className="auth-card__heading">
-                <span
-                  className={"auth-state auth-state--" + authState}
-                  aria-hidden="true"
+                <TerminalWorkspace
+                  availability={terminalState}
+                  registry={terminals}
+                  projects={projects}
+                  busy={terminalBusy}
+                  actionError={terminalActionError}
+                  onStart={beginTerminal}
+                  onPoll={pollActiveTerminal}
+                  onWrite={writeActiveTerminal}
+                  onResize={resizeActiveTerminal}
+                  onClose={endTerminal}
+                  onSnapshot={trackTerminal}
                 />
-                <div>
-                  <strong>{authLabel}</strong>
-                  <span>Codex CLI {runtime.cliVersion ?? "not detected"}</span>
+              </Suspense>
+            </WorkspaceView>
+
+            <WorkspaceView
+              route="changes"
+              active={workspaceLocation.route === "changes"}
+            >
+              <GitWorkspace
+                availability={gitState}
+                projectName={currentProject?.displayName ?? null}
+                snapshot={gitSnapshot}
+                diff={gitDiff}
+                selectedRequest={gitSelectedRequest}
+                mutationPreview={gitMutationPreview}
+                mutationResult={gitMutationResult}
+                busy={gitBusy || conversationActive}
+                actionError={gitActionError}
+                onRefresh={refreshGitReview}
+                onReview={reviewGitDiff}
+                onOpen={openReviewedGitFile}
+                onPreviewMutation={beginGitMutation}
+                onConfirmMutation={applyGitMutation}
+                onCancelMutation={() => setGitMutationPreview(null)}
+                onRecoverMutation={recoverGitRevert}
+              />
+            </WorkspaceView>
+
+            <WorkspaceView
+              route="sessions"
+              active={workspaceLocation.route === "sessions"}
+            >
+              <SessionWorkspace
+                availability={sessionState}
+                snapshot={sessions}
+                runtime={runtime}
+                projects={projects.projects}
+                activeConversationId={conversation.conversationId}
+                attachments={conversationAttachments}
+                busy={sessionBusy || conversationBusy || conversationActive}
+                attachmentBusy={conversationAttachmentBusy}
+                actionError={sessionActionError}
+                attachmentActionError={conversationAttachmentActionError}
+                searchTerm={sessionSearchTerm}
+                onSearch={refreshSessions}
+                onRefresh={() => refreshSessions()}
+                onSelect={(session) => selectProject(session.projectId)}
+                onResume={(request) =>
+                  continueHistoricalConversation(
+                    resumeConversationTask,
+                    request,
+                  )
+                }
+                onFork={(request) =>
+                  continueHistoricalConversation(forkConversationTask, request)
+                }
+                onArchive={(conversationId) =>
+                  mutateSession(() => archiveConversationTask(conversationId))
+                }
+                onRestore={(conversationId) =>
+                  mutateSession(() => restoreConversationTask(conversationId))
+                }
+                onUpdateModelSelection={applyModelSelection}
+                onAttachmentPick={chooseConversationAttachments}
+                onAttachmentDrop={stageConversationAttachmentDrop}
+                onAttachmentCancel={removeConversationAttachment}
+              />
+            </WorkspaceView>
+
+            <WorkspaceView
+              route="integrations"
+              active={workspaceLocation.route === "integrations"}
+            >
+              <IntegrationCenter
+                availability={integrationState}
+                snapshot={integrationCatalog}
+                preview={integrationPreview}
+                result={integrationResult}
+                controlPreview={integrationControlPreview}
+                controlResult={integrationControlResult}
+                busy={integrationBusy}
+                actionError={integrationActionError}
+                onRefresh={refreshIntegrationCatalog}
+                onPreview={beginIntegrationMutation}
+                onConfirm={applyIntegrationMutation}
+                onControlPreview={beginIntegrationControl}
+                onControlConfirm={applyIntegrationControl}
+                onControlOpen={openIntegrationControl}
+                onControlPoll={checkIntegrationControl}
+                onCancel={() => {
+                  setIntegrationPreview(null);
+                  setIntegrationControlPreview(null);
+                }}
+              />
+            </WorkspaceView>
+
+            <WorkspaceView
+              route="scheduled"
+              active={workspaceLocation.route === "scheduled"}
+            >
+              <ScheduledWorkspace
+                availability={integrationState}
+                snapshot={integrationCatalog}
+              />
+            </WorkspaceView>
+
+            <WorkspaceView
+              route="conversation"
+              active={workspaceLocation.route === "conversation"}
+            >
+              <ConversationWorkspace
+                availability={conversationState}
+                snapshot={conversation}
+                events={conversationEvents}
+                runtime={runtime}
+                project={currentProject}
+                integrations={integrationCatalog}
+                attachments={conversationAttachments}
+                busy={conversationBusy}
+                attachmentBusy={conversationAttachmentBusy}
+                actionError={conversationActionError}
+                attachmentActionError={conversationAttachmentActionError}
+                onStart={beginConversation}
+                onInterrupt={stopConversation}
+                onDecideApproval={applyConversationApproval}
+                onUpdateModelSelection={applyModelSelection}
+                onAttachmentPick={chooseConversationAttachments}
+                onAttachmentDrop={stageConversationAttachmentDrop}
+                onAttachmentCancel={removeConversationAttachment}
+              />
+            </WorkspaceView>
+
+            <WorkspaceView
+              route="settings"
+              active={workspaceLocation.route === "settings"}
+            >
+              <SettingsWorkspace
+                section={workspaceLocation.settingsSection ?? "accounts"}
+                auth={auth}
+                authState={authState}
+                authBusy={authBusy}
+                authActionError={authActionError}
+                confirmLogout={confirmLogout}
+                usage={usage}
+                usageState={usageState}
+                usageBusy={usageBusy}
+                theme={theme}
+                productName={bootstrap.product.name}
+                productVersion={bootstrap.product.version}
+                bridgeLabel={bridgeLabel}
+                runtimeLabel={runtimeLabel}
+                cliVersion={runtime.cliVersion}
+                onSectionChange={(section) =>
+                  navigateWorkspace("settings", section)
+                }
+                onRefreshAuth={() => void applyAuthAction(refreshAuth)}
+                onRefreshUsage={() => void refreshUsageStatus()}
+                onRequestLogout={() => setConfirmLogout(true)}
+                onConfirmLogout={() => {
+                  setConfirmLogout(false);
+                  void applyAuthAction(logoutAuth);
+                }}
+                onCancelLogout={() => setConfirmLogout(false)}
+                onThemeChange={setTheme}
+              />
+            </WorkspaceView>
+          </div>
+
+          {inspectorAvailable && inspectorOpen && (
+            <>
+              <div
+                className="pane-divider"
+                role="separator"
+                aria-label="Resize context inspector"
+                aria-orientation="vertical"
+                aria-valuemin={inspectorWidthMinimum}
+                aria-valuemax={inspectorWidthMaximum}
+                aria-valuenow={inspectorWidth}
+                tabIndex={0}
+                onPointerDown={beginInspectorResize}
+                onKeyDown={resizeInspectorFromKeyboard}
+              />
+              <aside
+                className="context-inspector"
+                aria-labelledby="context-inspector-title"
+              >
+                <header className="context-inspector__header">
+                  <div>
+                    <span>Current workspace</span>
+                    <h2 id="context-inspector-title">Context</h2>
+                  </div>
+                  <button
+                    type="button"
+                    aria-label="Close context inspector"
+                    onClick={() => setInspectorOpen(false)}
+                  >
+                    ×
+                  </button>
+                </header>
+                <div className="context-inspector__scroll">
+                  {inspectorContent}
                 </div>
-              </div>
-
-              {authState === "authenticated" && (
-                <>
-                  <p className="auth-card__copy">
-                    Connected using{" "}
-                    {auth.accountKind === "chatgpt"
-                      ? "Codex-managed ChatGPT authentication"
-                      : "authentication already owned by Codex"}
-                    . No account identity is displayed or retained.
-                  </p>
-                  <div className="auth-actions">
-                    <button
-                      className="auth-button auth-button--quiet"
-                      type="button"
-                      disabled={authBusy}
-                      onClick={() => void applyAuthAction(refreshAuth)}
-                    >
-                      <Glyph name="refresh" />
-                      Refresh status
-                    </button>
-                    {!confirmLogout ? (
-                      <button
-                        className="auth-button auth-button--danger"
-                        type="button"
-                        disabled={authBusy}
-                        onClick={() => setConfirmLogout(true)}
-                      >
-                        Sign out of Codex
-                      </button>
-                    ) : (
-                      <div
-                        className="logout-confirmation"
-                        role="group"
-                        aria-label="Confirm Codex sign out"
-                      >
-                        <button
-                          className="auth-button auth-button--danger"
-                          type="button"
-                          disabled={authBusy}
-                          onClick={() => {
-                            setConfirmLogout(false);
-                            void applyAuthAction(logoutAuth);
-                          }}
-                        >
-                          Confirm sign out
-                        </button>
-                        <button
-                          className="auth-button auth-button--quiet"
-                          type="button"
-                          disabled={authBusy}
-                          onClick={() => setConfirmLogout(false)}
-                        >
-                          Keep signed in
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </>
-              )}
-
-              {authState === "not-required" && (
-                <p className="auth-card__copy">
-                  The selected Codex provider does not require OpenAI account
-                  authentication. QuireForge will continue to defer credential
-                  ownership to Codex.
-                </p>
-              )}
-
-              {authActionError && (
-                <p className="auth-error" role="alert">
-                  The native authentication action did not complete. Your Codex
-                  credentials were not changed by QuireForge.
-                </p>
-              )}
-            </div>
-          </section>
-
-          <section
-            className="foundation"
-            id="foundation"
-            aria-labelledby="foundation-title"
-          >
-            <div className="section-heading">
-              <div>
-                <p className="eyebrow">System status</p>
-                <h2 id="foundation-title">Ready for local work.</h2>
-              </div>
-              <p>
-                QuireForge reports only capabilities verified through its native
-                boundary. Unavailable services remain visibly disabled.
-              </p>
-            </div>
-
-            <div className="capability-grid">
-              {bootstrap.capabilities.map((capability, index) => (
-                <article className="capability-card" key={capability.id}>
-                  <div className="capability-card__top">
-                    <span
-                      className={`capability-number capability-number--${index}`}
-                    >
-                      0{index + 1}
-                    </span>
-                    <span
-                      className={`state-badge state-badge--${capability.state}`}
-                    >
-                      {capability.state}
-                    </span>
-                  </div>
-                  <h3>{capability.label}</h3>
-                  <p>
-                    {capability.id === "codex-runtime"
-                      ? "Version probing, supervised stdio, normalized models, and bounded failure states."
-                      : capability.id === "codex-auth"
-                        ? "Codex-owned browser and device login with bounded state, cancellation, and redaction."
-                        : capability.id === "project-attachments"
-                          ? "Native selection, explicit confirmation, durable identity, and fail-closed cwd preflight."
-                          : capability.id === "conversation-runtime"
-                            ? "Verified-cwd thread startup, normalized streaming, exact interruption, and reference-only persistence."
-                            : capability.state === "ready"
-                              ? "Tauri, React, strict TypeScript, and a validated native contract."
-                              : "Explicit directory selection, identity verification, and in-place local work."}
-                  </p>
-                  <footer>
-                    <span>Available</span>
-                    <Glyph
-                      name={capability.state === "ready" ? "check" : "chevron"}
-                    />
-                  </footer>
-                </article>
-              ))}
-            </div>
-          </section>
-
-          <section className="boundary-note" aria-label="Security boundary">
-            <div className="boundary-icon">
-              <Glyph name="shield" />
-            </div>
-            <div>
-              <strong>Local by design. Narrow by default.</strong>
-              <p>
-                The frontend cannot spawn arbitrary processes or read arbitrary
-                files. QuireForge metadata stays separate from Codex
-                credentials, configuration, sessions, and connector
-                authorization.
-              </p>
-            </div>
-            <span>{runtimeLabel}</span>
-          </section>
-
-          <footer className="product-footer">
-            <span>{bootstrap.product.tagline}</span>
-            <p>
-              QuireForge is an unofficial community project. It is not made,
-              endorsed, supported, or distributed by OpenAI.
-            </p>
-          </footer>
+              </aside>
+            </>
+          )}
         </div>
+
+        <footer className="workspace-statusbar" aria-label="Workspace status">
+          <div>
+            <StatusDot state={bridgeState} />
+            <span>{bridgeLabel}</span>
+          </div>
+          <span>{currentProject?.displayName ?? "No project attached"}</span>
+          <span>{activeWorkspaceTitle}</span>
+          <span>v{bootstrap.product.version}</span>
+        </footer>
       </main>
     </div>
   );
