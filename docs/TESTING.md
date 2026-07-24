@@ -773,10 +773,19 @@ PLAYWRIGHT_CHROMIUM_EXECUTABLE=/path/to/chromium pnpm test:e2e
 The website suite exercises desktop and mobile viewports, every public route,
 horizontal overflow, semantic page structure, light/dark theme persistence,
 and axe-core checks on the home and integration pages. The desktop browser suite
-exercises its responsive semantic shell, honest browser-preview state, theme
-persistence, overflow, and axe-core baseline in both viewports. Automated
-accessibility checks complement rather than replace keyboard, screen-reader,
-zoom, and visual review.
+exercises all ten dedicated workspace routes, the account-to-Settings fallback,
+responsive semantic shell, honest browser-preview state, theme persistence,
+independent scrolling, overflow, keyboard routing, and axe-core baseline in
+both viewports. Automated accessibility checks complement rather than replace
+keyboard, screen-reader, zoom, and visual review.
+
+Milestone 22's visual pass writes ignored screenshots beneath
+`apps/desktop/test-results` at 1920×1080, 1440×900, 1366×768, a 720-pixel
+collapsed layout, and the configured mobile viewport:
+
+```bash
+pnpm --filter @quireforge/desktop exec playwright test --grep "captures routed desktop workspace evidence"
+```
 
 GitHub Actions installs its own isolated Chromium and runs the same suite. It
 does not deploy the site and receives no Cloudflare credentials.

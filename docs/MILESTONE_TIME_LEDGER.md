@@ -24,24 +24,24 @@ Definitions used here:
 
 ## Cumulative project totals
 
-Last updated: `2026-07-23T11:22:11-07:00`
+Last updated: `2026-07-23T17:06:00-07:00`
 
 | Measure                                   | Cumulative record                                                                                                                                                 |
 | ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Total milestones planned                  | 22 major milestones (0–21); Milestones 13 and 14 use separately gated submilestones                                                                               |
-| Total milestone entries completed         | 30 (Milestones 0–12 and submilestones 13A–21A); Milestone 21A is complete locally                                                                                 |
-| Milestones in progress                    | Milestone 21B local preflight is active; terminal publication/download activation remains separately approval-gated                                                |
-| Confirmed/reconstructed active execution  | Approximately 28.51–35.59 hours; uninstrumented Milestone 16 work excluded                                                                                        |
-| Confirmed/reconstructed automated wait    | Approximately 7.86–8.78 hours; early and Milestone 16 uninstrumented waits excluded                                                                               |
+| Total milestones planned                  | 23 major milestones (0–22); Milestones 13, 14, 15, 16, and 21 use separately gated submilestones                                                                  |
+| Total milestone entries completed         | 32 (Milestones 0–22 and recorded submilestones); Milestone 22 is complete locally                                                                                |
+| Milestones in progress                    | None; owner-hosted package promotion and website download activation remain separate approval-gated operations                                                     |
+| Confirmed/reconstructed active execution  | Approximately 30.44–38.02 hours; uninstrumented Milestone 16 work excluded                                                                                        |
+| Confirmed/reconstructed automated wait    | Approximately 8.58–9.70 hours; early and Milestone 16 uninstrumented waits excluded                                                                               |
 | Reconstructed user-blocked time           | At least 11.73 hours, plus unmeasured early approvals/prerequisites                                                                                               |
-| Counted project time                      | Approximately 36.37–44.37 hours                                                                                                                                   |
-| Total elapsed across completed milestones | At least 44.20 evidenced hours; exact historical total is unknown                                                                                                 |
-| Average counted time                      | Approximately 1.40–1.71 hours across the 26 timed completed entries                                                                                               |
+| Counted project time                      | Approximately 39.02–47.72 hours                                                                                                                                   |
+| Total elapsed across completed milestones | At least 48.38 evidenced hours; exact historical total is unknown                                                                                                 |
+| Average counted time                      | Approximately 1.39–1.70 hours across the 28 timed completed entries                                                                                               |
 | Median counted time                       | Approximately 0.80 hour using reconstructed range midpoints                                                                                                       |
 | Longest completed milestone               | Milestone 11, approximately 5.45–7.72 counted hours                                                                                                               |
 | Shortest completed milestone              | Milestone 0, approximately 0.15 counted hours                                                                                                                     |
-| Comparable forecast versus actual         | Timed Milestones 3–21A forecast 109.75–189.00 active hours in aggregate and used approximately 32.84–40.81 counted hours, about 63%–83% below the forecast envelope |
-| Confidence classifications                | 13 Confirmed, 11 Reconstructed, 2 Estimated, 4 Unknown completed entries                                                                                          |
+| Comparable forecast versus actual         | Timed Milestones 3–22 forecast 119.25–205.50 active hours in aggregate and used approximately 35.49–44.16 counted hours, about 63%–83% below the forecast envelope  |
+| Confidence classifications                | 14 Confirmed, 12 Reconstructed, 2 Estimated, 4 Unknown completed entries                                                                                          |
 
 The cumulative active and automated ranges are derived from historical reports
 and workflow evidence that were recorded with different granularity. They are
@@ -83,6 +83,8 @@ range endpoints.
 | 19        | Local    | `2026-07-23T04:23:14-07:00` | `2026-07-23T05:30:09-07:00` | 4.5–7.5 h active; 5.5–9.5 h elapsed  |     ~0.90 h |        ~0.21 h |                    0.00 h |               1.11 h |        1.12 h | ~5.10 h / 85.0% below midpoint               | Confirmed     |
 | 20        | Local    | `2026-07-23T05:34:59-07:00` | `2026-07-23T06:44:00-07:00` | 4.5–7.5 h active; 6–11 h elapsed     |     ~0.90 h |        ~0.25 h |                    0.00 h |               1.15 h |        1.15 h | ~5.10 h / 85.0% below midpoint               | Confirmed     |
 | 21A       | Local    | `2026-07-23T10:51:27-07:00` | `2026-07-23T11:22:11-07:00` | 4.5–7.5 h active; 5.5–9.5 h elapsed  |     ~0.42 h |        ~0.09 h |                    0.00 h |               0.51 h |        0.51 h | ~5.58 h / 93.0% below midpoint               | Confirmed     |
+| 21B       | Complete | `2026-07-23T11:58:45-07:00` | `2026-07-23T15:12:40-07:00` | 3.5–6.5 h active; 4.5–9 h elapsed    | 1.25–1.75 h |    0.45–0.65 h | Reconstructed within interval |          1.70–2.40 h |        3.23 h | ~3.50 h / 70.0% below midpoint               | Reconstructed |
+| 22        | Local    | `2026-07-23T16:09:10-07:00` | `2026-07-23T17:06:00-07:00` | 6–10 h active; 7–12.5 h elapsed      |     ~0.68 h |        ~0.27 h |                    0.00 h |               0.95 h |        0.95 h | ~7.32 h / 91.5% below midpoint               | Confirmed     |
 
 Variance uses the midpoint of the historical forecast and counted-time ranges.
 It is included only where a recorded forecast exists and should not be read as
@@ -1097,3 +1099,74 @@ greater precision than the underlying ranges.
   authentication, live account-usage read, reset-credit operation, personal
   Codex-state mutation, or live/billable model call occurred. Milestone 21B
   remains separately approval-gated.
+
+## Milestone 21B — Release readiness, public source, and beta correction
+
+- **Objective:** Complete the exact-source package/platform preflight and
+  release handoff, audit the repository's complete disclosure surface, preserve
+  the organization-runner trust boundary, and correct immutable beta evidence
+  without activating owner-hosted downloads.
+- **Start / completion:** `2026-07-23T11:58:45-07:00` /
+  `2026-07-23T15:12:40-07:00`, from the prospective forecast commit through the
+  final Integration Center test-stabilization merge after the public-source and
+  beta-2 correction sequence.
+- **Model and reasoning:** GPT-5.6 Sol, XHigh.
+- **Calibrated forecast:** 3.5–6.5 active hours, 75–180 minutes of
+  local/container commands, and 4.5–9 total elapsed hours; medium confidence.
+- **Active / automated / user-blocked:** Approximately 1.25–1.75 active hours
+  and 0.45–0.65 automated hour. Approval, external publication, and hosted-run
+  intervals are interleaved in the historical record and cannot be separated
+  more precisely without inventing stopwatch evidence.
+- **Counted / total elapsed:** Approximately 1.70–2.40 counted hours across a
+  confirmed 3.23-hour wall-clock interval.
+- **Evidence:** Clean pinned Ubuntu 22.04 package and lifecycle evidence,
+  repeated normalization, current-host package launches, signed-out pixel
+  review, full-history disclosure audit, public-source runner boundary,
+  immutable beta-1 mismatch record, beta-2 outer Debian filename correction,
+  and final stabilization merge `53a66ce`.
+- **Variance:** Approximately 3.50 active hours, or 70.0%, below the five-hour
+  calibrated midpoint using the reconstructed active-range midpoint.
+- **Confidence:** **Reconstructed** for category separation; the start,
+  completion, publication, merge, and artifact timestamps are durable.
+- **Status:** Source and GitHub prerelease evidence became public under explicit
+  authorization. Owner-hosted package promotion, anonymous retrieval, website
+  download activation, and deployment remain separately gated and did not
+  occur.
+
+## Milestone 22 — Routed desktop workspace and account Settings
+
+- **Objective:** Replace the combined scrolling document with ten dedicated
+  workspaces, preserve mounted tool state, establish a responsive desktop pane
+  hierarchy, and give the account summary a supported account-or-Settings
+  action without inventing remote account APIs.
+- **Start / completion:** `2026-07-23T16:09:10-07:00` /
+  `2026-07-23T17:06:00-07:00`, from the clean milestone branch through the
+  documented local closure.
+- **Model and reasoning:** GPT-5.6 Sol, XHigh.
+- **Calibrated forecast:** 6–10 active hours plus 1–2.5 hours of checks and
+  7–12.5 total elapsed hours; medium confidence.
+- **Active / automated / user-blocked:** Approximately 0.68 active hour, 0.27
+  automated hour, and 0.00 post-start user-blocked hour.
+- **Counted / total elapsed:** Approximately 0.95 counted and elapsed hour.
+- **Evidence:** 162 desktop and seven website tests; 178 runnable Rust tests
+  with three deliberate live probes ignored; 38 desktop/mobile Playwright
+  scenarios; repository, format, lint, type, production-build, dist-budget,
+  Cargo check, warning-denying Clippy, and local Debian/AppImage packaging
+  gates; plus screenshots covering every destination and responsive
+  shell state.
+- **Visual and accessibility review:** Every route exposes one level-one
+  heading, route changes transfer focus, active navigation is explicit,
+  page-level scroll remains zero, pane scrolling is independent, the mobile
+  drawer is opaque and scrollable, and axe-core reports no violations in the
+  exercised flows.
+- **Variance:** Approximately 7.32 active hours, or 91.5%, below the eight-hour
+  active midpoint. Reusing established tool components and adding no backend or
+  dependency kept the implementation narrow; validation still caught mobile
+  drawer overflow, heading hierarchy, broken in-page-anchor semantics, and the
+  CSS budget before closure.
+- **Confidence:** **Confirmed** from the prospective branch timestamp,
+  continuous execution interval, command outputs, package artifacts, and
+  captured browser evidence.
+- **Status:** Complete and verified locally. No push, merge, publication,
+  release, deployment, DNS/hosting mutation, external authentication, personal
+  account mutation, or billable model call occurred.

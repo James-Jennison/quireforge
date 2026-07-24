@@ -142,6 +142,12 @@ rollback sequence. The source repository and GitHub prerelease/provenance
 records are public. The committed website continues to report no downloads
 until the exact owner-hosted package location, public retrieval, activation,
 and deployment operations receive their separate approvals.
+Milestone 22 replaces the former combined scrolling workspace with ten
+dedicated, deep-linkable application views inside one persistent QuireForge
+desktop shell. It adds independent pane scrolling, an optional contextual
+inspector, responsive compact/drawer navigation, preserved mounted tool state,
+and a real account-to-Settings action that exposes only supported normalized
+Codex refresh, usage, and logout controls.
 Webuzo is the selected static origin host, with Cloudflare retained as the DNS,
 TLS, and cache edge. The reviewed static site is publicly deployed at
 `https://quireforge.jamesjennison.net` through the approved proxied Cloudflare
@@ -194,7 +200,9 @@ download yet. The source repository and development activity are public.
   home/workspace redesign, milestone-label removal, and normalized remaining
   usage are complete and verified locally. Milestone 21B's clean package
   preflight, platform launch review, repeat normalization, and dormant public
-  download validation are also complete locally.
+  download validation are also complete locally. Milestone 22's routed
+  workspace shell, contextual pane layout, responsive navigation, and
+  account/settings fallback are complete and verified locally.
 - CI status: repository, website, and desktop quality gates are configured for
   pull requests and `main` pushes; deployment remains separately gated.
 - Current milestone: Milestone 15 is implemented and verified locally, the
@@ -206,8 +214,9 @@ download yet. The source repository and development activity are public.
   and verified locally. Milestone 21A product readiness is also implemented and
   verified locally. Milestone 21B local release readiness has passed and the
   public beta 1 evidence is retained as superseded; beta 2 corrects its Debian
-  asset-name mismatch. Owner-hosted package promotion, anonymous retrieval,
-  website download activation, and deployment remain separately
+  asset-name mismatch. Milestone 22's routed desktop workspace and Settings
+  milestone is complete locally. Owner-hosted package promotion, anonymous
+  retrieval, website download activation, and deployment remain separately
   approval-gated.
   Native Wayland evidence covers project, file, and image pickers, bounded
   preview, a real Nautilus image drop, and fixed-copy notification delivery;

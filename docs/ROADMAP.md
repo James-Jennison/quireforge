@@ -747,6 +747,38 @@ package promotion, public retrieval checks, website activation, and deployment
 remain separate terminal gates. See the
 [Milestone 21B release-readiness report](MILESTONE_21B_RELEASE_READINESS.md).
 
+### 22 — Routed Desktop Workspace and Account Settings
+
+Complete locally. The persistent QuireForge shell now routes Home, New task,
+Projects, Threads, Scheduled, Integrations, Files, Changes, Worktrees, and
+Terminal into dedicated primary workspaces instead of stacking them in one
+scrolling document. The typed hash route supports deep links and local
+restoration, active navigation and route-change focus are explicit, and
+existing stateful tool components remain mounted while inactive views are
+hidden from layout and assistive technology.
+
+The desktop frame now has a compact route-aware toolbar, independently
+scrollable primary content, a meaningful collapsible/resizable contextual
+inspector, a persistent status bar, compact navigation at medium widths, and a
+scrollable off-canvas drawer at small widths. Inspector width and compact
+sidebar choice remain local presentation preferences. No pane is rendered only
+to imitate a reference.
+
+The full account row now opens QuireForge Settings at Accounts & connections.
+It uses only the existing normalized Codex refresh, remaining-usage, and
+two-step logout controls. Direct ChatGPT account management is not a supported
+interface, so the view states that boundary and exposes no fabricated account,
+billing, credential, or private-page control. Appearance and About clearly
+remain local QuireForge settings.
+
+No frontend routing/pane dependency, backend capability, Tauri permission,
+credential store, deployment, release, or hosting change was added. The local
+acceptance gate passed 162 desktop and seven website unit/component tests, 178
+runnable Rust tests with three deliberate live probes ignored, 38 desktop and
+mobile Playwright scenarios, production asset budgets, and local Debian and
+AppImage packaging. See the
+[Milestone 22 completion report](MILESTONE_22_ROUTED_DESKTOP_WORKSPACE.md).
+
 ## Forecast policy
 
 The initial whole-project estimate is several hundred active engineering hours

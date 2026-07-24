@@ -16,6 +16,15 @@ released a usable application.
 
 ### Added
 
+- Milestone 22 routed desktop workspace: ten typed, deep-linkable primary
+  destinations; preserved mounted tool state; route-aware toolbar and status
+  bar; independent pane scrolling; contextual inspectors; compact navigation;
+  and a responsive off-canvas drawer without a second routing dependency.
+- A dedicated QuireForge Settings workspace. The interactive account row opens
+  Accounts & connections with only supported normalized Codex refresh, usage,
+  and two-step logout controls; Appearance and About remain explicitly local.
+- Desktop/mobile routing, focus, accessibility, state-restoration, no-page-
+  scroll, and opt-in visual-evidence coverage for the routed shell.
 - A dedicated full-history public-disclosure audit covering every reachable
   branch, tag, pull-request head, Git object, collaboration record, Actions
   run/log, and exact release artifact; no credential, token, private key, or

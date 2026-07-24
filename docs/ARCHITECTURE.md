@@ -1,10 +1,9 @@
 # Architecture
 
-Status: desktop implementation is locally verified through Milestone 19 and
-the static website is complete through production Milestone 16 with Milestone
-19 accessibility hardening applied locally. Packaging, release publication,
-and unsupported integration-management expansion remain subject to separately
-gated work.
+Status: desktop implementation is locally verified through Milestone 22 and
+the static website is complete through production Milestone 16. Packaging,
+release publication, and unsupported integration-management expansion remain
+subject to separately gated work.
 
 QuireForge is an unofficial native Linux workspace for Codex. It is not made,
 endorsed, supported, or distributed by OpenAI.
@@ -145,6 +144,35 @@ capability: Home summarizes existing project and reference-only session state,
 then links to the established fixed-purpose workspaces. Internal roadmap
 milestones remain repository metadata and are not rendered as product
 navigation.
+
+### Milestone 22 routed desktop-workspace boundary
+
+The authenticated shell owns one typed `WorkspaceLocation`. Its hash is a
+deep-linkable presentation route and its last valid value is retained in local
+QuireForge preferences. Home, New task, Projects, Threads, Scheduled,
+Integrations, Files, Changes, Worktrees, and Terminal each occupy one dedicated
+primary workspace; navigation never scrolls to a section in a combined
+document. The shell, sidebar, and existing tool components remain mounted, so
+temporary terminal, task, file, Git, worktree, and integration presentation
+state survives ordinary destination switches. Inactive workspaces are hidden
+from layout and the accessibility tree.
+
+The desktop frame owns independent scrolling for the sidebar, active workspace,
+and optional contextual inspector. The inspector contains only normalized state
+already available to the selected workspace and is omitted when it has no
+meaningful content. Its bounded width and the compact-sidebar choice are local
+presentation preferences. Below the desktop breakpoint it becomes an overlay;
+below the navigation breakpoint the sidebar becomes a keyboard-accessible,
+scrollable drawer rather than disappearing.
+
+The account summary is a real button into QuireForge Settings, initially
+selecting Accounts & connections. That view can refresh normalized Codex
+connection and usage state and invoke the existing two-step Codex logout. It
+does not claim a direct ChatGPT account-management API, expose billing, collect
+credentials, scrape private pages, or add a browser handoff. Appearance and
+About remain explicitly local QuireForge preferences and product information.
+This milestone adds no native command, Tauri permission, dependency, storage
+schema, authentication route, or remote-account capability.
 
 ### Milestone 6 implementation boundary
 
