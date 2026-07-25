@@ -37,6 +37,12 @@ valid reported duration, and clears the display to an honest unavailable state
 during refresh failures. The full usage panel continues to show every reported
 window. No Qt work is included.
 
+The same branch has verified local beta-2 package candidates through the
+existing digest-pinned Ubuntu 22.04 container workflow. Both the Debian and
+AppImage candidates passed manifest/checksum, GLIBC, disposable lifecycle, and
+visible X11 launch checks; their source commit and hashes remain in the ignored
+`target/ubuntu-22.04/release/packages/` manifest rather than source control.
+
 For a fresh thread, read in this order:
 
 1. `AGENTS.md`
