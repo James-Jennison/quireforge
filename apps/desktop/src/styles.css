@@ -4767,52 +4767,18 @@ button:disabled {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .auth-onboarding {
-    margin-right: 36px;
-    margin-left: 36px;
-  }
-
-  .project-workspace {
-    margin-right: 36px;
-    margin-left: 36px;
-  }
-
-  .file-preview-workspace {
-    margin-right: 36px;
-    margin-left: 36px;
-  }
-
-  .worktree-workspace {
-    margin-right: 36px;
-    margin-left: 36px;
-  }
-
-  .integrated-terminal {
-    margin-right: 36px;
-    margin-left: 36px;
-  }
-
-  .git-workspace {
-    margin-right: 36px;
-    margin-left: 36px;
-  }
-
-  .conversation-workspace {
-    margin-right: 36px;
-    margin-left: 36px;
-  }
-
-  .session-workspace {
-    margin-right: 36px;
-    margin-left: 36px;
-  }
-
-  .integration-center {
-    margin-right: 36px;
-    margin-left: 36px;
-  }
-
-  .scheduled-workspace {
+  :is(
+    .auth-onboarding,
+    .project-workspace,
+    .file-preview-workspace,
+    .worktree-workspace,
+    .integrated-terminal,
+    .git-workspace,
+    .conversation-workspace,
+    .session-workspace,
+    .integration-center,
+    .scheduled-workspace
+  ) {
     margin-right: 36px;
     margin-left: 36px;
   }
@@ -4897,26 +4863,20 @@ button:disabled {
 
   .auth-onboarding {
     grid-template-columns: 1fr;
-    margin: 0 24px 42px;
-    padding: 26px 22px;
   }
 
-  .project-workspace {
-    margin: 0 24px 42px;
-    padding: 26px 22px;
-  }
-
-  .file-preview-workspace {
-    margin: 0 24px 42px;
-    padding: 26px 22px;
-  }
-
-  .worktree-workspace {
-    margin: 0 24px 42px;
-    padding: 26px 22px;
-  }
-
-  .integrated-terminal {
+  :is(
+    .auth-onboarding,
+    .project-workspace,
+    .file-preview-workspace,
+    .worktree-workspace,
+    .integrated-terminal,
+    .git-workspace,
+    .conversation-workspace,
+    .session-workspace,
+    .integration-center,
+    .scheduled-workspace
+  ) {
     margin: 0 24px 42px;
     padding: 26px 22px;
   }
@@ -4968,11 +4928,6 @@ button:disabled {
     justify-content: flex-start;
   }
 
-  .git-workspace {
-    margin: 0 24px 42px;
-    padding: 26px 22px;
-  }
-
   .git-workspace__heading,
   .git-diff__heading {
     display: grid;
@@ -4990,26 +4945,6 @@ button:disabled {
   .git-mutation-result {
     align-items: stretch;
     flex-direction: column;
-  }
-
-  .conversation-workspace {
-    margin: 0 24px 42px;
-    padding: 26px 22px;
-  }
-
-  .session-workspace {
-    margin: 0 24px 42px;
-    padding: 26px 22px;
-  }
-
-  .integration-center {
-    margin: 0 24px 42px;
-    padding: 26px 22px;
-  }
-
-  .scheduled-workspace {
-    margin: 0 24px 42px;
-    padding: 26px 22px;
   }
 
   .scheduled-workspace__intro,
