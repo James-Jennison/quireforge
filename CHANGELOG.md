@@ -28,6 +28,9 @@ released a usable application.
   Settings now share calmer surface elevation, heading rhythm, responsive
   status wrapping, and mobile-drawer Playwright evidence without changing
   native actions or route ownership.
+- Completed Milestone 22B's presentation, accessibility, responsive, browser,
+  native, formatting, and pinned Ubuntu 22.04 package-validation gates without
+  adding product capabilities or changing approved ownership boundaries.
 - Milestone 22 routed desktop workspace: ten typed, deep-linkable primary
   destinations; preserved mounted tool state; route-aware toolbar and status
   bar; independent pane scrolling; contextual inspectors; compact navigation;

@@ -22,7 +22,9 @@ function windowLabel(window: CodexUsageWindow): string {
   return window.kind === "primary" ? "Primary window" : "Secondary window";
 }
 
-function scopeLabel(scope: CodexUsageSnapshot["runtimeMeters"][number]["scope"]): string {
+function scopeLabel(
+  scope: CodexUsageSnapshot["runtimeMeters"][number]["scope"],
+): string {
   switch (scope) {
     case "shared-account":
       return "Shared account scope";
@@ -61,7 +63,7 @@ export function UsagePanel({
             ? "No metered window reported"
             : state === "native" && snapshot.state === "ready"
               ? "No weekly window reported"
-          : "View in ChatGPT";
+              : "View in ChatGPT";
 
     return (
       <div

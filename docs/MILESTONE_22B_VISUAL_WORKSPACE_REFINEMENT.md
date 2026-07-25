@@ -1,6 +1,6 @@
 # Milestone 22B — Visual Workspace Refinement
 
-Status: in progress on `feat/milestone-22b-visual-workspace-refinement`.
+Status: complete locally on `feat/milestone-22b-visual-workspace-refinement`.
 
 ## Objective
 
@@ -37,16 +37,17 @@ Git safety controls, terminal behavior, usage reporting, and confirmation
 requirements remain unchanged. No fixture data, account credentials, or new
 remote management capability is introduced.
 
-## Validation and remaining work
+## Completion validation
 
-The current focused desktop gate passes TypeScript, ESLint, 33 test files / 172
-tests, 38 desktop/mobile Playwright scenarios (including axe, overflow, and
-mobile-drawer evidence), production build, and distribution-budget validation.
-The current output is 189.01 KiB entry JavaScript, 289.75 KiB application
-JavaScript, 820.61 KiB total JavaScript, and 99.03 KiB total CSS. A
-repository-wide Prettier check remains blocked by pre-existing formatting in
-`App`, `UsagePanel`, and their tests; changed stylesheet and Playwright files
-pass their scoped formatting check.
-The final milestone still requires representative route refinement, refreshed
-visual evidence, full frontend and Rust validation, and fresh `.deb` and
-AppImage packaging in the pinned Ubuntu 22.04 environment.
+The final repository gate passes TypeScript, ESLint, repository formatting, 33
+desktop test files / 172 tests, 38 desktop/mobile Playwright scenarios
+(including axe, overflow, and mobile-drawer evidence), production build, and
+distribution-budget validation. The output is 189.01 KiB entry JavaScript,
+289.75 KiB application JavaScript, 820.61 KiB total JavaScript, and 99.03 KiB
+total CSS. Rust formatting, warning-denying Clippy, Rust tests, and Tauri
+compilation also pass.
+
+The pinned Ubuntu 22.04 workflow produces fresh `.deb` and AppImage candidates
+with manifest, SHA-256, GLIBC-baseline, desktop-entry, icon, disposable Debian
+lifecycle, and visible installed/AppImage launch evidence. No release,
+deployment, merge, or remote-account action is part of this completion.

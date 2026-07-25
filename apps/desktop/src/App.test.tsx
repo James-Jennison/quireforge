@@ -384,7 +384,9 @@ describe("QuireForge desktop shell", () => {
         .find((button) => !button.hasAttribute("disabled"))!,
     );
     expect(
-      await screen.findByText(/Codex runtime limits are currently unavailable/u),
+      await screen.findByText(
+        /Codex runtime limits are currently unavailable/u,
+      ),
     ).toBeInTheDocument();
     expect(screen.queryByText("32% remaining")).not.toBeInTheDocument();
   });

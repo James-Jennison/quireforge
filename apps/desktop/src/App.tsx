@@ -104,10 +104,7 @@ import {
   type CodexAuthSnapshot,
 } from "./lib/auth";
 import { scaffoldCodexRuntime, type CodexRuntimeSnapshot } from "./lib/codex";
-import {
-  unavailableCodexUsage,
-  type CodexUsageSnapshot,
-} from "./lib/usage";
+import { unavailableCodexUsage, type CodexUsageSnapshot } from "./lib/usage";
 import { scaffoldBootstrap, type DesktopBootstrap } from "./lib/contract";
 import {
   scaffoldFilePreview,

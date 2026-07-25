@@ -788,15 +788,16 @@ AppImage packaging. See the
 
 ### 22B — Visual Workspace Refinement
 
-In progress on `feat/milestone-22b-visual-workspace-refinement`. This is a
+Complete locally on `feat/milestone-22b-visual-workspace-refinement`. This was a
 presentation and usability refinement of the existing routed desktop shell,
 not a replacement for it: shared header and surface conventions, improved
 route hierarchy, responsive behavior, and accessibility polish must preserve
 the existing Tauri bridge, hash routing, safety boundaries, and workspace
 actions. The current refinement includes the representative Scheduled,
 Integrations, Files, and Settings surfaces and mobile-drawer evidence. Each
-checkpoint must remain under the 100 KiB production CSS budget; fresh Ubuntu
-22.04-compatible Debian and AppImage validation closes the work.
+checkpoint remains under the 100 KiB production CSS budget. Full repository,
+browser, native, and fresh Ubuntu 22.04-compatible Debian/AppImage validation
+now close the work.
 
 ### 23 — UI Platform Feasibility Decision
 

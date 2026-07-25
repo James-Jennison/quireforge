@@ -7,8 +7,8 @@ locally.” Tauri + React + TypeScript is the current functional prototype. The
 long-term UI-platform decision is pending; no Qt migration has been selected.
 
 - **Branch:** `feat/milestone-22b-visual-workspace-refinement`
-- **Checkpoint:** Milestone 22B is in progress; Milestone 22 remains complete.
-- **Milestone 22B:** the routed desktop architecture is being refined without
+- **Checkpoint:** Milestone 22B is complete locally; Milestone 22 remains complete.
+- **Milestone 22B:** the routed desktop architecture was refined without
   changing route, native-bridge, authentication, or account-data ownership.
 - **Host readiness:** Qt 6.10.2/QML tooling is installed on this host only.
 
@@ -25,19 +25,19 @@ the current presentation layer and calls that façade through its bridge.
 
 ## Next action
 
-Continue **Milestone 22B — Visual Workspace Refinement** on
+Milestone 22B — **Visual Workspace Refinement** is complete on
 `feat/milestone-22b-visual-workspace-refinement`. The completed checkpoints
 consolidate responsive shell CSS, preserve reduced-motion behavior, refine
 shell hierarchy, add Home's current-workspace surface, and establish shared
 header rules for New task, Threads, Projects, Changes, Worktrees, and Terminal.
-Scheduled, Integrations, Files, and Settings now share aligned surface and
+Scheduled, Integrations, Files, and Settings share aligned surface and
 responsive conventions while retaining their distinct route structures. The
-next slice should inspect remaining visual inconsistencies before the final
-milestone gate; fresh Ubuntu 22.04 packages remain a final-milestone gate.
-The focused gate continues to cover 172 desktop unit tests and 38
-desktop/mobile Playwright scenarios, with 99.03 KiB total CSS. A full desktop
-Prettier pass is currently blocked only by pre-existing formatting in unrelated
-App and usage files; changed files pass their scoped formatting check.
+full repository format gate now passes after the approved mechanical cleanup of
+the unrelated App and usage files. The final gate covers 172 desktop unit tests,
+38 desktop/mobile Playwright scenarios, full Rust/Tauri validation, and fresh
+Ubuntu 22.04 package lifecycle and visible-launch evidence, with 99.03 KiB
+total CSS. The next product work is approval-gated Milestone 23 feasibility
+research; do not begin it implicitly.
 
 ### Maintenance handoff
 

@@ -148,7 +148,8 @@ desktop shell. It adds independent pane scrolling, an optional contextual
 inspector, responsive compact/drawer navigation, preserved mounted tool state,
 and a real account-to-Settings action that exposes only supported normalized
 Codex refresh, usage, and logout controls.
-Milestone 22B is refining that existing routed workspace presentation with
+Milestone 22B completed the existing routed workspace presentation refinement
+with
 shared visual conventions and responsive/accessibility polish; it does not add
 new remote account, agent, or backend capabilities. The current slice aligns
 the Scheduled, Integrations, Files, and Settings route surfaces while retaining

@@ -1176,12 +1176,15 @@ greater precision than the underlying ranges.
 - **Objective:** Refine the existing routed desktop presentation system while
   preserving route ownership, native boundaries, and established workspace
   behavior.
-- **Start / completion:** Started `2026-07-25`; in progress.
+- **Start / completion:** Started and completed `2026-07-25`.
 - **Evidence so far:** Responsive CSS consolidation, reduced-motion coverage,
   shell hierarchy refinement, Home current-workspace context, shared
   workspace-header consolidation, and representative Scheduled, Integrations,
   Files, and Settings surface alignment. The focused desktop gate covers 33
   test files / 172 tests, TypeScript, ESLint, production build, the enforced
-  distribution budget, and 38 desktop/mobile Playwright scenarios.
-- **Status:** In progress. No new package, release, merge, deployment, or
-  external-account action has occurred for this milestone.
+  distribution budget, and 38 desktop/mobile Playwright scenarios. The approved
+  mechanical Prettier cleanup restored the full repository gate; fresh pinned
+  Ubuntu 22.04 `.deb` and AppImage validation covers manifest, checksums, GLIBC,
+  lifecycle, metadata, and visible launch smoke checks.
+- **Status:** Complete locally. No release, merge, deployment, or
+  external-account action occurred for this milestone.

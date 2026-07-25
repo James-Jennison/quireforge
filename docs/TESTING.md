@@ -807,7 +807,9 @@ production-build, and distribution-budget commands before it is committed;
 responsive and axe/Playwright evidence remain required before the milestone is
 closed. The current evidence capture includes the mobile drawer plus Scheduled,
 Integrations, Files, and Settings, alongside the established desktop and
-compact-rail route captures.
+compact-rail route captures. The completion gate additionally passes the full
+repository formatter, Rust/Tauri checks, and the pinned Ubuntu 22.04 package
+lifecycle and visible-launch workflow.
 
 GitHub Actions installs its own isolated Chromium and runs the same suite. It
 does not deploy the site and receives no Cloudflare credentials.

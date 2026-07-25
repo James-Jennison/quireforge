@@ -176,7 +176,7 @@ schema, authentication route, or remote-account capability.
 
 ### Milestone 22B presentation boundary
 
-Milestone 22B refines the existing React presentation layer only. Shared
+Milestone 22B refined the existing React presentation layer only. Shared
 workspace-header conventions cover equivalent title, context, and action
 layouts without creating a second route system or moving workspace ownership.
 The shell keeps its three independently scrollable regions, optional inspector,
