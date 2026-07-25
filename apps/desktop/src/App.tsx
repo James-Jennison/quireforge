@@ -3001,6 +3001,7 @@ export default function App({
             >
               <HomeDashboard
                 projects={projects}
+                currentProject={currentProject ?? null}
                 onNewTask={() => navigateWorkspace("conversation")}
                 onAttachProject={() => void applyProjectAction(pickProject)}
                 onOpenProjects={() => navigateWorkspace("projects")}

@@ -2,6 +2,7 @@ import type { ProjectWorkspaceSnapshot } from "./lib/project";
 
 interface HomeDashboardProps {
   projects: ProjectWorkspaceSnapshot;
+  currentProject: ProjectWorkspaceSnapshot["projects"][number] | null;
   onNewTask: () => void;
   onAttachProject: () => void;
   onOpenProjects: () => void;
@@ -12,6 +13,7 @@ interface HomeDashboardProps {
 
 export function HomeDashboard({
   projects,
+  currentProject,
   onNewTask,
   onAttachProject,
   onOpenProjects,
@@ -42,6 +44,39 @@ export function HomeDashboard({
           <span>Describe a change, investigation, or review…</span>
           <strong>New task</strong>
         </button>
+
+        <div className="home-section-heading">
+          <h2>Current workspace</h2>
+          <button type="button" onClick={onOpenProjects}>
+            Manage projects
+          </button>
+        </div>
+
+        <div className="home-projects">
+          {currentProject ? (
+            <button type="button" onClick={onNewTask}>
+              <span aria-hidden="true">⌑</span>
+              <strong>{currentProject.displayName}</strong>
+              <small>
+                {currentProject.directory?.state === "connected-accessible"
+                  ? "Ready for a focused task"
+                  : "Project needs attention before work can start"}
+              </small>
+              <em>
+                {currentProject.directory?.git.isRepository
+                  ? "Verified Git workspace"
+                  : "Verified local workspace"}
+              </em>
+            </button>
+          ) : (
+            <button type="button" onClick={onAttachProject}>
+              <span aria-hidden="true">+</span>
+              <strong>Choose a workspace</strong>
+              <small>Attach an existing local project to begin</small>
+              <em>Native picker</em>
+            </button>
+          )}
+        </div>
 
         <div className="home-section-heading">
           <h2>Projects</h2>
