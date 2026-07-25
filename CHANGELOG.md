@@ -20,6 +20,10 @@ released a usable application.
 
 ### Added
 
+- Milestone 23 UI-platform feasibility evidence and ADR 0028 decision: retain
+  Tauri conditionally, preserve the Rust-domain/Tauri-adapter boundary, and
+  reconsider Qt 6 only on documented measurable triggers. This documentation
+  change adds no Qt prototype, migration, dependency, package, or capability.
 - Milestone 22B presentation refinements: Home now surfaces the current
   workspace using existing project data, while shared desktop header rules keep
   New task, Threads, Projects, Changes, Worktrees, and Terminal aligned without

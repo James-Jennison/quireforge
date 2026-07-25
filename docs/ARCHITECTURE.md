@@ -1,6 +1,6 @@
 # Architecture
 
-Status: desktop implementation is locally verified through Milestone 22 and
+Status: desktop implementation is locally verified through Milestone 22B and
 the static website is complete through production Milestone 16. Packaging,
 release publication, and unsupported integration-management expansion remain
 subject to separately gated work.
@@ -184,6 +184,18 @@ and hidden inactive routes. Scheduled, Integrations, Files, and Settings retain
 their distinct structures while sharing surface, heading, and responsive-state
 conventions. CSS consolidation is constrained by the existing production bundle
 budget; it does not alter the native façade or data contract.
+
+### Milestone 23 UI-platform decision boundary
+
+ADR 0028 accepts retaining Tauri conditionally. The documented durable seam is
+a UI-neutral Rust core containing closed domain operations, normalized
+snapshots, persistence, validation, policy, process ownership, and confirmation
+state; Tauri commands/plugins today and any future Qt bridge/adapters remain
+outside it. This describes a future extraction boundary, not an existing
+standalone crate. React/TypeScript presentation, the Tauri façade, and package
+workflow remain active; no Qt source, bridge, dependency, prototype, or
+migration has begun. See the
+[Milestone 23 feasibility decision](MILESTONE_23_UI_PLATFORM_FEASIBILITY.md).
 
 ### Milestone 6 implementation boundary
 

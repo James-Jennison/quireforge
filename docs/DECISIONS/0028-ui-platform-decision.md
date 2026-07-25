@@ -1,7 +1,7 @@
 # ADR 0028: UI Platform Decision
 
-- Status: Proposed
-- Date: 2026-07-23
+- Status: Accepted
+- Date: 2026-07-25
 
 ## Context
 
@@ -11,9 +11,10 @@ cross-platform native desktop interface.
 
 ## Decision to make
 
-After feasibility evidence, either retain and evolve the Tauri prototype or
-begin a controlled Qt 6 migration. This ADR does not select Qt or retire Tauri
-yet.
+Retain Tauri conditionally and reconsider Qt 6 only when the measurable
+reconsideration triggers in
+[Milestone 23](../MILESTONE_23_UI_PLATFORM_FEASIBILITY.md) occur. This accepts
+neither an immediate Qt migration nor an unconditional permanent Tauri choice.
 
 ## Constraints
 
@@ -25,16 +26,35 @@ yet.
 ## Required evidence before acceptance
 
 - A Tauri façade versus reusable-core boundary map.
-- Qt prototype feasibility and the smallest safe core/facade boundary.
+- A current Tauri façade versus reusable-core boundary map and the smallest safe
+  future core/facade boundary.
 - Packaging and platform-adapter implications.
 - Accessibility, terminal, file-picker, and notification considerations.
 - CI implications, migration risks, and estimated scope.
 
-## Consequences while proposed
+## Decision and consequences
 
-Tauri remains the active prototype. No Qt migration begins, and installed Qt
-tooling alone does not constitute a platform decision.
+Tauri + React + TypeScript remains the active prototype. The existing Rust
+services, closed typed contracts, and native safety boundaries are preserved.
+No Qt migration, dependency, prototype, packaging change, or parallel frontend
+development begins from this ADR.
 
-## Decision trigger
+The evidence found no measured QuireForge limitation that justifies replacing
+the verified presentation, test, distribution, and Tauri façade layers. Qt 6
+has credible documented desktop capabilities, but its QML presentation and any
+Rust bridge would require a new façade, lifecycle integration, automation,
+accessibility verification, packaging workflow, and feature-parity work.
 
-Complete Milestone 23 and obtain explicit user approval.
+The full comparison, confidence, external primary sources, estimate ranges,
+unknowns, and triggers are recorded in the
+[Milestone 23 feasibility report](../MILESTONE_23_UI_PLATFORM_FEASIBILITY.md).
+
+## Reconsideration
+
+Re-open this ADR only on documented trigger evidence: a material unresolved
+Tauri/WebView Linux limitation; a repeatable performance failure against an
+agreed target; a funded cross-platform requirement Tauri cannot meet; an
+unmitigable support/security burden; or a separately approved narrow Qt
+prototype that demonstrates the required parity and a materially improved
+migration case. Host-installed Qt tooling or unmeasured preference is not
+sufficient evidence.

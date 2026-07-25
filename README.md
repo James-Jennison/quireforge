@@ -154,6 +154,10 @@ shared visual conventions and responsive/accessibility polish; it does not add
 new remote account, agent, or backend capabilities. The current slice aligns
 the Scheduled, Integrations, Files, and Settings route surfaces while retaining
 their distinct read-only, reviewed-action, preview, and local-preference roles.
+Milestone 23's documentation-only feasibility decision retains Tauri
+conditionally: reusable Rust services may later sit behind a UI-neutral
+boundary, but a Qt 6 migration is not authorized unless defined measurable
+triggers are met and separately approved.
 Webuzo is the selected static origin host, with Cloudflare retained as the DNS,
 TLS, and cache edge. The reviewed static site is publicly deployed at
 `https://quireforge.jamesjennison.net` through the approved proxied Cloudflare

@@ -111,8 +111,8 @@ discovery; scheduling management and execution remain unsupported.
 |        18 | Agent-directed model and reasoning selection                      | Large        | Complete and verified locally; not published                             |
 |        19 | Security, accessibility, and performance hardening                | Very large   | Complete and verified locally                                            |
 |        20 | Packaging and release automation                                  | Large        | Complete and verified locally; not published                             |
-|        21 | Product readiness, beta publication, and download activation       | Very large   | 21A complete; 21B local preflight passed, publication approval-gated      |
-|        23 | UI platform feasibility decision                                    | Medium       | Next; read-only decision evidence required                                |
+|        21 | Product readiness, beta publication, and download activation      | Very large   | 21A complete; 21B local preflight passed, publication approval-gated     |
+|        23 | UI platform feasibility decision                                  | Medium       | Complete; ADR 0028 retains Tauri conditionally                           |
 
 ## Milestone definitions
 
@@ -801,14 +801,15 @@ now close the work.
 
 ### 23 — UI Platform Feasibility Decision
 
-This is a read-only decision milestone. Map the Tauri façade against reusable
-Rust services, define the smallest safe core/facade boundary, and evaluate
-retaining Tauri versus a Qt 6 migration. Assess Linux, Windows, and macOS
-implications, including packaging, platform adapters, accessibility, terminal,
-file picker, notifications, and CI. Produce the evidence required by ADR 0028.
+Complete on `docs/milestone-23-ui-platform-feasibility`. The read-only evidence
+maps the Tauri façade against reusable Rust services, defines a future
+UI-neutral core/adapters boundary, and compares retaining Tauri, a full Qt 6
+migration, and a deferred conditional migration. ADR 0028 accepts retaining
+Tauri conditionally; Qt reconsideration requires measurable documented
+triggers. See the [Milestone 23 report](MILESTONE_23_UI_PLATFORM_FEASIBILITY.md).
 
-This milestone creates no code, dependencies, prototypes, migrations, package
-changes, or full repository audit.
+No code, dependencies, prototypes, migrations, package changes, or full
+repository audit occurred.
 
 ## Forecast policy
 

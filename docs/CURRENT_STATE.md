@@ -3,11 +3,12 @@
 ## Identity and platform status
 
 QuireForge is an unofficial Linux workspace for Codex: “Build boldly. Work
-locally.” Tauri + React + TypeScript is the current functional prototype. The
-long-term UI-platform decision is pending; no Qt migration has been selected.
+locally.” Tauri + React + TypeScript is the current functional prototype. ADR
+0028 accepts retaining Tauri conditionally; no Qt migration has been selected.
 
-- **Branch:** `feat/milestone-22b-visual-workspace-refinement`
-- **Checkpoint:** Milestone 22B is complete locally; Milestone 22 remains complete.
+- **Branch:** `docs/milestone-23-ui-platform-feasibility`
+- **Checkpoint:** Milestones 22 and 22B are complete; Milestone 23 records the
+  UI-platform decision.
 - **Milestone 22B:** the routed desktop architecture was refined without
   changing route, native-bridge, authentication, or account-data ownership.
 - **Host readiness:** Qt 6.10.2/QML tooling is installed on this host only.
@@ -25,19 +26,20 @@ the current presentation layer and calls that façade through its bridge.
 
 ## Next action
 
-Milestone 22B — **Visual Workspace Refinement** is complete on
-`feat/milestone-22b-visual-workspace-refinement`. The completed checkpoints
-consolidate responsive shell CSS, preserve reduced-motion behavior, refine
-shell hierarchy, add Home's current-workspace surface, and establish shared
-header rules for New task, Threads, Projects, Changes, Worktrees, and Terminal.
-Scheduled, Integrations, Files, and Settings share aligned surface and
-responsive conventions while retaining their distinct route structures. The
-full repository format gate now passes after the approved mechanical cleanup of
-the unrelated App and usage files. The final gate covers 172 desktop unit tests,
-38 desktop/mobile Playwright scenarios, full Rust/Tauri validation, and fresh
-Ubuntu 22.04 package lifecycle and visible-launch evidence, with 99.03 KiB
-total CSS. The next product work is approval-gated Milestone 23 feasibility
-research; do not begin it implicitly.
+Milestone 23 — **UI Platform Feasibility Decision** is complete as a
+documentation-only decision on `docs/milestone-23-ui-platform-feasibility`.
+It maps the Tauri façade, React presentation, reusable Rust services, and Linux
+adapters; compares retaining Tauri, a Qt 6 migration, and a deferred conditional
+migration; and accepts **retain Tauri conditionally and reconsider Qt only on
+defined measurable triggers**. No source, dependency, package, prototype, or
+migration changed. See [Milestone 23](MILESTONE_23_UI_PLATFORM_FEASIBILITY.md)
+and [ADR 0028](DECISIONS/0028-ui-platform-decision.md).
+
+The final Milestone 22B baseline remains implementation commit
+`6e880672b3faca50170f56fc67e187337d1b11d9`, with package evidence recorded by
+`db1b729b8324b6f12952b3fe627e03a0457902ba`. Its complete gate includes 172
+desktop unit tests, 38 desktop/mobile Playwright scenarios, Rust/Tauri
+validation, and Ubuntu 22.04 package lifecycle and visible-launch evidence.
 
 ### Maintenance handoff
 
