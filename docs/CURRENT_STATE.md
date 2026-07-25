@@ -39,10 +39,18 @@ short-window fallback exists: missing, invalid, preview, loading, and failed
 refresh states are nonnumeric, and reset timestamps stay paired to their
 source window. No Qt work is included.
 
-Package artifacts must be rebuilt through the digest-pinned Ubuntu 22.04
-container after the restored weekly-summary change. The prior ignored package
-artifacts are not evidence for this revision. The component suite verifies the
-general weekly selection, nonnumeric unavailable states, and runtime details.
+The restored weekly-summary UI was packaged from
+`ba5b984d9d4de449b0c2ad3ed328d133b3412e55` through the digest-pinned Ubuntu
+22.04 container on 2026-07-25. The ignored local artifacts in
+`target/ubuntu-22.04/release/packages/` are
+`quireforge_0.1.0.beta.2_amd64.deb` (4,475,040 bytes;
+`c3bac356fb3ff8f99603165532917110a339e6c00025e652592c0ddb31e31e3b`) and
+`QuireForge-0.1.0-beta.2-x86_64.AppImage` (83,655,160 bytes;
+`5ab4a41503f48897f78ec64d9be3ce0b473d49d51254501635b11b0cda7d7768`). Both
+passed manifest/checksum, GLIBC (maximum `2.34`), disposable Debian lifecycle,
+and visible X11 launch checks on the Ubuntu 22.04 baseline. The component suite
+verifies the general weekly selection, nonnumeric unavailable states, and
+runtime details.
 
 For a fresh thread, read in this order:
 
