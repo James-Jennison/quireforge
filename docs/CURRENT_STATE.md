@@ -28,6 +28,15 @@ The next action is the read-only **Milestone 23 — UI Platform Feasibility
 Decision**. It must produce evidence for ADR 0028 before any platform decision
 or implementation work.
 
+### Maintenance handoff
+
+The focused `fix/sidebar-codex-usage-window` branch corrects the compact
+Codex-usage summary without changing the milestone sequence. It selects the
+Codex-reported 10,080-minute window when available, otherwise the longest
+valid reported duration, and clears the display to an honest unavailable state
+during refresh failures. The full usage panel continues to show every reported
+window. No Qt work is included.
+
 For a fresh thread, read in this order:
 
 1. `AGENTS.md`

@@ -184,7 +184,7 @@ describe("QuireForge desktop shell", () => {
       0,
     );
     expect(screen.queryByText(/Milestone/u)).not.toBeInTheDocument();
-    expect(await screen.findAllByText("73%")).not.toHaveLength(0);
+    expect(await screen.findAllByText("44%")).not.toHaveLength(0);
     expect(screen.queryByText("planned")).not.toBeInTheDocument();
 
     expect(screen.getByRole("link", { name: "Home" })).toHaveAttribute(
@@ -319,6 +319,71 @@ describe("QuireForge desktop shell", () => {
     expect(
       screen.queryByRole("button", { name: "Attach local project" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("replaces usage on refresh and clears it when the refresh fails", async () => {
+    const refreshedUsage = {
+      ...scaffoldCodexUsage,
+      meters: [
+        {
+          ...scaffoldCodexUsage.meters[0],
+          windows: [
+            {
+              kind: "primary" as const,
+              usedPercent: 0,
+              remainingPercent: 100,
+              windowDurationMinutes: 300,
+              resetsAt: 1_784_808_000,
+            },
+            {
+              kind: "secondary" as const,
+              usedPercent: 68,
+              remainingPercent: 32,
+              windowDurationMinutes: 10_080,
+              resetsAt: 1_785_412_800,
+            },
+          ],
+        },
+      ],
+    };
+    const refreshUsage = vi
+      .fn()
+      .mockResolvedValueOnce(refreshedUsage)
+      .mockRejectedValueOnce(new Error("refresh failed"));
+
+    render(
+      <App
+        loadBootstrap={() => Promise.resolve(scaffoldBootstrap)}
+        loadRuntime={() => Promise.resolve(scaffoldCodexRuntime)}
+        loadAuth={() => Promise.resolve(authenticatedAuth)}
+        loadUsage={() => Promise.resolve(scaffoldCodexUsage)}
+        refreshUsage={refreshUsage}
+        loadProjects={() => Promise.resolve(scaffoldProjectWorkspace)}
+      />,
+    );
+
+    expect(await screen.findAllByText("44%")).not.toHaveLength(0);
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Open Codex account and connection settings",
+      }),
+    );
+    await screen.findByRole("heading", { name: "Codex owns authentication." });
+    fireEvent.click(
+      screen
+        .getAllByRole("button", { name: "Refresh" })
+        .find((button) => !button.hasAttribute("disabled"))!,
+    );
+    expect(await screen.findAllByText("32%")).not.toHaveLength(0);
+    expect(screen.queryByText("44%")).not.toBeInTheDocument();
+
+    fireEvent.click(
+      screen
+        .getAllByRole("button", { name: "Refresh" })
+        .find((button) => !button.hasAttribute("disabled"))!,
+    );
+    expect(await screen.findByText("Usage unavailable")).toBeInTheDocument();
+    expect(screen.queryByText("32%")).not.toBeInTheDocument();
   });
 
   it("does not read workspace data before Codex authentication", async () => {

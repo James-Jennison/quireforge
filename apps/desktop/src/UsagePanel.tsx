@@ -1,16 +1,16 @@
-import type { CodexUsageSnapshot, CodexUsageWindow } from "./lib/usage";
+import {
+  selectSidebarUsageWindow,
+  usageResetLabel,
+  type CodexUsageSnapshot,
+  type CodexUsageWindow,
+} from "./lib/usage";
 
 interface UsagePanelProps {
   snapshot: CodexUsageSnapshot;
-  state: "checking" | "native" | "preview";
+  state: "checking" | "native" | "preview" | "unavailable";
   busy: boolean;
   compact?: boolean;
   onRefresh: () => void;
-}
-
-interface MeteredWindow {
-  meter: CodexUsageSnapshot["meters"][number];
-  window: CodexUsageWindow;
 }
 
 function windowLabel(window: CodexUsageWindow): string {
@@ -20,37 +20,6 @@ function windowLabel(window: CodexUsageWindow): string {
   if (minutes && minutes % 60 === 0) return `${minutes / 60}-hour window`;
   if (minutes) return `${minutes}-minute window`;
   return window.kind === "primary" ? "Primary window" : "Secondary window";
-}
-
-function resetLabel(timestamp: number | null): string {
-  if (timestamp === null) return "Reset time unavailable";
-  const date = new Date(timestamp * 1000);
-  if (Number.isNaN(date.getTime())) return "Reset time unavailable";
-  return `Resets ${new Intl.DateTimeFormat(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(date)}`;
-}
-
-export function selectSidebarUsageWindow(
-  windows: MeteredWindow[],
-): MeteredWindow | undefined {
-  return [...windows].sort((left, right) => {
-    const leftWeekly = left.window.windowDurationMinutes === 10_080 ? 1 : 0;
-    const rightWeekly = right.window.windowDurationMinutes === 10_080 ? 1 : 0;
-    if (leftWeekly !== rightWeekly) return rightWeekly - leftWeekly;
-
-    const leftDuration = left.window.windowDurationMinutes ?? -1;
-    const rightDuration = right.window.windowDurationMinutes ?? -1;
-    if (leftDuration !== rightDuration) return rightDuration - leftDuration;
-
-    if (left.window.kind !== right.window.kind) {
-      return left.window.kind === "secondary" ? -1 : 1;
-    }
-    return left.meter.limitId.localeCompare(right.meter.limitId);
-  })[0];
 }
 
 export function UsagePanel({
@@ -72,17 +41,18 @@ export function UsagePanel({
     let status = "Usage unavailable";
     if (state === "checking") status = "Checking Codex usage";
     else if (state === "preview") status = "Native usage unavailable";
-    else if (snapshot.state === "not-metered") status = "No metered window reported";
-    else if (sidebarWindow) status = resetLabel(sidebarWindow.window.resetsAt);
+    else if (state === "unavailable") status = "Usage unavailable";
+    else if (snapshot.state === "not-metered" || !sidebarWindow)
+      status = "No metered window reported";
+    else if (sidebarWindow)
+      status = usageResetLabel(sidebarWindow.window.resetsAt);
 
     return (
       <div className="usage-compact" aria-label="Codex usage">
         <div>
           <span>Usage available</span>
           <strong>
-            {sidebarWindow
-              ? `${sidebarWindow.window.remainingPercent}%`
-              : "—"}
+            {sidebarWindow ? `${sidebarWindow.window.remainingPercent}%` : "—"}
           </strong>
         </div>
         <small>{status}</small>
@@ -110,6 +80,12 @@ export function UsagePanel({
       {state === "preview" && (
         <p>Native usage information is unavailable in browser preview.</p>
       )}
+      {state === "unavailable" && (
+        <p>
+          Codex usage is currently unavailable. QuireForge will not estimate the
+          remaining amount.
+        </p>
+      )}
       {state === "native" && snapshot.state === "not-metered" && (
         <p>This Codex account did not report a metered usage window.</p>
       )}
@@ -132,7 +108,7 @@ export function UsagePanel({
                   {meter.label} · {windowLabel(window)}
                 </span>
                 <strong>{window.remainingPercent}% remaining</strong>
-                <small>{resetLabel(window.resetsAt)}</small>
+                <small>{usageResetLabel(window.resetsAt)}</small>
               </div>
               <div
                 className="usage-meter__bar"

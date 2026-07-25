@@ -723,6 +723,12 @@ protocol metadata are discarded in Rust. User-facing milestone labels are no
 longer rendered. See the
 [Milestone 21A product-readiness report](MILESTONE_21A_PRODUCT_READINESS.md).
 
+The compact sidebar selects an exact Codex-reported 10,080-minute window, or
+the longest valid reported window if no weekly duration exists. It never treats
+the position or `primary`/`secondary` name as evidence of a weekly allowance;
+the selected percentage and reset are displayed together without calculation,
+estimation, or prediction.
+
 Milestone 21B retains the external release boundary:
 
 Run final package and supported-platform QA; confirm the approved distribution

@@ -45,4 +45,23 @@ describe("Codex usage contract", () => {
       }),
     ).toThrow();
   });
+
+  it("rejects a milliseconds reset timestamp instead of treating it as seconds", () => {
+    expect(() =>
+      codexUsageSchema.parse({
+        ...scaffoldCodexUsage,
+        meters: [
+          {
+            ...scaffoldCodexUsage.meters[0],
+            windows: [
+              {
+                ...scaffoldCodexUsage.meters[0]!.windows[0],
+                resetsAt: 1_784_808_000_000,
+              },
+            ],
+          },
+        ],
+      }),
+    ).toThrow();
+  });
 });

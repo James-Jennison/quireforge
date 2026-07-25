@@ -418,6 +418,7 @@ printf '%s\n' '{"id":2,"result":{"rateLimits":{"limitId":"codex","primary":{"use
         for response in [
             r#"{"rateLimits":{"limitId":"codex","primary":{"usedPercent":101}}}"#,
             r#"{"rateLimits":{"limitId":"codex","primary":{"usedPercent":10,"resetsAt":-1}}}"#,
+            r#"{"rateLimits":{"limitId":"codex","primary":{"usedPercent":10,"resetsAt":1784808000000}}}"#,
             r#"{"rateLimits":{"limitId":"codex","limitName":"safe\u202eevil","primary":{"usedPercent":10}}}"#,
             r#"{"rateLimits":{"limitId":"codex","primary":{"usedPercent":10},"rateLimitReachedType":"future_unreviewed_value"}}"#,
         ] {

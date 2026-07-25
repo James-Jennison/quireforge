@@ -4,7 +4,7 @@ import { UsagePanel } from "./UsagePanel";
 import type { SettingsSection } from "./workspaceNavigation";
 
 type AuthViewState = CodexAuthSnapshot["state"] | "checking" | "preview";
-type UsageViewState = "checking" | "native" | "preview";
+type UsageViewState = "checking" | "native" | "preview" | "unavailable";
 type Theme = "light" | "dark";
 
 interface SettingsWorkspaceProps {

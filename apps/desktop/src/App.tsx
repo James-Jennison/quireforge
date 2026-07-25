@@ -104,7 +104,11 @@ import {
   type CodexAuthSnapshot,
 } from "./lib/auth";
 import { scaffoldCodexRuntime, type CodexRuntimeSnapshot } from "./lib/codex";
-import { scaffoldCodexUsage, type CodexUsageSnapshot } from "./lib/usage";
+import {
+  scaffoldCodexUsage,
+  unavailableCodexUsage,
+  type CodexUsageSnapshot,
+} from "./lib/usage";
 import { scaffoldBootstrap, type DesktopBootstrap } from "./lib/contract";
 import {
   scaffoldFilePreview,
@@ -214,7 +218,7 @@ type ConversationViewState = "checking" | "native" | "preview";
 type SessionViewState = "checking" | "native" | "preview";
 type TerminalViewState = "checking" | "native" | "preview";
 type IntegrationViewState = "checking" | "native" | "preview";
-type UsageViewState = "checking" | "native" | "preview";
+type UsageViewState = "checking" | "native" | "preview" | "unavailable";
 type Theme = "light" | "dark";
 const workspaceStorageKey = "quireforge-workspace-location";
 const inspectorWidthStorageKey = "quireforge-inspector-width";
@@ -788,7 +792,10 @@ export default function App({
         setUsageState("native");
       })
       .catch(() => {
-        if (active) setUsageState("preview");
+        if (active) {
+          setUsage(unavailableCodexUsage);
+          setUsageState("preview");
+        }
       });
 
     return () => {
@@ -1421,12 +1428,15 @@ export default function App({
 
   async function refreshUsageStatus() {
     setUsageBusy(true);
+    setUsage(unavailableCodexUsage);
+    setUsageState("checking");
     try {
       const result = await refreshUsage();
       setUsage(result);
       setUsageState("native");
     } catch {
-      setUsageState("preview");
+      setUsage(unavailableCodexUsage);
+      setUsageState("unavailable");
     } finally {
       setUsageBusy(false);
     }

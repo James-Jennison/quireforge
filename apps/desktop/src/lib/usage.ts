@@ -104,4 +104,49 @@ export const codexUsageSchema = z
 export type CodexUsageSnapshot = z.infer<typeof codexUsageSchema>;
 export type CodexUsageWindow =
   CodexUsageSnapshot["meters"][number]["windows"][number];
+export interface MeteredUsageWindow {
+  meter: CodexUsageSnapshot["meters"][number];
+  window: CodexUsageWindow;
+}
 export const scaffoldCodexUsage = codexUsageSchema.parse(usageFixture);
+
+/** A cleared view value; never use the scaffold fixture as unavailable data. */
+export const unavailableCodexUsage = codexUsageSchema.parse({
+  schemaVersion: 1,
+  state: "unavailable",
+  meters: [],
+  diagnosticCode: "runtime-unavailable",
+});
+
+export function selectSidebarUsageWindow(
+  windows: MeteredUsageWindow[],
+): MeteredUsageWindow | undefined {
+  return windows
+    .filter(({ window }) => window.windowDurationMinutes !== null)
+    .sort((left, right) => {
+      const leftWeekly = left.window.windowDurationMinutes === 10_080 ? 1 : 0;
+      const rightWeekly = right.window.windowDurationMinutes === 10_080 ? 1 : 0;
+      if (leftWeekly !== rightWeekly) return rightWeekly - leftWeekly;
+
+      const leftDuration = left.window.windowDurationMinutes ?? -1;
+      const rightDuration = right.window.windowDurationMinutes ?? -1;
+      if (leftDuration !== rightDuration) return rightDuration - leftDuration;
+
+      if (left.meter.limitId !== right.meter.limitId) {
+        return left.meter.limitId.localeCompare(right.meter.limitId);
+      }
+      return left.window.kind.localeCompare(right.window.kind);
+    })[0];
+}
+
+export function usageResetLabel(timestamp: number | null): string {
+  if (timestamp === null) return "Reset time unavailable";
+  const date = new Date(timestamp * 1000);
+  if (Number.isNaN(date.getTime())) return "Reset time unavailable";
+  return `Resets ${new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date)}`;
+}
