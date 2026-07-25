@@ -805,7 +805,9 @@ Milestone 22B retains those routed-shell checks while it consolidates shared
 presentation rules. Each visual slice must run the desktop type, lint, unit,
 production-build, and distribution-budget commands before it is committed;
 responsive and axe/Playwright evidence remain required before the milestone is
-closed.
+closed. The current evidence capture includes the mobile drawer plus Scheduled,
+Integrations, Files, and Settings, alongside the established desktop and
+compact-rail route captures.
 
 GitHub Actions installs its own isolated Chromium and runs the same suite. It
 does not deploy the site and receives no Cloudflare credentials.

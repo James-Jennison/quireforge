@@ -180,8 +180,10 @@ Milestone 22B refines the existing React presentation layer only. Shared
 workspace-header conventions cover equivalent title, context, and action
 layouts without creating a second route system or moving workspace ownership.
 The shell keeps its three independently scrollable regions, optional inspector,
-and hidden inactive routes. CSS consolidation is constrained by the existing
-production bundle budget; it does not alter the native façade or data contract.
+and hidden inactive routes. Scheduled, Integrations, Files, and Settings retain
+their distinct structures while sharing surface, heading, and responsive-state
+conventions. CSS consolidation is constrained by the existing production bundle
+budget; it does not alter the native façade or data contract.
 
 ### Milestone 6 implementation boundary
 

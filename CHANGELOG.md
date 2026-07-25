@@ -24,6 +24,10 @@ released a usable application.
   workspace using existing project data, while shared desktop header rules keep
   New task, Threads, Projects, Changes, Worktrees, and Terminal aligned without
   changing route or native-bridge behavior.
+- Milestone 22B route-surface refinement: Scheduled, Integrations, Files, and
+  Settings now share calmer surface elevation, heading rhythm, responsive
+  status wrapping, and mobile-drawer Playwright evidence without changing
+  native actions or route ownership.
 - Milestone 22 routed desktop workspace: ten typed, deep-linkable primary
   destinations; preserved mounted tool state; route-aware toolbar and status
   bar; independent pane scrolling; contextual inspectors; compact navigation;

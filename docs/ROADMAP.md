@@ -793,8 +793,10 @@ presentation and usability refinement of the existing routed desktop shell,
 not a replacement for it: shared header and surface conventions, improved
 route hierarchy, responsive behavior, and accessibility polish must preserve
 the existing Tauri bridge, hash routing, safety boundaries, and workspace
-actions. Each checkpoint must remain under the 100 KiB production CSS budget;
-fresh Ubuntu 22.04-compatible Debian and AppImage validation closes the work.
+actions. The current refinement includes the representative Scheduled,
+Integrations, Files, and Settings surfaces and mobile-drawer evidence. Each
+checkpoint must remain under the 100 KiB production CSS budget; fresh Ubuntu
+22.04-compatible Debian and AppImage validation closes the work.
 
 ### 23 — UI Platform Feasibility Decision
 

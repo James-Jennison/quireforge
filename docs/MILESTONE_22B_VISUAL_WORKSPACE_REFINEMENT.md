@@ -20,6 +20,14 @@ capabilities, or inventing remote account controls.
 - Consolidated equivalent workspace-header rules for New task, Threads,
   Projects, Changes, Worktrees, and Terminal. Route-specific width and action
   constraints remain explicit.
+- Aligned Scheduled, Integrations, Files, and Settings around the same calm
+  surface, heading, status, and responsive conventions without flattening their
+  read-only catalog, review, preview, or local-preference structures. The
+  scheduled-card semantic heading now receives its intended shared presentation
+  rule.
+- Expanded the ignored Playwright visual evidence with reproducible mobile
+  drawer captures for Scheduled, Integrations, Files, and Settings. The suite
+  keeps axe and horizontal-overflow coverage for the exercised native fixtures.
 
 ## Boundaries
 
@@ -32,12 +40,13 @@ remote management capability is introduced.
 ## Validation and remaining work
 
 The current focused desktop gate passes TypeScript, ESLint, 33 test files / 172
-tests, 38 desktop/mobile Playwright scenarios (including axe and overflow
-coverage), production build, and distribution-budget validation. The current
-output is 189.01 KiB entry JavaScript, 289.75 KiB application JavaScript,
-820.61 KiB total JavaScript, and 99.03 KiB total CSS. A repository-wide
-Prettier check remains blocked by pre-existing formatting in `App`, `UsagePanel`,
-and their tests; the changed Playwright file passes its scoped formatting check.
+tests, 38 desktop/mobile Playwright scenarios (including axe, overflow, and
+mobile-drawer evidence), production build, and distribution-budget validation.
+The current output is 189.01 KiB entry JavaScript, 289.75 KiB application
+JavaScript, 820.61 KiB total JavaScript, and 99.03 KiB total CSS. A
+repository-wide Prettier check remains blocked by pre-existing formatting in
+`App`, `UsagePanel`, and their tests; changed stylesheet and Playwright files
+pass their scoped formatting check.
 The final milestone still requires representative route refinement, refreshed
 visual evidence, full frontend and Rust validation, and fresh `.deb` and
 AppImage packaging in the pinned Ubuntu 22.04 environment.

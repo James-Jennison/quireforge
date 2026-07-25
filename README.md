@@ -150,7 +150,9 @@ and a real account-to-Settings action that exposes only supported normalized
 Codex refresh, usage, and logout controls.
 Milestone 22B is refining that existing routed workspace presentation with
 shared visual conventions and responsive/accessibility polish; it does not add
-new remote account, agent, or backend capabilities.
+new remote account, agent, or backend capabilities. The current slice aligns
+the Scheduled, Integrations, Files, and Settings route surfaces while retaining
+their distinct read-only, reviewed-action, preview, and local-preference roles.
 Webuzo is the selected static origin host, with Cloudflare retained as the DNS,
 TLS, and cache edge. The reviewed static site is publicly deployed at
 `https://quireforge.jamesjennison.net` through the approved proxied Cloudflare

@@ -1178,9 +1178,10 @@ greater precision than the underlying ranges.
   behavior.
 - **Start / completion:** Started `2026-07-25`; in progress.
 - **Evidence so far:** Responsive CSS consolidation, reduced-motion coverage,
-  shell hierarchy refinement, Home current-workspace context, and shared
-  workspace-header consolidation. The latest focused desktop gate passed 33
-  test files / 172 tests, TypeScript, ESLint, production build, and the
-  enforced distribution budget.
+  shell hierarchy refinement, Home current-workspace context, shared
+  workspace-header consolidation, and representative Scheduled, Integrations,
+  Files, and Settings surface alignment. The focused desktop gate covers 33
+  test files / 172 tests, TypeScript, ESLint, production build, the enforced
+  distribution budget, and 38 desktop/mobile Playwright scenarios.
 - **Status:** In progress. No new package, release, merge, deployment, or
   external-account action has occurred for this milestone.

@@ -692,7 +692,7 @@ test("authenticated home shows real usage without milestone labels", async ({
   await expect(page.getByText(/Milestone/u)).toHaveCount(0);
 
   await page
-    .getByLabel("Remaining usage")
+    .getByRole("region", { name: "Codex usage limits" })
     .getByRole("button", { name: "Refresh", exact: true })
     .click();
   await expect(page.getByText("73% remaining")).toBeVisible();
@@ -1280,6 +1280,24 @@ test("captures routed desktop workspace evidence", async ({
     await page.getByRole("button", { name: "Open navigation" }).click();
     await page.screenshot({
       path: testInfo.outputPath("after-responsive-navigation.png"),
+      animations: "disabled",
+    });
+    await page.keyboard.press("Escape");
+    await expect(
+      page.getByRole("button", { name: "Open navigation" }),
+    ).toBeVisible();
+    for (const label of ["Scheduled", "Integrations", "Files"] as const) {
+      await openWorkspace(page, label);
+      await page.screenshot({
+        path: testInfo.outputPath(
+          `after-mobile-${label.toLowerCase()}-drawer.png`,
+        ),
+        animations: "disabled",
+      });
+    }
+    await openAccountSettings(page);
+    await page.screenshot({
+      path: testInfo.outputPath("after-mobile-settings-drawer.png"),
       animations: "disabled",
     });
     return;

@@ -3323,29 +3323,28 @@ button:disabled {
   flex: 0 0 auto;
 }
 
-.integration-center {
+.integration-center,
+.scheduled-workspace {
   position: relative;
-  margin: 0 52px 48px;
   padding: 34px;
   border: 1px solid var(--border);
   border-radius: 15px;
+}
+
+.integration-center {
   background:
     radial-gradient(circle at 88% 0, var(--accent-soft), transparent 35%),
     var(--surface);
 }
 
 .scheduled-workspace {
-  position: relative;
-  margin: 0 52px 48px;
-  padding: 34px;
-  border: 1px solid var(--border);
-  border-radius: 15px;
   background:
     radial-gradient(circle at 10% 0, var(--accent-soft), transparent 32%),
     var(--surface);
 }
 
-.scheduled-workspace__intro {
+.scheduled-workspace__intro,
+.integration-center__intro {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(260px, 0.72fr);
   gap: 42px;
@@ -3353,15 +3352,18 @@ button:disabled {
 }
 
 .scheduled-workspace__intro h1,
+.integration-center__intro h1,
 .scheduled-workspace__intro p,
 .scheduled-boundary p,
 .scheduled-card h2,
 .scheduled-card p,
-.scheduled-empty p {
+.scheduled-empty p,
+.integration-center__intro p {
   margin: 0;
 }
 
-.scheduled-workspace__intro h1 {
+.scheduled-workspace__intro h1,
+.integration-center__intro h1 {
   max-width: 680px;
   margin-top: 7px;
   font-family: Georgia, "Times New Roman", serif;
@@ -3370,7 +3372,8 @@ button:disabled {
   line-height: 1.04;
 }
 
-.scheduled-workspace__intro > p {
+.scheduled-workspace__intro > p,
+.integration-center__intro > p {
   color: var(--text-muted);
   font-size: 11px;
   line-height: 1.7;
@@ -3466,7 +3469,7 @@ button:disabled {
   text-transform: uppercase;
 }
 
-.scheduled-card__heading h3 {
+.scheduled-card__heading h2 {
   margin-top: 5px;
   font-size: 15px;
 }
@@ -3523,15 +3526,6 @@ button:disabled {
   line-height: 1.6;
 }
 
-.integration-center__intro {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(260px, 0.72fr);
-  gap: 42px;
-  align-items: end;
-}
-
-.integration-center__intro h1,
-.integration-center__intro p,
 .integration-detail h2,
 .integration-detail p,
 .marketplace-add h2,
@@ -3539,21 +3533,6 @@ button:disabled {
 .integration-dialog h3,
 .integration-dialog p {
   margin: 0;
-}
-
-.integration-center__intro h1 {
-  max-width: 620px;
-  margin-top: 7px;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(29px, 3vw, 43px);
-  font-weight: 500;
-  line-height: 1.04;
-}
-
-.integration-center__intro > p {
-  color: var(--text-muted);
-  font-size: 11px;
-  line-height: 1.7;
 }
 
 .integration-toolbar {
@@ -5372,6 +5351,11 @@ body,
   margin: 24px auto;
 }
 
+.workspace-view
+  > :is(.file-preview-workspace, .integration-center, .scheduled-workspace) {
+  box-shadow: 0 14px 38px color-mix(in srgb, var(--shadow) 38%, transparent);
+}
+
 .home-dashboard {
   display: block;
   width: 100%;
@@ -5705,6 +5689,11 @@ body,
 .settings-workspace__content {
   min-width: 0;
   padding: clamp(30px, 5vw, 60px);
+  background: radial-gradient(
+    circle at 76% -8%,
+    color-mix(in srgb, var(--accent-soft) 72%, transparent),
+    transparent 32%
+  );
 }
 
 .settings-section {
@@ -6154,6 +6143,12 @@ body,
 
   .settings-section__heading h2 {
     font-size: 25px;
+  }
+
+  .scheduled-status > span,
+  .integration-status > span {
+    max-width: 100%;
+    overflow-wrap: anywhere;
   }
 }
 
