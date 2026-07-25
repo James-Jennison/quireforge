@@ -51,3 +51,32 @@ The pinned Ubuntu 22.04 workflow produces fresh `.deb` and AppImage candidates
 with manifest, SHA-256, GLIBC-baseline, desktop-entry, icon, disposable Debian
 lifecycle, and visible installed/AppImage launch evidence. No release,
 deployment, merge, or remote-account action is part of this completion.
+
+### Final package evidence
+
+The final clean Milestone 22B commit is
+`6e880672b3faca50170f56fc67e187337d1b11d9`. Its ignored Ubuntu 22.04
+`release-candidate` manifest is
+`target/ubuntu-22.04/release/packages/release-manifest.json`; it records that
+exact clean source commit and the pinned
+`ubuntu:22.04@sha256:0e0a0fc6d18feda9db1590da249ac93e8d5abfea8f4c3c0c849ce512b5ef8982`
+builder. `target/ubuntu-22.04/release/packages/SHA256SUMS` matches both
+artifacts:
+
+- `.deb`: `target/ubuntu-22.04/release/packages/quireforge_0.1.0.beta.2_amd64.deb`
+  (4,475,472 bytes; SHA-256
+  `2261d317d3748cf7dbe59d87e5d4b99161bed19a4f032c99f416c2d78c51caa1`).
+- AppImage:
+  `target/ubuntu-22.04/release/packages/QuireForge-0.1.0-beta.2-x86_64.AppImage`
+  (83,655,160 bytes; SHA-256
+  `91ddc232068afa0f58f1504246451bacdb9e1ea49edb42cc8aa949f347c9d1c8`).
+
+The final workflow passed a maximum GLIBC requirement of `2.34` (within the
+Ubuntu 22.04 baseline), Debian install/upgrade/removal lifecycle, visible
+installed-Debian launch, visible AppImage launch, canonical desktop-entry and
+icon validation, and the representative installed-app smoke test. The
+disposable installer command is `dpkg --root "$root" --admindir "$admin"
+--instdir "$root" --install "$package"`. For local installation use `sudo apt
+install ./target/ubuntu-22.04/release/packages/quireforge_0.1.0.beta.2_amd64.deb`;
+launch the AppImage with
+`./target/ubuntu-22.04/release/packages/QuireForge-0.1.0-beta.2-x86_64.AppImage`.

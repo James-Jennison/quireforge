@@ -50,18 +50,29 @@ short-window fallback exists: missing, invalid, preview, loading, and failed
 refresh states are nonnumeric, and reset timestamps stay paired to their
 source window. No Qt work is included.
 
-The restored weekly-summary UI was packaged from
-`ba5b984d9d4de449b0c2ad3ed328d133b3412e55` through the digest-pinned Ubuntu
-22.04 container on 2026-07-25. The ignored local artifacts in
-`target/ubuntu-22.04/release/packages/` are
-`quireforge_0.1.0.beta.2_amd64.deb` (4,475,040 bytes;
-`c3bac356fb3ff8f99603165532917110a339e6c00025e652592c0ddb31e31e3b`) and
-`QuireForge-0.1.0-beta.2-x86_64.AppImage` (83,655,160 bytes;
-`5ab4a41503f48897f78ec64d9be3ce0b473d49d51254501635b11b0cda7d7768`). Both
-passed manifest/checksum, GLIBC (maximum `2.34`), disposable Debian lifecycle,
-and visible X11 launch checks on the Ubuntu 22.04 baseline. The component suite
-verifies the general weekly selection, nonnumeric unavailable states, and
-runtime details.
+The final Milestone 22B package candidates were built from clean commit
+`6e880672b3faca50170f56fc67e187337d1b11d9` through the digest-pinned Ubuntu
+22.04 container on 2026-07-25. The ignored artifact manifest at
+`target/ubuntu-22.04/release/packages/release-manifest.json` records a clean
+`release-candidate` source state. Its companion checksum file is
+`target/ubuntu-22.04/release/packages/SHA256SUMS`.
+
+- `target/ubuntu-22.04/release/packages/quireforge_0.1.0.beta.2_amd64.deb` —
+  4,475,472 bytes; SHA-256
+  `2261d317d3748cf7dbe59d87e5d4b99161bed19a4f032c99f416c2d78c51caa1`.
+- `target/ubuntu-22.04/release/packages/QuireForge-0.1.0-beta.2-x86_64.AppImage`
+  — 83,655,160 bytes; SHA-256
+  `91ddc232068afa0f58f1504246451bacdb9e1ea49edb42cc8aa949f347c9d1c8`.
+
+The pinned workflow passed manifest and SHA-256 validation, a maximum required
+GLIBC version of `2.34`, Ubuntu 22.04 compatibility, canonical desktop-entry
+and icon checks, the disposable Debian installation/upgrade/removal lifecycle,
+visible installed-Debian and AppImage launches, and the representative
+installed-app smoke test. The lifecycle validator installed the Debian package
+with `dpkg --root "$root" --admindir "$admin" --instdir "$root" --install
+"$package"`; a local manual installation would use `sudo apt install
+./target/ubuntu-22.04/release/packages/quireforge_0.1.0.beta.2_amd64.deb`.
+Launch the AppImage with `./target/ubuntu-22.04/release/packages/QuireForge-0.1.0-beta.2-x86_64.AppImage`.
 
 For a fresh thread, read in this order:
 
