@@ -5140,7 +5140,7 @@ body,
   width: auto;
   height: 100vh;
   min-height: 0;
-  padding: 14px 12px 10px;
+  padding: 16px 14px 12px;
   overflow: hidden;
 }
 
@@ -5164,7 +5164,7 @@ body,
 
 .primary-nav {
   min-height: 0;
-  margin-top: 18px;
+  margin-top: 20px;
   overflow-x: hidden;
   overflow-y: auto;
   scrollbar-width: thin;
@@ -5180,8 +5180,8 @@ body,
   grid-template-columns: 34px minmax(0, 1fr);
   border-right: 0;
   border-left: 0;
-  border-radius: 0;
-  background: transparent;
+  border-radius: 9px;
+  background: var(--surface-soft);
   color: var(--text);
   font: inherit;
   text-align: left;
@@ -5293,7 +5293,7 @@ body,
   min-height: 58px;
   padding: 0 18px;
   flex: 0 0 58px;
-  background: color-mix(in srgb, var(--bg) 94%, transparent);
+  background: var(--surface);
 }
 
 .topbar-location {
@@ -5372,7 +5372,7 @@ body,
 }
 
 .topbar-button--primary {
-  border-color: color-mix(in srgb, var(--accent) 48%, var(--border));
+  border-color: var(--accent);
   background: var(--accent-soft);
   color: var(--accent-bright);
 }
