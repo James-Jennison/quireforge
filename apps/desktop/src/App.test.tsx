@@ -184,9 +184,8 @@ describe("QuireForge desktop shell", () => {
       0,
     );
     expect(screen.queryByText(/Milestone/u)).not.toBeInTheDocument();
-    expect(await screen.findByText("Shared usage")).toBeInTheDocument();
-    expect(screen.getByText("—")).toBeInTheDocument();
-    expect(screen.getByText("View in ChatGPT")).toBeInTheDocument();
+    expect(await screen.findByText("Usage available")).toBeInTheDocument();
+    expect(screen.getByText("99%")).toBeInTheDocument();
     expect(screen.queryByText("planned")).not.toBeInTheDocument();
 
     expect(screen.getByRole("link", { name: "Home" })).toHaveAttribute(
@@ -370,14 +369,14 @@ describe("QuireForge desktop shell", () => {
       }),
     );
     await screen.findByRole("heading", { name: "Codex owns authentication." });
-    expect(await screen.findAllByText("44% remaining")).not.toHaveLength(0);
+    expect(await screen.findAllByText("99% remaining")).not.toHaveLength(0);
     fireEvent.click(
       screen
         .getAllByRole("button", { name: "Refresh" })
         .find((button) => !button.hasAttribute("disabled"))!,
     );
     expect(await screen.findAllByText("32% remaining")).not.toHaveLength(0);
-    expect(screen.queryByText("44% remaining")).not.toBeInTheDocument();
+    expect(screen.queryByText("99% remaining")).not.toBeInTheDocument();
 
     fireEvent.click(
       screen

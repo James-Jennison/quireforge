@@ -115,6 +115,10 @@ export const codexUsageSchema = z
 export type CodexUsageSnapshot = z.infer<typeof codexUsageSchema>;
 export type CodexUsageWindow =
   CodexUsageSnapshot["runtimeMeters"][number]["windows"][number];
+export interface MeteredUsageWindow {
+  meter: CodexUsageSnapshot["runtimeMeters"][number];
+  window: CodexUsageWindow;
+}
 export const scaffoldCodexUsage = codexUsageSchema.parse(usageFixture);
 
 /** A cleared view value; never use the scaffold fixture as unavailable data. */
@@ -125,6 +129,30 @@ export const unavailableCodexUsage = codexUsageSchema.parse({
   runtimeMeters: [],
   diagnosticCode: "runtime-unavailable",
 });
+
+/**
+ * Summarize only an exact Codex-reported seven-day window. The general
+ * `codex` meter is the only sidebar source; model-specific meters remain in
+ * details. Any remaining tie is sorted by upstream meter ID and window kind.
+ */
+export function selectSidebarUsageWindow(
+  windows: MeteredUsageWindow[],
+): MeteredUsageWindow | undefined {
+  return windows
+    .filter(
+      ({ meter, window }) =>
+        meter.limitId === "codex" && window.windowDurationMinutes === 10_080,
+    )
+    .sort((left, right) => {
+      const leftGeneral = left.meter.limitId === "codex" ? 1 : 0;
+      const rightGeneral = right.meter.limitId === "codex" ? 1 : 0;
+      if (leftGeneral !== rightGeneral) return rightGeneral - leftGeneral;
+      if (left.meter.limitId !== right.meter.limitId) {
+        return left.meter.limitId.localeCompare(right.meter.limitId);
+      }
+      return left.window.kind.localeCompare(right.window.kind);
+    })[0];
+}
 
 export function usageResetLabel(timestamp: number | null): string {
   if (timestamp === null) return "Reset time unavailable";

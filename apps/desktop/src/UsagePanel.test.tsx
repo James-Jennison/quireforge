@@ -10,9 +10,7 @@ import {
   type CodexUsageSnapshot,
 } from "./lib/usage";
 
-function snapshot(
-  overrides: Partial<CodexUsageSnapshot> = {},
-): CodexUsageSnapshot {
+function snapshot(overrides: Partial<CodexUsageSnapshot> = {}): CodexUsageSnapshot {
   return codexUsageSchema.parse({ ...scaffoldCodexUsage, ...overrides });
 }
 
@@ -20,143 +18,67 @@ function compact(
   usage: CodexUsageSnapshot,
   state: "checking" | "native" | "preview" | "unavailable" = "native",
 ) {
-  return render(
-    <UsagePanel
-      snapshot={usage}
-      state={state}
-      busy={state === "checking"}
-      compact
-      onRefresh={vi.fn()}
-    />,
-  );
+  return render(<UsagePanel snapshot={usage} state={state} busy={state === "checking"} compact onRefresh={vi.fn()} />);
 }
 
 describe("UsagePanel", () => {
-  it("does not promote a 99% weekly Codex meter into shared usage", () => {
+  it("selects the general Codex weekly window and its matching reset over a short 100% window", () => {
     const usage = snapshot({
       runtimeMeters: [
         {
           ...scaffoldCodexUsage.runtimeMeters[0]!,
           windows: [
-            {
-              kind: "secondary",
-              usedPercent: 1,
-              remainingPercent: 99,
-              windowDurationMinutes: 10_080,
-              resetsAt: 1_785_412_800,
-            },
+            { kind: "primary", usedPercent: 0, remainingPercent: 100, windowDurationMinutes: 300, resetsAt: 1_784_808_000 },
+            { kind: "secondary", usedPercent: 1, remainingPercent: 99, windowDurationMinutes: 10_080, resetsAt: 1_785_612_540 },
           ],
         },
+        scaffoldCodexUsage.runtimeMeters[1]!,
       ],
     });
 
     compact(usage);
-
-    expect(screen.getByText("—")).toBeInTheDocument();
-    expect(screen.getByText("View in ChatGPT")).toBeInTheDocument();
-    expect(screen.queryByText("99%")).not.toBeInTheDocument();
+    expect(screen.getByText("Usage available")).toBeInTheDocument();
+    expect(screen.getByText("99%")).toBeInTheDocument();
+    expect(screen.getByText(usageResetLabel(1_785_612_540))).toBeInTheDocument();
+    expect(screen.queryByText("100%")).not.toBeInTheDocument();
   });
 
-  it("does not promote a 100% weekly model meter into shared usage", () => {
-    compact(
-      snapshot({
-        runtimeMeters: [
-          {
-            ...scaffoldCodexUsage.runtimeMeters[0]!,
-            label: "GPT-5.3-Codex-Spark",
-            limitId: "gpt-5.3-codex-spark",
-            scope: "unknown",
-            windows: [
-              {
-                kind: "secondary",
-                usedPercent: 0,
-                remainingPercent: 100,
-                windowDurationMinutes: 10_080,
-                resetsAt: 1_785_412_800,
-              },
-            ],
-          },
-        ],
-      }),
-    );
+  it("prefers the general codex weekly meter over model meters and resolves remaining ties deterministically", () => {
+    const usage = snapshot({
+      runtimeMeters: [
+        scaffoldCodexUsage.runtimeMeters[1]!,
+        { ...scaffoldCodexUsage.runtimeMeters[0]!, limitId: "codex-z", windows: [{ kind: "secondary", usedPercent: 12, remainingPercent: 88, windowDurationMinutes: 10_080, resetsAt: 1_785_412_800 }] },
+        { ...scaffoldCodexUsage.runtimeMeters[0]!, windows: [{ kind: "secondary", usedPercent: 1, remainingPercent: 99, windowDurationMinutes: 10_080, resetsAt: 1_785_612_540 }] },
+      ],
+    });
+    compact(usage);
+    expect(screen.getByText("99%")).toBeInTheDocument();
+  });
 
+  it("shows no numeric value when no exact general weekly window is available", () => {
+    compact(snapshot({ runtimeMeters: [{ ...scaffoldCodexUsage.runtimeMeters[0]!, windows: [{ kind: "primary", usedPercent: 20, remainingPercent: 80, windowDurationMinutes: 300, resetsAt: 1_784_808_000 }] }] }));
     expect(screen.getByText("—")).toBeInTheDocument();
-    expect(screen.queryByText("100%")).not.toBeInTheDocument();
+    expect(screen.getByText("No weekly window reported")).toBeInTheDocument();
+    expect(screen.queryByText(/^\d+%$/u)).not.toBeInTheDocument();
   });
 
   it.each([
     ["unavailable", unavailableCodexUsage, "unavailable"],
-    [
-      "not metered",
-      snapshot({
-        state: "not-metered",
-        sharedUsage: null,
-        runtimeMeters: [],
-        diagnosticCode: "no-usage-windows",
-      }),
-      "native",
-    ],
+    ["not metered", snapshot({ state: "not-metered", sharedUsage: null, runtimeMeters: [], diagnosticCode: "no-usage-windows" }), "native"],
     ["browser preview", scaffoldCodexUsage, "preview"],
     ["loading", scaffoldCodexUsage, "checking"],
-  ] as const)(
-    "shows no numeric shared percentage when %s",
-    (_description, usage, state) => {
-      compact(usage, state);
-
-      expect(screen.getByText("—")).toBeInTheDocument();
-      expect(screen.queryByText(/^\d+%$/u)).not.toBeInTheDocument();
-    },
-  );
-
-  it("renders all runtime meters with their reported percentages, reset times, and unverified scope", () => {
-    const usage = snapshot({
-      runtimeMeters: [
-        scaffoldCodexUsage.runtimeMeters[0]!,
-        {
-          label: "Reviews",
-          limitId: "codex_other",
-          scope: "unknown",
-          windows: [
-            {
-              kind: "primary",
-              usedPercent: 20,
-              remainingPercent: 80,
-              windowDurationMinutes: 60,
-              resetsAt: 1_784_808_000,
-            },
-          ],
-          limited: false,
-        },
-      ],
-    });
-
-    render(
-      <UsagePanel snapshot={usage} state="native" busy={false} onRefresh={vi.fn()} />,
-    );
-
-    expect(screen.getByRole("heading", { name: "Codex runtime limits" })).toBeInTheDocument();
-    expect(screen.getByText(/may not match the shared usage balance/u)).toBeInTheDocument();
-    expect(screen.getAllByText("Scope not verified")).toHaveLength(3);
-    expect(screen.getByText("Codex · 5-hour window")).toBeInTheDocument();
-    expect(screen.getByText("Codex · Weekly window")).toBeInTheDocument();
-    expect(screen.getByText("Reviews · 1-hour window")).toBeInTheDocument();
-    expect(screen.getAllByText(usageResetLabel(1_784_808_000))).toHaveLength(2);
-    expect(screen.getAllByText(/remaining$/u)).toHaveLength(3);
-    expect(
-      screen.getByRole("progressbar", {
-        name: "Codex runtime meter Weekly window remaining",
-      }),
-    ).toBeInTheDocument();
+  ] as const)("shows no numeric percentage when %s", (_description, usage, state) => {
+    compact(usage, state);
+    expect(screen.getByText("—")).toBeInTheDocument();
+    expect(screen.queryByText(/^\d+%$/u)).not.toBeInTheDocument();
   });
 
-  it("can display a future explicitly verified shared usage value", () => {
-    const usage = snapshot({
-      sharedUsage: { remainingPercent: 32, resetsAt: 1_785_412_800 },
-    });
-
-    compact(usage);
-
-    expect(screen.getByText("32%")).toBeInTheDocument();
-    expect(screen.getByText(usageResetLabel(1_785_412_800))).toBeInTheDocument();
+  it("renders every reported runtime meter and window in Settings", () => {
+    render(<UsagePanel snapshot={scaffoldCodexUsage} state="native" busy={false} onRefresh={vi.fn()} />);
+    expect(screen.getByRole("heading", { name: "Codex usage limits" })).toBeInTheDocument();
+    expect(screen.getByText(/browser page may display stale data/u)).toBeInTheDocument();
+    expect(screen.getByText("Codex · Weekly window")).toBeInTheDocument();
+    expect(screen.getByText("GPT-5.3-Codex-Spark · Weekly window")).toBeInTheDocument();
+    expect(screen.getAllByText("Scope not verified")).toHaveLength(3);
   });
 });

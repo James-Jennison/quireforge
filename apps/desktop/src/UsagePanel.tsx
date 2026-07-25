@@ -1,4 +1,5 @@
 import {
+  selectSidebarUsageWindow,
   usageResetLabel,
   type CodexUsageSnapshot,
   type CodexUsageWindow,
@@ -34,9 +35,6 @@ function scopeLabel(scope: CodexUsageSnapshot["runtimeMeters"][number]["scope"])
   }
 }
 
-const sharedUsageExplanation =
-  "The Codex runtime does not currently expose a verified shared account-usage value. Open ChatGPT Usage settings for the authoritative balance.";
-
 export function UsagePanel({
   snapshot,
   state,
@@ -47,33 +45,38 @@ export function UsagePanel({
   const windows = snapshot.runtimeMeters.flatMap((meter) =>
     meter.windows.map((window) => ({ meter, window })),
   );
-  const sharedUsage =
+  const sidebarWindow =
     state === "native" && snapshot.state === "ready"
-      ? snapshot.sharedUsage
-      : null;
+      ? selectSidebarUsageWindow(windows)
+      : undefined;
 
   if (compact) {
-    const status = sharedUsage
-      ? usageResetLabel(sharedUsage.resetsAt)
+    const status = sidebarWindow
+      ? usageResetLabel(sidebarWindow.window.resetsAt)
       : state === "checking"
         ? "Checking Codex usage"
         : state === "preview"
           ? "Native usage unavailable"
+          : state === "native" && snapshot.state === "not-metered"
+            ? "No metered window reported"
+            : state === "native" && snapshot.state === "ready"
+              ? "No weekly window reported"
           : "View in ChatGPT";
 
     return (
       <div
         className="usage-compact"
         aria-label={
-          sharedUsage
-            ? `Shared usage ${sharedUsage.remainingPercent}% remaining`
-            : "Shared usage unavailable"
+          sidebarWindow
+            ? `Codex usage ${sidebarWindow.window.remainingPercent}% remaining`
+            : "Codex usage unavailable"
         }
-        title={sharedUsage ? undefined : sharedUsageExplanation}
       >
         <div>
-          <span>Shared usage</span>
-          <strong>{sharedUsage ? `${sharedUsage.remainingPercent}%` : "—"}</strong>
+          <span>Usage available</span>
+          <strong>
+            {sidebarWindow ? `${sidebarWindow.window.remainingPercent}%` : "—"}
+          </strong>
         </div>
         <small>{status}</small>
       </div>
@@ -85,7 +88,7 @@ export function UsagePanel({
       <div className="usage-panel__heading">
         <div>
           <span>Account</span>
-          <h2 id="usage-title">Codex runtime limits</h2>
+          <h2 id="usage-title">Codex usage limits</h2>
         </div>
         <button
           type="button"
@@ -119,8 +122,8 @@ export function UsagePanel({
       {state === "native" && snapshot.state === "ready" && (
         <>
           <p className="usage-panel__notice">
-            These meters are reported by the Codex runtime and may not match the
-            shared usage balance shown in ChatGPT Settings.
+            Reported by Codex. Refresh ChatGPT Usage settings before comparing
+            values because the browser page may display stale data.
           </p>
           {windows.length === 0 ? (
             <p>No Codex runtime meters were reported.</p>
@@ -161,8 +164,8 @@ export function UsagePanel({
       )}
 
       <small className="usage-panel__note">
-        QuireForge displays only Codex-reported values and does not calculate,
-        estimate, predict, or infer overall quota.
+        Reported by Codex. QuireForge does not calculate, estimate, or predict
+        quota.
       </small>
     </section>
   );

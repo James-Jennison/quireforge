@@ -723,13 +723,11 @@ protocol metadata are discarded in Rust. User-facing milestone labels are no
 longer rendered. See the
 [Milestone 21A product-readiness report](MILESTONE_21A_PRODUCT_READINESS.md).
 
-The compact sidebar summarizes only an explicitly verified shared-account value.
-The currently reviewed Codex runtime response does not provide such a scope, so
-the sidebar shows an unavailable shared-usage state while the settings panel
-keeps each runtime meter, percentage, duration, and reset time as diagnostic
-details. QuireForge never treats meter ordering, labels, identifiers, window
-duration, or `primary`/`secondary` position as proof of shared account usage,
-and never calculates, estimates, predicts, combines, or infers a quota.
+The compact sidebar summarizes only the exact 10,080-minute window of the
+general upstream `codex` meter; model-specific meters remain detailed-only.
+It never treats `primary`/`secondary` position or array order as evidence of a
+weekly allowance, substitutes a short window, or calculates, estimates,
+predicts, combines, or infers a quota.
 
 Milestone 21B retains the external release boundary:
 
