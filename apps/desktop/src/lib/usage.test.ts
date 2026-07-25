@@ -13,12 +13,12 @@ describe("Codex usage contract", () => {
     expect(() =>
       codexUsageSchema.parse({
         ...scaffoldCodexUsage,
-        meters: [
+        runtimeMeters: [
           {
-            ...scaffoldCodexUsage.meters[0],
+            ...scaffoldCodexUsage.runtimeMeters[0],
             windows: [
               {
-                ...scaffoldCodexUsage.meters[0]!.windows[0],
+                ...scaffoldCodexUsage.runtimeMeters[0]!.windows[0],
                 remainingPercent: 74,
               },
             ],
@@ -30,7 +30,10 @@ describe("Codex usage contract", () => {
     expect(() =>
       codexUsageSchema.parse({
         ...scaffoldCodexUsage,
-        meters: [scaffoldCodexUsage.meters[0], scaffoldCodexUsage.meters[0]],
+        runtimeMeters: [
+          scaffoldCodexUsage.runtimeMeters[0],
+          scaffoldCodexUsage.runtimeMeters[0],
+        ],
       }),
     ).toThrow();
   });
@@ -50,12 +53,12 @@ describe("Codex usage contract", () => {
     expect(() =>
       codexUsageSchema.parse({
         ...scaffoldCodexUsage,
-        meters: [
+        runtimeMeters: [
           {
-            ...scaffoldCodexUsage.meters[0],
+            ...scaffoldCodexUsage.runtimeMeters[0],
             windows: [
               {
-                ...scaffoldCodexUsage.meters[0]!.windows[0],
+                ...scaffoldCodexUsage.runtimeMeters[0]!.windows[0],
                 resetsAt: 1_784_808_000_000,
               },
             ],

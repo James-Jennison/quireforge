@@ -7,12 +7,10 @@ released a usable application.
 
 ### Fixed
 
-- Corrected the compact desktop Codex-usage summary to choose the
-  Codex-reported 10,080-minute window before any shorter window, preserving
-  that window's exact remaining percentage and reset time. When no weekly
-  window is reported, it uses the longest valid duration with deterministic
-  lexical tie-breaking; unavailable, unmetered, preview, loading, invalid, and
-  failed-refresh states show no numeric usage value.
+- Corrected the compact desktop usage summary so unscoped Codex runtime meters
+  are never presented as shared ChatGPT account usage. The sidebar now shows an
+  honest unavailable shared-usage state unless an upstream response explicitly
+  verifies that scope; runtime meters remain available in the detailed panel.
 - Prepared immutable `0.1.0-beta.2` artifacts after GitHub Releases normalized
   the tilde in the beta 1 Debian asset name. The downloadable file is now
   `quireforge_0.1.0.beta.2_amd64.deb`, while its Debian control version remains

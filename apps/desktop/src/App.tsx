@@ -105,7 +105,6 @@ import {
 } from "./lib/auth";
 import { scaffoldCodexRuntime, type CodexRuntimeSnapshot } from "./lib/codex";
 import {
-  scaffoldCodexUsage,
   unavailableCodexUsage,
   type CodexUsageSnapshot,
 } from "./lib/usage";
@@ -617,7 +616,7 @@ export default function App({
   const [authBusy, setAuthBusy] = useState(false);
   const [authActionError, setAuthActionError] = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
-  const [usage, setUsage] = useState<CodexUsageSnapshot>(scaffoldCodexUsage);
+  const [usage, setUsage] = useState<CodexUsageSnapshot>(unavailableCodexUsage);
   const [usageState, setUsageState] = useState<UsageViewState>("checking");
   const [usageBusy, setUsageBusy] = useState(false);
   const [projects, setProjects] = useState<ProjectWorkspaceSnapshot>(

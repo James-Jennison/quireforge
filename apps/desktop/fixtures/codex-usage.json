@@ -1,10 +1,12 @@
 {
   "schemaVersion": 1,
   "state": "ready",
-  "meters": [
+  "sharedUsage": null,
+  "runtimeMeters": [
     {
       "label": "Codex",
       "limitId": "codex",
+      "scope": "unknown",
       "windows": [
         {
           "kind": "primary",

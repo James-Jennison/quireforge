@@ -30,12 +30,14 @@ or implementation work.
 
 ### Maintenance handoff
 
-The focused `fix/sidebar-codex-usage-window` branch corrects the compact
-Codex-usage summary without changing the milestone sequence. It selects the
-Codex-reported 10,080-minute window when available, otherwise the longest
-valid reported duration, and clears the display to an honest unavailable state
-during refresh failures. The full usage panel continues to show every reported
-window. No Qt work is included.
+The focused `fix/sidebar-codex-usage-window` branch now keeps Codex runtime
+meters distinct from shared account usage. A redacted live app-server capture
+on Codex CLI 0.145.0 showed `rateLimits` and `rateLimitsByLimitId` meter fields,
+but no explicit shared-account ownership field. Consequently the compact
+sidebar displays shared usage as unavailable, while the full panel preserves
+every upstream-reported runtime meter with `Scope not verified`. It never
+selects a meter by duration, name, ID, kind, or order, and refresh failures
+clear current values instead of showing stale data. No Qt work is included.
 
 The same branch has verified local beta-2 package candidates through the
 existing digest-pinned Ubuntu 22.04 container workflow. Both the Debian and

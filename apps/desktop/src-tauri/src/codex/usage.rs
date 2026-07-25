@@ -42,6 +42,15 @@ pub enum CodexUsageWindowKind {
     Secondary,
 }
 
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum CodexUsageMeterScope {
+    SharedAccount,
+    Model,
+    Client,
+    Unknown,
+}
+
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CodexUsageWindow {
@@ -57,8 +66,16 @@ pub struct CodexUsageWindow {
 pub struct CodexUsageMeter {
     pub label: String,
     pub limit_id: String,
+    pub scope: CodexUsageMeterScope,
     pub windows: Vec<CodexUsageWindow>,
     pub limited: bool,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CodexSharedUsage {
+    pub remaining_percent: u8,
+    pub resets_at: Option<i64>,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -66,16 +83,20 @@ pub struct CodexUsageMeter {
 pub struct CodexUsageSnapshot {
     pub schema_version: u16,
     pub state: CodexUsageState,
-    pub meters: Vec<CodexUsageMeter>,
+    /// Only an explicitly documented shared-account field may populate this.
+    /// The current rate-limit response does not provide one.
+    pub shared_usage: Option<CodexSharedUsage>,
+    pub runtime_meters: Vec<CodexUsageMeter>,
     pub diagnostic_code: Option<CodexUsageDiagnosticCode>,
 }
 
 impl CodexUsageSnapshot {
-    fn ready(meters: Vec<CodexUsageMeter>) -> Self {
+    fn ready(runtime_meters: Vec<CodexUsageMeter>) -> Self {
         Self {
             schema_version: USAGE_SCHEMA_VERSION,
             state: CodexUsageState::Ready,
-            meters,
+            shared_usage: None,
+            runtime_meters,
             diagnostic_code: None,
         }
     }
@@ -84,7 +105,8 @@ impl CodexUsageSnapshot {
         Self {
             schema_version: USAGE_SCHEMA_VERSION,
             state: CodexUsageState::NotMetered,
-            meters: Vec::new(),
+            shared_usage: None,
+            runtime_meters: Vec::new(),
             diagnostic_code: Some(CodexUsageDiagnosticCode::NoUsageWindows),
         }
     }
@@ -93,7 +115,8 @@ impl CodexUsageSnapshot {
         Self {
             schema_version: USAGE_SCHEMA_VERSION,
             state: CodexUsageState::Unavailable,
-            meters: Vec::new(),
+            shared_usage: None,
+            runtime_meters: Vec::new(),
             diagnostic_code: Some(code),
         }
     }
@@ -273,6 +296,10 @@ fn parse_usage_response(value: Value) -> Result<CodexUsageSnapshot, CodexUsageDi
         Ok(Some(CodexUsageMeter {
             label,
             limit_id: limit_id.to_owned(),
+            // The current response contains no ownership or scope declaration.
+            // Do not infer scope from IDs, labels, window kinds or durations,
+            // ordering, plan metadata, or any other runtime-meter property.
+            scope: CodexUsageMeterScope::Unknown,
             windows,
             limited: snapshot.rate_limit_reached_type.is_some(),
         }))
@@ -280,7 +307,7 @@ fn parse_usage_response(value: Value) -> Result<CodexUsageSnapshot, CodexUsageDi
 
     let response: UsageResponse =
         serde_json::from_value(value).map_err(|_| CodexUsageDiagnosticCode::ProtocolInvalid)?;
-    let mut meters = Vec::new();
+    let mut runtime_meters = Vec::new();
     let mut identifiers = HashSet::new();
 
     if let Some(by_id) = response.rate_limits_by_limit_id {
@@ -297,17 +324,17 @@ fn parse_usage_response(value: Value) -> Result<CodexUsageSnapshot, CodexUsageDi
                 if !identifiers.insert(meter.limit_id.clone()) {
                     return Err(CodexUsageDiagnosticCode::ProtocolInvalid);
                 }
-                meters.push(meter);
+                runtime_meters.push(meter);
             }
         }
     } else if let Some(meter) = normalize_meter("codex", response.rate_limits)? {
-        meters.push(meter);
+        runtime_meters.push(meter);
     }
 
-    if meters.is_empty() {
+    if runtime_meters.is_empty() {
         Ok(CodexUsageSnapshot::not_metered())
     } else {
-        Ok(CodexUsageSnapshot::ready(meters))
+        Ok(CodexUsageSnapshot::ready(runtime_meters))
     }
 }
 
@@ -377,8 +404,13 @@ printf '%s\n' '{"id":2,"result":{"rateLimits":{"limitId":"codex","limitName":nul
 
         let snapshot = service.snapshot().await;
         assert_eq!(snapshot.state, CodexUsageState::Ready);
-        assert_eq!(snapshot.meters[0].windows[0].remaining_percent, 75);
-        assert_eq!(snapshot.meters[0].windows[1].remaining_percent, 42);
+        assert_eq!(snapshot.shared_usage, None);
+        assert_eq!(snapshot.runtime_meters[0].windows[0].remaining_percent, 75);
+        assert_eq!(snapshot.runtime_meters[0].windows[1].remaining_percent, 42);
+        assert_eq!(
+            snapshot.runtime_meters[0].scope,
+            CodexUsageMeterScope::Unknown
+        );
         let serialized = serde_json::to_string(&snapshot).expect("usage snapshot must serialize");
         for forbidden in [
             "private-balance",
@@ -404,13 +436,13 @@ printf '%s\n' '{"id":2,"result":{"rateLimits":{"limitId":"codex","primary":{"use
         let snapshot = service.refresh().await;
         assert_eq!(
             snapshot
-                .meters
+                .runtime_meters
                 .iter()
                 .map(|meter| meter.limit_id.as_str())
                 .collect::<Vec<_>>(),
             vec!["codex", "codex_other"]
         );
-        assert_eq!(snapshot.meters[1].label, "Reviews");
+        assert_eq!(snapshot.runtime_meters[1].label, "Reviews");
     }
 
     #[tokio::test]

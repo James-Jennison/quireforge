@@ -184,7 +184,9 @@ describe("QuireForge desktop shell", () => {
       0,
     );
     expect(screen.queryByText(/Milestone/u)).not.toBeInTheDocument();
-    expect(await screen.findAllByText("44%")).not.toHaveLength(0);
+    expect(await screen.findByText("Shared usage")).toBeInTheDocument();
+    expect(screen.getByText("—")).toBeInTheDocument();
+    expect(screen.getByText("View in ChatGPT")).toBeInTheDocument();
     expect(screen.queryByText("planned")).not.toBeInTheDocument();
 
     expect(screen.getByRole("link", { name: "Home" })).toHaveAttribute(
@@ -198,7 +200,7 @@ describe("QuireForge desktop shell", () => {
     ).not.toBeInTheDocument();
 
     fireEvent.click(
-      screen.getByRole("button", {
+      await screen.findByRole("button", {
         name: "Open Codex account and connection settings",
       }),
     );
@@ -324,9 +326,9 @@ describe("QuireForge desktop shell", () => {
   it("replaces usage on refresh and clears it when the refresh fails", async () => {
     const refreshedUsage = {
       ...scaffoldCodexUsage,
-      meters: [
+      runtimeMeters: [
         {
-          ...scaffoldCodexUsage.meters[0],
+          ...scaffoldCodexUsage.runtimeMeters[0],
           windows: [
             {
               kind: "primary" as const,
@@ -362,28 +364,30 @@ describe("QuireForge desktop shell", () => {
       />,
     );
 
-    expect(await screen.findAllByText("44%")).not.toHaveLength(0);
     fireEvent.click(
-      screen.getByRole("button", {
+      await screen.findByRole("button", {
         name: "Open Codex account and connection settings",
       }),
     );
     await screen.findByRole("heading", { name: "Codex owns authentication." });
+    expect(await screen.findAllByText("44% remaining")).not.toHaveLength(0);
     fireEvent.click(
       screen
         .getAllByRole("button", { name: "Refresh" })
         .find((button) => !button.hasAttribute("disabled"))!,
     );
-    expect(await screen.findAllByText("32%")).not.toHaveLength(0);
-    expect(screen.queryByText("44%")).not.toBeInTheDocument();
+    expect(await screen.findAllByText("32% remaining")).not.toHaveLength(0);
+    expect(screen.queryByText("44% remaining")).not.toBeInTheDocument();
 
     fireEvent.click(
       screen
         .getAllByRole("button", { name: "Refresh" })
         .find((button) => !button.hasAttribute("disabled"))!,
     );
-    expect(await screen.findByText("Usage unavailable")).toBeInTheDocument();
-    expect(screen.queryByText("32%")).not.toBeInTheDocument();
+    expect(
+      await screen.findByText(/Codex runtime limits are currently unavailable/u),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("32% remaining")).not.toBeInTheDocument();
   });
 
   it("does not read workspace data before Codex authentication", async () => {
