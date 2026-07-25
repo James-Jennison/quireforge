@@ -8,6 +8,11 @@ interface UsagePanelProps {
   onRefresh: () => void;
 }
 
+interface MeteredWindow {
+  meter: CodexUsageSnapshot["meters"][number];
+  window: CodexUsageWindow;
+}
+
 function windowLabel(window: CodexUsageWindow): string {
   const minutes = window.windowDurationMinutes;
   if (minutes === 10_080) return "Weekly window";
@@ -29,6 +34,25 @@ function resetLabel(timestamp: number | null): string {
   }).format(date)}`;
 }
 
+export function selectSidebarUsageWindow(
+  windows: MeteredWindow[],
+): MeteredWindow | undefined {
+  return [...windows].sort((left, right) => {
+    const leftWeekly = left.window.windowDurationMinutes === 10_080 ? 1 : 0;
+    const rightWeekly = right.window.windowDurationMinutes === 10_080 ? 1 : 0;
+    if (leftWeekly !== rightWeekly) return rightWeekly - leftWeekly;
+
+    const leftDuration = left.window.windowDurationMinutes ?? -1;
+    const rightDuration = right.window.windowDurationMinutes ?? -1;
+    if (leftDuration !== rightDuration) return rightDuration - leftDuration;
+
+    if (left.window.kind !== right.window.kind) {
+      return left.window.kind === "secondary" ? -1 : 1;
+    }
+    return left.meter.limitId.localeCompare(right.meter.limitId);
+  })[0];
+}
+
 export function UsagePanel({
   snapshot,
   state,
@@ -39,26 +63,29 @@ export function UsagePanel({
   const windows = snapshot.meters.flatMap((meter) =>
     meter.windows.map((window) => ({ meter, window })),
   );
-  const first = windows[0];
+  const sidebarWindow =
+    state === "native" && snapshot.state === "ready"
+      ? selectSidebarUsageWindow(windows)
+      : undefined;
 
   if (compact) {
+    let status = "Usage unavailable";
+    if (state === "checking") status = "Checking Codex usage";
+    else if (state === "preview") status = "Native usage unavailable";
+    else if (snapshot.state === "not-metered") status = "No metered window reported";
+    else if (sidebarWindow) status = resetLabel(sidebarWindow.window.resetsAt);
+
     return (
       <div className="usage-compact" aria-label="Codex usage">
         <div>
           <span>Usage available</span>
           <strong>
-            {state === "native" && snapshot.state === "ready" && first
-              ? `${first.window.remainingPercent}%`
+            {sidebarWindow
+              ? `${sidebarWindow.window.remainingPercent}%`
               : "—"}
           </strong>
         </div>
-        <small>
-          {state === "checking"
-            ? "Checking Codex usage"
-            : first
-              ? resetLabel(first.window.resetsAt)
-              : "No metered window reported"}
-        </small>
+        <small>{status}</small>
       </div>
     );
   }
