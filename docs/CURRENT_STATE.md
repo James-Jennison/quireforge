@@ -39,11 +39,17 @@ every upstream-reported runtime meter with `Scope not verified`. It never
 selects a meter by duration, name, ID, kind, or order, and refresh failures
 clear current values instead of showing stale data. No Qt work is included.
 
-The same branch has verified local beta-2 package candidates through the
-existing digest-pinned Ubuntu 22.04 container workflow. Both the Debian and
-AppImage candidates passed manifest/checksum, GLIBC, disposable lifecycle, and
-visible X11 launch checks; their source commit and hashes remain in the ignored
-`target/ubuntu-22.04/release/packages/` manifest rather than source control.
+The corrected UI was packaged from `3d1280846eeacfbd226e4abeb5990844ffe27fa7`
+through the existing digest-pinned Ubuntu 22.04 container workflow on
+2026-07-25. `quireforge_0.1.0.beta.2_amd64.deb` (4,474,376 bytes;
+`b1b96cfacc1996085db12eaf21587d92a0b703d814b1b39bd7b171cfcf208f40`) and
+`QuireForge-0.1.0-beta.2-x86_64.AppImage` (83,651,064 bytes;
+`91300b3a5f369187f6831faf4c9ca0ed678ec53f628dc4f2ff2bc60937b2cd26`) are
+ignored local artifacts in `target/ubuntu-22.04/release/packages/`. Both passed
+the official manifest/checksum, GLIBC (maximum `2.34`), disposable Debian
+lifecycle, and visible X11 launch checks on the Ubuntu 22.04 baseline. The
+component suite verifies the corrected unavailable shared-usage sidebar and
+runtime-meter details; package launch testing verifies the built executable.
 
 For a fresh thread, read in this order:
 
