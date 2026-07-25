@@ -24,13 +24,13 @@ Definitions used here:
 
 ## Cumulative project totals
 
-Last updated: `2026-07-23T17:06:00-07:00`
+Last updated: `2026-07-25T15:20:00-07:00`
 
 | Measure                                   | Cumulative record                                                                                                                                                 |
 | ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Total milestones planned                  | 23 major milestones (0–22); Milestones 13, 14, 15, 16, and 21 use separately gated submilestones                                                                  |
 | Total milestone entries completed         | 32 (Milestones 0–22 and recorded submilestones); Milestone 22 is complete locally                                                                                |
-| Milestones in progress                    | None; owner-hosted package promotion and website download activation remain separate approval-gated operations                                                     |
+| Milestones in progress                    | Milestone 22B visual workspace refinement; owner-hosted package promotion and website download activation remain separate approval-gated operations                |
 | Confirmed/reconstructed active execution  | Approximately 30.44–38.02 hours; uninstrumented Milestone 16 work excluded                                                                                        |
 | Confirmed/reconstructed automated wait    | Approximately 8.58–9.70 hours; early and Milestone 16 uninstrumented waits excluded                                                                               |
 | Reconstructed user-blocked time           | At least 11.73 hours, plus unmeasured early approvals/prerequisites                                                                                               |
@@ -1170,3 +1170,17 @@ greater precision than the underlying ranges.
 - **Status:** Complete and verified locally. No push, merge, publication,
   release, deployment, DNS/hosting mutation, external authentication, personal
   account mutation, or billable model call occurred.
+
+## Milestone 22B — Visual workspace refinement
+
+- **Objective:** Refine the existing routed desktop presentation system while
+  preserving route ownership, native boundaries, and established workspace
+  behavior.
+- **Start / completion:** Started `2026-07-25`; in progress.
+- **Evidence so far:** Responsive CSS consolidation, reduced-motion coverage,
+  shell hierarchy refinement, Home current-workspace context, and shared
+  workspace-header consolidation. The latest focused desktop gate passed 33
+  test files / 172 tests, TypeScript, ESLint, production build, and the
+  enforced distribution budget.
+- **Status:** In progress. No new package, release, merge, deployment, or
+  external-account action has occurred for this milestone.

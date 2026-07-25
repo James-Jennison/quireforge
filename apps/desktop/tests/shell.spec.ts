@@ -679,12 +679,16 @@ test("authenticated home shows real usage without milestone labels", async ({
   await expect(
     page.getByRole("heading", { name: "What should we build today?" }),
   ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Current workspace" }),
+  ).toBeVisible();
+  await expect(page.getByText("Verified Git workspace")).toBeVisible();
   await openAccountSettings(page);
   await expect(
     page.getByRole("heading", { name: "Codex owns authentication." }),
   ).toBeVisible();
   await expect(page.getByText("73% remaining")).toBeVisible();
-  await expect(page.getByText("44% remaining")).toBeVisible();
+  await expect(page.getByText("99% remaining")).toBeVisible();
   await expect(page.getByText(/Milestone/u)).toHaveCount(0);
 
   await page

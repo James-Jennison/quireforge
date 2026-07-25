@@ -496,6 +496,9 @@ button:disabled {
 }
 
 .project-workspace__heading,
+.worktree-workspace__heading,
+.git-workspace__heading,
+.integrated-terminal__heading,
 .attachment-review__heading,
 .project-card__heading {
   display: flex;
@@ -504,11 +507,17 @@ button:disabled {
   gap: 24px;
 }
 
-.project-workspace__heading .eyebrow {
+.project-workspace__heading .eyebrow,
+.worktree-workspace__heading .eyebrow,
+.git-workspace__heading .eyebrow,
+.integrated-terminal__heading .eyebrow {
   margin-bottom: 10px;
 }
 
-.project-workspace__heading h1 {
+.project-workspace__heading h1,
+.worktree-workspace__heading h1,
+.git-workspace__heading h1,
+.integrated-terminal__heading h1 {
   margin: 0;
   font-family: Georgia, "Times New Roman", serif;
   font-size: 31px;
@@ -516,7 +525,10 @@ button:disabled {
   letter-spacing: -0.025em;
 }
 
-.project-workspace__heading > div > p:last-child {
+.project-workspace__heading > div > p:last-child,
+.worktree-workspace__heading > div > p:last-child,
+.git-workspace__heading > div > p:last-child,
+.integrated-terminal__heading > div:first-child > p:last-child {
   max-width: 650px;
   margin: 12px 0 0;
   color: var(--text-muted);
@@ -526,6 +538,11 @@ button:disabled {
 
 .project-workspace__heading > .auth-button {
   flex: 0 0 auto;
+}
+
+.worktree-workspace__heading > div > p:last-child,
+.git-workspace__heading > div > p:last-child {
+  max-width: 700px;
 }
 
 .project-workspace__status > p {
@@ -768,33 +785,6 @@ button:disabled {
     ),
     var(--surface);
   box-shadow: 0 18px 48px color-mix(in srgb, var(--shadow) 48%, transparent);
-}
-
-.worktree-workspace__heading {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 24px;
-}
-
-.worktree-workspace__heading .eyebrow {
-  margin-bottom: 10px;
-}
-
-.worktree-workspace__heading h1 {
-  margin: 0;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 31px;
-  font-weight: 500;
-  letter-spacing: -0.025em;
-}
-
-.worktree-workspace__heading > div > p:last-child {
-  max-width: 700px;
-  margin: 12px 0 0;
-  color: var(--text-muted);
-  font-size: 11px;
-  line-height: 1.65;
 }
 
 .worktree-status > p {
@@ -1053,33 +1043,6 @@ button:disabled {
     ),
     var(--surface);
   box-shadow: 0 18px 48px color-mix(in srgb, var(--shadow) 48%, transparent);
-}
-
-.git-workspace__heading {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 24px;
-}
-
-.git-workspace__heading .eyebrow {
-  margin-bottom: 10px;
-}
-
-.git-workspace__heading h1 {
-  margin: 0;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 31px;
-  font-weight: 500;
-  letter-spacing: -0.025em;
-}
-
-.git-workspace__heading > div > p:last-child {
-  max-width: 700px;
-  margin: 12px 0 0;
-  color: var(--text-muted);
-  font-size: 11px;
-  line-height: 1.65;
 }
 
 .git-message,
@@ -1569,19 +1532,21 @@ button:disabled {
   box-shadow: 0 18px 48px color-mix(in srgb, var(--shadow) 48%, transparent);
 }
 
-.session-workspace__intro {
+.session-workspace__intro,
+.conversation-workspace__intro {
   display: flex;
   align-items: end;
   justify-content: space-between;
   gap: 36px;
 }
 
-.session-workspace__intro .eyebrow {
+.session-workspace__intro .eyebrow,
+.conversation-workspace__intro .eyebrow {
   margin-bottom: 10px;
 }
 
-.session-workspace__intro h1 {
-  max-width: 560px;
+.session-workspace__intro h1,
+.conversation-workspace__intro h1 {
   margin: 0;
   font-family: Georgia, "Times New Roman", serif;
   font-size: 31px;
@@ -1589,7 +1554,12 @@ button:disabled {
   letter-spacing: -0.025em;
 }
 
-.session-workspace__intro > p {
+.session-workspace__intro h1 {
+  max-width: 560px;
+}
+
+.session-workspace__intro > p,
+.conversation-workspace__intro > p {
   max-width: 450px;
   margin: 0;
   color: var(--text-muted);
@@ -1940,31 +1910,8 @@ button:disabled {
   box-shadow: 0 18px 48px color-mix(in srgb, var(--shadow) 48%, transparent);
 }
 
-.conversation-workspace__intro {
-  display: flex;
-  align-items: end;
-  justify-content: space-between;
-  gap: 36px;
-}
-
-.conversation-workspace__intro .eyebrow {
-  margin-bottom: 10px;
-}
-
-.conversation-workspace__intro h1 {
-  margin: 0;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 31px;
-  font-weight: 500;
-  letter-spacing: -0.025em;
-}
-
 .conversation-workspace__intro > p {
   max-width: 470px;
-  margin: 0;
-  color: var(--text-muted);
-  font-size: 10px;
-  line-height: 1.65;
 }
 
 .conversation-layout {
@@ -3145,30 +3092,7 @@ button:disabled {
 }
 
 .integrated-terminal__heading {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
   gap: 30px;
-}
-
-.integrated-terminal__heading .eyebrow {
-  margin-bottom: 10px;
-}
-
-.integrated-terminal__heading h1 {
-  margin: 0;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 31px;
-  font-weight: 500;
-  letter-spacing: -0.025em;
-}
-
-.integrated-terminal__heading > div:first-child > p:last-child {
-  max-width: 650px;
-  margin: 12px 0 0;
-  color: var(--text-muted);
-  font-size: 11px;
-  line-height: 1.65;
 }
 
 .terminal-launch {

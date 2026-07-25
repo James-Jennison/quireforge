@@ -6,9 +6,10 @@ QuireForge is an unofficial Linux workspace for Codex: “Build boldly. Work
 locally.” Tauri + React + TypeScript is the current functional prototype. The
 long-term UI-platform decision is pending; no Qt migration has been selected.
 
-- **Branch:** `feat/milestone-22-routed-desktop-workspace`
-- **Checkpoint:** `a1c4249974429571ff390904d81864af99b29cf7`
-- **Milestone 22:** complete, committed, documented, and validated.
+- **Branch:** `feat/milestone-22b-visual-workspace-refinement`
+- **Checkpoint:** Milestone 22B is in progress; Milestone 22 remains complete.
+- **Milestone 22B:** the routed desktop architecture is being refined without
+  changing route, native-bridge, authentication, or account-data ownership.
 - **Host readiness:** Qt 6.10.2/QML tooling is installed on this host only.
 
 No Qt frontend, Qt migration, CXX-Qt/Rust bridge, or native Windows/macOS
@@ -24,9 +25,17 @@ the current presentation layer and calls that façade through its bridge.
 
 ## Next action
 
-The next action is the read-only **Milestone 23 — UI Platform Feasibility
-Decision**. It must produce evidence for ADR 0028 before any platform decision
-or implementation work.
+Continue **Milestone 22B — Visual Workspace Refinement** on
+`feat/milestone-22b-visual-workspace-refinement`. The completed checkpoints
+consolidate responsive shell CSS, preserve reduced-motion behavior, refine
+shell hierarchy, add Home's current-workspace surface, and establish shared
+header rules for New task, Threads, Projects, Changes, Worktrees, and Terminal.
+The next slice is representative route-surface alignment and responsive/axe
+evidence; fresh Ubuntu 22.04 packages remain a final-milestone gate.
+The latest focused gate passed 172 desktop unit tests and 38 desktop/mobile
+Playwright scenarios, with 99.03 KiB total CSS. A full desktop Prettier pass is
+currently blocked only by pre-existing formatting in unrelated App and usage
+files; the changed test is formatted.
 
 ### Maintenance handoff
 

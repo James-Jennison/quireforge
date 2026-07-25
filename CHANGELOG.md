@@ -20,6 +20,10 @@ released a usable application.
 
 ### Added
 
+- Milestone 22B presentation refinements: Home now surfaces the current
+  workspace using existing project data, while shared desktop header rules keep
+  New task, Threads, Projects, Changes, Worktrees, and Terminal aligned without
+  changing route or native-bridge behavior.
 - Milestone 22 routed desktop workspace: ten typed, deep-linkable primary
   destinations; preserved mounted tool state; route-aware toolbar and status
   bar; independent pane scrolling; contextual inspectors; compact navigation;
