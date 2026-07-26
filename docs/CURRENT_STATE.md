@@ -6,8 +6,20 @@ QuireForge is an unofficial Linux workspace for Codex: “Build boldly. Work
 locally.” Tauri + React + TypeScript is the current functional prototype. ADR
 0028 accepts retaining Tauri conditionally; no Qt migration has been selected.
 
-- **Branch:** `feat/milestone-25-desktop-visual-polish`
+- **Branch:** `feat/milestone-26-appearance-themes`
 - **Checkpoint:** Milestones 22, 22B, 23, 24A, 24B, 24C, and 25 are complete.
+  Milestone 26's palette-only implementation is
+  `0ae0de7995f10128728116b148d49f2cb5b2cf79`. Its selector-hotfix candidate is
+  `8f7b505f24a489d468f02e82d0e6197606a83abe`; it records the required
+  same-version Debian `--reinstall` path after verifying that the installed
+  host binary was stale. The fresh pinned Ubuntu 22.04 candidate passed its
+  container gate and the user confirmed Settings → Appearance after the
+  documented interactive sudo reinstall. It adds eight closed, locally
+  persisted built-in appearances and settings preview behavior without changing
+  the
+  native bridge, repository-state contract, layout, typography, or automation
+  boundaries.
+
   Milestone 25's presentation-only implementation is
   `9ae07167448d81c18c8e6fb293ffe52a146b346b`; its fresh pinned Ubuntu 22.04
   package evidence is recorded by the following documentation checkpoint.
@@ -59,6 +71,12 @@ notifications, and one native drop-capture path. React/TypeScript/Vite remains
 the current presentation layer and calls that façade through its bridge.
 
 ## Next action
+
+Milestone 26 — **Appearance Themes** is complete. It retains Forge as the
+default and adds seven closed local palettes through Settings → Appearance with
+local restoration, direct accessibility/visual coverage, fresh Ubuntu 22.04
+Debian/AppImage evidence, and installed-host selector confirmation. See
+[Milestone 26](MILESTONE_26_APPEARANCE_THEMES.md).
 
 Milestone 25 — **Desktop visual polish** is complete at implementation commit
 `9ae07167448d81c18c8e6fb293ffe52a146b346b`. Its final Ubuntu 22.04 package
@@ -141,7 +159,7 @@ and icon checks, the disposable Debian installation/upgrade/removal lifecycle,
 visible installed-Debian and AppImage launches, and the representative
 installed-app smoke test. The lifecycle validator installed the Debian package
 with `dpkg --root "$root" --admindir "$admin" --instdir "$root" --install
-"$package"`; a local manual installation would use `sudo apt install
+"$package"`; a local manual installation would use `sudo apt install --reinstall
 ./target/ubuntu-22.04/release/packages/quireforge_0.1.0.beta.2_amd64.deb`.
 Launch the AppImage with `./target/ubuntu-22.04/release/packages/QuireForge-0.1.0-beta.2-x86_64.AppImage`.
 
@@ -189,7 +207,7 @@ disposable Debian install/upgrade/remove lifecycle, visible Debian and AppImage
 launches, and representative smoke validation. The ignored release evidence is
 the version-1 manifest and checksum pair under
 `target/ubuntu-22.04/release/packages/`; local installation uses `sudo apt
-install ./target/ubuntu-22.04/release/packages/quireforge_0.1.0.beta.2_amd64.deb`
+install --reinstall ./target/ubuntu-22.04/release/packages/quireforge_0.1.0.beta.2_amd64.deb`
 and AppImage launch uses
 `./target/ubuntu-22.04/release/packages/QuireForge-0.1.0-beta.2-x86_64.AppImage`.
 

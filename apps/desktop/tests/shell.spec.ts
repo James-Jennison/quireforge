@@ -1350,10 +1350,12 @@ test("forced-colors mode retains visible controls without horizontal overflow", 
   await page.emulateMedia({ forcedColors: "active" });
   await page.goto("/");
 
-  const toggle = page.getByRole("button", { name: /use (dark|light) theme/iu });
-  await expect(toggle).toBeVisible();
-  await toggle.focus();
-  const outlineStyle = await toggle.evaluate(
+  const appearance = page.getByRole("button", {
+    name: "Open appearance settings",
+  });
+  await expect(appearance).toBeVisible();
+  await appearance.focus();
+  const outlineStyle = await appearance.evaluate(
     (element) => getComputedStyle(element).outlineStyle,
   );
   expect(outlineStyle).not.toBe("none");
@@ -1363,21 +1365,126 @@ test("forced-colors mode retains visible controls without horizontal overflow", 
   expect(overflow).toBeLessThanOrEqual(1);
 });
 
-test("theme control changes and persists the selected theme", async ({
+test("appearance picker previews, persists, and keeps every palette accessible", async ({
   page,
-}) => {
-  await page.goto("/");
-  const toggle = page.getByRole("button", { name: /use (dark|light) theme/iu });
-  const before = await page.locator("html").getAttribute("data-theme");
+  isMobile,
+}, testInfo) => {
+  await installNativeFixture(page);
+  await page.goto("/#settings/appearance");
+  const picker = page.getByRole("radiogroup", { name: "QuireForge theme" });
+  await expect(picker).toBeVisible();
 
-  await toggle.click();
-  const after = await page.locator("html").getAttribute("data-theme");
-  expect(after).not.toBe(before);
+  const themeIds = [
+    "forge",
+    "midnight-atelier",
+    "blueprint-terminal",
+    "signal-noir",
+    "aurora-workbench",
+    "obsidian-copper",
+    "monochrome-editorial",
+    "pacific-night",
+  ];
+  const themeLabels = [
+    "Forge",
+    "Midnight Atelier",
+    "Blueprint Terminal",
+    "Signal Noir",
+    "Aurora Workbench",
+    "Obsidian & Copper",
+    "Monochrome Editorial",
+    "Pacific Night",
+  ];
+
+  for (const [index, label] of themeLabels.entries()) {
+    const option = page.getByRole("radio", { name: new RegExp(label, "u") });
+    await option.click();
+    await expect(page.locator("html")).toHaveAttribute(
+      "data-theme",
+      themeIds[index]!,
+    );
+    await expect(option).toHaveAttribute("aria-checked", "true");
+    const contrast = await page.evaluate(() => {
+      const parseHex = (value: string) => {
+        const match = value.trim().match(/^#([0-9a-f]{6})$/iu);
+        if (!match)
+          throw new Error(`Expected an opaque hex color, got ${value}`);
+        return [0, 2, 4].map(
+          (start) =>
+            Number.parseInt(match[1]!.slice(start, start + 2), 16) / 255,
+        );
+      };
+      const luminance = (color: number[]) =>
+        color.reduce(
+          (total, component, index) =>
+            total +
+            (component <= 0.03928
+              ? component / 12.92
+              : ((component + 0.055) / 1.055) ** 2.4) *
+              [0.2126, 0.7152, 0.0722][index]!,
+          0,
+        );
+      const ratio = (foreground: string, background: string) => {
+        const [lighter, darker] = [
+          luminance(parseHex(foreground)),
+          luminance(parseHex(background)),
+        ].sort((left, right) => right - left);
+        return (lighter! + 0.05) / (darker! + 0.05);
+      };
+      const style = getComputedStyle(document.documentElement);
+      const background = style.getPropertyValue("--bg");
+      return Object.fromEntries(
+        [
+          "--text",
+          "--text-muted",
+          "--accent",
+          "--green",
+          "--warning",
+          "--danger",
+        ].map((token) => [
+          token,
+          ratio(style.getPropertyValue(token), background),
+        ]),
+      );
+    });
+    for (const [token, value] of Object.entries(contrast)) {
+      expect(value, `${label} ${token} contrast`).toBeGreaterThanOrEqual(4.5);
+    }
+  }
+
+  const forge = page.getByRole("radio", { name: /Forge/u });
+  const midnight = page.getByRole("radio", { name: /Midnight Atelier/u });
+  await forge.hover();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "forge");
+  await page.locator(".settings-section__heading").hover();
+  await expect(page.locator("html")).toHaveAttribute(
+    "data-theme",
+    "pacific-night",
+  );
+  await forge.focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(midnight).toHaveAttribute("aria-checked", "true");
+  await expect(page.locator("html")).toHaveAttribute(
+    "data-theme",
+    "midnight-atelier",
+  );
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute(
     "data-theme",
-    after ?? "dark",
+    "midnight-atelier",
   );
+
+  const accessibility = await new AxeBuilder({ page }).analyze();
+  expect(accessibility.violations).toEqual([]);
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - window.innerWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(1);
+  await page.screenshot({
+    path: testInfo.outputPath(
+      `appearance-themes-${isMobile ? "mobile" : "desktop"}.png`,
+    ),
+    animations: "disabled",
+  });
 });
 
 test("captures routed desktop workspace evidence", async ({

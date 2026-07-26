@@ -3,8 +3,14 @@ import { createRoot } from "react-dom/client";
 
 import { AppCrashBoundary } from "./AppCrashBoundary";
 import { AppLoader } from "./AppLoader";
+import {
+  applyAppearanceTheme,
+  storedAppearanceTheme,
+} from "./appearanceThemes";
 
 import "./styles.css";
+
+applyAppearanceTheme(storedAppearanceTheme());
 
 const root = document.getElementById("root");
 

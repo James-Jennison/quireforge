@@ -1,3 +1,6 @@
+import type { KeyboardEvent as ReactKeyboardEvent } from "react";
+
+import { appearanceThemes, type ThemeId } from "./appearanceThemes";
 import type { CodexAuthSnapshot } from "./lib/auth";
 import type { CodexUsageSnapshot } from "./lib/usage";
 import { UsagePanel } from "./UsagePanel";
@@ -5,8 +8,6 @@ import type { SettingsSection } from "./workspaceNavigation";
 
 type AuthViewState = CodexAuthSnapshot["state"] | "checking" | "preview";
 type UsageViewState = "checking" | "native" | "preview" | "unavailable";
-type Theme = "light" | "dark";
-
 interface SettingsWorkspaceProps {
   section: SettingsSection;
   auth: CodexAuthSnapshot;
@@ -17,7 +18,7 @@ interface SettingsWorkspaceProps {
   usage: CodexUsageSnapshot;
   usageState: UsageViewState;
   usageBusy: boolean;
-  theme: Theme;
+  theme: ThemeId;
   productName: string;
   productVersion: string;
   bridgeLabel: string;
@@ -29,7 +30,9 @@ interface SettingsWorkspaceProps {
   onRequestLogout: () => void;
   onConfirmLogout: () => void;
   onCancelLogout: () => void;
-  onThemeChange: (theme: Theme) => void;
+  onThemeChange: (theme: ThemeId) => void;
+  onThemePreview: (theme: ThemeId) => void;
+  onThemePreviewEnd: () => void;
 }
 
 const sections: readonly {
@@ -109,7 +112,35 @@ export function SettingsWorkspace({
   onConfirmLogout,
   onCancelLogout,
   onThemeChange,
+  onThemePreview,
+  onThemePreviewEnd,
 }: SettingsWorkspaceProps) {
+  function handleThemeKeyDown(
+    event: ReactKeyboardEvent<HTMLButtonElement>,
+    candidate: ThemeId,
+  ) {
+    const currentIndex = appearanceThemes.findIndex(
+      ({ id }) => id === candidate,
+    );
+    const direction =
+      event.key === "ArrowRight" || event.key === "ArrowDown"
+        ? 1
+        : event.key === "ArrowLeft" || event.key === "ArrowUp"
+          ? -1
+          : 0;
+    if (direction === 0) return;
+
+    event.preventDefault();
+    const nextIndex =
+      (currentIndex + direction + appearanceThemes.length) %
+      appearanceThemes.length;
+    const nextTheme = appearanceThemes[nextIndex]!.id;
+    onThemeChange(nextTheme);
+    event.currentTarget.parentElement
+      ?.querySelector<HTMLButtonElement>(`[data-theme-option="${nextTheme}"]`)
+      ?.focus();
+  }
+
   return (
     <section
       className="settings-workspace"
@@ -295,32 +326,43 @@ export function SettingsWorkspace({
                 className="theme-options"
                 role="radiogroup"
                 aria-label="QuireForge theme"
+                onPointerLeave={onThemePreviewEnd}
+                onBlur={(event) => {
+                  const nextTarget =
+                    event.relatedTarget instanceof Node
+                      ? event.relatedTarget
+                      : null;
+                  if (!event.currentTarget.contains(nextTarget)) {
+                    onThemePreviewEnd();
+                  }
+                }}
               >
-                {(["dark", "light"] as const).map((candidate) => (
+                {appearanceThemes.map((candidate) => (
                   <button
-                    key={candidate}
+                    key={candidate.id}
                     className={
-                      candidate === theme
+                      candidate.id === theme
                         ? "theme-option theme-option--active"
                         : "theme-option"
                     }
                     type="button"
                     role="radio"
-                    aria-checked={candidate === theme}
-                    onClick={() => onThemeChange(candidate)}
+                    aria-checked={candidate.id === theme}
+                    tabIndex={candidate.id === theme ? 0 : -1}
+                    data-theme-option={candidate.id}
+                    onFocus={() => onThemePreview(candidate.id)}
+                    onPointerEnter={() => onThemePreview(candidate.id)}
+                    onKeyDown={(event) =>
+                      handleThemeKeyDown(event, candidate.id)
+                    }
+                    onClick={() => onThemeChange(candidate.id)}
                   >
                     <span
-                      className={`theme-option__preview theme-option__preview--${candidate}`}
+                      className={`theme-option__preview theme-option__preview--${candidate.id}`}
                       aria-hidden="true"
                     />
-                    <strong>
-                      {candidate === "dark" ? "Forge dark" : "Workshop light"}
-                    </strong>
-                    <small>
-                      {candidate === "dark"
-                        ? "Low-glare Linux workspace"
-                        : "Bright, high-clarity workspace"}
-                    </small>
+                    <strong>{candidate.label}</strong>
+                    <small>{candidate.description}</small>
                   </button>
                 ))}
               </div>
