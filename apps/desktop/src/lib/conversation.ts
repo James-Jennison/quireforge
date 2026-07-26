@@ -43,6 +43,34 @@ export const conversationPromptSchema = boundedTextSchema(64 * 1024).refine(
   (value) => value.trim().length > 0,
 );
 
+export const conversationActionFailureCodeSchema = z.enum([
+  "request-invalid",
+  "native-command-failed",
+  "native-response-invalid",
+]);
+
+export type ConversationActionFailureCode = z.infer<
+  typeof conversationActionFailureCodeSchema
+>;
+
+export class ConversationActionFailure extends Error {
+  readonly code: ConversationActionFailureCode;
+
+  constructor(code: ConversationActionFailureCode) {
+    super(code);
+    this.name = "ConversationActionFailure";
+    this.code = code;
+  }
+}
+
+export function conversationActionFailureCode(
+  error: unknown,
+): ConversationActionFailureCode {
+  return error instanceof ConversationActionFailure
+    ? error.code
+    : "native-command-failed";
+}
+
 export const conversationSandboxModeSchema = z.enum([
   "read-only",
   "workspace-write",

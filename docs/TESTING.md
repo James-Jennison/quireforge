@@ -167,6 +167,10 @@ control combinations, UUIDv7 correlation, bounded normalized events, exact
 interrupt, project reservation, exact approval correlation and decisions,
 pending-approval cancellation, detailed activity identity, split-secret
 redaction, protocol mismatch, child reaping, and reference-only persistence.
+The native-conversation hotfix additionally captures the exact mock app-server
+`turn/start` request to prove a multiline task remains one text input, prevents
+re-entrant composer starts, preserves the prompt after failure, and verifies
+distinct bounded request, native-command, and native-response diagnostics.
 Milestone 11B fixtures additionally start independent mock app-server children
 for distinct worktree projects, prove exact per-app-ID interruption, reject a
 second task in the same project, enforce the four-task capacity while starts

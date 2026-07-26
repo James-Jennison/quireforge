@@ -7,6 +7,10 @@ released a usable application.
 
 ### Fixed
 
+- Kept multiline native conversation tasks in one guarded start action and one
+  app-server text input. Re-entrant submissions are ignored while the first
+  start is pending, and request, native-command, and native-response failures
+  now produce distinct bounded recovery guidance without exposing raw errors.
 - Corrected the compact desktop usage summary so unscoped Codex runtime meters
   do not replace the general Codex weekly meter. The sidebar shows only the
   exact reported `codex` seven-day window and its paired reset time; it remains

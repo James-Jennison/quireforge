@@ -76,6 +76,7 @@ import {
   type ModelSelectionUpdateRequest,
 } from "./modelSelection";
 import {
+  ConversationActionFailure,
   conversationSnapshotSchema,
   conversationRegistrySchema,
   conversationStartRequestSchema,
@@ -751,11 +752,25 @@ export async function startConversation(
   request: ConversationStartRequest,
   invokeFunction: InvokeFunction = invokeTauri,
 ): Promise<ConversationSnapshot> {
-  const reviewedRequest = conversationStartRequestSchema.parse(request);
-  const payload = await invokeFunction(CONVERSATION_START_COMMAND, {
-    request: reviewedRequest,
-  });
-  return conversationSnapshotSchema.parse(payload);
+  const reviewedRequest = conversationStartRequestSchema.safeParse(request);
+  if (!reviewedRequest.success) {
+    throw new ConversationActionFailure("request-invalid");
+  }
+
+  let payload: unknown;
+  try {
+    payload = await invokeFunction(CONVERSATION_START_COMMAND, {
+      request: reviewedRequest.data,
+    });
+  } catch {
+    throw new ConversationActionFailure("native-command-failed");
+  }
+
+  const snapshot = conversationSnapshotSchema.safeParse(payload);
+  if (!snapshot.success) {
+    throw new ConversationActionFailure("native-response-invalid");
+  }
+  return snapshot.data;
 }
 
 export async function pollConversation(

@@ -6,11 +6,17 @@ QuireForge is an unofficial Linux workspace for Codex: “Build boldly. Work
 locally.” Tauri + React + TypeScript is the current functional prototype. ADR
 0028 accepts retaining Tauri conditionally; no Qt migration has been selected.
 
-- **Branch:** `feat/milestone-24b-repository-state-reader`
+- **Branch:** `fix/native-conversation-action-multiline`
 - **Checkpoint:** Milestones 22, 22B, 23, 24A, and 24B are complete. Milestone
   24B implementation is `ecc556f9a7025e9e5da3ab63dc34eb1c9f6c3d47`; its final
   Ubuntu 22.04 package evidence is recorded by this documentation checkpoint.
   No 24C workspace or 24D handoff/consistency behavior has begun.
+
+  The post-24B native-conversation hotfix keeps a multiline task as one
+  unchanged `turn/start` text item, blocks re-entrant starts before React busy
+  state propagates, and distinguishes invalid requests, failed native IPC, and
+  invalid native responses with bounded actionable UI diagnostics. It adds no
+  project-state workspace or later-milestone behavior.
 
   The completed 24B fixture suite proves local-only and existing-tracking
   reads preserve an inspected repository, while the explicitly authorized

@@ -17,6 +17,7 @@ import { scaffoldCodexRuntime } from "./lib/codex";
 import { scaffoldBootstrap } from "./lib/contract";
 import { sharedFilePreviewFixture } from "./lib/filePreview";
 import {
+  ConversationActionFailure,
   type ConversationSnapshot,
   conversationSnapshotSchema,
   scaffoldConversation,
@@ -800,6 +801,38 @@ describe("QuireForge desktop shell", () => {
     expect(await screen.findByText("Task completed")).toBeInTheDocument();
     expect(screen.getAllByText("Reviewing the task.")).toHaveLength(1);
     expect(notifyConversationTask).toHaveBeenCalledWith(conversationId);
+  });
+
+  it("preserves the task and explains a native conversation start failure", async () => {
+    const startConversationTask = vi
+      .fn()
+      .mockRejectedValue(
+        new ConversationActionFailure("native-command-failed"),
+      );
+
+    render(
+      <App
+        loadBootstrap={() => Promise.resolve(scaffoldBootstrap)}
+        loadRuntime={() => Promise.resolve(scaffoldCodexRuntime)}
+        loadAuth={() => Promise.resolve(authenticatedAuth)}
+        loadProjects={() => Promise.resolve(attachedProject)}
+        loadConversation={() => Promise.resolve(scaffoldConversation)}
+        startConversationTask={startConversationTask}
+      />,
+    );
+
+    await navigateTo("New task");
+    const prompt = "Keep this task available after the failed action.";
+    const task = screen.getByLabelText("Task");
+    fireEvent.change(task, { target: { value: prompt } });
+    fireEvent.click(screen.getByRole("button", { name: "Start task" }));
+
+    expect(
+      await screen.findByText(
+        /could not reach the native conversation service/iu,
+      ),
+    ).toBeInTheDocument();
+    expect(task).toHaveValue(prompt);
   });
 
   it("cancels pending conversation polling when the shell unmounts", async () => {
