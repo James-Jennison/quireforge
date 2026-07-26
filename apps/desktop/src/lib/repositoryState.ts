@@ -56,10 +56,23 @@ export const repositoryStateReadSnapshotSchema = z
         validations: z.array(
           z
             .object({
+              version: z.literal(1),
               id: z.string(),
+              family: z.enum([
+                "formatting",
+                "lint",
+                "typescript",
+                "rust-tests",
+                "frontend-tests",
+                "build",
+                "bundle-budget",
+                "packaging",
+              ]),
               status: z.enum(["passed", "failed", "skipped", "unavailable"]),
               sourceCommit: z.string().nullable(),
               evidencePath: z.string(),
+              operation: z.string(),
+              timestamp: z.string(),
               freshness: z.enum([
                 "current",
                 "stale",

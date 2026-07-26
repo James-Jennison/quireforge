@@ -70,6 +70,11 @@ duplicate, orphaned, missing, and disagreeing records receive diagnostics, and
 an accepted manifest/checksum disagreement is represented as conflicting
 freshness.
 
+Validation summaries now require version `1`, a closed check family and status,
+a full source commit, bounded operation ID, UTC-style timestamp, and safe
+repository-relative evidence path. Optional malformed validation evidence is
+diagnostic only and never causes the reader to execute validation.
+
 ## Deferred work
 
 Artifact checksum verification, broader validation-report formats, shallow

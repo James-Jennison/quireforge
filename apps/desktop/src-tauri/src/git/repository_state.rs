@@ -57,10 +57,26 @@ struct PackageManifestArtifact {
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct ValidationSummary {
+    version: u8,
     id: String,
+    family: ValidationFamily,
     status: ValidationStatus,
     source_commit: String,
-    command: String,
+    operation: String,
+    timestamp: String,
+    evidence_path: String,
+}
+#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum ValidationFamily {
+    Formatting,
+    Lint,
+    Typescript,
+    RustTests,
+    FrontendTests,
+    Build,
+    BundleBudget,
+    Packaging,
 }
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
@@ -130,10 +146,14 @@ pub struct PackageEvidence {
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ValidationEvidence {
+    pub version: u8,
     pub id: String,
+    pub family: ValidationFamily,
     pub status: ValidationStatus,
     pub source_commit: Option<String>,
     pub evidence_path: String,
+    pub operation: String,
+    pub timestamp: String,
     pub freshness: Freshness,
 }
 
@@ -554,9 +574,12 @@ fn read_supported_evidence(
     if let Some(contents) = safe_text(root, validation_path, diagnostics) {
         match serde_json::from_str::<ValidationSummary>(&contents) {
             Ok(value) => {
-                if valid_commit(&value.source_commit)
-                    && !value.id.is_empty()
-                    && !value.command.is_empty()
+                if value.version == 1
+                    && valid_commit(&value.source_commit)
+                    && valid_identifier(&value.id)
+                    && valid_identifier(&value.operation)
+                    && valid_timestamp(&value.timestamp)
+                    && safe_artifact_path(&value.evidence_path)
                 {
                     let source_commit = Some(value.source_commit);
                     let state = freshness(source_commit.as_deref(), current_head);
@@ -572,10 +595,14 @@ fn read_supported_evidence(
                         ));
                     }
                     evidence.validations.push(ValidationEvidence {
+                        version: value.version,
                         id: value.id,
+                        family: value.family,
                         status: value.status,
                         source_commit,
-                        evidence_path: validation_path.to_owned(),
+                        evidence_path: value.evidence_path,
+                        operation: value.operation,
+                        timestamp: value.timestamp,
                         freshness: state,
                     });
                 } else {
@@ -964,6 +991,21 @@ fn safe_artifact_path(value: &str) -> bool {
         && !value
             .split('/')
             .any(|part| part.is_empty() || part == "." || part == "..")
+}
+fn valid_identifier(value: &str) -> bool {
+    !value.is_empty()
+        && value.len() <= 96
+        && value
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-' || byte == b'_')
+}
+fn valid_timestamp(value: &str) -> bool {
+    value.len() >= 20
+        && value.len() <= 40
+        && value.ends_with('Z')
+        && value.bytes().all(|byte| {
+            byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b':' | b'.' | b'T' | b'Z')
+        })
 }
 
 fn diagnostic(
@@ -1619,7 +1661,7 @@ mod tests {
         fs::create_dir_all(fixture.root.join("target")).unwrap();
         fs::write(
             fixture.root.join("target/validation-summary.json"),
-            format!(r#"{{"id":"rust-tests","status":"passed","sourceCommit":"{head}","command":"cargo test"}}"#),
+            format!(r#"{{"version":1,"id":"rust-tests","family":"rust-tests","status":"passed","sourceCommit":"{head}","operation":"cargo-test","timestamp":"2026-01-01T00:00:00Z","evidencePath":"target/validation-summary.json"}}"#),
         )
         .unwrap();
         let mut diagnostics = Vec::new();
