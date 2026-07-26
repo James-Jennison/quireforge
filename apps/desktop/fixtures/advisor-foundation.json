@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "conversations": [
+    {
+      "id": "019d4e3c-3b14-7a2b-8c91-3f27d4f7aa10",
+      "codexThreadId": "advisor-thread-fixture-01",
+      "createdAtMs": 1771234567000,
+      "updatedAtMs": 1771234567000
+    }
+  ],
+  "contextReferences": [
+    {
+      "id": "019d4e3c-3b15-78d4-b71a-3f27d4f7aa11",
+      "advisorConversationId": "019d4e3c-3b14-7a2b-8c91-3f27d4f7aa10",
+      "kind": "project-state",
+      "sourceRef": "project-state-snapshot",
+      "sourceCommit": "7bf4a235904fc2c760daed81e899b040da96b5b4",
+      "contentSha256": "1111111111111111111111111111111111111111111111111111111111111111",
+      "selectedAtMs": 1771234567000,
+      "freshness": "current",
+      "provenance": {
+        "trust": "verified",
+        "source": "project-state-snapshot",
+        "sourceRef": "project-state-snapshot",
+        "sourceCommit": "7bf4a235904fc2c760daed81e899b040da96b5b4",
+        "observedAtMs": 1771234567000,
+        "note": null
+      }
+    }
+  ],
+  "dispatchProposals": [
+    {
+      "id": "019d4e3c-3b16-7c9f-a80b-3f27d4f7aa12",
+      "advisorConversationId": "019d4e3c-3b14-7a2b-8c91-3f27d4f7aa10",
+      "targetProjectId": "019d4e3c-3b17-7e50-9f35-3f27d4f7aa13",
+      "promptSha256": "2222222222222222222222222222222222222222222222222222222222222222",
+      "contextManifestSha256": "3333333333333333333333333333333333333333333333333333333333333333",
+      "state": "draft",
+      "requiresExplicitApproval": true,
+      "requestedModel": "gpt-5.6-terra",
+      "requestedReasoningEffort": "high",
+      "createdAtMs": 1771234567000,
+      "updatedAtMs": 1771234567000,
+      "provenance": {
+        "trust": "inferred",
+        "source": "user-selection",
+        "sourceRef": "advisor-dispatch-draft",
+        "sourceCommit": null,
+        "observedAtMs": 1771234567000,
+        "note": "Reference-only draft; no dispatch is performed."
+      }
+    }
+  ]
+}

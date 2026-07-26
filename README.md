@@ -177,6 +177,11 @@ transitions require explicit confirmation. Only the confirmed `chat` or `codex`
 local workspace preference persists; missing or invalid values safely fall back
 to Codex without transferring project context, content, credentials, or other
 capability-bearing state.
+Milestone 28 has begun as a reference-only Advisor foundation. It adds only
+strict local metadata contracts for opaque conversation/context references and
+digest-only future dispatch proposals; it does not add an Advisor UI, project
+reader, model call, prompt/transcript retention, execution dispatch, or
+automation.
 Webuzo is the selected static origin host, with Cloudflare retained as the DNS,
 TLS, and cache edge. The reviewed static site is publicly deployed at
 `https://quireforge.jamesjennison.net` through the approved proxied Cloudflare

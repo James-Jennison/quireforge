@@ -119,6 +119,7 @@ discovery; scheduling management and execution remain unsupported.
 |        25 | Desktop visual polish                                             | Medium       | Complete; branded presentation refinement with fresh Ubuntu package gate |
 |        26 | Appearance themes                                                 | Medium       | Complete; eight closed local palettes with fresh Ubuntu package gate     |
 |        27 | Unified Conversation Engine                                       | Large        | Complete; managed Chat/Codex boundary and fresh Ubuntu package gate      |
+|        28 | Reference-only Advisor foundation                                 | Medium       | Active; strict metadata contracts and SQLite migration, no UI/dispatch   |
 
 ## Milestone definitions
 
@@ -845,6 +846,18 @@ state transfer. Final implementation commit
 `0.1.0-beta.4` Ubuntu 22.04 Debian/AppImage evidence passed the complete
 validation, lifecycle, visible-launch, and installed-host smoke gates. See the
 [Milestone 27 report](MILESTONE_27_UNIFIED_CONVERSATION_ENGINE.md).
+
+### 28 — Reference-Only Advisor Foundation
+
+Active on `main`. This first Advisor slice is
+strictly local metadata and contract work: opaque Codex-thread references,
+explicit closed context-reference kinds, separate trust/provenance/freshness,
+and digest-only future dispatch proposals that always require a later explicit
+user approval. It deliberately excludes an Advisor UI, model call, project
+file/screenshot reader, transcript or prompt retention, dispatch bridge,
+Python sidecar, watcher, automatic handoff, contradiction resolution, and
+repository mutation. See the
+[Milestone 28 report](MILESTONE_28_ADVISOR_FOUNDATION.md).
 
 ## Forecast policy
 
