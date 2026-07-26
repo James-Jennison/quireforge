@@ -15,7 +15,7 @@ locally.” Tauri + React + TypeScript is the current functional prototype. ADR
   reads preserve an inspected repository, while the explicitly authorized
   fetch mode can advance only its `origin` tracking ref with no `FETCH_HEAD`,
   HEAD, index, worktree, or configuration mutation. Package, validation, and
-  handoff evidence readers remain deferred within 24B.
+  handoff evidence readers are bounded, diagnostic-only 24B evidence sources.
 
   The reader now returns bounded package, validation, and reported-handoff
   evidence with commit-based freshness and diagnostics; it does not execute

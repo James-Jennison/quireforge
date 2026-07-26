@@ -71,4 +71,71 @@ describe("repository-state reader bridge contract", () => {
       }),
     ).toThrow();
   });
+
+  it("accepts strict package and validation evidence but rejects extra fields", () => {
+    const snapshot = {
+      schemaVersion: 1,
+      state: projectStateFixtures.minimalValid,
+      git: {
+        upstream: null,
+        detached: false,
+        stagedCount: 0,
+        unstagedCount: 0,
+        untrackedCount: 0,
+        mergeInProgress: false,
+        rebaseInProgress: false,
+        cherryPickInProgress: false,
+        bisectInProgress: false,
+        shallow: false,
+      },
+      evidence: {
+        packages: [
+          {
+            manifestVersion: 1,
+            kind: "deb",
+            sourceCommit: "0123456789abcdef0123456789abcdef01234567",
+            artifactPath: "target/pkg.deb",
+            checksum: "a".repeat(64),
+            checksumFile: "a".repeat(64),
+            localVerified: true,
+            localPresent: true,
+            declaredSize: 1,
+            freshness: "current",
+          },
+        ],
+        validations: [
+          {
+            version: 1,
+            id: "rust-tests",
+            family: "rust-tests",
+            status: "passed",
+            sourceCommit: "0123456789abcdef0123456789abcdef01234567",
+            evidencePath: "target/validation-summary.json",
+            operation: "cargo-test",
+            timestamp: "2026-01-01T00:00:00Z",
+            freshness: "current",
+          },
+        ],
+        handoff: {
+          status: "checkpoint-pushed",
+          phrase: "Codex checkpoint pushed. Continue.",
+          sourceCommit: "0123456789abcdef0123456789abcdef01234567",
+          freshness: "current",
+        },
+      },
+      diagnostics: [],
+    };
+    expect(
+      repositoryStateReadSnapshotSchema.parse(snapshot).evidence.packages,
+    ).toHaveLength(1);
+    expect(() =>
+      repositoryStateReadSnapshotSchema.parse({
+        ...snapshot,
+        evidence: {
+          ...snapshot.evidence,
+          packages: [{ ...snapshot.evidence.packages[0], unexpected: true }],
+        },
+      }),
+    ).toThrow();
+  });
 });

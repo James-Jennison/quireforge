@@ -88,7 +88,6 @@ diagnostic only and never causes the reader to execute validation.
 
 ## Deferred work
 
-Artifact checksum verification, broader validation-report formats, shallow
-fixture coverage, and final package validation remain 24B work. No 24C UI, 24D
-handoff generation, contradiction resolution, watcher, or autonomous repair
-exists.
+Broader established validation-report formats, lifecycle/package-evidence
+fields, and final package validation remain 24B work. No 24C UI, 24D handoff
+generation, contradiction resolution, watcher, or autonomous repair exists.
