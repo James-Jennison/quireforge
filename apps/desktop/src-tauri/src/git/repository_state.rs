@@ -400,10 +400,95 @@ fn diagnostic(
 
 #[cfg(test)]
 mod tests {
-    use std::{fs, process::Command};
+    use std::{collections::BTreeMap, fs, process::Command};
 
     use super::*;
     use uuid::Uuid;
+
+    #[derive(Debug, Eq, PartialEq)]
+    struct RepositoryFingerprint {
+        symbolic_head: Vec<u8>,
+        head: Vec<u8>,
+        refs: Vec<u8>,
+        remotes: Vec<u8>,
+        status: Vec<u8>,
+        index: Vec<u8>,
+        fetch_head: Option<Vec<u8>>,
+        files: BTreeMap<String, Vec<u8>>,
+    }
+
+    struct FixtureRepository {
+        root: std::path::PathBuf,
+    }
+
+    impl FixtureRepository {
+        fn new() -> Self {
+            let root = std::env::temp_dir().join(format!("quireforge-reader-{}", Uuid::now_v7()));
+            fs::create_dir(&root).expect("fixture root must exist");
+            for arguments in [
+                &["init", "--quiet"][..],
+                &["config", "user.email", "fixture@example.invalid"][..],
+                &["config", "user.name", "Fixture"][..],
+            ] {
+                assert!(Command::new("git")
+                    .args(arguments)
+                    .current_dir(&root)
+                    .status()
+                    .expect("git fixture setup must start")
+                    .success());
+            }
+            fs::write(root.join("tracked.txt"), "base\n").expect("tracked file must exist");
+            assert!(Command::new("git")
+                .args(["add", "tracked.txt"])
+                .current_dir(&root)
+                .status()
+                .expect("git add must start")
+                .success());
+            assert!(Command::new("git")
+                .args(["commit", "--quiet", "-m", "fixture"])
+                .current_dir(&root)
+                .status()
+                .expect("git commit must start")
+                .success());
+            Self { root }
+        }
+        fn dirty(&self) {
+            fs::write(self.root.join("tracked.txt"), "staged\n").unwrap();
+            assert!(Command::new("git")
+                .args(["add", "tracked.txt"])
+                .current_dir(&self.root)
+                .status()
+                .unwrap()
+                .success());
+            fs::write(self.root.join("tracked.txt"), "unstaged\n").unwrap();
+            fs::write(self.root.join("untracked.txt"), "keep\n").unwrap();
+        }
+        fn fingerprint(&self) -> RepositoryFingerprint {
+            RepositoryFingerprint {
+                symbolic_head: command_output(&self.root, &["symbolic-ref", "-q", "HEAD"]),
+                head: command_output(&self.root, &["rev-parse", "HEAD"]),
+                refs: command_output(&self.root, &["show-ref", "--heads"]),
+                remotes: command_output(&self.root, &["for-each-ref", "refs/remotes"]),
+                status: command_output(&self.root, &["status", "--porcelain=v2", "-z"]),
+                index: fs::read(self.root.join(".git/index")).unwrap(),
+                fetch_head: fs::read(self.root.join(".git/FETCH_HEAD")).ok(),
+                files: ["tracked.txt", "untracked.txt"]
+                    .into_iter()
+                    .filter_map(|name| {
+                        fs::read(self.root.join(name))
+                            .ok()
+                            .map(|bytes| (name.to_owned(), bytes))
+                    })
+                    .collect(),
+            }
+        }
+    }
+
+    impl Drop for FixtureRepository {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.root);
+        }
+    }
 
     #[test]
     fn local_only_snapshot_preserves_a_verified_local_head() {
@@ -520,6 +605,39 @@ mod tests {
             "keep\n"
         );
         fs::remove_dir_all(root).expect("fixture must be removed");
+    }
+
+    #[tokio::test]
+    async fn local_and_tracking_reads_preserve_fixture_fingerprints() {
+        let fixture = FixtureRepository::new();
+        fixture.dirty();
+        let projects = ProjectService::in_memory();
+        projects.prepare_attachment(fixture.root.clone());
+        let project_id = projects.confirm_pending().projects[0].id.clone();
+        for remote_mode in [
+            RepositoryRemoteMode::LocalOnly,
+            RepositoryRemoteMode::ExistingTracking,
+        ] {
+            let before = fixture.fingerprint();
+            let snapshot = RepositoryStateReader
+                .read(
+                    RepositoryStateReadRequest {
+                        project_id: project_id.clone(),
+                        remote_mode,
+                    },
+                    &projects,
+                )
+                .await;
+            assert_eq!(
+                (
+                    snapshot.git.staged_count,
+                    snapshot.git.unstaged_count,
+                    snapshot.git.untracked_count
+                ),
+                (1, 1, 1)
+            );
+            assert_eq!(before, fixture.fingerprint());
+        }
     }
 
     fn command_output(root: &Path, arguments: &[&str]) -> Vec<u8> {
