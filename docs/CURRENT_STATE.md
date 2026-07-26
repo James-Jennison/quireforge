@@ -7,8 +7,8 @@ locally.” Tauri + React + TypeScript is the current functional prototype. ADR
 0028 accepts retaining Tauri conditionally; no Qt migration has been selected.
 
 - **Branch:** `main`
-- **Checkpoint:** Milestones 22, 22B, 23, 24A, 24B, 24C, 25, 26, and 27 are
-  complete.
+- **Checkpoint:** Milestones 22, 22B, 23, 24A, 24B, 24C, 25, 26, 27, and 28
+  are complete.
   Milestone 27 is complete at implementation commit
   `cc4d0cea7d28d275e5ad1c8aa9d7a2a4f0627d6c`; its final package evidence is
   recorded by this documentation checkpoint. The clean `0.1.0-beta.4` Ubuntu
@@ -68,8 +68,8 @@ locally.” Tauri + React + TypeScript is the current functional prototype. ADR
   The release-manifest producer's version-1 `appimage`/`x86_64` wire values are
   normalized by the strict Rust/TypeScript reader contract.
 
-  Milestone 28 has begun as a reference-only Advisor foundation. Its active
-  checkpoint adds strict Rust/Zod contracts and SQLite schema support for
+  Milestone 28 is complete as a reference-only Advisor foundation. It adds
+  strict Rust/Zod contracts and SQLite schema support for
   opaque Advisor conversation references, explicit selected-context references,
   provenance/freshness, and non-dispatching proposal digests. Its fixed
   `#advisor` route receives only a strict safe-summary projection and renders
@@ -80,7 +80,9 @@ locally.” Tauri + React + TypeScript is the current functional prototype. ADR
   prompt/transcript retention, approval action, dispatch, Python sidecar,
   watcher, handoff generation, contradiction resolution, or repository-write
   capability. See
-  [Milestone 28](MILESTONE_28_ADVISOR_FOUNDATION.md).
+  [Milestone 28](MILESTONE_28_ADVISOR_FOUNDATION.md). The clean
+  `0.1.0-beta.5` Ubuntu 22.04 Debian/AppImage set passed the pinned container
+  lifecycle, desktop/icon, visible-launch, and installed-host smoke gates.
 
 - **Milestone 22B:** the routed desktop architecture was refined without
   changing route, native-bridge, authentication, or account-data ownership.
@@ -113,11 +115,12 @@ integrations, transcripts, or credentials. The clean, incremented
 `0.1.0-beta.4` package set passed the pinned Ubuntu 22.04 and installed-host
 gates. See [Milestone 27](MILESTONE_27_UNIFIED_CONVERSATION_ENGINE.md).
 
-Milestone 28 — **Reference-Only Advisor Foundation** is active. It includes a
+Milestone 28 — **Reference-Only Advisor Foundation** is complete. It includes a
 read-only Advisor metadata route and one explicitly confirmed, temporary safe
 projection of the existing local Project State reader; arbitrary context
 reading, model calls, prompt text retention, approval/dispatch flow, and
-automation remain separately gated.
+automation remain separately gated. The next action requires a separate
+Advisor integration and Approval/Dispatch proposal gate.
 
 Milestone 26 — **Appearance Themes** is complete. It retains Forge as the
 default and adds seven closed local palettes through Settings → Appearance with

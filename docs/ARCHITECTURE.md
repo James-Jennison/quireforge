@@ -61,7 +61,12 @@ engine. Rust and TypeScript share a strict version-1 shape for opaque
 Codex-thread references, user-selected closed context references, provenance,
 freshness, and digest-only future dispatch proposals. SQLite stores no prompt
 or reply body, transcript, credential, browser/session data, arbitrary project
-path, or captured context. No Tauri command exposes the contract yet.
+path, or captured context. The fixed metadata command exposes only a strict
+safe summary. A separate selected-snapshot command accepts only an
+application-owned UUIDv7, resolves the already attached project through the
+existing service, fixes the M24B reader to local-only/metadata-only behavior,
+and returns an in-memory safe projection with no project identity, path, Git
+ref, document, artifact, or content field.
 
 Advisor does not inherit an attached project, terminal, Git, worktree,
 integration, approval, or native-action capability from Codex. A later

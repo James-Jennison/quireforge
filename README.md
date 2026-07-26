@@ -177,13 +177,15 @@ transitions require explicit confirmation. Only the confirmed `chat` or `codex`
 local workspace preference persists; missing or invalid values safely fall back
 to Codex without transferring project context, content, credentials, or other
 capability-bearing state.
-Milestone 28 has begun as a reference-only Advisor foundation. It adds strict
+Milestone 28 is complete as a reference-only Advisor foundation. It adds strict
 local metadata contracts and a read-only Advisor route for safe reference
 summaries and digest-only future dispatch proposals. A user may explicitly
 confirm one temporary projection of the existing local Project State reader;
 the result excludes project identity, paths, refs, source content, and image
 attachments and is not retained. It does not add arbitrary project reading,
 model calls, prompt/transcript retention, execution dispatch, or automation.
+Its clean `0.1.0-beta.5` Ubuntu 22.04 Debian/AppImage package set passed the
+pinned lifecycle, visible-launch, and installed-host smoke gates.
 Webuzo is the selected static origin host, with Cloudflare retained as the DNS,
 TLS, and cache edge. The reviewed static site is publicly deployed at
 `https://quireforge.jamesjennison.net` through the approved proxied Cloudflare

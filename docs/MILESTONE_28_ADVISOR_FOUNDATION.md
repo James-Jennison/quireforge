@@ -1,6 +1,6 @@
 # Milestone 28 — Reference-Only Advisor Foundation
 
-Status: active implementation checkpoint; reference-only workspace shell added.
+Status: complete; reference-only foundation and package gate closed.
 
 ## Objective
 
@@ -78,11 +78,54 @@ does not require explicit approval. SQLite migration tests assert that the
 application-owned schema excludes credential, session, prompt, transcript, and
 content columns.
 
+The selected Project State reader is covered by Rust projection/request tests,
+strict TypeScript bridge tests, App explicit-confirmation and reset tests, and
+desktop/mobile Advisor accessibility regression coverage. It preserves the M24B
+reader's normalized evidence semantics rather than introducing a second
+evidence parser.
+
+## Final validation and package evidence
+
+The final package-source commit is
+`73eaf14f4294790683469c03dbcd07efc92b1642`, built from a clean tree as the
+unique incremental version `0.1.0-beta.5` (Debian internal version
+`0.1.0~beta.5`). The ignored version-1 evidence is at
+`target/ubuntu-22.04/release/packages/release-manifest.json`,
+`target/ubuntu-22.04/release/packages/SHA256SUMS`, and
+`target/validation-summary.json`.
+
+| Artifact | Path | Size | SHA-256 |
+| --- | --- | ---: | --- |
+| Debian | `target/ubuntu-22.04/release/packages/quireforge_0.1.0.beta.5_amd64.deb` | 4,687,808 bytes | `e9b8dcbba0d73a086365e986824452dce795ebbdce2b60b87fb0693cf53a3c9f` |
+| AppImage | `target/ubuntu-22.04/release/packages/QuireForge-0.1.0-beta.5-x86_64.AppImage` | 83,917,304 bytes | `c818304448d6229594be19207fd8816a9ba089c1a6703abad444302afdbd0ad5` |
+
+The digest-pinned Ubuntu 22.04 builder includes `/usr/bin/xvfb-run`. Its
+validator passed manifest/checksum agreement, desktop-entry and icon checks,
+maximum required `GLIBC_2.34` against Ubuntu 22.04's `GLIBC_2.35` baseline,
+the disposable Debian install/upgrade/remove lifecycle, and visible Debian and
+AppImage smoke. The installed host upgraded from beta.4 to beta.5 and passed
+visible launch smoke for `/usr/bin/quireforge` and the AppImage. The exact
+commands were:
+
+```bash
+sudo apt install --reinstall -y \
+  /mnt/faststorage/quireforge/target/ubuntu-22.04/release/packages/quireforge_0.1.0.beta.5_amd64.deb
+python3 scripts/smoke_linux_package.py --label 'Installed Debian M28 beta.5' /usr/bin/quireforge
+python3 scripts/smoke_linux_package.py --label 'Installed AppImage M28 beta.5' \
+  ./target/ubuntu-22.04/release/packages/QuireForge-0.1.0-beta.5-x86_64.AppImage \
+  --appimage-extract-and-run
+```
+
+`pnpm validate`, focused desktop/mobile Advisor browser coverage, the Tauri
+no-bundle build, and the pinned container package gate passed. The designated
+package output directory retains only the complete beta.5 release set; no
+installed package, source file, history, remote release, or required evidence
+was removed.
+
 ## Deferred work
 
-The remaining Milestone 28 work is a separately reviewed, deterministic
-foundation completion audit and its normal desktop validation/package decision.
 No additional project-context reader, screenshot staging, managed Advisor model
 call, prompt editor, approval UI, dispatch bridge, Python sidecar, watcher,
 automatic handoff, contradiction resolution, or repository-write capability has
-been added.
+been added. Any follow-on requires a separate Advisor integration and
+Approval/Dispatch proposal gate.

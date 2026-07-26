@@ -119,7 +119,7 @@ discovery; scheduling management and execution remain unsupported.
 |        25 | Desktop visual polish                                             | Medium       | Complete; branded presentation refinement with fresh Ubuntu package gate |
 |        26 | Appearance themes                                                 | Medium       | Complete; eight closed local palettes with fresh Ubuntu package gate     |
 |        27 | Unified Conversation Engine                                       | Large        | Complete; managed Chat/Codex boundary and fresh Ubuntu package gate      |
-|        28 | Reference-only Advisor foundation                                 | Medium       | Active; safe shell and confirmed temporary Project State projection only |
+|        28 | Reference-only Advisor foundation                                 | Medium       | Complete; safe shell, confirmed temporary Project State projection, and fresh Ubuntu package gate |
 
 ## Milestone definitions
 
@@ -849,7 +849,7 @@ validation, lifecycle, visible-launch, and installed-host smoke gates. See the
 
 ### 28 — Reference-Only Advisor Foundation
 
-Active on `main`. This first Advisor slice is
+Complete on `main`. This first Advisor slice is
 strictly local metadata and contract work: opaque Codex-thread references,
 explicit closed context-reference kinds, separate trust/provenance/freshness,
 and digest-only future dispatch proposals that always require a later explicit
@@ -861,7 +861,9 @@ project identity, paths, refs, source content, artifacts, and diagnostic text
 remain excluded. It deliberately excludes model calls, arbitrary project
 file/document/screenshot reading, transcript or prompt retention, dispatch
 bridge, Python sidecar, watcher, automatic handoff, contradiction resolution,
-and repository mutation. See the
+and repository mutation. The clean `0.1.0-beta.5` Ubuntu 22.04 Debian/AppImage
+set passed the pinned container lifecycle, desktop/icon, visible-launch, and
+installed-host smoke gates. See the
 [Milestone 28 report](MILESTONE_28_ADVISOR_FOUNDATION.md).
 
 ## Forecast policy

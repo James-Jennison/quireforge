@@ -14,6 +14,10 @@
   `local-only`/`metadata-only` reader and returns only a strict safe projection;
   it never receives a path, Git argument, remote mode, artifact mode, document,
   image, project identity, or raw repository content.
+- Close Milestone 28 with the clean `0.1.0-beta.5` pinned Ubuntu 22.04
+  Debian/AppImage package gate: manifest/checksum agreement, desktop/icon and
+  GLIBC checks, disposable lifecycle validation, visible launches, and
+  installed-host smoke all passed. No release was published.
 - Complete Milestone 27’s managed-ChatGPT-only conversation engine: closed
   Chat/Codex capability contracts, bounded no-project Chat metadata, and a
   fixed native Chat bridge that rejects project, tool, approval, and API-key

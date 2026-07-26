@@ -1347,5 +1347,8 @@ greater precision than the underlying ranges.
 - **Package implication:** Any final installed runtime change requires a fresh
   incremented pinned Ubuntu 22.04 Debian/AppImage gate before milestone
   completion.
-- **Status:** Active; precise active and automated time is not instrumented and
-  is not reconstructed.
+- **Status:** Complete. Clean package-source commit
+  `73eaf14f4294790683469c03dbcd07efc92b1642`; unique package version
+  `0.1.0-beta.5`. The pinned Ubuntu 22.04 Debian/AppImage lifecycle,
+  visible-launch, and installed-host smoke gates passed. Precise active and
+  automated time is not instrumented and is not reconstructed.
