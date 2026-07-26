@@ -1237,7 +1237,7 @@ greater precision than the underlying ranges.
 - **Boundary:** no project-state UI, automatic handoff, watcher, document
   rewrite, contradiction resolution, or autonomous repair.
 - **Evidence:** Final implementation commit
-  `bd4c428405425d78d4df439a600c7e02085a83fb`; strict Rust/Zod reader parity,
+  `ecc556f9a7025e9e5da3ab63dc34eb1c9f6c3d47`; strict Rust/Zod reader parity,
   deterministic Git fixtures and mutation fingerprints, full Rust/frontend
   validation, and fresh pinned Ubuntu 22.04 Debian/AppImage lifecycle and
   visible-launch smoke evidence.

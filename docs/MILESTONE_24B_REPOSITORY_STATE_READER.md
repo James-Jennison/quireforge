@@ -100,17 +100,17 @@ diagnostic only and never causes the reader to execute validation.
 ## Final package evidence
 
 The final implementation commit is
-`bd4c428405425d78d4df439a600c7e02085a83fb`. From its clean tree, the pinned
+`ecc556f9a7025e9e5da3ab63dc34eb1c9f6c3d47`. From its clean tree, the pinned
 `ubuntu:22.04@sha256:0e0a0fc6d18feda9db1590da249ac93e8d5abfea8f4c3c0c849ce512b5ef8982`
 workflow produced ignored local artifacts at
 `target/ubuntu-22.04/release/packages/` and passed its manifest/checksum,
 desktop-entry, icon, GLIBC, disposable Debian install/upgrade/remove, and
 visible Debian/AppImage launch-smoke gates.
 
-- `quireforge_0.1.0.beta.2_amd64.deb` — 4,629,924 bytes; SHA-256
-  `05c7036320be8fe900fd7b52cef1f4f8b54041244b3bf88a83e1d36a3080c293`.
+- `quireforge_0.1.0.beta.2_amd64.deb` — 4,630,384 bytes; SHA-256
+  `e3261957df2994db8b9873a8f7a981764136d29cb9765f375bc5b067a9f7d7ab`.
 - `QuireForge-0.1.0-beta.2-x86_64.AppImage` — 83,855,864 bytes; SHA-256
-  `6db4cb5f1c585f252cf06bbc825b5ce61311b63ad6bd030a9546e1950990eb74`.
+  `e53dff63b48b654789f249624850a6c19fb7d1977c27a02c748924fe8f358fbf`.
 
 The source manifest is version 1, a clean `release-candidate` for that
 implementation commit; both artifacts target Ubuntu 22.04 `x86_64`, and the

@@ -8,7 +8,7 @@ locally.” Tauri + React + TypeScript is the current functional prototype. ADR
 
 - **Branch:** `feat/milestone-24b-repository-state-reader`
 - **Checkpoint:** Milestones 22, 22B, 23, 24A, and 24B are complete. Milestone
-  24B implementation is `bd4c428405425d78d4df439a600c7e02085a83fb`; its final
+  24B implementation is `ecc556f9a7025e9e5da3ab63dc34eb1c9f6c3d47`; its final
   Ubuntu 22.04 package evidence is recorded by this documentation checkpoint.
   No 24C workspace or 24D handoff/consistency behavior has begun.
 
