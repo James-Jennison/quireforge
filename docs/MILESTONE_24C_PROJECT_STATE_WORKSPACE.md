@@ -80,23 +80,24 @@ The implementation gate requires:
 The implementation gate passes:
 
 - TypeScript and ESLint;
-- 183 frontend unit/component tests across 36 files;
+- 188 frontend unit/component tests across 36 files;
 - 40 desktop/mobile Playwright scenarios, including the focused Project state
   route, axe, keyboard, responsive drawer, visual capture, and overflow checks;
 - production frontend build and distribution budgets: 189.16 KiB entry
-  JavaScript, 231.58 KiB application JavaScript, 845.34 KiB total JavaScript,
+  JavaScript, 232.50 KiB application JavaScript, 846.26 KiB total JavaScript,
   and 99.03 KiB total CSS against the unchanged 100 KiB CSS limit;
 - repository and package-contract validation plus the full repository formatter;
 - warning-denying workspace Clippy;
-- locked Rust workspace tests: 192 passed and 3 deliberate live probes ignored;
+- locked Rust workspace tests: 193 passed and 3 deliberate live probes ignored;
   and
 - the unbundled optimized Tauri application build.
 
 ## Final package evidence
 
-The final implementation commit is
-`8a17703fd0c4d8ddf4ea55c121992202ce58b1c4`. Its source tree was clean when the
-digest-pinned Ubuntu 22.04 workflow ran:
+The final combined implementation commit is
+`6d8f302297fe01f2afb0dad855a4e81f1a8782b2`. It contains the Project state
+workspace plus the validated multiline native-conversation hotfix. Its source
+tree was clean when the digest-pinned Ubuntu 22.04 workflow ran:
 
 ```text
 ./scripts/run_linux_package_container.sh
@@ -114,11 +115,11 @@ the pinned
 builder, Ubuntu 22.04, and `x86_64`.
 
 - `target/ubuntu-22.04/release/packages/quireforge_0.1.0.beta.2_amd64.deb`
-  is 4,635,632 bytes with SHA-256
-  `0ecdc02ed9f7c85e77fbdc232237d10c3e55a7a0c7e5a95155bae254cbf528cc`.
+  is 4,635,656 bytes with SHA-256
+  `d04a114f6c1b1eba822da6a5133f684b27532a8aa81874246347ae8797ff09c7`.
 - `target/ubuntu-22.04/release/packages/QuireForge-0.1.0-beta.2-x86_64.AppImage`
   is 83,855,864 bytes with SHA-256
-  `4e3d03d4c8a72c9b2c2fb6f0e8f9b005b33e8ec357ace914c260389a7201f78d`.
+  `f7c4a1c6dd651438fa1b1403269aa62331096bd9137c105cb99a8ab5c59de36a`.
 
 Manifest/checksum validation, canonical desktop-entry and icon validation, and
 both artifact structures pass. The highest required GLIBC symbol is `2.34`,
@@ -156,9 +157,11 @@ Direct AppImage launch uses:
 
 The strict package validator accepts the final manifest, checksum file, local
 sizes, and local hashes without a source, size, checksum, version, or path
-disagreement. The reader's producer-compatible metadata-only and
-verify-local-artifacts fixture paths remain covered by the passing Rust
-repository-state tests; normal inspection did not rebuild or mutate evidence.
+disagreement. The version-1 validation summary records the same implementation
+commit and successful pinned package operation. The reader's
+producer-compatible metadata-only and verify-local-artifacts fixture paths
+remain covered by the passing Rust repository-state tests; normal inspection
+did not rebuild or mutate evidence.
 
 ## Deferred work
 

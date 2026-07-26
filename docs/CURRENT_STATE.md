@@ -8,8 +8,8 @@ locally.” Tauri + React + TypeScript is the current functional prototype. ADR
 
 - **Branch:** `feat/milestone-24c-project-state-workspace`
 - **Checkpoint:** Milestones 22, 22B, 23, 24A, 24B, and 24C are complete.
-  Milestone 24C implementation is
-  `8a17703fd0c4d8ddf4ea55c121992202ce58b1c4`; its final Ubuntu 22.04 package
+  Milestone 24C's final combined implementation is
+  `6d8f302297fe01f2afb0dad855a4e81f1a8782b2`; its fresh Ubuntu 22.04 package
   evidence is recorded by this documentation checkpoint. Milestone 24B
   implementation is `ecc556f9a7025e9e5da3ab63dc34eb1c9f6c3d47`; its final
   Ubuntu 22.04 package evidence remains documented in its milestone report. No
@@ -53,8 +53,9 @@ the current presentation layer and calls that façade through its bridge.
 
 ## Next action
 
-Milestone 24C — **Project State Workspace** is complete at implementation commit
-`8a17703fd0c4d8ddf4ea55c121992202ce58b1c4`. Its one demand-driven route
+Milestone 24C — **Project State Workspace** is complete at final combined
+implementation commit `6d8f302297fe01f2afb0dad855a4e81f1a8782b2`. Its one
+demand-driven route
 requests the existing reader in `local-only`, `metadata-only` mode and presents
 normalized evidence without mutation, approval, resolution, automation, or
 persistence changes. Frontend, responsive/accessibility, repository, Rust,
@@ -140,15 +141,15 @@ The packaged executable requires maximum GLIBC `2.34`, within the Ubuntu 22.04
 `2.35` policy baseline; the pinned workflow passed desktop/icon, Debian
 lifecycle, installed launch, AppImage launch, and smoke checks.
 
-Milestone 24C refreshed the ignored candidates from clean implementation commit
-`8a17703fd0c4d8ddf4ea55c121992202ce58b1c4` on 2026-07-26:
+Milestone 24C refreshed the ignored candidates from clean final combined
+implementation commit `6d8f302297fe01f2afb0dad855a4e81f1a8782b2` on 2026-07-26:
 
 - `target/ubuntu-22.04/release/packages/quireforge_0.1.0.beta.2_amd64.deb`
-  — 4,635,632 bytes; SHA-256
-  `0ecdc02ed9f7c85e77fbdc232237d10c3e55a7a0c7e5a95155bae254cbf528cc`.
+  — 4,635,656 bytes; SHA-256
+  `d04a114f6c1b1eba822da6a5133f684b27532a8aa81874246347ae8797ff09c7`.
 - `target/ubuntu-22.04/release/packages/QuireForge-0.1.0-beta.2-x86_64.AppImage`
   — 83,855,864 bytes; SHA-256
-  `4e3d03d4c8a72c9b2c2fb6f0e8f9b005b33e8ec357ace914c260389a7201f78d`.
+  `f7c4a1c6dd651438fa1b1403269aa62331096bd9137c105cb99a8ab5c59de36a`.
 
 The pinned Ubuntu 22.04 workflow passed manifest/checksum, maximum GLIBC `2.34`,
 desktop entry, icon, Debian install/upgrade/remove, visible Debian launch,

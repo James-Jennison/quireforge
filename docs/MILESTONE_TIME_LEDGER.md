@@ -1257,8 +1257,8 @@ greater precision than the underlying ranges.
   application, so final closure requires fresh pinned Ubuntu 22.04 Debian and
   AppImage lifecycle, launch, and smoke evidence from the clean implementation
   commit.
-- **Evidence:** Implementation commit
-  `8a17703fd0c4d8ddf4ea55c121992202ce58b1c4`; 183 frontend tests, 40
+- **Evidence:** Final combined implementation commit
+  `6d8f302297fe01f2afb0dad855a4e81f1a8782b2`; 188 frontend tests, 40
   desktop/mobile Playwright scenarios, full repository/Rust/Tauri validation,
   and fresh pinned Ubuntu 22.04 Debian/AppImage lifecycle and visible-launch
   smoke evidence.
