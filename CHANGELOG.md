@@ -1,7 +1,15 @@
 # Changelog
 
-## Unreleased — 0.1.0-beta.9
+## Unreleased — 0.1.0-beta.10
 
+- Pin the transitive Node `brace-expansion` resolution to `5.0.8`, removing
+  the high-severity Dependabot advisory from the linting toolchain.
+- Retain ESLint 9 and its React/Astro accessibility coverage while adding a
+  time-bounded, fail-closed review record for its remaining development-only
+  `brace-expansion` audit path. Raw Node audit output remains available.
+- Raise only the measured desktop total-JavaScript regression ceiling from 875
+  KiB to 880 KiB for the shipped digest-bound Advisor Phase A controller; the
+  entry, application-shell, and CSS ceilings remain unchanged.
 - Add the unnumbered Advisor Approval/Dispatch Phase A controller: transient
   editable drafts and expiring digest-only explicit approval/rejection records.
   It cannot dispatch, start Codex, run commands, or change a project.

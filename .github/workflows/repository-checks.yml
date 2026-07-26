@@ -65,7 +65,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Audit JavaScript dependencies
-        run: pnpm security:audit:node
+        run: pnpm security:audit:node:exception
 
       - name: Install pinned RustSec auditor
         run: cargo install cargo-audit --locked --version 0.22.2

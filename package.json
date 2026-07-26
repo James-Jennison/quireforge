@@ -1,6 +1,6 @@
 {
   "name": "quireforge",
-  "version": "0.1.0-beta.9",
+  "version": "0.1.0-beta.10",
   "private": true,
   "description": "QuireForge — an unofficial native Linux workspace for Codex.",
   "license": "Apache-2.0",
@@ -28,8 +28,9 @@
     "rust:check": "cargo check --locked --workspace",
     "rust:clippy": "cargo clippy --locked --workspace --all-targets -- -D warnings",
     "rust:test": "cargo test --locked --workspace",
-    "security:audit": "pnpm security:audit:node && pnpm security:audit:rust",
+    "security:audit": "pnpm security:audit:node:exception && pnpm security:audit:rust",
     "security:audit:node": "pnpm audit --audit-level high",
+    "security:audit:node:exception": "python3 scripts/validate_node_audit_exception.py",
     "security:audit:rust": "cargo audit --deny warnings",
     "test": "pnpm -r --if-present test",
     "test:e2e": "pnpm -r --if-present test:e2e",

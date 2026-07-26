@@ -400,7 +400,7 @@ fn valid_advisor_draft_request(request: &advisor::AdvisorDraftCreateRequest) -> 
         && request
             .selected_project_state
             .as_ref()
-            .map_or(true, advisor::AdvisorSelectedProjectStateSnapshot::is_valid)
+            .is_none_or(advisor::AdvisorSelectedProjectStateSnapshot::is_valid)
         && !request.prompt.trim().is_empty()
         && request.prompt.len() <= 64 * 1024
         && !request.prompt.contains('\0')

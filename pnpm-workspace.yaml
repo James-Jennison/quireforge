@@ -4,6 +4,7 @@ packages:
 
 overrides:
   fast-uri: 3.1.4
+  minimatch@10>brace-expansion: 5.0.8
 
 allowBuilds:
   esbuild: true

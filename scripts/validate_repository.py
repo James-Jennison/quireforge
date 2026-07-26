@@ -220,7 +220,11 @@ REQUIRED_PATHS = (
     "scripts/release_contract.py",
     "scripts/run_linux_package_container.sh",
     "scripts/tests/test_package_contract.py",
+    "scripts/tests/test_node_audit_exception.py",
+    "scripts/validate_node_audit_exception.py",
     "scripts/validate_release_artifacts.py",
+    "security/node-audit-exceptions.json",
+    "docs/SECURITY_AUDIT_EXCEPTIONS.md",
     "packaging/linux/Dockerfile",
     "packaging/linux/tauri-tools.json",
     "packaging/release-manifest.schema.json",
@@ -527,14 +531,35 @@ def validate() -> list[str]:
         scripts = package.get("scripts", {})
         if scripts.get("security:audit:node") != "pnpm audit --audit-level high":
             errors.append("root package must retain the high-severity Node audit gate")
+        if scripts.get("security:audit:node:exception") != "python3 scripts/validate_node_audit_exception.py":
+            errors.append("root package must retain the fail-closed Node audit exception gate")
+        if scripts.get("security:audit") != "pnpm security:audit:node:exception && pnpm security:audit:rust":
+            errors.append("root security audit must use the reviewed Node exception gate")
         if scripts.get("security:audit:rust") != "cargo audit --deny warnings":
             errors.append("root package must retain the warning-denying RustSec audit gate")
 
     workspace_path = ROOT / "pnpm-workspace.yaml"
     if workspace_path.is_file():
         workspace_text = workspace_path.read_text(encoding="utf-8")
-        if not re.search(r"(?m)^overrides:\n  fast-uri: 3\.1\.4$", workspace_text):
-            errors.append("workspace must retain the reviewed fast-uri 3.1.4 override")
+        if not re.search(
+            r"(?m)^overrides:\n  fast-uri: 3\.1\.4\n  minimatch@10>brace-expansion: 5\.0\.8$",
+            workspace_text,
+        ):
+            errors.append(
+                "workspace must retain the reviewed minimatch 10 brace-expansion 5.0.8 and fast-uri 3.1.4 overrides"
+            )
+
+    exception_check = subprocess.run(
+        [sys.executable, "scripts/validate_node_audit_exception.py", "--check-record"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if exception_check.returncode:
+        errors.append(
+            "Node audit exception record is invalid: " + exception_check.stderr.strip()
+        )
 
     audit_config_path = ROOT / ".cargo/audit.toml"
     if audit_config_path.is_file():

@@ -86,6 +86,7 @@ advisory databases:
 
 ```bash
 pnpm security:audit:node
+pnpm security:audit:node:exception
 cargo install cargo-audit --locked --version 0.22.2
 pnpm security:audit:rust
 ```
