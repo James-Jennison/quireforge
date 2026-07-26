@@ -113,6 +113,14 @@ pub(crate) struct ConversationReference<'a> {
     pub selection: ConversationSelectionMetadata<'a>,
 }
 
+/// Bounded local metadata for a no-project conversation. This intentionally
+/// excludes prompts, responses, authentication data, and any filesystem or
+/// project association.
+pub(crate) struct ChatConversationMetadata<'a> {
+    pub conversation_id: &'a str,
+    pub codex_thread_id: &'a str,
+}
+
 pub(crate) struct ConversationSelectionMetadata<'a> {
     pub availability: &'a str,
     pub ownership: &'a str,
@@ -742,6 +750,25 @@ impl ProjectService {
             .ok_or(ProjectExecutionError::MetadataUnavailable)?;
         repository
             .insert_conversation_reference(&reference)
+            .map_err(|_| ProjectExecutionError::MetadataUnavailable)
+    }
+
+    pub(crate) fn record_chat_conversation_metadata(
+        &self,
+        metadata: ChatConversationMetadata<'_>,
+    ) -> Result<(), ProjectExecutionError> {
+        if !valid_id(metadata.conversation_id) || !valid_id(metadata.codex_thread_id) {
+            return Err(ProjectExecutionError::InvalidProjectId);
+        }
+        let mut repository_guard = self
+            .repository
+            .lock()
+            .map_err(|_| ProjectExecutionError::MetadataUnavailable)?;
+        let repository = repository_guard
+            .as_mut()
+            .ok_or(ProjectExecutionError::MetadataUnavailable)?;
+        repository
+            .insert_chat_conversation_metadata(&metadata)
             .map_err(|_| ProjectExecutionError::MetadataUnavailable)
     }
 

@@ -28,24 +28,27 @@ the reviewed official-host handoff URL.
   branded product behavior.
 
 The first implementation slice adds matching Rust/Zod readiness and capability
-contracts. Chat is ready only for normalized managed `chatgpt` authentication;
+contracts, a version-7 bounded SQLite migration, and fixed native Chat
+commands. Chat is ready only for normalized managed `chatgpt` authentication;
 an API-key, managed-provider, missing, pending device-code, or unavailable
-state cannot enable it. The closed Chat policy has no attached project, native
-actions, terminal, Git, worktree, or integration capability. Codex retains
-those capabilities and attached-project requirements.
+state cannot enable it. The fixed thread start has `cwd: null`, no environments,
+no dynamic tools, read-only sandboxing, and `never` approvals. Any attempted
+native tool or permission request blocks the Chat conversation rather than
+asking the user to approve it. The only persisted Chat fields are opaque local
+conversation and Codex-thread references with timestamps; no prompt, response,
+project path, credential, or account identity is stored. Codex retains its
+project-bound capability profile and existing records.
 
 ## Planned implementation phases
 
-1. Establish managed-auth feasibility, strict mode contracts, and the Settings
-   foundation.
-2. Add transactional mode-aware conversation metadata while preserving existing
-   Codex reference rows and M26 local appearance preferences.
+1. Establish managed-auth feasibility, strict mode contracts, the Settings
+   foundation, and bounded mode-aware metadata. **Implemented.**
+2. Add the no-project Chat profile only after native capability tests prove
+   that its fixed app-server request cannot obtain project/native-action
+   authority. **Native bridge implemented; user workspace wiring remains.**
 3. Route the existing Codex conversation service through the native engine and
    implement explicit confirmed mode transitions with no automatic context
    transfer.
-4. Add the no-project Chat profile only after native capability tests prove
-   that its fixed app-server request cannot obtain project/native-action
-   authority.
 5. Close full Rust/TypeScript/desktop/browser validation and the pinned Ubuntu
    22.04 Debian/AppImage package gate.
 
@@ -72,7 +75,7 @@ its local `quireforge-theme` preference remain unchanged.
 
 ## Remaining work
 
-Mode-aware persistence, native engine routing, no-project Chat request and
-deny-by-default event handling, explicit mode-transition UI, direct migration
-coverage, desktop/browser accessibility coverage, and the final pinned Ubuntu
+The user-visible Chat/Codex selector with a confirmed transition, unified
+workspace event presentation, migration/backfill coverage, desktop/browser
+accessibility coverage, complete regression suite, and final pinned Ubuntu
 22.04 package/evidence gate remain.

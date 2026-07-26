@@ -74,10 +74,14 @@ the current presentation layer and calls that façade through its bridge.
 
 Milestone 27 — **Unified Conversation Engine** is in progress. Its first
 managed-auth feasibility slice adds strict Rust/Zod Chat/Codex capability
-profiles and the Settings navigation foundation. Chat requires only the
-documented Codex-managed browser ChatGPT sign-in and remains unavailable for
-API-key, external-token, browser-session, or consumer-ChatGPT paths. See
-[Milestone 27](MILESTONE_27_UNIFIED_CONVERSATION_ENGINE.md).
+profiles, the Settings navigation foundation, bounded mode-aware metadata, and
+a fixed no-project native Chat bridge. Chat requires only the documented
+Codex-managed browser ChatGPT sign-in and remains unavailable for API-key,
+external-token, browser-session, or consumer-ChatGPT paths. Its fixed native
+profile has no project root, dynamic tools, integrations, approvals, terminal,
+Git, or worktree authority; the user-visible mode transition remains pending.
+The release contract now targets the next incremental candidate,
+`0.1.0-beta.3`. See [Milestone 27](MILESTONE_27_UNIFIED_CONVERSATION_ENGINE.md).
 
 Milestone 26 — **Appearance Themes** is complete. It retains Forge as the
 default and adds seven closed local palettes through Settings → Appearance with

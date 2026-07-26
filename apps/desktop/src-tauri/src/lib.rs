@@ -20,7 +20,8 @@ use attachment::{
 };
 use codex::conversation_mode::{chat_authentication_snapshot, ChatAuthenticationSnapshot};
 use codex::{
-    types::CodexRuntimeSnapshot, AuthLoginMethod, CodexAuthService, CodexAuthSnapshot,
+    types::CodexRuntimeSnapshot, AuthLoginMethod, ChatConversationService,
+    ChatConversationSnapshot, ChatConversationStartRequest, CodexAuthService, CodexAuthSnapshot,
     CodexRuntimeService, CodexUsageService, CodexUsageSnapshot,
     ConversationApprovalDecisionRequest, ConversationContinueRequest, ConversationDiagnosticCode,
     ConversationRegistrySnapshot, ConversationService, ConversationSnapshot,
@@ -192,6 +193,41 @@ async fn chat_authentication_status(
     service: tauri::State<'_, CodexAuthService>,
 ) -> Result<ChatAuthenticationSnapshot, ()> {
     Ok(chat_authentication_snapshot(&service.status().await))
+}
+
+#[tauri::command]
+async fn chat_conversation_status(
+    service: tauri::State<'_, ChatConversationService>,
+) -> Result<ChatConversationSnapshot, ()> {
+    Ok(service.status().await)
+}
+
+#[tauri::command]
+async fn chat_conversation_start(
+    request: ChatConversationStartRequest,
+    service: tauri::State<'_, ChatConversationService>,
+    authentication: tauri::State<'_, CodexAuthService>,
+    projects: tauri::State<'_, ProjectService>,
+) -> Result<ChatConversationSnapshot, ()> {
+    Ok(service
+        .start(request, &authentication.status().await, &projects)
+        .await)
+}
+
+#[tauri::command]
+async fn chat_conversation_poll(
+    conversation_id: String,
+    service: tauri::State<'_, ChatConversationService>,
+) -> Result<ChatConversationSnapshot, ()> {
+    Ok(service.poll(conversation_id).await)
+}
+
+#[tauri::command]
+async fn chat_conversation_interrupt(
+    conversation_id: String,
+    service: tauri::State<'_, ChatConversationService>,
+) -> Result<ChatConversationSnapshot, ()> {
+    Ok(service.interrupt(conversation_id).await)
 }
 
 #[tauri::command]
@@ -942,6 +978,7 @@ pub fn run() {
         .manage(IntegrationControlService::default())
         .manage(IntegrationMutationService::default())
         .manage(ConversationService::default())
+        .manage(ChatConversationService::default())
         .manage(DesktopNotificationService::default())
         .manage(GitService::default())
         .manage(RepositoryStateReader)
@@ -1002,6 +1039,10 @@ pub fn run() {
             codex_auth_status,
             codex_auth_refresh,
             chat_authentication_status,
+            chat_conversation_status,
+            chat_conversation_start,
+            chat_conversation_poll,
+            chat_conversation_interrupt,
             codex_auth_start,
             codex_auth_cancel,
             codex_auth_logout,

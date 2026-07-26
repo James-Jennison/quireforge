@@ -12,7 +12,7 @@ use uuid::Uuid;
 use super::{
     identity::DirectoryIdentity,
     types::{DirectoryAccessibilityState, ExpectedAccess},
-    ConversationReference, ConversationSelectionMetadata,
+    ChatConversationMetadata, ConversationReference, ConversationSelectionMetadata,
 };
 
 const INITIAL_MIGRATION: &str = r#"
@@ -166,6 +166,41 @@ ALTER TABLE conversation_references
 ALTER TABLE conversation_references ADD COLUMN selector_pending_requested_at_ms INTEGER;
 "#;
 
+// This table deliberately stores only bounded QuireForge conversation metadata.
+// Codex continues to own threads, account state, credentials, and transcripts.
+// Existing project-scoped references are backfilled as Codex records; Chat rows
+// cannot carry an attached-project or legacy project-reference association.
+const UNIFIED_CONVERSATION_METADATA_MIGRATION: &str = r#"
+CREATE TABLE unified_conversation_metadata (
+    id TEXT PRIMARY KEY NOT NULL,
+    mode TEXT NOT NULL CHECK(mode IN ('chat', 'codex')),
+    project_id TEXT REFERENCES projects(id) ON DELETE RESTRICT,
+    conversation_reference_id TEXT UNIQUE
+        REFERENCES conversation_references(id) ON DELETE RESTRICT,
+    codex_thread_id TEXT UNIQUE,
+    created_at_ms INTEGER NOT NULL,
+    updated_at_ms INTEGER NOT NULL,
+    CHECK(
+        (mode = 'chat' AND project_id IS NULL AND conversation_reference_id IS NULL
+         AND codex_thread_id IS NOT NULL)
+        OR
+        (mode = 'codex' AND project_id IS NOT NULL AND conversation_reference_id IS NOT NULL
+         AND codex_thread_id IS NULL)
+    )
+);
+
+CREATE INDEX unified_conversation_metadata_mode_recent
+    ON unified_conversation_metadata(mode, updated_at_ms DESC, id);
+CREATE INDEX unified_conversation_metadata_project_recent
+    ON unified_conversation_metadata(project_id, updated_at_ms DESC, id);
+
+INSERT INTO unified_conversation_metadata (
+    id, mode, project_id, conversation_reference_id, created_at_ms, updated_at_ms
+)
+SELECT id, 'codex', project_id, id, created_at_ms, updated_at_ms
+FROM conversation_references;
+"#;
+
 const MIGRATIONS: &[(i64, &str, &str)] = &[
     (1, "projects-and-directory-associations", INITIAL_MIGRATION),
     (
@@ -177,6 +212,11 @@ const MIGRATIONS: &[(i64, &str, &str)] = &[
     (4, "worktree-relations", WORKTREE_RELATIONS_MIGRATION),
     (5, "terminal-sessions", TERMINAL_SESSIONS_MIGRATION),
     (6, "model-selection", MODEL_SELECTION_MIGRATION),
+    (
+        7,
+        "unified-conversation-metadata",
+        UNIFIED_CONVERSATION_METADATA_MIGRATION,
+    ),
 ];
 
 #[derive(Debug, Error)]
@@ -697,7 +737,10 @@ impl ProjectRepository {
         reference: &ConversationReference<'_>,
     ) -> Result<(), StorageError> {
         let timestamp = now_millis();
-        self.connection.execute(
+        let transaction = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        transaction.execute(
             "INSERT INTO conversation_references (
                 id, project_id, codex_thread_id, active_turn_id, model_id,
                 reasoning_effort, sandbox_mode, approval_policy, status,
@@ -723,6 +766,32 @@ impl ProjectRepository {
                 reference.selection.user_locked,
                 reference.selection.allowed_model_ids_json,
                 reference.selection.reasoning_ceiling,
+            ],
+        )?;
+        transaction.execute(
+            "INSERT INTO unified_conversation_metadata (
+                id, mode, project_id, conversation_reference_id, created_at_ms, updated_at_ms
+             ) VALUES (?1, 'codex', ?2, ?1, ?3, ?3)",
+            params![reference.conversation_id, reference.project_id, timestamp],
+        )?;
+        transaction.commit()?;
+        Ok(())
+    }
+
+    pub(crate) fn insert_chat_conversation_metadata(
+        &mut self,
+        metadata: &ChatConversationMetadata<'_>,
+    ) -> Result<(), StorageError> {
+        let timestamp = now_millis();
+        self.connection.execute(
+            "INSERT INTO unified_conversation_metadata (
+                id, mode, project_id, conversation_reference_id, codex_thread_id,
+                created_at_ms, updated_at_ms
+             ) VALUES (?1, 'chat', NULL, NULL, ?2, ?3, ?3)",
+            params![
+                metadata.conversation_id,
+                metadata.codex_thread_id,
+                timestamp
             ],
         )?;
         Ok(())
@@ -1098,6 +1167,7 @@ fn verify_schema(connection: &Connection) -> Result<(), StorageError> {
         "projects",
         "directory_associations",
         "conversation_references",
+        "unified_conversation_metadata",
         "worktree_relations",
         "terminal_sessions",
     ] {
@@ -1313,12 +1383,13 @@ fn now_millis() -> i64 {
 mod tests {
     use std::{fs, os::unix::fs::PermissionsExt};
 
-    use rusqlite::Connection;
+    use rusqlite::{params, Connection};
     use uuid::Uuid;
 
     use super::{ProjectRepository, StorageError, INITIAL_MIGRATION};
     use crate::project::{
-        ConversationPendingSelection, ConversationReference, ConversationSelectionMetadata,
+        ChatConversationMetadata, ConversationPendingSelection, ConversationReference,
+        ConversationSelectionMetadata,
     };
 
     #[test]
@@ -1375,12 +1446,13 @@ mod tests {
                     OR (version = 3 AND name = 'session-lifecycle')
                     OR (version = 4 AND name = 'worktree-relations')
                     OR (version = 5 AND name = 'terminal-sessions')
-                    OR (version = 6 AND name = 'model-selection')",
+                    OR (version = 6 AND name = 'model-selection')
+                    OR (version = 7 AND name = 'unified-conversation-metadata')",
                 [],
                 |row| row.get(0),
             )
             .expect("migration ledger must be queryable");
-        assert_eq!(migrated, 5);
+        assert_eq!(migrated, 6);
         let lifecycle_columns: i64 = repository
             .connection
             .query_row(
@@ -1446,6 +1518,7 @@ mod tests {
                 "projects".to_owned(),
                 "schema_migrations".to_owned(),
                 "terminal_sessions".to_owned(),
+                "unified_conversation_metadata".to_owned(),
                 "worktree_relations".to_owned(),
             ]
         );
@@ -1462,6 +1535,7 @@ mod tests {
             "directory_associations",
             "conversation_references",
             "terminal_sessions",
+            "unified_conversation_metadata",
             "worktree_relations",
         ] {
             let mut statement = repository
@@ -1575,8 +1649,49 @@ mod tests {
             .expect("conversation reference must be queryable");
         assert_eq!(
             stored,
-            (project_id, thread_id, None, "completed".to_owned())
+            (project_id.clone(), thread_id, None, "completed".to_owned())
         );
+
+        let unified: (String, String, String) = repository
+            .connection
+            .query_row(
+                "SELECT mode, project_id, conversation_reference_id
+                 FROM unified_conversation_metadata WHERE id = ?1",
+                [&conversation_id],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            )
+            .expect("Codex metadata must be recorded atomically with its reference");
+        assert_eq!(
+            unified,
+            ("codex".to_owned(), project_id.clone(), conversation_id)
+        );
+
+        let invalid_chat = repository.connection.execute(
+            "INSERT INTO unified_conversation_metadata (
+                id, mode, project_id, conversation_reference_id, created_at_ms, updated_at_ms
+             ) VALUES (?1, 'chat', ?2, NULL, 1, 1)",
+            params![Uuid::now_v7().to_string(), project_id],
+        );
+        assert!(invalid_chat.is_err());
+
+        let chat_conversation_id = Uuid::now_v7().to_string();
+        let chat_thread_id = Uuid::now_v7().to_string();
+        repository
+            .insert_chat_conversation_metadata(&ChatConversationMetadata {
+                conversation_id: &chat_conversation_id,
+                codex_thread_id: &chat_thread_id,
+            })
+            .expect("bounded Chat metadata must persist without a project");
+        let chat: (String, Option<String>, String) = repository
+            .connection
+            .query_row(
+                "SELECT mode, project_id, codex_thread_id
+                 FROM unified_conversation_metadata WHERE id = ?1",
+                [&chat_conversation_id],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            )
+            .expect("Chat metadata must be queryable");
+        assert_eq!(chat, ("chat".to_owned(), None, chat_thread_id));
     }
 
     #[test]

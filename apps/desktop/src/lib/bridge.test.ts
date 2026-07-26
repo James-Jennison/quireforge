@@ -5,6 +5,7 @@ import { scaffoldCodexUsage } from "./usage";
 import { sharedConversationAttachmentFixture } from "./attachment";
 import { scaffoldCodexRuntime } from "./codex";
 import { scaffoldConversation } from "./conversation";
+import { scaffoldChatConversation } from "./chat";
 import {
   scaffoldGitDiff,
   scaffoldGitMutationPreview,
@@ -25,6 +26,10 @@ import {
   CODEX_AUTH_START_COMMAND,
   CODEX_AUTH_STATUS_COMMAND,
   CHAT_AUTHENTICATION_STATUS_COMMAND,
+  CHAT_CONVERSATION_INTERRUPT_COMMAND,
+  CHAT_CONVERSATION_POLL_COMMAND,
+  CHAT_CONVERSATION_START_COMMAND,
+  CHAT_CONVERSATION_STATUS_COMMAND,
   CODEX_RUNTIME_PROBE_COMMAND,
   confirmProjectAttachment,
   confirmWorktree,
@@ -57,6 +62,10 @@ import {
   FILE_PREVIEW_PICK_COMMAND,
   loadCodexAuth,
   loadChatAuthentication,
+  interruptChatConversation,
+  loadChatConversation,
+  pollChatConversation,
+  startChatConversation,
   loadCodexUsage,
   loadCodexRuntime,
   loadConversationStatus,
@@ -338,6 +347,44 @@ describe("desktop bridge", () => {
 
     await expect(loadChatAuthentication(invoke)).resolves.toEqual(expected);
     expect(invoke).toHaveBeenCalledWith(CHAT_AUTHENTICATION_STATUS_COMMAND);
+  });
+
+  it("uses fixed, project-free Chat conversation commands", async () => {
+    const active = {
+      ...scaffoldChatConversation,
+      state: "running" as const,
+      conversationId: "018f0000-0000-7000-8000-000000000020",
+      threadId: "018f0000-0000-7000-8000-000000000030",
+    };
+    const invoke = vi
+      .fn()
+      .mockResolvedValueOnce(scaffoldChatConversation)
+      .mockResolvedValueOnce(active)
+      .mockResolvedValueOnce(active)
+      .mockResolvedValueOnce({ ...active, state: "interrupted" });
+
+    await expect(loadChatConversation(invoke)).resolves.toEqual(
+      scaffoldChatConversation,
+    );
+    await expect(
+      startChatConversation({ prompt: "Explain the failing test." }, invoke),
+    ).resolves.toEqual(active);
+    await expect(pollChatConversation(active.conversationId, invoke)).resolves.toEqual(active);
+    await expect(interruptChatConversation(active.conversationId, invoke)).resolves.toEqual({
+      ...active,
+      state: "interrupted",
+    });
+
+    expect(invoke).toHaveBeenNthCalledWith(1, CHAT_CONVERSATION_STATUS_COMMAND);
+    expect(invoke).toHaveBeenNthCalledWith(2, CHAT_CONVERSATION_START_COMMAND, {
+      prompt: "Explain the failing test.",
+    });
+    expect(invoke).toHaveBeenNthCalledWith(3, CHAT_CONVERSATION_POLL_COMMAND, {
+      conversationId: active.conversationId,
+    });
+    expect(invoke).toHaveBeenNthCalledWith(4, CHAT_CONVERSATION_INTERRUPT_COMMAND, {
+      conversationId: active.conversationId,
+    });
   });
 
   it("uses fixed read-only usage commands", async () => {
