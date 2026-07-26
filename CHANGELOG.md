@@ -2,12 +2,15 @@
 
 ## Unreleased — 0.1.0-beta.6
 
-- Begin Milestone 29’s managed Advisor conversation foundation. Its fixed
+- Complete Milestone 29’s managed Advisor conversation foundation. Its fixed
   Codex app-server profile requires managed ChatGPT browser authentication and
   rejects project, tool, approval, terminal, Git, worktree, network, and
   API-key authority. QuireForge retains only opaque Advisor thread metadata;
   Advisor prompt/response text stays transient. A temporary safe Project State
   summary requires a second, per-send confirmation before inclusion.
+- Close the clean `0.1.0-beta.6` pinned Ubuntu 22.04 Debian/AppImage package
+  gate with manifest/checksum agreement, desktop/icon and GLIBC checks,
+  disposable lifecycle validation, visible launches, and installed-host smoke.
 
 ## Unreleased — 0.1.0-beta.5
 

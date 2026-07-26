@@ -186,11 +186,14 @@ attachments and is not retained. It does not add arbitrary project reading,
 model calls, prompt/transcript retention, execution dispatch, or automation.
 Its clean `0.1.0-beta.5` Ubuntu 22.04 Debian/AppImage package set passed the
 pinned lifecycle, visible-launch, and installed-host smoke gates.
-Milestone 29 adds a separate managed Advisor conversation profile through the
+Milestone 29 is complete. It adds a separate managed Advisor conversation
+profile through the
 documented Codex app-server and managed ChatGPT browser sign-in. It is fixed to
 no project, tools, approvals, terminal, Git, or execution authority. Advisor
 text remains transient in QuireForge; a selected safe Project State summary can
-be included only after explicit per-send confirmation.
+be included only after explicit per-send confirmation. Its clean
+`0.1.0-beta.6` Ubuntu 22.04 Debian/AppImage set passed the pinned lifecycle,
+visible-launch, and installed-host smoke gates.
 Webuzo is the selected static origin host, with Cloudflare retained as the DNS,
 TLS, and cache edge. The reviewed static site is publicly deployed at
 `https://quireforge.jamesjennison.net` through the approved proxied Cloudflare

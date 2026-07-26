@@ -1,6 +1,6 @@
 # Milestone 29 — Managed Advisor Conversation Foundation
 
-Status: in progress.
+Status: complete.
 
 ## Objective
 
@@ -50,6 +50,52 @@ formatting, locked checks/tests, warning-denying Clippy, TypeScript, ESLint,
 Vitest, production builds, distribution checks, package-contract tests, the
 unbundled Tauri build, and desktop/mobile Playwright accessibility coverage.
 
-The final runtime gate requires the standard repository validation and a fresh
-incremented pinned Ubuntu 22.04 Debian/AppImage package cycle before this
-milestone can be recorded as complete.
+## Final validation and package evidence
+
+The clean implementation commit is
+`45a6d5f2219a5531cf336ed27f0cf7f389d984be`, built as unique incremental
+version `0.1.0-beta.6` (Debian internal version `0.1.0~beta.6`). The ignored
+version-1 evidence is at
+`target/ubuntu-22.04/release/packages/release-manifest.json`,
+`target/ubuntu-22.04/release/packages/SHA256SUMS`, and
+`target/validation-summary.json`.
+
+| Artifact | Path | Size | SHA-256 |
+| --- | --- | ---: | --- |
+| Debian | `target/ubuntu-22.04/release/packages/quireforge_0.1.0.beta.6_amd64.deb` | 4,736,756 bytes | `f5d543d69066508f94780987020223512370c90bb1ac9374673f8ec9d9e42dda` |
+| AppImage | `target/ubuntu-22.04/release/packages/QuireForge-0.1.0-beta.6-x86_64.AppImage` | 83,995,128 bytes | `999771b32b4120d2fc07872264b8f320e828360439b4ab8b80f551a5b024982e` |
+
+`pnpm validate`, the focused desktop/mobile Advisor browser coverage, and the
+unbundled Tauri build passed. The digest-pinned Ubuntu 22.04 builder includes
+`/usr/bin/xvfb-run`; it passed manifest/checksum agreement, desktop-entry,
+icon, AppStream, maximum required `GLIBC_2.34` against the Ubuntu 22.04
+`GLIBC_2.35` baseline, disposable Debian install/upgrade/remove lifecycle, and
+visible Debian/AppImage smoke. The installed host upgraded from beta.5 to
+beta.6 and confirmed the installed Debian and AppImage launch/smoke path.
+
+The exact installed-host upgrade command was:
+
+```bash
+sudo apt install --reinstall -y \
+  /mnt/faststorage/quireforge/target/ubuntu-22.04/release/packages/quireforge_0.1.0.beta.6_amd64.deb
+```
+
+The installed Debian executable is `/usr/bin/quireforge`; the AppImage launch
+command is:
+
+```bash
+./target/ubuntu-22.04/release/packages/QuireForge-0.1.0-beta.6-x86_64.AppImage \
+  --appimage-extract-and-run
+```
+
+The designated package directory retains only the complete beta.6 release set;
+no installed package, source file, Git history, remote release, or required
+evidence was removed.
+
+## Deferred work
+
+Approval/Dispatch, user-editable Codex prompt generation, a Codex dispatch
+bridge, stored Advisor transcripts, model/reasoning selection, arbitrary
+project browsing, image or screenshot context, terminal/Git actions, watchers,
+automatic retry, handoff generation, contradiction resolution, provider
+configuration, and repository mutation remain separate approval-gated work.

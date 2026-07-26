@@ -120,7 +120,7 @@ discovery; scheduling management and execution remain unsupported.
 |        26 | Appearance themes                                                 | Medium       | Complete; eight closed local palettes with fresh Ubuntu package gate     |
 |        27 | Unified Conversation Engine                                       | Large        | Complete; managed Chat/Codex boundary and fresh Ubuntu package gate      |
 |        28 | Reference-only Advisor foundation                                 | Medium       | Complete; safe shell, confirmed temporary Project State projection, and fresh Ubuntu package gate |
-|        29 | Managed Advisor conversation foundation                           | Medium       | In progress; managed no-project Advisor turn with transient per-send safe context |
+|        29 | Managed Advisor conversation foundation                           | Medium       | Complete; managed no-project Advisor turn with transient per-send safe context and fresh Ubuntu package gate |
 
 ## Milestone definitions
 
@@ -869,13 +869,17 @@ installed-host smoke gates. See the
 
 ### 29 — Managed Advisor Conversation Foundation
 
-Add a separate Advisor-only managed Codex app-server conversation profile. It
+Complete on `feat/milestone-29-advisor-conversation-foundation`. This adds a
+separate Advisor-only managed Codex app-server conversation profile. It
 uses only Codex-managed ChatGPT browser authentication and a fixed no-cwd,
 no-tools, no-approval, read-only, no-network turn boundary. Advisor prompt and
 response text remain transient in QuireForge; only opaque Codex thread metadata
 is retained. A user may include the existing selected Project State safe
 projection only after a second per-send confirmation. Approval/Dispatch and
-Codex execution remain separate future work.
+Codex execution remain separate future work. The clean `0.1.0-beta.6` Ubuntu
+22.04 Debian/AppImage set passed the pinned container lifecycle, desktop/icon,
+visible-launch, and installed-host smoke gates. See the
+[Milestone 29 report](MILESTONE_29_MANAGED_ADVISOR_CONVERSATION.md).
 
 ## Forecast policy
 
