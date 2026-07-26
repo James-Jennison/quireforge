@@ -846,6 +846,18 @@ state transfer. Final implementation commit
 validation, lifecycle, visible-launch, and installed-host smoke gates. See the
 [Milestone 27 report](MILESTONE_27_UNIFIED_CONVERSATION_ENGINE.md).
 
+### 28 — Reference-Only Advisor Foundation
+
+Active on `feat/milestone-28-advisor-foundation`. This first Advisor slice is
+strictly local metadata and contract work: opaque Codex-thread references,
+explicit closed context-reference kinds, separate trust/provenance/freshness,
+and digest-only future dispatch proposals that always require a later explicit
+user approval. It deliberately excludes an Advisor UI, model call, project
+file/screenshot reader, transcript or prompt retention, dispatch bridge,
+Python sidecar, watcher, automatic handoff, contradiction resolution, and
+repository mutation. See the
+[Milestone 28 report](MILESTONE_28_ADVISOR_FOUNDATION.md).
+
 ## Forecast policy
 
 The initial whole-project estimate is several hundred active engineering hours

@@ -201,6 +201,81 @@ SELECT id, 'codex', project_id, id, created_at_ms, updated_at_ms
 FROM conversation_references;
 "#;
 
+// The Advisor foundation persists references and digests only. It must never
+// retain prompt bodies, replies, credentials, or arbitrary project paths.
+// Reading selected context and dispatching a proposal are intentionally
+// deferred to later, separately approved milestones.
+const ADVISOR_REFERENCE_FOUNDATION_MIGRATION: &str = r#"
+CREATE TABLE advisor_conversations (
+    id TEXT PRIMARY KEY NOT NULL,
+    codex_thread_id TEXT NOT NULL UNIQUE,
+    created_at_ms INTEGER NOT NULL,
+    updated_at_ms INTEGER NOT NULL,
+    CHECK(length(id) = 36),
+    CHECK(length(codex_thread_id) BETWEEN 1 AND 160)
+);
+
+CREATE TABLE advisor_context_references (
+    id TEXT PRIMARY KEY NOT NULL,
+    advisor_conversation_id TEXT NOT NULL,
+    kind TEXT NOT NULL CHECK(kind IN (
+        'project-state', 'roadmap', 'current-state', 'execution-report'
+    )),
+    source_ref TEXT NOT NULL CHECK(length(source_ref) BETWEEN 1 AND 96),
+    source_commit TEXT CHECK(source_commit IS NULL OR length(source_commit) = 40),
+    source_sha256 TEXT NOT NULL CHECK(length(source_sha256) = 64),
+    selected_at_ms INTEGER NOT NULL,
+    freshness TEXT NOT NULL CHECK(freshness IN (
+        'current', 'stale', 'unknown', 'conflicting', 'not-applicable'
+    )),
+    trust TEXT NOT NULL CHECK(trust IN ('verified', 'reported', 'inferred', 'unknown')),
+    provenance_source TEXT NOT NULL CHECK(provenance_source IN (
+        'git-observation', 'project-state-snapshot', 'repository-document',
+        'execution-report', 'user-selection', 'unknown'
+    )),
+    provenance_ref TEXT CHECK(provenance_ref IS NULL OR length(provenance_ref) BETWEEN 1 AND 96),
+    provenance_commit TEXT CHECK(provenance_commit IS NULL OR length(provenance_commit) = 40),
+    observed_at_ms INTEGER,
+    provenance_note TEXT CHECK(provenance_note IS NULL OR length(provenance_note) <= 512),
+    created_at_ms INTEGER NOT NULL,
+    updated_at_ms INTEGER NOT NULL,
+    FOREIGN KEY(advisor_conversation_id) REFERENCES advisor_conversations(id) ON DELETE RESTRICT
+);
+
+CREATE INDEX advisor_context_references_conversation
+    ON advisor_context_references(advisor_conversation_id, selected_at_ms DESC, id);
+
+CREATE TABLE advisor_dispatch_records (
+    id TEXT PRIMARY KEY NOT NULL,
+    advisor_conversation_id TEXT NOT NULL,
+    target_project_id TEXT NOT NULL,
+    request_sha256 TEXT NOT NULL CHECK(length(request_sha256) = 64),
+    context_manifest_sha256 TEXT NOT NULL CHECK(length(context_manifest_sha256) = 64),
+    state TEXT NOT NULL CHECK(state IN ('draft', 'approved', 'rejected')),
+    requires_explicit_approval INTEGER NOT NULL CHECK(requires_explicit_approval = 1),
+    requested_model TEXT CHECK(requested_model IS NULL OR length(requested_model) BETWEEN 1 AND 128),
+    requested_reasoning_effort TEXT CHECK(
+        requested_reasoning_effort IS NULL OR length(requested_reasoning_effort) BETWEEN 1 AND 64
+    ),
+    trust TEXT NOT NULL CHECK(trust IN ('verified', 'reported', 'inferred', 'unknown')),
+    provenance_source TEXT NOT NULL CHECK(provenance_source IN (
+        'git-observation', 'project-state-snapshot', 'repository-document',
+        'execution-report', 'user-selection', 'unknown'
+    )),
+    provenance_ref TEXT CHECK(provenance_ref IS NULL OR length(provenance_ref) BETWEEN 1 AND 96),
+    provenance_commit TEXT CHECK(provenance_commit IS NULL OR length(provenance_commit) = 40),
+    observed_at_ms INTEGER,
+    provenance_note TEXT CHECK(provenance_note IS NULL OR length(provenance_note) <= 512),
+    created_at_ms INTEGER NOT NULL,
+    updated_at_ms INTEGER NOT NULL,
+    FOREIGN KEY(advisor_conversation_id) REFERENCES advisor_conversations(id) ON DELETE RESTRICT,
+    FOREIGN KEY(target_project_id) REFERENCES projects(id) ON DELETE RESTRICT
+);
+
+CREATE INDEX advisor_dispatch_records_conversation
+    ON advisor_dispatch_records(advisor_conversation_id, updated_at_ms DESC, id);
+"#;
+
 const MIGRATIONS: &[(i64, &str, &str)] = &[
     (1, "projects-and-directory-associations", INITIAL_MIGRATION),
     (
@@ -216,6 +291,11 @@ const MIGRATIONS: &[(i64, &str, &str)] = &[
         7,
         "unified-conversation-metadata",
         UNIFIED_CONVERSATION_METADATA_MIGRATION,
+    ),
+    (
+        8,
+        "advisor-reference-foundation",
+        ADVISOR_REFERENCE_FOUNDATION_MIGRATION,
     ),
 ];
 
@@ -1168,6 +1248,9 @@ fn verify_schema(connection: &Connection) -> Result<(), StorageError> {
         "directory_associations",
         "conversation_references",
         "unified_conversation_metadata",
+        "advisor_conversations",
+        "advisor_context_references",
+        "advisor_dispatch_records",
         "worktree_relations",
         "terminal_sessions",
     ] {
@@ -1447,12 +1530,13 @@ mod tests {
                     OR (version = 4 AND name = 'worktree-relations')
                     OR (version = 5 AND name = 'terminal-sessions')
                     OR (version = 6 AND name = 'model-selection')
-                    OR (version = 7 AND name = 'unified-conversation-metadata')",
+                    OR (version = 7 AND name = 'unified-conversation-metadata')
+                    OR (version = 8 AND name = 'advisor-reference-foundation')",
                 [],
                 |row| row.get(0),
             )
             .expect("migration ledger must be queryable");
-        assert_eq!(migrated, 6);
+        assert_eq!(migrated, 7);
         let lifecycle_columns: i64 = repository
             .connection
             .query_row(
@@ -1513,6 +1597,9 @@ mod tests {
         assert_eq!(
             tables,
             vec![
+                "advisor_context_references".to_owned(),
+                "advisor_conversations".to_owned(),
+                "advisor_dispatch_records".to_owned(),
                 "conversation_references".to_owned(),
                 "directory_associations".to_owned(),
                 "projects".to_owned(),
@@ -1534,6 +1621,9 @@ mod tests {
             "projects",
             "directory_associations",
             "conversation_references",
+            "advisor_conversations",
+            "advisor_context_references",
+            "advisor_dispatch_records",
             "terminal_sessions",
             "unified_conversation_metadata",
             "worktree_relations",

@@ -1,3 +1,4 @@
+pub mod advisor;
 mod attachment;
 mod codex;
 mod contract;

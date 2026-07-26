@@ -54,6 +54,23 @@ Rust application core
 The frontend never executes arbitrary shell commands or consumes raw Codex
 protocol messages. Tauri capabilities expose a small, typed command surface.
 
+### Milestone 28 reference-only Advisor boundary
+
+The Advisor foundation is a local metadata contract, not a second execution
+engine. Rust and TypeScript share a strict version-1 shape for opaque
+Codex-thread references, user-selected closed context references, provenance,
+freshness, and digest-only future dispatch proposals. SQLite stores no prompt
+or reply body, transcript, credential, browser/session data, arbitrary project
+path, or captured context. No Tauri command exposes the contract yet.
+
+Advisor does not inherit an attached project, terminal, Git, worktree,
+integration, approval, or native-action capability from Codex. A later
+Approval/Dispatch controller must present a user-editable prompt and target
+project, then require an explicit UI approval before it can invoke the existing
+Codex execution boundary. It must not infer consent from Advisor output or
+ordinary conversation text. Context reading, model calls, screenshot staging,
+dispatch, and all Milestone 24D consistency behavior are deferred.
+
 ### Milestone 3 implementation boundary
 
 The initial desktop package lives under `apps/desktop`. React and strict

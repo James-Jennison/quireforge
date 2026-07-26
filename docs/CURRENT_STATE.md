@@ -6,7 +6,7 @@ QuireForge is an unofficial Linux workspace for Codex: “Build boldly. Work
 locally.” Tauri + React + TypeScript is the current functional prototype. ADR
 0028 accepts retaining Tauri conditionally; no Qt migration has been selected.
 
-- **Branch:** `feat/milestone-27-unified-conversation-engine`
+- **Branch:** `feat/milestone-28-advisor-foundation`
 - **Checkpoint:** Milestones 22, 22B, 23, 24A, 24B, 24C, and 25 are complete.
   Milestone 27 is complete at implementation commit
   `cc4d0cea7d28d275e5ad1c8aa9d7a2a4f0627d6c`; its final package evidence is
@@ -65,6 +65,15 @@ locally.” Tauri + React + TypeScript is the current functional prototype. ADR
   The release-manifest producer's version-1 `appimage`/`x86_64` wire values are
   normalized by the strict Rust/TypeScript reader contract.
 
+  Milestone 28 has begun as a reference-only Advisor foundation. Its active
+  checkpoint adds strict Rust/Zod contracts and SQLite schema support for
+  opaque Advisor conversation references, explicit selected-context references,
+  provenance/freshness, and non-dispatching proposal digests. It has no Advisor
+  UI, model call, project read, prompt/transcript retention, approval action,
+  dispatch, Python sidecar, watcher, handoff generation, contradiction
+  resolution, or repository-write capability. See
+  [Milestone 28](MILESTONE_28_ADVISOR_FOUNDATION.md).
+
 - **Milestone 22B:** the routed desktop architecture was refined without
   changing route, native-bridge, authentication, or account-data ownership.
 - **Host readiness:** Qt 6.10.2/QML tooling is installed on this host only.
@@ -96,9 +105,10 @@ integrations, transcripts, or credentials. The clean, incremented
 `0.1.0-beta.4` package set passed the pinned Ubuntu 22.04 and installed-host
 gates. See [Milestone 27](MILESTONE_27_UNIFIED_CONVERSATION_ENGINE.md).
 
-The next recommendation is a separate **Advisor/Planner discovery proposal
-gate**. It has not begun; any agent, Python sidecar, new persistence, or new
-automation requires a fresh approved scope.
+Milestone 28 — **Reference-Only Advisor Foundation** is active. It is limited
+to opaque metadata contracts and deterministic validation; any Advisor UI,
+context reading, model call, prompt text retention, approval/dispatch flow, or
+automation remains separately gated.
 
 Milestone 26 — **Appearance Themes** is complete. It retains Forge as the
 default and adds seven closed local palettes through Settings → Appearance with
