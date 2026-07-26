@@ -7,6 +7,9 @@
   disabled reason now explains whether sign-in, an Advisor message, or a
   pending native action prevents sending; Project State remains optional and
   still requires explicit selection and per-send confirmation.
+- Close the clean `0.1.0-beta.7` pinned Ubuntu 22.04 Debian/AppImage gate with
+  manifest/checksum agreement, disposable lifecycle validation, visible
+  container launches, and approved installed-host visual confirmation.
 
 ## 0.1.0-beta.6
 

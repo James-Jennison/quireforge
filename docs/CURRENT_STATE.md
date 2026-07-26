@@ -130,7 +130,9 @@ desktop/icon, visible-launch, and installed-host smoke gates. See
 The scoped Milestone 29 post-completion UI hotfix separates the Advisor
 read-only capability notice from the action row and makes the disabled-send
 reason explicit without changing Advisor permissions, context rules, or
-execution boundaries. Its incremented `0.1.0-beta.7` package gate is pending.
+execution boundaries. Its clean `0.1.0-beta.7` Ubuntu 22.04 Debian/AppImage
+package set passed the pinned container lifecycle, desktop/icon,
+visible-launch, and installed-host visual gate.
 
 Milestone 28 — **Reference-Only Advisor Foundation** is complete. It includes a
 read-only Advisor metadata route and one explicitly confirmed, temporary safe

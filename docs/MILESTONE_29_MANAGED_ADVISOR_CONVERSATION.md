@@ -101,8 +101,24 @@ selected Project State snapshot remains optional; its existing explicit
 selection and per-send confirmation are unchanged. Desktop and narrow-width
 browser coverage verifies focus order, no visual overlap or horizontal
 clipping, screen-reader status/note semantics, and a captured action-row
-visual. The fresh beta.7 package evidence is recorded only after its clean
-pinned Ubuntu 22.04 package gate passes.
+visual.
+
+The clean hotfix implementation commit is
+`bcf796bcca9f61d594e094af4a6c556774ed45d8`. Its unique package version is
+`0.1.0-beta.7` (Debian internal version `0.1.0~beta.7`).
+
+| Artifact | Path | Size | SHA-256 |
+| --- | --- | ---: | --- |
+| Debian | `target/ubuntu-22.04/release/packages/quireforge_0.1.0.beta.7_amd64.deb` | 4,736,968 bytes | `514387667e703cc0bf85455f084f1a3bef1cfc380c5e1cd130756054ed97a280` |
+| AppImage | `target/ubuntu-22.04/release/packages/QuireForge-0.1.0-beta.7-x86_64.AppImage` | 83,995,128 bytes | `bfef9b795aea79c1a64bad5f01d24c47008533f1b459d919e245013cb9507bb4` |
+
+The digest-pinned Ubuntu 22.04 builder includes `/usr/bin/xvfb-run` and passed
+checksum/manifest agreement, maximum required `GLIBC_2.34` against the Ubuntu
+22.04 `GLIBC_2.35` baseline, desktop/icon/AppStream checks, disposable Debian
+install/upgrade/remove lifecycle, and visible Debian/AppImage smoke. The host
+installed `0.1.0~beta.7`; the user approved the installed desktop visual check
+for the readable Advisor notice and action row. The beta.6 output set was
+moved to local trash only after the complete beta.7 set passed validation.
 
 ## Deferred work
 
