@@ -1304,3 +1304,27 @@ greater precision than the underlying ranges.
 - **Status:** Complete on `2026-07-26`; no backend, contract, automation, or
   Qt behavior was added. Precise active and automated time is not instrumented
   and is not reconstructed.
+
+## Milestone 27 — Unified Conversation Engine
+
+- **Objective:** Establish a managed-ChatGPT-only native conversation boundary
+  with real Chat/Codex capability separation, explicit mode transition, and a
+  bounded Settings foundation.
+- **Start and completion:** `2026-07-26`.
+- **Forecast:** 20–36 active hours; medium confidence.
+- **Boundary:** Rust/TypeScript native conversation contracts, local bounded
+  metadata, the no-project Chat workspace, confirmed local mode preference,
+  direct regression coverage, and release validation only. No consumer ChatGPT
+  API, credential handling, project-context transfer, watcher, automation,
+  Advisor/Planner agent, Python sidecar, or Qt work.
+- **Package implication:** Installed runtime changes require fresh incremented
+  pinned Ubuntu 22.04 Debian/AppImage evidence.
+- **Evidence:** Clean final implementation commit
+  `cc4d0cea7d28d275e5ad1c8aa9d7a2a4f0627d6c`; version `0.1.0-beta.4`; version-1
+  manifest and `SHA256SUMS` under
+  `target/ubuntu-22.04/release/packages/`; maximum GLIBC `2.34`; container
+  lifecycle, desktop/icon, visible launch, and smoke checks plus installed-host
+  Debian/AppImage smoke passed.
+- **Status:** Complete on `2026-07-26`; no 24D behavior, autonomous action, or
+  Qt behavior was added. Precise active and automated time is not instrumented
+  and is not reconstructed.

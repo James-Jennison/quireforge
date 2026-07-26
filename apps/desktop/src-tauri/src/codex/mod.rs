@@ -1,7 +1,9 @@
 mod app_server;
 mod auth;
 mod backend;
+mod chat;
 mod conversation;
+pub mod conversation_mode;
 mod error;
 pub mod integration;
 mod integration_control;
@@ -16,6 +18,7 @@ mod usage;
 
 pub use auth::types::{AuthLoginMethod, CodexAuthSnapshot};
 pub use auth::CodexAuthService;
+pub use chat::{ChatConversationService, ChatConversationSnapshot, ChatConversationStartRequest};
 pub(crate) use conversation::types::ConversationState;
 pub use conversation::types::{
     ConversationApprovalDecisionRequest, ConversationDiagnosticCode, ConversationRegistrySnapshot,

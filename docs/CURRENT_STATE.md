@@ -7,8 +7,18 @@ locally.” Tauri + React + TypeScript is the current functional prototype. ADR
 0028 accepts retaining Tauri conditionally; no Qt migration has been selected.
 
 - **Branch:** `main`
-- **Checkpoint:** Milestones 22, 22B, 23, 24A, 24B, 24C, 25, and 26 are
+- **Checkpoint:** Milestones 22, 22B, 23, 24A, 24B, 24C, 25, 26, and 27 are
   complete.
+  Milestone 27 is complete at implementation commit
+  `cc4d0cea7d28d275e5ad1c8aa9d7a2a4f0627d6c`; its final package evidence is
+  recorded by this documentation checkpoint. The clean `0.1.0-beta.4` Ubuntu
+  22.04 Debian/AppImage set passed the pinned container lifecycle, desktop/icon,
+  visible launch, and smoke gates, plus installed-host Debian and AppImage
+  smoke. M27 adds only the managed-ChatGPT native conversation boundary,
+  confirmed local Chat/Codex preference, and bounded settings foundation; no
+  consumer ChatGPT API, credential handling, project-context transfer,
+  automatic handoff, watcher, or autonomous behavior was added.
+
   Milestone 26 is complete and its cumulative branch was integrated into
   `main` at `81be6882b76aa17df454497b58fe5a69ae84f56d`. Its palette-only
   implementation is
@@ -74,6 +84,24 @@ notifications, and one native drop-capture path. React/TypeScript/Vite remains
 the current presentation layer and calls that façade through its bridge.
 
 ## Next action
+
+Milestone 27 — **Unified Conversation Engine** is complete. It adds strict
+Rust/Zod Chat/Codex capability profiles, a Settings navigation foundation,
+bounded mode-aware metadata, a fixed no-project native Chat bridge, and an
+explicitly confirmed Chat/Codex local workspace preference. Chat requires only
+the documented Codex-managed browser ChatGPT sign-in; it remains unavailable
+for API-key, external-token, browser-session, or consumer-ChatGPT paths. Its
+fixed native profile has no project root, dynamic tools, integrations,
+approvals, terminal, Git, or worktree authority. The selection restores only
+`chat` or `codex` and safely defaults to Codex for absent or invalid saved
+values; it never transfers project context, attachments, approvals,
+integrations, transcripts, or credentials. The clean, incremented
+`0.1.0-beta.4` package set passed the pinned Ubuntu 22.04 and installed-host
+gates. See [Milestone 27](MILESTONE_27_UNIFIED_CONVERSATION_ENGINE.md).
+
+The next recommendation is a separate **Advisor/Planner discovery proposal
+gate**. It has not begun; any agent, Python sidecar, new persistence, or new
+automation requires a fresh approved scope.
 
 Milestone 26 — **Appearance Themes** is complete. It retains Forge as the
 default and adds seven closed local palettes through Settings → Appearance with
@@ -213,6 +241,28 @@ the version-1 manifest and checksum pair under
 install --reinstall ./target/ubuntu-22.04/release/packages/quireforge_0.1.0.beta.2_amd64.deb`
 and AppImage launch uses
 `./target/ubuntu-22.04/release/packages/QuireForge-0.1.0-beta.2-x86_64.AppImage`.
+
+Milestone 27 refreshed the ignored candidates from clean implementation commit
+`cc4d0cea7d28d275e5ad1c8aa9d7a2a4f0627d6c` on 2026-07-26, incrementing the
+candidate version to `0.1.0-beta.4`:
+
+- `target/ubuntu-22.04/release/packages/quireforge_0.1.0.beta.4_amd64.deb`
+  — 4,674,456 bytes; SHA-256
+  `3cdb4eda670a9b771efbb53b8ac84c70ea92189330a334a06788f262268cc9f7`.
+- `target/ubuntu-22.04/release/packages/QuireForge-0.1.0-beta.4-x86_64.AppImage`
+  — 83,905,016 bytes; SHA-256
+  `b527286c55565690b9b26f52fe18a8d7d4904f4466bec5ba07d909d580815ba9`.
+
+The release-manifest source is clean and identifies that implementation commit.
+The digest-pinned Ubuntu 22.04 container includes `/usr/bin/xvfb-run` and
+passed manifest/checksum, maximum GLIBC `2.34` against the `2.35` baseline,
+desktop-entry and icon validation, disposable Debian install/upgrade/remove,
+visible Debian/AppImage launches, and smoke validation. The installed host was
+upgraded to Debian version `0.1.0~beta.4` with `sudo apt install --reinstall
+-y ./target/ubuntu-22.04/release/packages/quireforge_0.1.0.beta.4_amd64.deb`;
+visible smoke then passed for `/usr/bin/quireforge` and the AppImage. Exact
+commands, implementation validation, and deferred scope are in
+[Milestone 27](MILESTONE_27_UNIFIED_CONVERSATION_ENGINE.md).
 
 For a fresh thread, read in this order:
 

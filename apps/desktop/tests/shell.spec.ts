@@ -618,7 +618,7 @@ async function openAccountSettings(page: import("@playwright/test").Page) {
     await page.getByRole("button", { name: "Open navigation" }).click();
   }
   await account.click();
-  await expect(page).toHaveURL(/#settings\/accounts$/u);
+  await expect(page).toHaveURL(/#settings\/general$/u);
 }
 
 const approvalConversation = {
@@ -1434,17 +1434,9 @@ test("appearance picker previews, persists, and keeps every palette accessible",
       const style = getComputedStyle(document.documentElement);
       const background = style.getPropertyValue("--bg");
       return Object.fromEntries(
-        [
-          "--text",
-          "--text-muted",
-          "--accent",
-          "--green",
-          "--warning",
-          "--danger",
-        ].map((token) => [
-          token,
-          ratio(style.getPropertyValue(token), background),
-        ]),
+        ["--text", "--tm", "--accent", "--green", "--warning", "--danger"].map(
+          (token) => [token, ratio(style.getPropertyValue(token), background)],
+        ),
       );
     });
     for (const [token, value] of Object.entries(contrast)) {

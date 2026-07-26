@@ -1786,3 +1786,14 @@ prototype is a separate approval-gated milestone.
 | Main uncertainty     | Preserving every semantic state and terminal surface across eight palettes without changing existing layout or native state |
 | Exclusions           | Custom themes, typography/density/layout redesign, backend/contracts, automation, external branded assets, and Qt work      |
 | Outcome              | Complete; palette implementation and fresh Ubuntu 22.04 package gate closed without behavior changes                        |
+
+## Milestone 27 — Unified Conversation Engine
+
+| Field                | Record                                                                                                                              |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Forecast date        | 2026-07-26                                                                                                                         |
+| Preliminary forecast | 20–36 active hours; medium confidence                                                                                              |
+| Scope                | Managed Chat/Codex native capability boundary, bounded local metadata, Settings foundation, direct regression, and package gate   |
+| Main uncertainty     | Preserving Codex-owned authentication and strict no-project Chat capability limits through desktop and installed-host validation   |
+| Exclusions           | Consumer ChatGPT APIs, credentials, API keys, context transfer, history continuation, automation, Advisor/Planner, Python, Qt     |
+| Outcome              | Complete; strict mode boundary and fresh `0.1.0-beta.4` Ubuntu 22.04 package gate closed without autonomous behavior changes      |

@@ -39,6 +39,7 @@ import {
 import { sessionLifecycleSchema } from "./lib/session";
 import { worktreeWorkspaceSchema } from "./lib/worktree";
 import { scaffoldCodexUsage } from "./lib/usage";
+import { scaffoldChatConversation } from "./lib/chat";
 
 const projectId = "018f0000-0000-7000-8000-000000000001";
 const associationId = "018f0000-0000-7000-8000-000000000002";
@@ -211,7 +212,7 @@ describe("QuireForge desktop shell", () => {
       }),
     ).toBeInTheDocument();
     expect(screen.getAllByText("Connected").length).toBeGreaterThan(0);
-    fireEvent.click(screen.getByRole("button", { name: /About/u }));
+    fireEvent.click(screen.getByRole("button", { name: /About & updates/u }));
     expect(
       screen.getByText(
         /not made, endorsed, supported, or distributed by OpenAI/u,
@@ -269,6 +270,82 @@ describe("QuireForge desktop shell", () => {
     );
     expect(window.localStorage.getItem("quireforge-workspace-location")).toBe(
       "#files",
+    );
+  });
+
+  it("requires confirmation before persisting a project-free Chat mode", async () => {
+    const loadChatConversationTask = vi
+      .fn()
+      .mockResolvedValue(scaffoldChatConversation);
+    const { unmount } = render(
+      <App
+        loadBootstrap={() => Promise.resolve(scaffoldBootstrap)}
+        loadRuntime={() => Promise.resolve(scaffoldCodexRuntime)}
+        loadAuth={() => Promise.resolve(authenticatedAuth)}
+        loadProjects={() => Promise.resolve(attachedProject)}
+        loadChatConversationTask={loadChatConversationTask}
+      />,
+    );
+
+    await navigateTo("New task");
+    fireEvent.click(screen.getByRole("button", { name: "Chat" }));
+    expect(screen.getByRole("dialog")).toHaveTextContent(/no project/i);
+    expect(window.localStorage.getItem("quireforge-conversation-mode")).toBe(
+      "codex",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(window.localStorage.getItem("quireforge-conversation-mode")).toBe(
+      "codex",
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Chat" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm Chat" }));
+    expect(
+      await screen.findByRole("heading", {
+        name: "A no-project conversation.",
+      }),
+    ).toBeInTheDocument();
+    expect(window.localStorage.getItem("quireforge-conversation-mode")).toBe(
+      "chat",
+    );
+
+    unmount();
+    render(
+      <App
+        loadBootstrap={() => Promise.resolve(scaffoldBootstrap)}
+        loadRuntime={() => Promise.resolve(scaffoldCodexRuntime)}
+        loadAuth={() => Promise.resolve(authenticatedAuth)}
+        loadProjects={() => Promise.resolve(attachedProject)}
+        loadChatConversationTask={loadChatConversationTask}
+      />,
+    );
+    await navigateTo("New task");
+    expect(
+      await screen.findByRole("heading", {
+        name: "A no-project conversation.",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("falls back safely to Codex when a persisted conversation mode is invalid", async () => {
+    window.localStorage.setItem("quireforge-conversation-mode", "unsupported");
+    render(
+      <App
+        loadBootstrap={() => Promise.resolve(scaffoldBootstrap)}
+        loadRuntime={() => Promise.resolve(scaffoldCodexRuntime)}
+        loadAuth={() => Promise.resolve(authenticatedAuth)}
+        loadProjects={() => Promise.resolve(attachedProject)}
+      />,
+    );
+
+    await navigateTo("New task");
+    expect(screen.getByRole("button", { name: "Codex" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(window.localStorage.getItem("quireforge-conversation-mode")).toBe(
+      "codex",
     );
   });
 

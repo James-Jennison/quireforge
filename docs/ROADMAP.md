@@ -118,6 +118,7 @@ discovery; scheduling management and execution remain unsupported.
 |       24C | Project-state workspace                                           | Medium       | Complete; read-only presentation over the existing normalized reader     |
 |        25 | Desktop visual polish                                             | Medium       | Complete; branded presentation refinement with fresh Ubuntu package gate |
 |        26 | Appearance themes                                                 | Medium       | Complete; eight closed local palettes with fresh Ubuntu package gate     |
+|        27 | Unified Conversation Engine                                       | Large        | Complete; managed Chat/Codex boundary and fresh Ubuntu package gate      |
 
 ## Milestone definitions
 
@@ -828,6 +829,22 @@ layout/density/typography redesign, native or repository-state contracts,
 automation, external branded assets, and Qt work. Fresh pinned Ubuntu 22.04
 Debian/AppImage lifecycle and launch evidence passed from clean implementation
 commit `0ae0de7995f10128728116b148d49f2cb5b2cf79`.
+
+### 27 — Unified Conversation Engine
+
+Complete on `feat/milestone-27-unified-conversation-engine`. The managed
+ChatGPT-only native conversation boundary distinguishes Chat from Codex by real
+capability policy, not styling: Chat has no attached project, terminal, Git,
+worktree, tool, integration, approval, or API-key authority. It uses only the
+documented Codex app-server browser-login path, never consumer ChatGPT APIs,
+external tokens, cookies, or credentials. A Chat/Codex transition is explicit;
+only a confirmed closed local preference persists, safely defaulting to Codex
+when absent or invalid, with no project context or other capability-bearing
+state transfer. Final implementation commit
+`cc4d0cea7d28d275e5ad1c8aa9d7a2a4f0627d6c` and clean incremental
+`0.1.0-beta.4` Ubuntu 22.04 Debian/AppImage evidence passed the complete
+validation, lifecycle, visible-launch, and installed-host smoke gates. See the
+[Milestone 27 report](MILESTONE_27_UNIFIED_CONVERSATION_ENGINE.md).
 
 ## Forecast policy
 
