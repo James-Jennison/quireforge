@@ -49,6 +49,7 @@ import {
   confirmIntegrationMutation,
   confirmIntegrationControl,
   decideConversationApproval,
+  dispatchAdvisorOnce,
   detachProject,
   interruptConversation,
   interruptChatConversation,
@@ -351,6 +352,7 @@ interface AppProps {
   startConversationTask?: (
     request: ConversationStartRequest,
   ) => Promise<ConversationSnapshot>;
+  dispatchAdvisorOnceTask?: typeof dispatchAdvisorOnce;
   pollConversationTask?: (
     conversationId: string,
   ) => Promise<ConversationSnapshot>;
@@ -655,6 +657,7 @@ export default function App({
   loadConversation = loadConversationStatus,
   loadActiveConversationTasks = loadActiveConversations,
   startConversationTask = startConversation,
+  dispatchAdvisorOnceTask = dispatchAdvisorOnce,
   pollConversationTask = pollConversation,
   notifyConversationTask = notifyConversation,
   interruptConversationTask = interruptConversation,
@@ -2202,6 +2205,20 @@ export default function App({
     }
   }
 
+  async function dispatchApprovedAdvisorRequest(
+    request: Parameters<typeof dispatchAdvisorOnce>[0],
+  ) {
+    const result = await dispatchAdvisorOnceTask(request);
+    if (result.state === "started") {
+      const snapshot = await loadConversation();
+      setConversation(snapshot);
+      setConversationEvents(snapshot.events);
+      trackConversation(snapshot, true);
+      navigateWorkspace("conversation");
+    }
+    return result;
+  }
+
   async function stopConversation(
     conversationId: string,
   ): Promise<ConversationSnapshot> {
@@ -3445,6 +3462,7 @@ export default function App({
                 onCancelProjectState={cancelAdvisorProjectState}
                 onRemoveProjectState={removeAdvisorProjectState}
                 auth={auth}
+                runtime={runtime}
                 conversation={advisorConversation}
                 conversationBusy={advisorConversationBusy}
                 selectedProjectId={advisorProjectStateProjectId}
@@ -3452,6 +3470,7 @@ export default function App({
                 onConversationStart={beginAdvisorConversation}
                 onConversationPoll={pollAdvisorConversationById}
                 onConversationInterrupt={stopAdvisorConversation}
+                onDispatch={dispatchApprovedAdvisorRequest}
               />
             </WorkspaceView>
 

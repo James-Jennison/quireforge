@@ -10,6 +10,7 @@ import { describe, expect, it, vi } from "vitest";
 const advisorDraftBridge = vi.hoisted(() => ({
   createAdvisorDraft: vi.fn(),
   decideAdvisorDraft: vi.fn(),
+  dispatchAdvisorOnce: vi.fn(),
 }));
 
 vi.mock("./lib/bridge", () => advisorDraftBridge);
@@ -17,6 +18,7 @@ vi.mock("./lib/bridge", () => advisorDraftBridge);
 import { AdvisorWorkspace } from "./AdvisorWorkspace";
 import { scaffoldAdvisorConversation } from "./lib/advisorConversation";
 import { scaffoldCodexAuth } from "./lib/auth";
+import { scaffoldCodexRuntime } from "./lib/codex";
 import {
   parseAdvisorSelectedProjectStateSnapshot,
   advisorWorkspaceSnapshotSchema,
@@ -59,12 +61,14 @@ const props = {
     state: "authenticated" as const,
     accountKind: "chatgpt" as const,
   },
+  runtime: scaffoldCodexRuntime,
   conversation: scaffoldAdvisorConversation,
   conversationBusy: false,
   selectedProjectId: null,
   onConversationStart: vi.fn().mockResolvedValue(scaffoldAdvisorConversation),
   onConversationPoll: vi.fn(),
   onConversationInterrupt: vi.fn(),
+  onDispatch: vi.fn(),
 };
 
 describe("AdvisorWorkspace", () => {
@@ -333,10 +337,65 @@ describe("AdvisorWorkspace", () => {
           prompt: "Review the bounded handoff.",
           selectedProjectState: null,
           declaredCapabilities: ["workspace-write"],
-          requestedModel: "default",
-          requestedReasoningEffort: "default",
+          requestedModel: "gpt-5.6-sol",
+          requestedReasoningEffort: "low",
         },
       }),
     );
+  });
+
+  it("dispatches an approved draft once through the supplied execution boundary", async () => {
+    const onDispatch = vi.fn().mockResolvedValue({
+      proposalId: "018f0000-0000-7000-8000-000000000006",
+      state: "started",
+      executionConversationId: "018f0000-0000-7000-8000-000000000007",
+    });
+    advisorDraftBridge.createAdvisorDraft.mockResolvedValue({
+      proposalId: "018f0000-0000-7000-8000-000000000006",
+      state: "draft",
+      expiresAtMs: 1771235467000,
+      dispatchAvailable: false,
+    });
+    advisorDraftBridge.decideAdvisorDraft.mockResolvedValue({
+      proposalId: "018f0000-0000-7000-8000-000000000006",
+      state: "approved",
+      expiresAtMs: 1771235467000,
+      dispatchAvailable: true,
+    });
+    render(
+      <AdvisorWorkspace
+        {...props}
+        onDispatch={onDispatch}
+        targetProjectId="018f0000-0000-7000-8000-000000000002"
+        conversation={{
+          ...scaffoldAdvisorConversation,
+          state: "completed",
+          conversationId: "018f0000-0000-7000-8000-000000000003",
+        }}
+      />,
+    );
+    fireEvent.change(screen.getByRole("textbox", { name: "Editable draft" }), {
+      target: { value: "Review the bounded handoff." },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Create approval draft" }),
+    );
+    await screen.findByRole("button", { name: "Approve draft" });
+    fireEvent.click(screen.getByRole("button", { name: "Approve draft" }));
+    const dispatch = await screen.findByRole("button", {
+      name: "Dispatch once to execution workspace",
+    });
+    fireEvent.click(dispatch);
+    await waitFor(() => expect(onDispatch).toHaveBeenCalledOnce());
+    expect(onDispatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        proposalId: "018f0000-0000-7000-8000-000000000006",
+      }),
+    );
+    expect(
+      await screen.findByText(
+        /approved request started in the execution workspace/i,
+      ),
+    ).toBeInTheDocument();
   });
 });

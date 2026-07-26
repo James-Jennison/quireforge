@@ -25,11 +25,12 @@ use codex::{
     AdvisorConversationSnapshot, AdvisorConversationStartRequest, AuthLoginMethod,
     ChatConversationService, ChatConversationSnapshot, ChatConversationStartRequest,
     CodexAuthService, CodexAuthSnapshot, CodexRuntimeService, CodexUsageService,
-    CodexUsageSnapshot, ConversationApprovalDecisionRequest, ConversationContinueRequest,
-    ConversationDiagnosticCode, ConversationRegistrySnapshot, ConversationService,
-    ConversationSnapshot, ConversationStartRequest, IntegrationCatalogService,
-    IntegrationControlService, IntegrationMutationService, ModelSelectionDiagnosticCode,
-    ModelSelectionSnapshot, ModelSelectionUpdateRequest, SessionLifecycleSnapshot,
+    CodexUsageSnapshot, ConversationApprovalDecisionRequest, ConversationApprovalPolicy,
+    ConversationContinueRequest, ConversationDiagnosticCode, ConversationRegistrySnapshot,
+    ConversationSandboxMode, ConversationService, ConversationSnapshot, ConversationStartRequest,
+    IntegrationCatalogService, IntegrationControlService, IntegrationMutationService,
+    ModelSelectionDiagnosticCode, ModelSelectionPolicy, ModelSelectionSnapshot,
+    ModelSelectionUpdateRequest, SessionLifecycleSnapshot,
 };
 use contract::DesktopBootstrap;
 use desktop::{
@@ -363,6 +364,8 @@ fn advisor_draft_create(
         updated_at_ms: now,
         decided_at_ms: None,
         expires_at_ms,
+        execution_dispatch_state: None,
+        execution_conversation_id: None,
         provenance: advisor::AdvisorProvenance {
             trust: advisor::AdvisorTrust::Reported,
             source: advisor::AdvisorProvenanceSource::UserSelection,
@@ -417,6 +420,88 @@ fn advisor_draft_decide(
     projects
         .decide_advisor_dispatch_proposal(&request.proposal_id, request.decision)
         .map_err(|_| ())
+}
+
+/// Hands one explicit, revalidated approval to the existing project-bound
+/// execution workspace. Advisor never receives an execution handle or output.
+#[tauri::command]
+async fn advisor_dispatch_once(
+    request: advisor::AdvisorDispatchRequest,
+    projects: tauri::State<'_, ProjectService>,
+    conversations: tauri::State<'_, ConversationService>,
+) -> Result<advisor::AdvisorDispatchSnapshot, ()> {
+    if !valid_uuid_v7(&request.proposal_id) || !valid_advisor_draft_request(&request.binding) {
+        return Err(());
+    }
+    let proposal = projects
+        .advisor_dispatch_proposal(&request.proposal_id)
+        .map_err(|_| ())?;
+    if proposal.state != advisor::AdvisorDispatchState::Approved
+        || proposal.execution_dispatch_state.is_some()
+        || proposal.advisor_conversation_id != request.binding.advisor_conversation_id
+        || proposal.target_project_id != request.binding.target_project_id
+        || proposal.prompt_sha256 != sha256(&request.binding.prompt)
+        || proposal.context_manifest_sha256
+            != sha256(
+                &serde_json::to_string(&request.binding.selected_project_state).map_err(|_| ())?,
+            )
+        || proposal.capability_manifest_sha256
+            != sha256(
+                &serde_json::to_string(&request.binding.declared_capabilities).map_err(|_| ())?,
+            )
+        || proposal.requested_model.as_deref() != Some(request.binding.requested_model.as_str())
+        || proposal.requested_reasoning_effort.as_deref()
+            != Some(request.binding.requested_reasoning_effort.as_str())
+        || projects
+            .execution_cwd(&request.binding.target_project_id)
+            .is_err()
+    {
+        return Err(());
+    }
+    let (sandbox_mode, approval_policy) = match request.binding.declared_capabilities.as_slice() {
+        [advisor::AdvisorDeclaredCapability::ReadOnly] => (
+            ConversationSandboxMode::ReadOnly,
+            ConversationApprovalPolicy::Untrusted,
+        ),
+        [advisor::AdvisorDeclaredCapability::WorkspaceWrite] => (
+            ConversationSandboxMode::WorkspaceWrite,
+            ConversationApprovalPolicy::OnRequest,
+        ),
+        _ => return Err(()),
+    };
+    projects
+        .claim_advisor_dispatch_proposal(&request.proposal_id)
+        .map_err(|_| ())?;
+    let snapshot = conversations
+        .start_with_mentions(
+            ConversationStartRequest {
+                project_id: request.binding.target_project_id,
+                prompt: request.binding.prompt,
+                attachment_ids: Vec::new(),
+                integration_entry_ids: Vec::new(),
+                model_id: request.binding.requested_model,
+                reasoning_effort: request.binding.requested_reasoning_effort,
+                selection_policy: ModelSelectionPolicy::default(),
+                sandbox_mode,
+                approval_policy,
+            },
+            &projects,
+            Vec::new(),
+            Vec::new(),
+        )
+        .await;
+    let conversation_id = snapshot.conversation_id.clone();
+    let _ =
+        projects.finish_advisor_dispatch_proposal(&request.proposal_id, conversation_id.as_deref());
+    Ok(advisor::AdvisorDispatchSnapshot {
+        proposal_id: request.proposal_id,
+        state: if conversation_id.is_some() {
+            advisor::AdvisorExecutionDispatchState::Started
+        } else {
+            advisor::AdvisorExecutionDispatchState::FailedToStart
+        },
+        execution_conversation_id: conversation_id,
+    })
 }
 
 fn valid_advisor_draft_request(request: &advisor::AdvisorDraftCreateRequest) -> bool {
@@ -1334,6 +1419,7 @@ pub fn run() {
             advisor_project_state_snapshot_read,
             advisor_draft_create,
             advisor_draft_decide,
+            advisor_dispatch_once,
             project_pick_directory,
             project_pick_relink,
             project_confirm_attachment,

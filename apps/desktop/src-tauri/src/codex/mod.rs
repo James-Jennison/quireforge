@@ -26,8 +26,9 @@ pub use auth::CodexAuthService;
 pub use chat::{ChatConversationService, ChatConversationSnapshot, ChatConversationStartRequest};
 pub(crate) use conversation::types::ConversationState;
 pub use conversation::types::{
-    ConversationApprovalDecisionRequest, ConversationDiagnosticCode, ConversationRegistrySnapshot,
-    ConversationSnapshot, ConversationStartRequest,
+    ConversationApprovalDecisionRequest, ConversationApprovalPolicy, ConversationDiagnosticCode,
+    ConversationRegistrySnapshot, ConversationSandboxMode, ConversationSnapshot,
+    ConversationStartRequest,
 };
 pub(crate) use conversation::ConversationNotificationCandidate;
 pub use conversation::{
@@ -37,7 +38,8 @@ pub use integration_control::IntegrationControlService;
 pub use integration_mutation::IntegrationMutationService;
 pub use integration_service::IntegrationCatalogService;
 pub use model_selection::{
-    ModelSelectionDiagnosticCode, ModelSelectionSnapshot, ModelSelectionUpdateRequest,
+    ModelSelectionDiagnosticCode, ModelSelectionPolicy, ModelSelectionSnapshot,
+    ModelSelectionUpdateRequest,
 };
 pub use probe::CodexRuntimeService;
 pub use usage::{CodexUsageService, CodexUsageSnapshot};

@@ -138,10 +138,12 @@ visible-launch, and installed-host visual gate.
 Milestone 28 — **Reference-Only Advisor Foundation** is complete. It includes a
 read-only Advisor metadata route and one explicitly confirmed, temporary safe
 projection of the existing local Project State reader; arbitrary context
-reading, model calls, prompt text retention, dispatch flow, and automation
-remain separately gated. The approved unnumbered Phase A work is limited to a
-transient editable draft and digest-only approval controller; supported
-dispatch and completion reporting remain separate gates.
+reading, model calls, prompt text retention, and automation remain separately
+gated. The approved unnumbered Phase A/B1 controller provides transient,
+digest-bound approvals. Its approved B2 extension may dispatch one immediately
+revalidated request into the separate managed Codex execution workspace using
+only the existing project-bound app-server boundary; completion reporting
+remains a separate gate.
 
 Milestone 26 — **Appearance Themes** is complete. It retains Forge as the
 default and adds seven closed local palettes through Settings → Appearance with

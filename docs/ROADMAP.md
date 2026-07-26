@@ -890,8 +890,12 @@ requested model and reasoning labels, timestamp, and decision. Approval
 revalidates the complete transient binding and native target-project preflight
 immediately before recording a decision. It has no dispatch command and no
 reference to the Codex execution service; changing any bound input requires a
-new approval. Supported dispatch and completion-report return remain separate
-proposal and approval gates.
+new approval. The separately approved B2 slice may hand one approved,
+immediately revalidated request to the existing project-bound managed Codex
+execution workspace. It supports only read-only/untrusted and
+workspace-write/on-request profiles, consumes the approval once, stores only an
+opaque start receipt, and never returns execution output to Advisor. Danger full
+access and completion-report return remain separate proposal and approval gates.
 
 ## Forecast policy
 

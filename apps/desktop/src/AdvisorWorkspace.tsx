@@ -10,8 +10,16 @@ import type {
   AdvisorSelectedProjectStateSnapshot,
   AdvisorWorkspaceSnapshot,
 } from "./lib/advisorWorkspace";
-import { createAdvisorDraft, decideAdvisorDraft } from "./lib/bridge";
-import type { AdvisorApprovalSnapshot } from "./lib/advisorApproval";
+import {
+  createAdvisorDraft,
+  decideAdvisorDraft,
+  dispatchAdvisorOnce,
+} from "./lib/bridge";
+import type {
+  AdvisorApprovalSnapshot,
+  AdvisorDispatchSnapshot,
+} from "./lib/advisorApproval";
+import type { CodexRuntimeSnapshot } from "./lib/codex";
 
 interface AdvisorApprovalState {
   snapshot: AdvisorApprovalSnapshot;
@@ -29,6 +37,7 @@ interface AdvisorWorkspaceProps {
   onCancelProjectState: () => void;
   onRemoveProjectState: () => void;
   auth: CodexAuthSnapshot;
+  runtime: CodexRuntimeSnapshot;
   conversation: AdvisorConversationSnapshot;
   conversationBusy: boolean;
   selectedProjectId: string | null;
@@ -42,6 +51,9 @@ interface AdvisorWorkspaceProps {
   onConversationInterrupt: (
     conversationId: string,
   ) => Promise<AdvisorConversationSnapshot>;
+  onDispatch: (
+    request: Parameters<typeof dispatchAdvisorOnce>[0],
+  ) => Promise<AdvisorDispatchSnapshot>;
 }
 
 const diagnosticMessage: Partial<
@@ -70,6 +82,7 @@ export function AdvisorWorkspace({
   onCancelProjectState,
   onRemoveProjectState,
   auth,
+  runtime,
   conversation,
   conversationBusy,
   selectedProjectId,
@@ -77,19 +90,23 @@ export function AdvisorWorkspace({
   onConversationStart,
   onConversationPoll,
   onConversationInterrupt,
+  onDispatch,
 }: AdvisorWorkspaceProps) {
   const [prompt, setPrompt] = useState("");
   const [includeProjectState, setIncludeProjectState] = useState(false);
   const [confirmContextSend, setConfirmContextSend] = useState(false);
   const [actionError, setActionError] = useState(false);
   const [draft, setDraft] = useState("");
-  const [requestedModel, setRequestedModel] = useState("default");
-  const [requestedReasoning, setRequestedReasoning] = useState("default");
+  const defaultModel = runtime.models.find((model) => model.isDefault) ?? null;
+  const [requestedModel, setRequestedModel] = useState("");
+  const [requestedReasoning, setRequestedReasoning] = useState("");
   const [declaredCapability, setDeclaredCapability] = useState<
     "read-only" | "workspace-write" | "danger-full-access"
   >("workspace-write");
   const [approval, setApproval] = useState<AdvisorApprovalState | null>(null);
   const [approvalBusy, setApprovalBusy] = useState(false);
+  const [dispatchResult, setDispatchResult] =
+    useState<AdvisorDispatchSnapshot | null>(null);
   const draftRef = useRef<HTMLTextAreaElement>(null);
   const empty =
     snapshot?.conversationCount === 0 &&
@@ -101,13 +118,18 @@ export function AdvisorWorkspace({
   const canIncludeProjectState = Boolean(
     selectedProjectState && selectedProjectId,
   );
+  const effectiveModel = requestedModel || defaultModel?.id || "";
+  const selectedModel =
+    runtime.models.find((model) => model.id === effectiveModel) ?? null;
+  const effectiveReasoning =
+    requestedReasoning || selectedModel?.defaultReasoningEffort || "";
   const approvalBindingKey = JSON.stringify({
     advisorConversationId: conversation.conversationId,
     targetProjectId,
     draft,
     declaredCapability,
-    requestedModel,
-    requestedReasoning,
+    requestedModel: effectiveModel,
+    requestedReasoning: effectiveReasoning,
     selectedProjectState:
       includeProjectState && canIncludeProjectState
         ? selectedProjectState
@@ -115,6 +137,10 @@ export function AdvisorWorkspace({
   });
   const currentApproval =
     approval?.bindingKey === approvalBindingKey ? approval.snapshot : null;
+  const dispatchSupported =
+    declaredCapability !== "danger-full-access" &&
+    selectedModel !== null &&
+    selectedModel.supportedReasoningEfforts.includes(effectiveReasoning);
   const sendDisabledReason =
     authentication !== "ready"
       ? "Sign in with managed ChatGPT to send."
@@ -156,8 +182,8 @@ export function AdvisorWorkspace({
             ? selectedProjectState
             : null,
         declaredCapabilities: [declaredCapability],
-        requestedModel,
-        requestedReasoningEffort: requestedReasoning,
+        requestedModel: effectiveModel,
+        requestedReasoningEffort: effectiveReasoning,
       });
       setApproval({ snapshot, bindingKey: approvalBindingKey });
     } catch {
@@ -183,11 +209,45 @@ export function AdvisorWorkspace({
               ? selectedProjectState
               : null,
           declaredCapabilities: [declaredCapability],
-          requestedModel,
-          requestedReasoningEffort: requestedReasoning,
+          requestedModel: effectiveModel,
+          requestedReasoningEffort: effectiveReasoning,
         },
       });
       setApproval({ snapshot, bindingKey: approvalBindingKey });
+    } catch {
+      setActionError(true);
+    } finally {
+      setApprovalBusy(false);
+    }
+  }
+
+  async function dispatchOnce() {
+    if (
+      !currentApproval ||
+      currentApproval.state !== "approved" ||
+      !dispatchSupported
+    )
+      return;
+    setApprovalBusy(true);
+    setActionError(false);
+    try {
+      setDispatchResult(
+        await onDispatch({
+          proposalId: currentApproval.proposalId,
+          binding: {
+            advisorConversationId: conversation.conversationId!,
+            targetProjectId: targetProjectId!,
+            prompt: draft,
+            selectedProjectState:
+              includeProjectState && canIncludeProjectState
+                ? selectedProjectState
+                : null,
+            declaredCapabilities: [declaredCapability],
+            requestedModel: effectiveModel,
+            requestedReasoningEffort: effectiveReasoning,
+          },
+        }),
+      );
     } catch {
       setActionError(true);
     } finally {
@@ -363,25 +423,49 @@ export function AdvisorWorkspace({
                 rows={5}
               />
               <label htmlFor="advisor-draft-model">Requested model</label>
-              <input
+              <select
                 id="advisor-draft-model"
-                value={requestedModel}
+                value={effectiveModel}
                 onChange={(event) => {
                   setRequestedModel(event.target.value);
+                  const model = runtime.models.find(
+                    (entry) => entry.id === event.target.value,
+                  );
+                  setRequestedReasoning(model?.defaultReasoningEffort ?? "");
                   setApproval(null);
                 }}
-              />
+              >
+                <option value="" disabled>
+                  Select a live model
+                </option>
+                {runtime.models.map((model) => (
+                  <option key={model.id} value={model.id}>
+                    {model.displayName}
+                  </option>
+                ))}
+              </select>
               <label htmlFor="advisor-draft-reasoning">
                 Requested reasoning
               </label>
-              <input
+              <select
                 id="advisor-draft-reasoning"
-                value={requestedReasoning}
+                value={effectiveReasoning}
                 onChange={(event) => {
                   setRequestedReasoning(event.target.value);
                   setApproval(null);
                 }}
-              />
+              >
+                <option value="" disabled>
+                  Select reasoning
+                </option>
+                {(selectedModel?.supportedReasoningEfforts ?? []).map(
+                  (effort) => (
+                    <option key={effort} value={effort}>
+                      {effort}
+                    </option>
+                  ),
+                )}
+              </select>
               <label htmlFor="advisor-draft-capability">
                 Declared future capability
               </label>
@@ -420,7 +504,7 @@ export function AdvisorWorkspace({
                 </button>
                 <button
                   type="button"
-                  disabled={approvalBusy || !draft.trim()}
+                  disabled={approvalBusy || !draft.trim() || !dispatchSupported}
                   onClick={() => void createDraft()}
                 >
                   Create approval draft
@@ -432,15 +516,24 @@ export function AdvisorWorkspace({
                 >
                   Copy draft
                 </button>
+                {currentApproval?.state === "approved" && (
+                  <button
+                    type="button"
+                    disabled={approvalBusy || !dispatchSupported}
+                    onClick={() => void dispatchOnce()}
+                  >
+                    Dispatch once to execution workspace
+                  </button>
+                )}
               </div>
               {currentApproval && (
                 <div className="project-confirmation" role="status">
                   <p>
-                    Draft is {currentApproval.state}. Dispatch remains
-                    unavailable. Approval is revalidated against this exact
-                    draft, context, target project, capability profile, model,
-                    and reasoning choice before any future handoff. This record
-                    expires at{" "}
+                    Draft is {currentApproval.state}. A dispatch, if you select
+                    it, is one-time only. Approval is revalidated against this
+                    exact draft, context, target project, capability profile,
+                    model, and reasoning choice before any future handoff. This
+                    record expires at{" "}
                     {new Date(currentApproval.expiresAtMs).toLocaleTimeString()}
                     .
                   </p>
@@ -463,6 +556,22 @@ export function AdvisorWorkspace({
                     </div>
                   )}
                 </div>
+              )}
+              {!dispatchSupported && (
+                <p
+                  className="project-message project-message--warning"
+                  role="status"
+                >
+                  Select a live model and reasoning. Danger full access is not
+                  supported for B2 dispatch.
+                </p>
+              )}
+              {dispatchResult && (
+                <p className="project-confirmation" role="status">
+                  {dispatchResult.state === "started"
+                    ? "The approved request started in the execution workspace."
+                    : "The dispatch did not start. Create a new approval before trying again."}
+                </p>
               )}
             </>
           )}

@@ -108,6 +108,14 @@ pub enum AdvisorDispatchState {
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "kebab-case")]
+pub enum AdvisorExecutionDispatchState {
+    Dispatching,
+    Started,
+    FailedToStart,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum AdvisorDeclaredCapability {
     ReadOnly,
     WorkspaceWrite,
@@ -143,6 +151,21 @@ pub struct AdvisorApprovalSnapshot {
     pub dispatch_available: bool,
 }
 
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct AdvisorDispatchRequest {
+    pub proposal_id: String,
+    pub binding: AdvisorDraftCreateRequest,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AdvisorDispatchSnapshot {
+    pub proposal_id: String,
+    pub state: AdvisorExecutionDispatchState,
+    pub execution_conversation_id: Option<String>,
+}
+
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct AdvisorDispatchProposal {
@@ -164,6 +187,8 @@ pub struct AdvisorDispatchProposal {
     pub updated_at_ms: i64,
     pub decided_at_ms: Option<i64>,
     pub expires_at_ms: i64,
+    pub execution_dispatch_state: Option<AdvisorExecutionDispatchState>,
+    pub execution_conversation_id: Option<String>,
     pub provenance: AdvisorProvenance,
 }
 
@@ -303,6 +328,16 @@ impl AdvisorFoundationSnapshot {
                     .requested_reasoning_effort
                     .as_deref()
                     .is_some_and(|value| !valid_label(value, 64))
+                || match (
+                    proposal.execution_dispatch_state,
+                    proposal.execution_conversation_id.as_deref(),
+                ) {
+                    (None, None)
+                    | (Some(AdvisorExecutionDispatchState::Dispatching), None)
+                    | (Some(AdvisorExecutionDispatchState::FailedToStart), None) => false,
+                    (Some(AdvisorExecutionDispatchState::Started), Some(id)) => !valid_uuid_v7(id),
+                    _ => true,
+                }
                 || !valid_provenance(&proposal.provenance)
                 || !proposal_ids.insert(&proposal.id)
             {
@@ -585,6 +620,22 @@ mod tests {
             snapshot.validate(),
             Err(AdvisorContractError::InvalidContextReference)
         );
+    }
+
+    #[test]
+    fn dispatch_receipts_are_opaque_and_state_consistent() {
+        let mut snapshot: AdvisorFoundationSnapshot =
+            serde_json::from_str(FIXTURE).expect("fixture must deserialize");
+        snapshot.dispatch_proposals[0].execution_dispatch_state =
+            Some(AdvisorExecutionDispatchState::Started);
+        assert_eq!(
+            snapshot.validate(),
+            Err(AdvisorContractError::InvalidDispatchProposal)
+        );
+
+        snapshot.dispatch_proposals[0].execution_conversation_id =
+            Some("019d4e3c-3b14-7a2b-8c91-3f27d4f7aa10".to_owned());
+        assert_eq!(snapshot.validate(), Ok(()));
     }
 
     #[test]

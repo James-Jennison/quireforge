@@ -115,11 +115,15 @@ import {
 } from "./advisorWorkspace";
 import {
   advisorApprovalDecisionRequestSchema,
+  advisorDispatchRequestSchema,
+  advisorDispatchSnapshotSchema,
   advisorApprovalSnapshotSchema,
   advisorDraftCreateRequestSchema,
   type AdvisorApprovalDecisionRequest,
   type AdvisorApprovalSnapshot,
   type AdvisorDraftCreateRequest,
+  type AdvisorDispatchRequest,
+  type AdvisorDispatchSnapshot,
 } from "./advisorApproval";
 import {
   projectPreflightSchema,
@@ -202,6 +206,7 @@ export const ADVISOR_PROJECT_STATE_SNAPSHOT_READ_COMMAND =
   "advisor_project_state_snapshot_read";
 export const ADVISOR_DRAFT_CREATE_COMMAND = "advisor_draft_create";
 export const ADVISOR_DRAFT_DECIDE_COMMAND = "advisor_draft_decide";
+export const ADVISOR_DISPATCH_ONCE_COMMAND = "advisor_dispatch_once";
 export const PROJECT_PICK_DIRECTORY_COMMAND = "project_pick_directory";
 export const PROJECT_PICK_RELINK_COMMAND = "project_pick_relink";
 export const PROJECT_CONFIRM_ATTACHMENT_COMMAND = "project_confirm_attachment";
@@ -587,6 +592,17 @@ export async function decideAdvisorDraft(
   return advisorApprovalSnapshotSchema.parse(
     await invokeFunction(ADVISOR_DRAFT_DECIDE_COMMAND, {
       request: advisorApprovalDecisionRequestSchema.parse(request),
+    }),
+  );
+}
+
+export async function dispatchAdvisorOnce(
+  request: AdvisorDispatchRequest,
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<AdvisorDispatchSnapshot> {
+  return advisorDispatchSnapshotSchema.parse(
+    await invokeFunction(ADVISOR_DISPATCH_ONCE_COMMAND, {
+      request: advisorDispatchRequestSchema.parse(request),
     }),
   );
 }

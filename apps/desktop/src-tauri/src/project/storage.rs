@@ -11,8 +11,9 @@ use uuid::Uuid;
 
 use crate::advisor::{
     AdvisorContextKind, AdvisorContextReference, AdvisorConversationReference,
-    AdvisorDispatchProposal, AdvisorDispatchState, AdvisorFoundationSnapshot, AdvisorFreshness,
-    AdvisorProvenance, AdvisorProvenanceSource, AdvisorTrust,
+    AdvisorDispatchProposal, AdvisorDispatchState, AdvisorExecutionDispatchState,
+    AdvisorFoundationSnapshot, AdvisorFreshness, AdvisorProvenance, AdvisorProvenanceSource,
+    AdvisorTrust,
 };
 
 use super::{
@@ -295,6 +296,17 @@ ALTER TABLE advisor_dispatch_records
     ADD COLUMN expires_at_ms INTEGER NOT NULL DEFAULT 0;
 "#;
 
+// A B2 handoff is consumed once before the existing project execution service
+// is invoked. It retains only an opaque execution reference and fixed status.
+const ADVISOR_ONE_TIME_DISPATCH_MIGRATION: &str = r#"
+ALTER TABLE advisor_dispatch_records
+    ADD COLUMN execution_dispatch_state TEXT CHECK(execution_dispatch_state IS NULL OR execution_dispatch_state IN (
+        'dispatching', 'started', 'failed-to-start'
+    ));
+ALTER TABLE advisor_dispatch_records
+    ADD COLUMN execution_conversation_id TEXT CHECK(execution_conversation_id IS NULL OR length(execution_conversation_id) = 36);
+"#;
+
 const MIGRATIONS: &[(i64, &str, &str)] = &[
     (1, "projects-and-directory-associations", INITIAL_MIGRATION),
     (
@@ -320,6 +332,11 @@ const MIGRATIONS: &[(i64, &str, &str)] = &[
         9,
         "advisor-approval-controller",
         ADVISOR_APPROVAL_CONTROLLER_MIGRATION,
+    ),
+    (
+        10,
+        "advisor-one-time-dispatch",
+        ADVISOR_ONE_TIME_DISPATCH_MIGRATION,
     ),
 ];
 
@@ -625,7 +642,8 @@ impl ProjectRepository {
                     requested_model, requested_reasoning_effort, trust,
                     provenance_source, provenance_ref, provenance_commit,
                     observed_at_ms, provenance_note, created_at_ms, updated_at_ms,
-                    capability_manifest_sha256, decided_at_ms, expires_at_ms
+                    capability_manifest_sha256, decided_at_ms, expires_at_ms,
+                    execution_dispatch_state, execution_conversation_id
              FROM advisor_dispatch_records ORDER BY updated_at_ms DESC, id",
         )?;
         let rows = statement.query_map([], |row| {
@@ -650,6 +668,8 @@ impl ProjectRepository {
                 row.get::<_, String>(17)?,
                 row.get::<_, Option<i64>>(18)?,
                 row.get::<_, i64>(19)?,
+                row.get::<_, Option<String>>(20)?,
+                row.get::<_, Option<String>>(21)?,
             ))
         })?;
         let mut proposals = Vec::new();
@@ -675,6 +695,8 @@ impl ProjectRepository {
                 capability_manifest_sha256,
                 decided_at_ms,
                 expires_at_ms,
+                execution_dispatch_state,
+                execution_conversation_id,
             ) = row?;
             proposals.push(AdvisorDispatchProposal {
                 id,
@@ -691,6 +713,11 @@ impl ProjectRepository {
                 updated_at_ms,
                 decided_at_ms,
                 expires_at_ms,
+                execution_dispatch_state: execution_dispatch_state
+                    .as_deref()
+                    .map(parse_advisor_execution_dispatch_state)
+                    .transpose()?,
+                execution_conversation_id,
                 provenance: AdvisorProvenance {
                     trust: parse_advisor_trust(&trust)?,
                     source: parse_advisor_provenance_source(&provenance_source)?,
@@ -1186,6 +1213,47 @@ impl ProjectRepository {
             .ok_or(StorageError::ProjectNotFound)
     }
 
+    pub(crate) fn claim_advisor_dispatch_proposal(
+        &mut self,
+        proposal_id: &str,
+    ) -> Result<(), StorageError> {
+        let updated = self.connection.execute(
+            "UPDATE advisor_dispatch_records
+             SET execution_dispatch_state = 'dispatching', updated_at_ms = ?1
+             WHERE id = ?2 AND state = 'approved' AND expires_at_ms > ?1
+               AND execution_dispatch_state IS NULL",
+            params![now_millis(), proposal_id],
+        )?;
+        if updated == 1 {
+            Ok(())
+        } else {
+            Err(StorageError::ProjectNotFound)
+        }
+    }
+
+    pub(crate) fn finish_advisor_dispatch_proposal(
+        &mut self,
+        proposal_id: &str,
+        conversation_id: Option<&str>,
+    ) -> Result<(), StorageError> {
+        let state = if conversation_id.is_some() {
+            "started"
+        } else {
+            "failed-to-start"
+        };
+        let updated = self.connection.execute(
+            "UPDATE advisor_dispatch_records
+             SET execution_dispatch_state = ?1, execution_conversation_id = ?2, updated_at_ms = ?3
+             WHERE id = ?4 AND execution_dispatch_state = 'dispatching'",
+            params![state, conversation_id, now_millis(), proposal_id],
+        )?;
+        if updated == 1 {
+            Ok(())
+        } else {
+            Err(StorageError::ProjectNotFound)
+        }
+    }
+
     pub(crate) fn conversation_reference(
         &self,
         conversation_id: &str,
@@ -1556,6 +1624,17 @@ fn parse_advisor_dispatch_state(value: &str) -> Result<AdvisorDispatchState, Sto
         "draft" => Ok(AdvisorDispatchState::Draft),
         "approved" => Ok(AdvisorDispatchState::Approved),
         "rejected" => Ok(AdvisorDispatchState::Rejected),
+        _ => Err(StorageError::InvalidStoredValue),
+    }
+}
+
+fn parse_advisor_execution_dispatch_state(
+    value: &str,
+) -> Result<AdvisorExecutionDispatchState, StorageError> {
+    match value {
+        "dispatching" => Ok(AdvisorExecutionDispatchState::Dispatching),
+        "started" => Ok(AdvisorExecutionDispatchState::Started),
+        "failed-to-start" => Ok(AdvisorExecutionDispatchState::FailedToStart),
         _ => Err(StorageError::InvalidStoredValue),
     }
 }

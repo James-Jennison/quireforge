@@ -303,6 +303,37 @@ impl ProjectService {
             .map_err(map_project_execution_storage_error)
     }
 
+    pub(crate) fn claim_advisor_dispatch_proposal(
+        &self,
+        proposal_id: &str,
+    ) -> Result<(), ProjectExecutionError> {
+        let mut repository = self
+            .repository
+            .lock()
+            .map_err(|_| ProjectExecutionError::MetadataUnavailable)?;
+        repository
+            .as_mut()
+            .ok_or(ProjectExecutionError::MetadataUnavailable)?
+            .claim_advisor_dispatch_proposal(proposal_id)
+            .map_err(map_project_execution_storage_error)
+    }
+
+    pub(crate) fn finish_advisor_dispatch_proposal(
+        &self,
+        proposal_id: &str,
+        conversation_id: Option<&str>,
+    ) -> Result<(), ProjectExecutionError> {
+        let mut repository = self
+            .repository
+            .lock()
+            .map_err(|_| ProjectExecutionError::MetadataUnavailable)?;
+        repository
+            .as_mut()
+            .ok_or(ProjectExecutionError::MetadataUnavailable)?
+            .finish_advisor_dispatch_proposal(proposal_id, conversation_id)
+            .map_err(map_project_execution_storage_error)
+    }
+
     pub fn picker_unavailable(&self) -> ProjectWorkspaceSnapshot {
         self.build_snapshot(Some(ProjectDiagnosticCode::PickerUnavailable))
     }

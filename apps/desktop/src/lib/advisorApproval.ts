@@ -47,7 +47,19 @@ export const advisorApprovalSnapshotSchema = z
     proposalId: uuidV7,
     state: z.enum(["draft", "approved", "rejected"]),
     expiresAtMs: z.number().int().nonnegative(),
-    dispatchAvailable: z.literal(false),
+    dispatchAvailable: z.boolean(),
+  })
+  .strict();
+
+export const advisorDispatchRequestSchema = z
+  .object({ proposalId: uuidV7, binding: advisorDraftCreateRequestSchema })
+  .strict();
+
+export const advisorDispatchSnapshotSchema = z
+  .object({
+    proposalId: uuidV7,
+    state: z.enum(["started", "failed-to-start"]),
+    executionConversationId: uuidV7.nullable(),
   })
   .strict();
 
@@ -59,4 +71,10 @@ export type AdvisorApprovalDecisionRequest = z.infer<
 >;
 export type AdvisorApprovalSnapshot = z.infer<
   typeof advisorApprovalSnapshotSchema
+>;
+export type AdvisorDispatchRequest = z.infer<
+  typeof advisorDispatchRequestSchema
+>;
+export type AdvisorDispatchSnapshot = z.infer<
+  typeof advisorDispatchSnapshotSchema
 >;
