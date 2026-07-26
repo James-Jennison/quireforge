@@ -6,8 +6,15 @@ QuireForge is an unofficial Linux workspace for Codex: “Build boldly. Work
 locally.” Tauri + React + TypeScript is the current functional prototype. ADR
 0028 accepts retaining Tauri conditionally; no Qt migration has been selected.
 
-- **Branch:** `feat/milestone-24c-project-state-workspace`
-- **Checkpoint:** Milestones 22, 22B, 23, 24A, 24B, and 24C are complete.
+- **Branch:** `feat/milestone-25-desktop-visual-polish`
+- **Checkpoint:** Milestones 22, 22B, 23, 24A, 24B, 24C, and 25 are complete.
+  Milestone 25's presentation-only implementation is
+  `9ae07167448d81c18c8e6fb293ffe52a146b346b`; its fresh pinned Ubuntu 22.04
+  package evidence is recorded by the following documentation checkpoint.
+  The milestone refines only the existing branded shell, Home entry surface,
+  and conversation composer; it introduces no backend, repository-state,
+  watcher, automation, voice, or Qt behavior.
+
   Milestone 24C's final combined implementation is
   `6d8f302297fe01f2afb0dad855a4e81f1a8782b2`; its fresh Ubuntu 22.04 package
   evidence is recorded by this documentation checkpoint. Milestone 24B
@@ -53,6 +60,18 @@ the current presentation layer and calls that façade through its bridge.
 
 ## Next action
 
+Milestone 25 — **Desktop visual polish** is complete at implementation commit
+`9ae07167448d81c18c8e6fb293ffe52a146b346b`. Its final Ubuntu 22.04 package
+evidence is recorded below. The presentation-only pass retains QuireForge
+branding and existing native behavior while strengthening sidebar density,
+dark-surface hierarchy, Home composition, and the responsive conversation
+composer. See [Milestone 25](MILESTONE_25_DESKTOP_VISUAL_POLISH.md).
+
+Milestone 24D — **Handoff and Consistency Engine** remains only a proposed next
+milestone. It requires a separate scope proposal and James's approval before
+any operational consistency, handoff generation, contradiction detection, or
+state-changing behavior begins.
+
 Milestone 24C — **Project State Workspace** is complete at final combined
 implementation commit `6d8f302297fe01f2afb0dad855a4e81f1a8782b2`. Its one
 demand-driven route
@@ -61,11 +80,6 @@ normalized evidence without mutation, approval, resolution, automation, or
 persistence changes. Frontend, responsive/accessibility, repository, Rust,
 bundle, Tauri, and fresh pinned Ubuntu package gates pass. See
 [Milestone 24C](MILESTONE_24C_PROJECT_STATE_WORKSPACE.md).
-
-Milestone 24D — **Handoff and Consistency Engine** remains only a proposed next
-milestone. It requires a separate scope proposal and James's approval before
-any operational consistency, handoff generation, contradiction detection, or
-state-changing behavior begins.
 
 Milestone 24B — **Repository State Reader** remains complete. It provides
 explicit, attached-project-only local/tracking/fetch-authorized read modes and
@@ -156,6 +170,28 @@ desktop entry, icon, Debian install/upgrade/remove, visible Debian launch,
 visible AppImage launch, and representative smoke validation. Exact commands
 and reader-boundary evidence are in
 [Milestone 24C](MILESTONE_24C_PROJECT_STATE_WORKSPACE.md).
+
+Milestone 25 refreshed the ignored candidates from clean presentation-only
+implementation commit `9ae07167448d81c18c8e6fb293ffe52a146b346b` on
+2026-07-26:
+
+- `target/ubuntu-22.04/release/packages/quireforge_0.1.0.beta.2_amd64.deb`
+  — 4,636,464 bytes; SHA-256
+  `0592f36f6a00ec1e4e835fc52821cab205625dd3a80598f4dd8a12a5b4792b93`.
+- `target/ubuntu-22.04/release/packages/QuireForge-0.1.0-beta.2-x86_64.AppImage`
+  — 83,855,864 bytes; SHA-256
+  `240c4927aad116e6ab4fbb7d0d7ea86bd69dee3f84327bd6b149e7f3b48b487e`.
+
+The digest-pinned Ubuntu 22.04 container includes `/usr/bin/xvfb-run` and
+passed manifest/checksum validation, a maximum required GLIBC `2.34` against
+the Ubuntu 22.04 `2.35` baseline, desktop-entry and PNG icon validation, the
+disposable Debian install/upgrade/remove lifecycle, visible Debian and AppImage
+launches, and representative smoke validation. The ignored release evidence is
+the version-1 manifest and checksum pair under
+`target/ubuntu-22.04/release/packages/`; local installation uses `sudo apt
+install ./target/ubuntu-22.04/release/packages/quireforge_0.1.0.beta.2_amd64.deb`
+and AppImage launch uses
+`./target/ubuntu-22.04/release/packages/QuireForge-0.1.0-beta.2-x86_64.AppImage`.
 
 For a fresh thread, read in this order:
 

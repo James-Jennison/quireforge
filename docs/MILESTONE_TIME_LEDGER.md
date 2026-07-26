@@ -1275,4 +1275,11 @@ greater precision than the underlying ranges.
   No backend, contract, native command, automation, or Qt work.
 - **Package implication:** Installed presentation changes require fresh pinned
   Ubuntu 22.04 Debian/AppImage lifecycle and visible-launch evidence.
-- **Status:** Implementation validation and final package evidence pending.
+- **Evidence:** Clean implementation commit
+  `9ae07167448d81c18c8e6fb293ffe52a146b346b`; fresh version-1 manifest and
+  `SHA256SUMS` at `target/ubuntu-22.04/release/packages/`; maximum GLIBC
+  `2.34`; Debian/AppImage lifecycle, visible-launch, and smoke checks passed
+  in the digest-pinned Ubuntu 22.04 container with `/usr/bin/xvfb-run`.
+- **Status:** Complete on `2026-07-26`; no backend, contract, automation, or
+  Qt behavior was added. Precise active and automated time was not instrumented
+  and is not reconstructed.
