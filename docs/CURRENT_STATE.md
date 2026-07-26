@@ -7,12 +7,13 @@ locally.” Tauri + React + TypeScript is the current functional prototype. ADR
 0028 accepts retaining Tauri conditionally; no Qt migration has been selected.
 
 - **Branch:** `feat/milestone-24c-project-state-workspace`
-- **Checkpoint:** Milestones 22, 22B, 23, 24A, and 24B are complete. Milestone
+- **Checkpoint:** Milestones 22, 22B, 23, 24A, 24B, and 24C are complete.
+  Milestone 24C implementation is
+  `8a17703fd0c4d8ddf4ea55c121992202ce58b1c4`; its final Ubuntu 22.04 package
+  evidence is recorded by this documentation checkpoint. Milestone
   24B implementation is `ecc556f9a7025e9e5da3ab63dc34eb1c9f6c3d47`; its final
-  Ubuntu 22.04 package evidence is recorded by this documentation checkpoint.
-  Milestone 24C has a validated read-only Project state route over the completed
-  reader; its fresh pinned Ubuntu package gate remains. No 24D
-  handoff/consistency behavior has begun.
+  Ubuntu 22.04 package evidence remains documented in its milestone report. No
+  24D handoff/consistency behavior has begun.
 
   The completed 24B fixture suite proves local-only and existing-tracking
   reads preserve an inspected repository, while the explicitly authorized
@@ -46,13 +47,18 @@ the current presentation layer and calls that façade through its bridge.
 
 ## Next action
 
-Milestone 24C — **Project State Workspace** is active. Its approved boundary is
-one demand-driven route that requests the existing reader in `local-only`,
-`metadata-only` mode and presents normalized evidence without mutation,
-approval, resolution, automation, or persistence changes. The frontend,
-responsive/accessibility, repository, Rust, bundle, and Tauri implementation
-gates pass; fresh pinned Ubuntu package evidence remains before completion. See
+Milestone 24C — **Project State Workspace** is complete at implementation commit
+`8a17703fd0c4d8ddf4ea55c121992202ce58b1c4`. Its one demand-driven route
+requests the existing reader in `local-only`, `metadata-only` mode and presents
+normalized evidence without mutation, approval, resolution, automation, or
+persistence changes. Frontend, responsive/accessibility, repository, Rust,
+bundle, Tauri, and fresh pinned Ubuntu package gates pass. See
 [Milestone 24C](MILESTONE_24C_PROJECT_STATE_WORKSPACE.md).
+
+Milestone 24D — **Handoff and Consistency Engine** remains only a proposed next
+milestone. It requires a separate scope proposal and James's approval before
+any operational consistency, handoff generation, contradiction detection, or
+state-changing behavior begins.
 
 Milestone 24B — **Repository State Reader** remains complete. It provides
 explicit, attached-project-only local/tracking/fetch-authorized read modes and
@@ -127,6 +133,22 @@ paths now record 4,475,272-byte Debian SHA-256
 The packaged executable requires maximum GLIBC `2.34`, within the Ubuntu 22.04
 `2.35` policy baseline; the pinned workflow passed desktop/icon, Debian
 lifecycle, installed launch, AppImage launch, and smoke checks.
+
+Milestone 24C refreshed the ignored candidates from clean implementation commit
+`8a17703fd0c4d8ddf4ea55c121992202ce58b1c4` on 2026-07-26:
+
+- `target/ubuntu-22.04/release/packages/quireforge_0.1.0.beta.2_amd64.deb`
+  — 4,635,632 bytes; SHA-256
+  `0ecdc02ed9f7c85e77fbdc232237d10c3e55a7a0c7e5a95155bae254cbf528cc`.
+- `target/ubuntu-22.04/release/packages/QuireForge-0.1.0-beta.2-x86_64.AppImage`
+  — 83,855,864 bytes; SHA-256
+  `4e3d03d4c8a72c9b2c2fb6f0e8f9b005b33e8ec357ace914c260389a7201f78d`.
+
+The pinned Ubuntu 22.04 workflow passed manifest/checksum, maximum GLIBC `2.34`,
+desktop entry, icon, Debian install/upgrade/remove, visible Debian launch,
+visible AppImage launch, and representative smoke validation. Exact commands
+and reader-boundary evidence are in
+[Milestone 24C](MILESTONE_24C_PROJECT_STATE_WORKSPACE.md).
 
 For a fresh thread, read in this order:
 

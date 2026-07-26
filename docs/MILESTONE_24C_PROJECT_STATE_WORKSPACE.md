@@ -1,8 +1,6 @@
 # Milestone 24C — Project State Workspace
 
-Status: implementation validation complete on
-`feat/milestone-24c-project-state-workspace`; final pinned Ubuntu package
-evidence remains required.
+Status: complete on `feat/milestone-24c-project-state-workspace`.
 
 ## Objective
 
@@ -94,8 +92,73 @@ The implementation gate passes:
   and
 - the unbundled optimized Tauri application build.
 
-Final completion remains package-gated because the new route changes the
-installed application.
+## Final package evidence
+
+The final implementation commit is
+`8a17703fd0c4d8ddf4ea55c121992202ce58b1c4`. Its source tree was clean when the
+digest-pinned Ubuntu 22.04 workflow ran:
+
+```text
+./scripts/run_linux_package_container.sh
+```
+
+The ignored manifest and checksum records are:
+
+- `target/ubuntu-22.04/release/packages/release-manifest.json`
+- `target/ubuntu-22.04/release/packages/SHA256SUMS`
+- `target/validation-summary.json`
+
+The version-1 manifest records that exact implementation commit, clean source,
+the pinned
+`ubuntu:22.04@sha256:0e0a0fc6d18feda9db1590da249ac93e8d5abfea8f4c3c0c849ce512b5ef8982`
+builder, Ubuntu 22.04, and `x86_64`.
+
+- `target/ubuntu-22.04/release/packages/quireforge_0.1.0.beta.2_amd64.deb`
+  is 4,635,632 bytes with SHA-256
+  `0ecdc02ed9f7c85e77fbdc232237d10c3e55a7a0c7e5a95155bae254cbf528cc`.
+- `target/ubuntu-22.04/release/packages/QuireForge-0.1.0-beta.2-x86_64.AppImage`
+  is 83,855,864 bytes with SHA-256
+  `4e3d03d4c8a72c9b2c2fb6f0e8f9b005b33e8ec357ace914c260389a7201f78d`.
+
+Manifest/checksum validation, canonical desktop-entry and icon validation, and
+both artifact structures pass. The highest required GLIBC symbol is `2.34`,
+within Ubuntu 22.04's `2.35` baseline.
+
+The disposable Debian lifecycle passed initial installation, upgrade to
+`0.1.0~beta.2`, removal, executable/desktop-entry cleanup, and preservation of
+an attached-project fixture plus application metadata. The gate used:
+
+```text
+dpkg --root="$root" --force-not-root --force-depends --force-script-chrootless --install "$previous"
+dpkg --root="$root" --force-not-root --force-depends --force-script-chrootless --install "$package"
+dpkg --root="$root" --force-not-root --force-depends --force-script-chrootless --remove quireforge
+```
+
+A local installation would use:
+
+```text
+sudo apt install ./target/ubuntu-22.04/release/packages/quireforge_0.1.0.beta.2_amd64.deb
+```
+
+The container includes `xvfb-run`. Visible Debian and AppImage launch-smoke
+checks passed with:
+
+```text
+xvfb-run --auto-servernum python3 scripts/smoke_linux_package.py --label "Debian package" "$debian_binary"
+xvfb-run --auto-servernum python3 scripts/smoke_linux_package.py --label "AppImage" ./target/ubuntu-22.04/release/packages/QuireForge-0.1.0-beta.2-x86_64.AppImage --appimage-extract-and-run
+```
+
+Direct AppImage launch uses:
+
+```text
+./target/ubuntu-22.04/release/packages/QuireForge-0.1.0-beta.2-x86_64.AppImage
+```
+
+The strict package validator accepts the final manifest, checksum file, local
+sizes, and local hashes without a source, size, checksum, version, or path
+disagreement. The reader's producer-compatible metadata-only and
+verify-local-artifacts fixture paths remain covered by the passing Rust
+repository-state tests; normal inspection did not rebuild or mutate evidence.
 
 ## Deferred work
 

@@ -160,7 +160,7 @@ boundary, but a Qt 6 migration is not authorized unless defined measurable
 triggers are met and separately approved.
 Milestone 24A established the machine-readable project-state contract, and
 Milestone 24B completed its attached-project-only repository reader.
-Milestone 24C is adding a demand-driven, read-only Project state workspace over
+Milestone 24C completed a demand-driven, read-only Project state workspace over
 that normalized evidence. Fetch controls, background scans, state writes,
 automatic handoffs, and contradiction resolution remain unavailable.
 Webuzo is the selected static origin host, with Cloudflare retained as the DNS,

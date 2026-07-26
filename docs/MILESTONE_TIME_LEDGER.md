@@ -1257,6 +1257,10 @@ greater precision than the underlying ranges.
   application, so final closure requires fresh pinned Ubuntu 22.04 Debian and
   AppImage lifecycle, launch, and smoke evidence from the clean implementation
   commit.
-- **Status:** Implementation validation complete; fresh pinned Ubuntu package
-  evidence remains. Precise active and automated time was not instrumented and
-  is not reconstructed.
+- **Evidence:** Implementation commit
+  `8a17703fd0c4d8ddf4ea55c121992202ce58b1c4`; 183 frontend tests, 40
+  desktop/mobile Playwright scenarios, full repository/Rust/Tauri validation,
+  and fresh pinned Ubuntu 22.04 Debian/AppImage lifecycle and visible-launch
+  smoke evidence.
+- **Status:** Complete on `2026-07-26`; no 24D behavior was added. Precise
+  active and automated time was not instrumented and is not reconstructed.

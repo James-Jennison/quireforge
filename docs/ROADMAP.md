@@ -115,7 +115,7 @@ discovery; scheduling management and execution remain unsupported.
 |        23 | UI platform feasibility decision                                  | Medium       | Complete; ADR 0028 retains Tauri conditionally                           |
 |       24A | Project-state contract                                            | Medium       | Complete; strict contract only, no ingestion, UI, or automation          |
 |       24B | Repository-state reader                                           | Large        | Complete; attached-project-only read service, no UI or automation        |
-|       24C | Project-state workspace                                           | Medium       | Active; read-only presentation over the existing normalized reader       |
+|       24C | Project-state workspace                                           | Medium       | Complete; read-only presentation over the existing normalized reader     |
 
 ## Milestone definitions
 

@@ -23,7 +23,9 @@ released a usable application.
 - Milestone 24C Project state workspace: a demand-driven, read-only route over
   the existing normalized repository-state snapshot, with explicit
   local-only/metadata-only access and no fetch, mutation, approval, handoff
-  generation, contradiction resolution, or background scanning.
+  generation, contradiction resolution, or background scanning. Its complete
+  frontend/native gate and fresh pinned Ubuntu 22.04 Debian/AppImage lifecycle
+  and launch evidence are recorded without publishing a release.
 - Milestone 24B repository-state reader checkpoint: attached-project-only,
   typed local/tracking/explicit-fetch reads with contract diagnostics and no UI
   or repository mutation except the separately authorized fetch mode.
