@@ -40,6 +40,7 @@ import { sessionLifecycleSchema } from "./lib/session";
 import { worktreeWorkspaceSchema } from "./lib/worktree";
 import { scaffoldCodexUsage } from "./lib/usage";
 import { scaffoldChatConversation } from "./lib/chat";
+import { advisorWorkspaceSnapshotSchema } from "./lib/advisorWorkspace";
 
 const projectId = "018f0000-0000-7000-8000-000000000001";
 const associationId = "018f0000-0000-7000-8000-000000000002";
@@ -47,6 +48,16 @@ const authenticatedAuth = codexAuthSchema.parse({
   ...scaffoldCodexAuth,
   state: "authenticated",
   accountKind: "chatgpt",
+});
+const advisorWorkspaceFixture = advisorWorkspaceSnapshotSchema.parse({
+  schemaVersion: 1,
+  conversationCount: 1,
+  contextReferenceCount: 1,
+  proposalCount: 1,
+  contextSummaries: [
+    { kind: "project-state", trust: "verified", freshness: "current" },
+  ],
+  proposalSummaries: [{ state: "draft", requiresExplicitApproval: true }],
 });
 function modelSelection(reasoningEffort = "high") {
   return {
@@ -383,6 +394,30 @@ describe("QuireForge desktop shell", () => {
     await waitFor(() =>
       expect(loadRepositoryStateTask).toHaveBeenCalledTimes(2),
     );
+  });
+
+  it("renders Advisor through the fixed reference-only snapshot reader", async () => {
+    window.history.replaceState(null, "", "#advisor");
+    const loadAdvisorSnapshotTask = vi
+      .fn()
+      .mockResolvedValue(advisorWorkspaceFixture);
+    render(
+      <App
+        loadBootstrap={() => Promise.resolve(scaffoldBootstrap)}
+        loadRuntime={() => Promise.resolve(scaffoldCodexRuntime)}
+        loadAuth={() => Promise.resolve(authenticatedAuth)}
+        loadProjects={() => Promise.resolve(attachedProject)}
+        loadAdvisorSnapshotTask={loadAdvisorSnapshotTask}
+      />,
+    );
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "Reference-only planning, without execution.",
+      }),
+    ).toBeInTheDocument();
+    expect(loadAdvisorSnapshotTask).toHaveBeenCalledWith();
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
   });
 
   it("restores a validated deep link and rejects unknown workspace hashes", async () => {

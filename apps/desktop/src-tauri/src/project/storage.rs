@@ -9,6 +9,12 @@ use rusqlite::{params, Connection, OptionalExtension, Transaction, TransactionBe
 use thiserror::Error;
 use uuid::Uuid;
 
+use crate::advisor::{
+    AdvisorContextKind, AdvisorContextReference, AdvisorConversationReference,
+    AdvisorDispatchProposal, AdvisorDispatchState, AdvisorFoundationSnapshot, AdvisorFreshness,
+    AdvisorProvenance, AdvisorProvenanceSource, AdvisorTrust,
+};
+
 use super::{
     identity::DirectoryIdentity,
     types::{DirectoryAccessibilityState, ExpectedAccess},
@@ -489,6 +495,185 @@ impl ProjectRepository {
             });
         }
         Ok(projects)
+    }
+
+    /// Reads only bounded metadata already owned by QuireForge. It does not
+    /// inspect a project, contact Codex, read context, or mutate SQLite.
+    pub(crate) fn advisor_snapshot(&self) -> Result<AdvisorFoundationSnapshot, StorageError> {
+        let snapshot = AdvisorFoundationSnapshot {
+            schema_version: crate::advisor::ADVISOR_FOUNDATION_SCHEMA_VERSION,
+            conversations: self.load_advisor_conversations()?,
+            context_references: self.load_advisor_context_references()?,
+            dispatch_proposals: self.load_advisor_dispatch_proposals()?,
+        };
+        snapshot
+            .validate()
+            .map_err(|_| StorageError::InvalidStoredValue)?;
+        Ok(snapshot)
+    }
+
+    fn load_advisor_conversations(
+        &self,
+    ) -> Result<Vec<AdvisorConversationReference>, StorageError> {
+        let mut statement = self.connection.prepare(
+            "SELECT id, codex_thread_id, created_at_ms, updated_at_ms
+             FROM advisor_conversations ORDER BY updated_at_ms DESC, id",
+        )?;
+        let rows = statement.query_map([], |row| {
+            Ok(AdvisorConversationReference {
+                id: row.get(0)?,
+                codex_thread_id: row.get(1)?,
+                created_at_ms: row.get(2)?,
+                updated_at_ms: row.get(3)?,
+            })
+        })?;
+        rows.collect::<Result<Vec<_>, _>>().map_err(Into::into)
+    }
+
+    fn load_advisor_context_references(
+        &self,
+    ) -> Result<Vec<AdvisorContextReference>, StorageError> {
+        let mut statement = self.connection.prepare(
+            "SELECT id, advisor_conversation_id, kind, source_ref, source_commit,
+                    source_sha256, selected_at_ms, freshness, trust, provenance_source,
+                    provenance_ref, provenance_commit, observed_at_ms, provenance_note
+             FROM advisor_context_references
+             ORDER BY selected_at_ms DESC, id",
+        )?;
+        let rows = statement.query_map([], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, String>(2)?,
+                row.get::<_, String>(3)?,
+                row.get::<_, Option<String>>(4)?,
+                row.get::<_, String>(5)?,
+                row.get::<_, i64>(6)?,
+                row.get::<_, String>(7)?,
+                row.get::<_, String>(8)?,
+                row.get::<_, String>(9)?,
+                row.get::<_, Option<String>>(10)?,
+                row.get::<_, Option<String>>(11)?,
+                row.get::<_, Option<i64>>(12)?,
+                row.get::<_, Option<String>>(13)?,
+            ))
+        })?;
+        let mut references = Vec::new();
+        for row in rows {
+            let (
+                id,
+                advisor_conversation_id,
+                kind,
+                source_ref,
+                source_commit,
+                content_sha256,
+                selected_at_ms,
+                freshness,
+                trust,
+                provenance_source,
+                provenance_ref,
+                provenance_commit,
+                observed_at_ms,
+                note,
+            ) = row?;
+            references.push(AdvisorContextReference {
+                id,
+                advisor_conversation_id,
+                kind: parse_advisor_context_kind(&kind)?,
+                source_ref,
+                source_commit,
+                content_sha256,
+                selected_at_ms,
+                freshness: parse_advisor_freshness(&freshness)?,
+                provenance: AdvisorProvenance {
+                    trust: parse_advisor_trust(&trust)?,
+                    source: parse_advisor_provenance_source(&provenance_source)?,
+                    source_ref: provenance_ref,
+                    source_commit: provenance_commit,
+                    observed_at_ms,
+                    note,
+                },
+            });
+        }
+        Ok(references)
+    }
+
+    fn load_advisor_dispatch_proposals(
+        &self,
+    ) -> Result<Vec<AdvisorDispatchProposal>, StorageError> {
+        let mut statement = self.connection.prepare(
+            "SELECT id, advisor_conversation_id, target_project_id, request_sha256,
+                    context_manifest_sha256, state, requires_explicit_approval,
+                    requested_model, requested_reasoning_effort, trust,
+                    provenance_source, provenance_ref, provenance_commit,
+                    observed_at_ms, provenance_note, created_at_ms, updated_at_ms
+             FROM advisor_dispatch_records ORDER BY updated_at_ms DESC, id",
+        )?;
+        let rows = statement.query_map([], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, String>(2)?,
+                row.get::<_, String>(3)?,
+                row.get::<_, String>(4)?,
+                row.get::<_, String>(5)?,
+                row.get::<_, i64>(6)?,
+                row.get::<_, Option<String>>(7)?,
+                row.get::<_, Option<String>>(8)?,
+                row.get::<_, String>(9)?,
+                row.get::<_, String>(10)?,
+                row.get::<_, Option<String>>(11)?,
+                row.get::<_, Option<String>>(12)?,
+                row.get::<_, Option<i64>>(13)?,
+                row.get::<_, Option<String>>(14)?,
+                row.get::<_, i64>(15)?,
+                row.get::<_, i64>(16)?,
+            ))
+        })?;
+        let mut proposals = Vec::new();
+        for row in rows {
+            let (
+                id,
+                advisor_conversation_id,
+                target_project_id,
+                prompt_sha256,
+                context_manifest_sha256,
+                state,
+                requires_explicit_approval,
+                requested_model,
+                requested_reasoning_effort,
+                trust,
+                provenance_source,
+                provenance_ref,
+                provenance_commit,
+                observed_at_ms,
+                note,
+                created_at_ms,
+                updated_at_ms,
+            ) = row?;
+            proposals.push(AdvisorDispatchProposal {
+                id,
+                advisor_conversation_id,
+                target_project_id,
+                prompt_sha256,
+                context_manifest_sha256,
+                state: parse_advisor_dispatch_state(&state)?,
+                requires_explicit_approval: requires_explicit_approval == 1,
+                requested_model,
+                requested_reasoning_effort,
+                created_at_ms,
+                updated_at_ms,
+                provenance: AdvisorProvenance {
+                    trust: parse_advisor_trust(&trust)?,
+                    source: parse_advisor_provenance_source(&provenance_source)?,
+                    source_ref: provenance_ref,
+                    source_commit: provenance_commit,
+                    observed_at_ms,
+                    note,
+                },
+            });
+        }
+        Ok(proposals)
     }
 
     pub(crate) fn project(&self, project_id: &str) -> Result<StoredProject, StorageError> {
@@ -1199,6 +1384,58 @@ impl ProjectRepository {
     }
 }
 
+fn parse_advisor_context_kind(value: &str) -> Result<AdvisorContextKind, StorageError> {
+    match value {
+        "project-state" => Ok(AdvisorContextKind::ProjectState),
+        "roadmap" => Ok(AdvisorContextKind::Roadmap),
+        "current-state" => Ok(AdvisorContextKind::CurrentState),
+        "execution-report" => Ok(AdvisorContextKind::ExecutionReport),
+        _ => Err(StorageError::InvalidStoredValue),
+    }
+}
+
+fn parse_advisor_freshness(value: &str) -> Result<AdvisorFreshness, StorageError> {
+    match value {
+        "current" => Ok(AdvisorFreshness::Current),
+        "stale" => Ok(AdvisorFreshness::Stale),
+        "unknown" => Ok(AdvisorFreshness::Unknown),
+        "conflicting" => Ok(AdvisorFreshness::Conflicting),
+        "not-applicable" => Ok(AdvisorFreshness::NotApplicable),
+        _ => Err(StorageError::InvalidStoredValue),
+    }
+}
+
+fn parse_advisor_trust(value: &str) -> Result<AdvisorTrust, StorageError> {
+    match value {
+        "verified" => Ok(AdvisorTrust::Verified),
+        "reported" => Ok(AdvisorTrust::Reported),
+        "inferred" => Ok(AdvisorTrust::Inferred),
+        "unknown" => Ok(AdvisorTrust::Unknown),
+        _ => Err(StorageError::InvalidStoredValue),
+    }
+}
+
+fn parse_advisor_provenance_source(value: &str) -> Result<AdvisorProvenanceSource, StorageError> {
+    match value {
+        "git-observation" => Ok(AdvisorProvenanceSource::GitObservation),
+        "project-state-snapshot" => Ok(AdvisorProvenanceSource::ProjectStateSnapshot),
+        "repository-document" => Ok(AdvisorProvenanceSource::RepositoryDocument),
+        "execution-report" => Ok(AdvisorProvenanceSource::ExecutionReport),
+        "user-selection" => Ok(AdvisorProvenanceSource::UserSelection),
+        "unknown" => Ok(AdvisorProvenanceSource::Unknown),
+        _ => Err(StorageError::InvalidStoredValue),
+    }
+}
+
+fn parse_advisor_dispatch_state(value: &str) -> Result<AdvisorDispatchState, StorageError> {
+    match value {
+        "draft" => Ok(AdvisorDispatchState::Draft),
+        "approved" => Ok(AdvisorDispatchState::Approved),
+        "rejected" => Ok(AdvisorDispatchState::Rejected),
+        _ => Err(StorageError::InvalidStoredValue),
+    }
+}
+
 fn apply_migrations(connection: &mut Connection) -> Result<(), StorageError> {
     let transaction = connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
     transaction.execute_batch(
@@ -1579,6 +1816,97 @@ mod tests {
             )
             .expect("pre-selector conversations must receive an honest fallback");
         assert_eq!(migrated_availability_default, "'recommendation-only'");
+    }
+
+    #[test]
+    fn reads_advisor_metadata_without_mutating_the_database() {
+        let repository = ProjectRepository::in_memory().expect("database must open");
+        let conversation_id = "019d4e3c-3b14-7a2b-8c91-3f27d4f7aa10";
+        let context_id = "019d4e3c-3b15-78d4-b71a-3f27d4f7aa11";
+        let proposal_id = "019d4e3c-3b16-7c9f-a80b-3f27d4f7aa12";
+        let project_id = "019d4e3c-3b17-7e50-9f35-3f27d4f7aa13";
+        repository
+            .connection
+            .execute(
+                "INSERT INTO projects (
+                    id, display_name, active_directory_association_id, archived_at_ms,
+                    created_at_ms, updated_at_ms
+                 ) VALUES (?1, 'Advisor target', NULL, NULL, 1, 1)",
+                [project_id],
+            )
+            .expect("target project must insert");
+        repository
+            .connection
+            .execute(
+                "INSERT INTO advisor_conversations (id, codex_thread_id, created_at_ms, updated_at_ms)
+                 VALUES (?1, 'advisor-thread-fixture-01', 1, 1)",
+                [conversation_id],
+            )
+            .expect("advisor conversation must insert");
+        repository
+            .connection
+            .execute(
+                "INSERT INTO advisor_context_references (
+                    id, advisor_conversation_id, kind, source_ref, source_commit,
+                    source_sha256, selected_at_ms, freshness, trust,
+                    provenance_source, provenance_ref, provenance_commit,
+                    observed_at_ms, provenance_note, created_at_ms, updated_at_ms
+                 ) VALUES (
+                    ?1, ?2, 'project-state', 'project-state-snapshot',
+                    '7bf4a235904fc2c760daed81e899b040da96b5b4', ?3, 1, 'current',
+                    'verified', 'project-state-snapshot', 'project-state-snapshot',
+                    '7bf4a235904fc2c760daed81e899b040da96b5b4', 1, NULL, 1, 1
+                 )",
+                params![context_id, conversation_id, "1".repeat(64)],
+            )
+            .expect("advisor context must insert");
+        repository
+            .connection
+            .execute(
+                "INSERT INTO advisor_dispatch_records (
+                    id, advisor_conversation_id, target_project_id, request_sha256,
+                    context_manifest_sha256, state, requires_explicit_approval,
+                    requested_model, requested_reasoning_effort, trust,
+                    provenance_source, provenance_ref, provenance_commit,
+                    observed_at_ms, provenance_note, created_at_ms, updated_at_ms
+                 ) VALUES (
+                    ?1, ?2, ?3, ?4, ?5, 'draft', 1, NULL, NULL, 'inferred',
+                    'user-selection', 'advisor-dispatch-draft', NULL, 1, NULL, 1, 1
+                 )",
+                params![
+                    proposal_id,
+                    conversation_id,
+                    project_id,
+                    "2".repeat(64),
+                    "3".repeat(64)
+                ],
+            )
+            .expect("advisor proposal must insert");
+
+        let before = repository.connection.total_changes();
+        let snapshot = repository
+            .advisor_snapshot()
+            .expect("valid advisor metadata must read");
+        assert_eq!(repository.connection.total_changes(), before);
+        assert_eq!(snapshot.conversations.len(), 1);
+        assert_eq!(snapshot.context_references.len(), 1);
+        assert_eq!(snapshot.dispatch_proposals.len(), 1);
+
+        repository
+            .connection
+            .execute_batch("PRAGMA ignore_check_constraints = ON;")
+            .expect("test-only constraint bypass must enable");
+        repository
+            .connection
+            .execute(
+                "UPDATE advisor_context_references SET kind = 'unsafe-kind' WHERE id = ?1",
+                [context_id],
+            )
+            .expect("invalid stored test value must write");
+        assert!(matches!(
+            repository.advisor_snapshot(),
+            Err(StorageError::InvalidStoredValue)
+        ));
     }
 
     #[test]

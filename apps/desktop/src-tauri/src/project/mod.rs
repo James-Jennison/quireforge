@@ -19,6 +19,8 @@ use types::{
 };
 use uuid::Uuid;
 
+use crate::advisor::{AdvisorFoundationSnapshot, AdvisorWorkspaceSnapshot};
+
 use self::identity::{
     disconnected_state, display_path, inspect_directory, DirectoryIdentity,
     DirectoryInspectionError,
@@ -214,6 +216,21 @@ impl ProjectService {
 
     pub fn status(&self) -> ProjectWorkspaceSnapshot {
         self.build_snapshot(None)
+    }
+
+    /// Returns only QuireForge-owned, reference-only Advisor metadata. No
+    /// project identity, filesystem, Git, Codex, or execution state is read.
+    pub fn advisor_snapshot(&self) -> Result<AdvisorFoundationSnapshot, ()> {
+        let repository = self.repository.lock().map_err(|_| ())?;
+        repository
+            .as_ref()
+            .ok_or(())?
+            .advisor_snapshot()
+            .map_err(|_| ())
+    }
+
+    pub fn advisor_workspace_snapshot(&self) -> Result<AdvisorWorkspaceSnapshot, ()> {
+        Ok(self.advisor_snapshot()?.workspace_snapshot())
     }
 
     pub fn picker_unavailable(&self) -> ProjectWorkspaceSnapshot {

@@ -71,10 +71,11 @@ locally.” Tauri + React + TypeScript is the current functional prototype. ADR
   Milestone 28 has begun as a reference-only Advisor foundation. Its active
   checkpoint adds strict Rust/Zod contracts and SQLite schema support for
   opaque Advisor conversation references, explicit selected-context references,
-  provenance/freshness, and non-dispatching proposal digests. It has no Advisor
-  UI, model call, project read, prompt/transcript retention, approval action,
-  dispatch, Python sidecar, watcher, handoff generation, contradiction
-  resolution, or repository-write capability. See
+  provenance/freshness, and non-dispatching proposal digests. Its fixed
+  `#advisor` route receives only a strict safe-summary projection and renders
+  it or an empty state. It has no model call, project read, prompt/transcript
+  retention, approval action, dispatch, Python sidecar, watcher, handoff
+  generation, contradiction resolution, or repository-write capability. See
   [Milestone 28](MILESTONE_28_ADVISOR_FOUNDATION.md).
 
 - **Milestone 22B:** the routed desktop architecture was refined without
@@ -108,10 +109,10 @@ integrations, transcripts, or credentials. The clean, incremented
 `0.1.0-beta.4` package set passed the pinned Ubuntu 22.04 and installed-host
 gates. See [Milestone 27](MILESTONE_27_UNIFIED_CONVERSATION_ENGINE.md).
 
-Milestone 28 — **Reference-Only Advisor Foundation** is active. It is limited
-to opaque metadata contracts and deterministic validation; any Advisor UI,
-context reading, model call, prompt text retention, approval/dispatch flow, or
-automation remains separately gated.
+Milestone 28 — **Reference-Only Advisor Foundation** is active. It includes a
+read-only Advisor metadata route over opaque contracts and deterministic
+validation; context reading, model calls, prompt text retention,
+approval/dispatch flow, and automation remain separately gated.
 
 Milestone 26 — **Appearance Themes** is complete. It retains Forge as the
 default and adds seven closed local palettes through Settings → Appearance with

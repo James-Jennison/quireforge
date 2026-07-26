@@ -1,5 +1,6 @@
 export type PrimaryWorkspaceRoute =
   | "home"
+  | "advisor"
   | "conversation"
   | "projects"
   | "project-state"
@@ -44,6 +45,13 @@ export const workspaceNavigation: readonly WorkspaceNavigationItem[] = [
     icon: "grid",
     group: "main",
     description: "Dashboard and starting workspace",
+  },
+  {
+    route: "advisor",
+    label: "Advisor",
+    icon: "grid",
+    group: "main",
+    description: "Inspect local reference-only planning metadata",
   },
   {
     route: "conversation",

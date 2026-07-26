@@ -111,6 +111,17 @@ const repositoryStateFixture = {
   ],
 } as const;
 
+const advisorWorkspaceFixture = {
+  schemaVersion: 1,
+  conversationCount: 1,
+  contextReferenceCount: 1,
+  proposalCount: 1,
+  contextSummaries: [
+    { kind: "project-state", trust: "verified", freshness: "current" },
+  ],
+  proposalSummaries: [{ state: "draft", requiresExplicitApproval: true }],
+} as const;
+
 const nativeResponses = {
   desktop_bootstrap: {
     schemaVersion: 1,
@@ -308,6 +319,7 @@ const nativeResponses = {
     pendingAttachment: null,
     diagnosticCode: null,
   },
+  advisor_snapshot_read: advisorWorkspaceFixture,
   repository_state_read: repositoryStateFixture,
   worktree_status: {
     schemaVersion: 2,
@@ -755,6 +767,7 @@ test("every sidebar destination replaces the active workspace without page scrol
 
   const destinations = [
     ["Home", "home"],
+    ["Advisor", "advisor"],
     ["New task", "conversation"],
     ["Projects", "projects"],
     ["Project state", "project-state"],
@@ -782,6 +795,29 @@ test("every sidebar destination replaces the active workspace without page scrol
       ),
     ).toBe(0);
   }
+});
+
+test("Advisor presents only read-only safe summaries accessibly", async ({
+  page,
+}) => {
+  await installNativeFixture(page);
+  await page.goto("/");
+
+  await openWorkspace(page, "Advisor");
+  const advisor = page.locator('[data-workspace-view="advisor"]');
+  await expect(
+    advisor.getByRole("heading", {
+      name: "Reference-only planning, without execution.",
+    }),
+  ).toBeVisible();
+  await expect(
+    advisor.getByText("project-state: verified, current"),
+  ).toBeVisible();
+  await expect(advisor.getByRole("textbox")).toHaveCount(0);
+  await expect(advisor.getByRole("button")).toHaveCount(0);
+  await expect(advisor.getByText(/advisor-thread|gpt-5.6/u)).toHaveCount(0);
+  const accessibility = await new AxeBuilder({ page }).analyze();
+  expect(accessibility.violations).toEqual([]);
 });
 
 test("project state workspace presents read-only normalized evidence accessibly", async ({

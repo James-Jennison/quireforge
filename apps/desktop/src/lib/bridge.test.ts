@@ -12,8 +12,10 @@ import {
   scaffoldGitMutationResult,
   scaffoldGitWorkspace,
 } from "./git";
+import { advisorWorkspaceSnapshotSchema } from "./advisorWorkspace";
 import { scaffoldSessionLifecycle } from "./session";
 import {
+  ADVISOR_SNAPSHOT_READ_COMMAND,
   archiveConversation,
   archiveProject,
   cancelFilePreview,
@@ -61,6 +63,7 @@ import {
   FILE_PREVIEW_OPEN_COMMAND,
   FILE_PREVIEW_PICK_COMMAND,
   loadCodexAuth,
+  loadAdvisorSnapshot,
   loadChatAuthentication,
   interruptChatConversation,
   loadChatConversation,
@@ -139,6 +142,17 @@ import {
   updateModelSelection,
 } from "./bridge";
 import { scaffoldBootstrap } from "./contract";
+
+const advisorWorkspaceFixture = advisorWorkspaceSnapshotSchema.parse({
+  schemaVersion: 1,
+  conversationCount: 1,
+  contextReferenceCount: 1,
+  proposalCount: 1,
+  contextSummaries: [
+    { kind: "project-state", trust: "verified", freshness: "current" },
+  ],
+  proposalSummaries: [{ state: "draft", requiresExplicitApproval: true }],
+});
 import { sharedFilePreviewFixture } from "./filePreview";
 import { scaffoldProjectWorkspace } from "./project";
 import {
@@ -466,6 +480,18 @@ describe("desktop bridge", () => {
     });
 
     await expect(loadProjectWorkspace(invoke)).rejects.toThrow();
+  });
+
+  it("reads Advisor metadata through one no-argument fixed command", async () => {
+    const invoke = vi.fn().mockResolvedValue(advisorWorkspaceFixture);
+
+    await expect(loadAdvisorSnapshot(invoke)).resolves.toEqual(
+      advisorWorkspaceFixture,
+    );
+    expect(invoke).toHaveBeenCalledWith(ADVISOR_SNAPSHOT_READ_COMMAND);
+
+    invoke.mockResolvedValueOnce({ ...advisorWorkspaceFixture, prompt: "no" });
+    await expect(loadAdvisorSnapshot(invoke)).rejects.toThrow();
   });
 
   it("uses one fixed file picker command with only an opaque project ID", async () => {

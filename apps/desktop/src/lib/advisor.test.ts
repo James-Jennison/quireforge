@@ -3,9 +3,10 @@ import { describe, expect, it } from "vitest";
 import fixture from "../../fixtures/advisor-foundation.json";
 import {
   advisorDispatchProposalSchema,
-  advisorFoundationFixture,
   advisorFoundationSnapshotSchema,
 } from "./advisor";
+
+const advisorFoundationFixture = advisorFoundationSnapshotSchema.parse(fixture);
 
 describe("reference-only Advisor foundation contract", () => {
   it("accepts the shared Rust/TypeScript fixture without prompt or transcript retention", () => {

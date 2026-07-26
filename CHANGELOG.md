@@ -5,8 +5,10 @@
 - Begin Milestone 28’s reference-only Advisor foundation with strict
   Rust/TypeScript contracts and bounded SQLite metadata for opaque references,
   provenance/freshness, selected context, and non-dispatching proposal digests.
-  It stores no prompt, response, transcript, credential, session, or arbitrary
-  project-path data and introduces no model call or execution capability.
+  The fixed `#advisor` route receives and renders only a strict safe-summary
+  projection; it stores no prompt, response, transcript, credential, session,
+  or arbitrary project-path data and introduces no model call or execution
+  capability.
 - Complete Milestone 27’s managed-ChatGPT-only conversation engine: closed
   Chat/Codex capability contracts, bounded no-project Chat metadata, and a
   fixed native Chat bridge that rejects project, tool, approval, and API-key

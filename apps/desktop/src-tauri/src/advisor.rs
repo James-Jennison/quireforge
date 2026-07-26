@@ -129,7 +129,45 @@ pub struct AdvisorFoundationSnapshot {
     pub dispatch_proposals: Vec<AdvisorDispatchProposal>,
 }
 
+/// Safe, read-only projection for the Advisor workspace. This deliberately
+/// omits opaque identifiers, digests, model requests, target project IDs, and
+/// every other field unnecessary for presentation.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AdvisorWorkspaceSnapshot {
+    pub schema_version: u16,
+    pub conversation_count: u16,
+    pub context_reference_count: u16,
+    pub proposal_count: u16,
+    pub context_summaries: Vec<AdvisorContextSummary>,
+    pub proposal_summaries: Vec<AdvisorProposalSummary>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AdvisorContextSummary {
+    pub kind: AdvisorContextKind,
+    pub trust: AdvisorTrust,
+    pub freshness: AdvisorFreshness,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AdvisorProposalSummary {
+    pub state: AdvisorDispatchState,
+    pub requires_explicit_approval: bool,
+}
+
 impl AdvisorFoundationSnapshot {
+    pub fn empty() -> Self {
+        Self {
+            schema_version: ADVISOR_FOUNDATION_SCHEMA_VERSION,
+            conversations: Vec::new(),
+            context_references: Vec::new(),
+            dispatch_proposals: Vec::new(),
+        }
+    }
+
     pub fn validate(&self) -> Result<(), AdvisorContractError> {
         if self.schema_version != ADVISOR_FOUNDATION_SCHEMA_VERSION {
             return Err(AdvisorContractError::UnsupportedSchemaVersion);
@@ -192,6 +230,32 @@ impl AdvisorFoundationSnapshot {
             }
         }
         Ok(())
+    }
+
+    pub fn workspace_snapshot(&self) -> AdvisorWorkspaceSnapshot {
+        AdvisorWorkspaceSnapshot {
+            schema_version: self.schema_version,
+            conversation_count: self.conversations.len() as u16,
+            context_reference_count: self.context_references.len() as u16,
+            proposal_count: self.dispatch_proposals.len() as u16,
+            context_summaries: self
+                .context_references
+                .iter()
+                .map(|reference| AdvisorContextSummary {
+                    kind: reference.kind,
+                    trust: reference.provenance.trust,
+                    freshness: reference.freshness,
+                })
+                .collect(),
+            proposal_summaries: self
+                .dispatch_proposals
+                .iter()
+                .map(|proposal| AdvisorProposalSummary {
+                    state: proposal.state,
+                    requires_explicit_approval: proposal.requires_explicit_approval,
+                })
+                .collect(),
+        }
     }
 }
 
@@ -271,6 +335,24 @@ mod tests {
         let serialized = serde_json::to_value(&snapshot).expect("fixture must serialize");
         assert!(serialized.get("prompt").is_none());
         assert!(serialized.get("transcript").is_none());
+    }
+
+    #[test]
+    fn accepts_an_empty_reference_only_snapshot() {
+        assert_eq!(AdvisorFoundationSnapshot::empty().validate(), Ok(()));
+    }
+
+    #[test]
+    fn workspace_snapshot_excludes_opaque_and_sensitive_metadata() {
+        let snapshot: AdvisorFoundationSnapshot =
+            serde_json::from_str(FIXTURE).expect("fixture must deserialize");
+        let value = serde_json::to_value(snapshot.workspace_snapshot())
+            .expect("workspace summary must serialize");
+        let serialized = value.to_string();
+        assert!(!serialized.contains("advisor-thread-fixture-01"));
+        assert!(!serialized.contains("promptSha256"));
+        assert!(!serialized.contains("targetProjectId"));
+        assert_eq!(value["conversationCount"], 1);
     }
 
     #[test]

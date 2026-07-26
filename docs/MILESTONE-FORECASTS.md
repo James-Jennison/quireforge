@@ -1789,22 +1789,22 @@ prototype is a separate approval-gated milestone.
 
 ## Milestone 27 — Unified Conversation Engine
 
-| Field                | Record                                                                                                                              |
-| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| Forecast date        | 2026-07-26                                                                                                                         |
-| Preliminary forecast | 20–36 active hours; medium confidence                                                                                              |
-| Scope                | Managed Chat/Codex native capability boundary, bounded local metadata, Settings foundation, direct regression, and package gate   |
-| Main uncertainty     | Preserving Codex-owned authentication and strict no-project Chat capability limits through desktop and installed-host validation   |
-| Exclusions           | Consumer ChatGPT APIs, credentials, API keys, context transfer, history continuation, automation, Advisor/Planner, Python, Qt     |
-| Outcome              | Complete; strict mode boundary and fresh `0.1.0-beta.4` Ubuntu 22.04 package gate closed without autonomous behavior changes      |
+| Field                | Record                                                                                                                           |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Forecast date        | 2026-07-26                                                                                                                       |
+| Preliminary forecast | 20–36 active hours; medium confidence                                                                                            |
+| Scope                | Managed Chat/Codex native capability boundary, bounded local metadata, Settings foundation, direct regression, and package gate  |
+| Main uncertainty     | Preserving Codex-owned authentication and strict no-project Chat capability limits through desktop and installed-host validation |
+| Exclusions           | Consumer ChatGPT APIs, credentials, API keys, context transfer, history continuation, automation, Advisor/Planner, Python, Qt    |
+| Outcome              | Complete; strict mode boundary and fresh `0.1.0-beta.4` Ubuntu 22.04 package gate closed without autonomous behavior changes     |
 
 ## Milestone 28 — Reference-Only Advisor Foundation
 
-| Field                | Record                                                                                                                        |
-| -------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| Forecast date        | 2026-07-26                                                                                                                    |
-| Preliminary forecast | 10–18 active hours; medium confidence                                                                                         |
-| Scope                | Opaque Advisor metadata, closed context/provenance contracts, digest-only proposal records, deterministic fixtures, tests   |
-| Main uncertainty     | Maintaining a useful future Approval/Dispatch boundary while guaranteeing no prompt/transcript or execution capability leaks |
-| Exclusions           | Advisor UI/model calls, project reads, screenshot ingestion, dispatch, Python, watchers, automation, 24D behavior, Qt       |
-| Outcome              | Active; first reference-only contract checkpoint is implemented, with no capability-bearing UI or model behavior              |
+| Field                | Record                                                                                                                                                      |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Forecast date        | 2026-07-26                                                                                                                                                  |
+| Preliminary forecast | 10–18 active hours; medium confidence                                                                                                                       |
+| Scope                | Opaque Advisor metadata, a fixed read-only snapshot route, closed context/provenance contracts, digest-only proposal records, deterministic fixtures, tests |
+| Main uncertainty     | Maintaining a useful future Approval/Dispatch boundary while guaranteeing no prompt/transcript or execution capability leaks                                |
+| Exclusions           | Advisor model calls, project reads, screenshot ingestion, action/dispatch UI, Python, watchers, automation, 24D behavior, Qt                                |
+| Outcome              | Active; reference-only contract and safe read-only workspace shell are implemented, with no model or execution behavior                                     |

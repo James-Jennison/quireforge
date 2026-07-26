@@ -853,10 +853,11 @@ Active on `main`. This first Advisor slice is
 strictly local metadata and contract work: opaque Codex-thread references,
 explicit closed context-reference kinds, separate trust/provenance/freshness,
 and digest-only future dispatch proposals that always require a later explicit
-user approval. It deliberately excludes an Advisor UI, model call, project
-file/screenshot reader, transcript or prompt retention, dispatch bridge,
-Python sidecar, watcher, automatic handoff, contradiction resolution, and
-repository mutation. See the
+user approval. Its fixed `#advisor` route receives only a safe summary of
+app-owned reference metadata and presents no composer or action controls. It deliberately excludes
+model calls, project file/screenshot reading, transcript or prompt retention,
+dispatch bridge, Python sidecar, watcher, automatic handoff, contradiction
+resolution, and repository mutation. See the
 [Milestone 28 report](MILESTONE_28_ADVISOR_FOUNDATION.md).
 
 ## Forecast policy

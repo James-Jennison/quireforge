@@ -281,6 +281,15 @@ fn project_workspace_status(service: tauri::State<'_, ProjectService>) -> Projec
     service.status()
 }
 
+/// Reads QuireForge-owned Advisor reference metadata only. It accepts no
+/// caller input and cannot read a project, start a turn, or dispatch work.
+#[tauri::command]
+fn advisor_snapshot_read(
+    service: tauri::State<'_, ProjectService>,
+) -> Result<advisor::AdvisorWorkspaceSnapshot, ()> {
+    service.advisor_workspace_snapshot()
+}
+
 #[tauri::command]
 async fn project_pick_directory(
     app: tauri::AppHandle,
@@ -1051,6 +1060,7 @@ pub fn run() {
             codex_usage_status,
             codex_usage_refresh,
             project_workspace_status,
+            advisor_snapshot_read,
             project_pick_directory,
             project_pick_relink,
             project_confirm_attachment,

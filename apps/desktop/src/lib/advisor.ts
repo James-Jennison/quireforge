@@ -1,4 +1,3 @@
-import fixture from "../../fixtures/advisor-foundation.json";
 import { z } from "zod";
 
 /**
@@ -188,6 +187,3 @@ export const advisorFoundationSnapshotSchema = z
 export type AdvisorFoundationSnapshot = z.infer<
   typeof advisorFoundationSnapshotSchema
 >;
-
-export const advisorFoundationFixture =
-  advisorFoundationSnapshotSchema.parse(fixture);

@@ -11,6 +11,7 @@ describe("workspace navigation", () => {
   it("defines every visible sidebar destination once", () => {
     expect(workspaceNavigation.map(({ route }) => route)).toEqual([
       "home",
+      "advisor",
       "conversation",
       "projects",
       "project-state",

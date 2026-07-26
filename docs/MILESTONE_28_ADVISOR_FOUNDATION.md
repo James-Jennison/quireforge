@@ -1,12 +1,12 @@
 # Milestone 28 — Reference-Only Advisor Foundation
 
-Status: active implementation checkpoint.
+Status: active implementation checkpoint; reference-only workspace shell added.
 
 ## Objective
 
-Establish the smallest safe local foundation for a future Advisor workspace and
-Approval/Dispatch controller without adding an Advisor UI, model turn,
-repository reader, project attachment, prompt dispatch, or autonomous action.
+Establish the smallest safe local foundation for an Advisor workspace and a
+future Approval/Dispatch controller without adding a model turn, repository
+reader, project attachment, prompt dispatch, or autonomous action.
 
 ## Implemented checkpoint
 
@@ -20,12 +20,20 @@ The foundation introduces a strict version-1 Rust/TypeScript contract for:
 - reference-only dispatch proposals with prompt and context-manifest digests;
 - explicit-approval-required drafts, approvals, and rejections.
 
+The active shell adds one fixed-purpose, no-argument Tauri read command and an
+`#advisor` route. Rust validates the existing version-1 contract before
+deriving a smaller strict Rust/Zod safe-summary projection for presentation. It
+has no composer or controls for project selection, context reading, models,
+approvals, or dispatch; opaque IDs, digests, model requests, and project IDs
+are not serialized to the route.
+
 The accompanying SQLite migration creates only bounded metadata tables. They
 contain opaque references, closed source labels, commits, timestamps, and
 SHA-256 digests. They deliberately contain no prompt body, response,
 transcript, credential, token, arbitrary project path, or browser/session data.
-The foundation exposes no Tauri command and executes no model, Git, terminal,
-filesystem, or network operation.
+The read command executes no model, Git, terminal, filesystem, project-context,
+or network operation. It accepts no path, project ID, prompt, model, Git
+argument, or other caller input and does not mutate SQLite.
 
 ## Boundaries
 
@@ -56,7 +64,7 @@ content columns.
 
 The remaining Milestone 28 work is a separately reviewed, deterministic
 foundation completion audit and its normal desktop validation/package decision.
-No Advisor workspace, project-context reader, screenshot staging, managed
-Advisor model call, prompt editor, approval UI, dispatch bridge, Python
-sidecar, watcher, automatic handoff, contradiction resolution, or repository
-write capability has been added.
+No project-context reader, screenshot staging, managed Advisor model call,
+prompt editor, approval UI, dispatch bridge, Python sidecar, watcher, automatic
+handoff, contradiction resolution, or repository-write capability has been
+added.

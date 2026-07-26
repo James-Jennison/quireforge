@@ -20,6 +20,7 @@ import {
   type ThemeId,
 } from "./appearanceThemes";
 import { AuthGate } from "./AuthGate";
+import { AdvisorWorkspace } from "./AdvisorWorkspace";
 import { ChatWorkspace } from "./ChatWorkspace";
 import { ConversationWorkspace } from "./ConversationWorkspace";
 import { FilePreviewWorkspace } from "./FilePreviewWorkspace";
@@ -62,6 +63,7 @@ import {
   loadGitDiff,
   loadGitStatus,
   loadIntegrationCatalog,
+  loadAdvisorSnapshot,
   notifyConversation,
   openFilePreview,
   openIntegrationControlBrowser,
@@ -107,6 +109,7 @@ import {
   startTerminal,
   writeTerminal,
 } from "./lib/bridge";
+import type { AdvisorWorkspaceSnapshot } from "./lib/advisorWorkspace";
 import {
   scaffoldConversationAttachments,
   type ConversationAttachmentCancelRequest,
@@ -237,6 +240,7 @@ type AuthViewState = CodexAuthSnapshot["state"] | "checking" | "preview";
 type ProjectViewState = "checking" | "native" | "preview";
 type ProjectStateViewState =
   "idle" | "checking" | "native" | "preview" | "error";
+type AdvisorViewState = "checking" | "native" | "preview" | "error";
 type GitViewState = "checking" | "native" | "preview";
 type WorktreeViewState = "checking" | "native" | "preview";
 type ConversationViewState = "checking" | "native" | "preview";
@@ -266,6 +270,7 @@ interface AppProps {
   loadRepositoryStateTask?: (
     request: RepositoryStateReadRequest,
   ) => Promise<RepositoryStateReadSnapshot>;
+  loadAdvisorSnapshotTask?: () => Promise<AdvisorWorkspaceSnapshot>;
   pickProject?: () => Promise<ProjectWorkspaceSnapshot>;
   pickRelink?: (projectId: string) => Promise<ProjectWorkspaceSnapshot>;
   confirmProject?: () => Promise<ProjectWorkspaceSnapshot>;
@@ -592,6 +597,7 @@ export default function App({
   refreshUsage = refreshCodexUsage,
   loadProjects = loadProjectWorkspace,
   loadRepositoryStateTask = readRepositoryState,
+  loadAdvisorSnapshotTask = loadAdvisorSnapshot,
   pickProject = pickProjectDirectory,
   pickRelink = pickProjectRelink,
   confirmProject = confirmProjectAttachment,
@@ -679,6 +685,10 @@ export default function App({
   const [repositoryStateViewState, setRepositoryStateViewState] =
     useState<ProjectStateViewState>("idle");
   const [repositoryStateRefresh, setRepositoryStateRefresh] = useState(0);
+  const [advisorSnapshot, setAdvisorSnapshot] =
+    useState<AdvisorWorkspaceSnapshot | null>(null);
+  const [advisorViewState, setAdvisorViewState] =
+    useState<AdvisorViewState>("checking");
   const [filePreview, setFilePreview] =
     useState<FilePreviewSnapshot>(scaffoldFilePreview);
   const [filePreviewBusy, setFilePreviewBusy] = useState(false);
@@ -1073,6 +1083,45 @@ export default function App({
     loadRepositoryStateTask,
     projectState,
     repositoryStateRefresh,
+    workspaceLocation.route,
+  ]);
+
+  useEffect(() => {
+    if (!accessGranted || workspaceLocation.route !== "advisor") return;
+    let active = true;
+    const resetAdvisor = (
+      state: AdvisorViewState,
+      snapshot: AdvisorWorkspaceSnapshot | null = null,
+    ) => {
+      void Promise.resolve().then(() => {
+        if (!active) return;
+        setAdvisorSnapshot(snapshot);
+        setAdvisorViewState(state);
+      });
+    };
+    if (bridgeState === "preview") {
+      resetAdvisor("preview");
+      return () => {
+        active = false;
+      };
+    }
+    resetAdvisor("checking");
+    void loadAdvisorSnapshotTask()
+      .then((snapshot) => {
+        if (!active) return;
+        resetAdvisor("native", snapshot);
+      })
+      .catch(() => {
+        if (!active) return;
+        resetAdvisor("error");
+      });
+    return () => {
+      active = false;
+    };
+  }, [
+    accessGranted,
+    bridgeState,
+    loadAdvisorSnapshotTask,
     workspaceLocation.route,
   ]);
 
@@ -3249,6 +3298,16 @@ export default function App({
                 onRefresh={() =>
                   setRepositoryStateRefresh((current) => current + 1)
                 }
+              />
+            </WorkspaceView>
+
+            <WorkspaceView
+              route="advisor"
+              active={workspaceLocation.route === "advisor"}
+            >
+              <AdvisorWorkspace
+                availability={advisorViewState}
+                snapshot={advisorSnapshot}
               />
             </WorkspaceView>
 

@@ -1331,16 +1331,16 @@ greater precision than the underlying ranges.
 
 ## Milestone 28 — Reference-Only Advisor Foundation
 
-- **Objective:** Establish reference-only local contracts for a future Advisor
-  workspace and Approval/Dispatch controller without creating a model call,
-  UI, project reader, or dispatch capability.
+- **Objective:** Establish reference-only local contracts and a safe read-only
+  Advisor workspace shell without creating a model call, project reader, or
+  dispatch capability.
 - **Start:** `2026-07-26`.
 - **Forecast:** 10–18 active hours; medium confidence.
 - **Boundary:** Opaque conversation and selected-context references,
   provenance/freshness, digest-only proposal records, strict Rust/Zod parity,
   SQLite migration, deterministic fixtures, and validation only. No prompt or
-  transcript retention, credentials, project read, model call, UI, dispatch,
-  Python sidecar, watcher, automation, 24D behavior, or Qt work.
+  transcript retention, credentials, project read, model call, action UI,
+  dispatch, Python sidecar, watcher, automation, 24D behavior, or Qt work.
 - **Package implication:** Any final installed runtime change requires a fresh
   incremented pinned Ubuntu 22.04 Debian/AppImage gate before milestone
   completion.

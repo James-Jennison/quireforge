@@ -99,6 +99,10 @@ import {
   type ChatConversationStartRequest,
 } from "./chat";
 import {
+  advisorWorkspaceSnapshotSchema,
+  type AdvisorWorkspaceSnapshot,
+} from "./advisorWorkspace";
+import {
   projectPreflightSchema,
   projectWorkspaceSchema,
   type ProjectPreflightSnapshot,
@@ -174,6 +178,7 @@ export const INTEGRATION_MUTATION_PREVIEW_COMMAND =
 export const INTEGRATION_MUTATION_CONFIRM_COMMAND =
   "integration_mutation_confirm";
 export const PROJECT_WORKSPACE_STATUS_COMMAND = "project_workspace_status";
+export const ADVISOR_SNAPSHOT_READ_COMMAND = "advisor_snapshot_read";
 export const PROJECT_PICK_DIRECTORY_COMMAND = "project_pick_directory";
 export const PROJECT_PICK_RELINK_COMMAND = "project_pick_relink";
 export const PROJECT_CONFIRM_ATTACHMENT_COMMAND = "project_confirm_attachment";
@@ -462,6 +467,18 @@ export function loadProjectWorkspace(
     PROJECT_WORKSPACE_STATUS_COMMAND,
     undefined,
     invokeFunction,
+  );
+}
+
+/**
+ * Reads only local Advisor reference metadata. This fixed command has no
+ * request shape, project selection, prompt, or execution capability.
+ */
+export async function loadAdvisorSnapshot(
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<AdvisorWorkspaceSnapshot> {
+  return advisorWorkspaceSnapshotSchema.parse(
+    await invokeFunction(ADVISOR_SNAPSHOT_READ_COMMAND),
   );
 }
 
