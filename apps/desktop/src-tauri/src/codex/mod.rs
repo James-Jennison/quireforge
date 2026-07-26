@@ -2,6 +2,7 @@ mod app_server;
 mod auth;
 mod backend;
 mod conversation;
+pub mod conversation_mode;
 mod error;
 pub mod integration;
 mod integration_control;

@@ -24,6 +24,7 @@ import {
   CODEX_AUTH_OPEN_BROWSER_COMMAND,
   CODEX_AUTH_START_COMMAND,
   CODEX_AUTH_STATUS_COMMAND,
+  CHAT_AUTHENTICATION_STATUS_COMMAND,
   CODEX_RUNTIME_PROBE_COMMAND,
   confirmProjectAttachment,
   confirmWorktree,
@@ -55,6 +56,7 @@ import {
   FILE_PREVIEW_OPEN_COMMAND,
   FILE_PREVIEW_PICK_COMMAND,
   loadCodexAuth,
+  loadChatAuthentication,
   loadCodexUsage,
   loadCodexRuntime,
   loadConversationStatus,
@@ -303,6 +305,39 @@ describe("desktop bridge", () => {
     });
     expect(invoke).toHaveBeenNthCalledWith(3, CODEX_AUTH_CANCEL_COMMAND);
     expect(invoke).toHaveBeenNthCalledWith(4, CODEX_AUTH_OPEN_BROWSER_COMMAND);
+  });
+
+  it("loads only the closed managed-ChatGPT readiness contract for Chat", async () => {
+    const expected = {
+      schemaVersion: 1,
+      state: "ready",
+      capabilities: [
+        {
+          mode: "chat",
+          requiresAttachedProject: false,
+          allowsNativeActions: false,
+          allowsTerminal: false,
+          allowsGit: false,
+          allowsWorktrees: false,
+          allowsIntegrations: false,
+          requiresManagedChatGptAuth: true,
+        },
+        {
+          mode: "codex",
+          requiresAttachedProject: true,
+          allowsNativeActions: true,
+          allowsTerminal: true,
+          allowsGit: true,
+          allowsWorktrees: true,
+          allowsIntegrations: true,
+          requiresManagedChatGptAuth: false,
+        },
+      ],
+    } as const;
+    const invoke = vi.fn().mockResolvedValue(expected);
+
+    await expect(loadChatAuthentication(invoke)).resolves.toEqual(expected);
+    expect(invoke).toHaveBeenCalledWith(CHAT_AUTHENTICATION_STATUS_COMMAND);
   });
 
   it("uses fixed read-only usage commands", async () => {

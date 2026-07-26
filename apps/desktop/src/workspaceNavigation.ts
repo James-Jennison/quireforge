@@ -11,7 +11,17 @@ export type PrimaryWorkspaceRoute =
   | "worktrees"
   | "terminal";
 
-export type SettingsSection = "accounts" | "appearance" | "about";
+export type SettingsSection =
+  | "general"
+  | "appearance"
+  | "chat"
+  | "codex"
+  | "permissions-safety"
+  | "models-providers"
+  | "integrations"
+  | "privacy-data"
+  | "keyboard-shortcuts"
+  | "about-updates";
 export type WorkspaceRoute = PrimaryWorkspaceRoute | "settings";
 
 export interface WorkspaceLocation {
@@ -111,9 +121,16 @@ const primaryRoutes = new Set<PrimaryWorkspaceRoute>(
   workspaceNavigation.map(({ route }) => route),
 );
 const settingsSections = new Set<SettingsSection>([
-  "accounts",
+  "general",
   "appearance",
-  "about",
+  "chat",
+  "codex",
+  "permissions-safety",
+  "models-providers",
+  "integrations",
+  "privacy-data",
+  "keyboard-shortcuts",
+  "about-updates",
 ]);
 
 export const defaultWorkspaceLocation: WorkspaceLocation = {
@@ -129,7 +146,10 @@ export function parseWorkspaceHash(hash: string): WorkspaceLocation | null {
   if (rest.length > 0) return null;
   if (route === "settings") {
     if (section === undefined) {
-      return { route: "settings", settingsSection: "accounts" };
+      return { route: "settings", settingsSection: "general" };
+    }
+    if (section === "accounts") {
+      return { route: "settings", settingsSection: "general" };
     }
     if (settingsSections.has(section as SettingsSection)) {
       return {
@@ -150,14 +170,14 @@ export function parseWorkspaceHash(hash: string): WorkspaceLocation | null {
 
 export function workspaceLocationHash(location: WorkspaceLocation): string {
   if (location.route === "settings") {
-    return `#settings/${location.settingsSection ?? "accounts"}`;
+    return `#settings/${location.settingsSection ?? "general"}`;
   }
   return `#${location.route}`;
 }
 
 export function workspaceLocationFor(
   route: WorkspaceRoute,
-  settingsSection: SettingsSection = "accounts",
+  settingsSection: SettingsSection = "general",
 ): WorkspaceLocation {
   return route === "settings"
     ? { route, settingsSection }

@@ -34,9 +34,13 @@ describe("workspace navigation", () => {
         location,
       );
     }
+    expect(parseWorkspaceHash("#settings/general")).toEqual({
+      route: "settings",
+      settingsSection: "general",
+    });
     expect(parseWorkspaceHash("#settings/accounts")).toEqual({
       route: "settings",
-      settingsSection: "accounts",
+      settingsSection: "general",
     });
     expect(parseWorkspaceHash("#/settings/appearance/")).toEqual({
       route: "settings",

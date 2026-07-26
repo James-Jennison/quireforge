@@ -211,7 +211,7 @@ describe("QuireForge desktop shell", () => {
       }),
     ).toBeInTheDocument();
     expect(screen.getAllByText("Connected").length).toBeGreaterThan(0);
-    fireEvent.click(screen.getByRole("button", { name: /About/u }));
+    fireEvent.click(screen.getByRole("button", { name: /About & updates/u }));
     expect(
       screen.getByText(
         /not made, endorsed, supported, or distributed by OpenAI/u,

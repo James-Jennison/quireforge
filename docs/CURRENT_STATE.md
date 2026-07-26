@@ -6,7 +6,7 @@ QuireForge is an unofficial Linux workspace for Codex: “Build boldly. Work
 locally.” Tauri + React + TypeScript is the current functional prototype. ADR
 0028 accepts retaining Tauri conditionally; no Qt migration has been selected.
 
-- **Branch:** `feat/milestone-26-appearance-themes`
+- **Branch:** `feat/milestone-27-unified-conversation-engine`
 - **Checkpoint:** Milestones 22, 22B, 23, 24A, 24B, 24C, and 25 are complete.
   Milestone 26's palette-only implementation is
   `0ae0de7995f10128728116b148d49f2cb5b2cf79`. Its selector-hotfix candidate is
@@ -71,6 +71,13 @@ notifications, and one native drop-capture path. React/TypeScript/Vite remains
 the current presentation layer and calls that façade through its bridge.
 
 ## Next action
+
+Milestone 27 — **Unified Conversation Engine** is in progress. Its first
+managed-auth feasibility slice adds strict Rust/Zod Chat/Codex capability
+profiles and the Settings navigation foundation. Chat requires only the
+documented Codex-managed browser ChatGPT sign-in and remains unavailable for
+API-key, external-token, browser-session, or consumer-ChatGPT paths. See
+[Milestone 27](MILESTONE_27_UNIFIED_CONVERSATION_ENGINE.md).
 
 Milestone 26 — **Appearance Themes** is complete. It retains Forge as the
 default and adds seven closed local palettes through Settings → Appearance with

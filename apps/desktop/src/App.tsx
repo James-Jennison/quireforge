@@ -1440,7 +1440,7 @@ export default function App({
 
   function navigateWorkspace(
     route: WorkspaceRoute,
-    settingsSection: SettingsSection = "accounts",
+    settingsSection: SettingsSection = "general",
   ) {
     const next = workspaceLocationFor(route, settingsSection);
     const nextHash = workspaceLocationHash(next);
@@ -2960,7 +2960,7 @@ export default function App({
         <button
           className={
             workspaceLocation.route === "settings" &&
-            workspaceLocation.settingsSection === "accounts"
+            workspaceLocation.settingsSection === "general"
               ? "account-summary account-summary--active"
               : "account-summary"
           }
@@ -2968,12 +2968,12 @@ export default function App({
           aria-label="Open Codex account and connection settings"
           aria-current={
             workspaceLocation.route === "settings" &&
-            workspaceLocation.settingsSection === "accounts"
+            workspaceLocation.settingsSection === "general"
               ? "page"
               : undefined
           }
           onClick={() => {
-            navigateWorkspace("settings", "accounts");
+            navigateWorkspace("settings", "general");
           }}
         >
           <span aria-hidden="true">Q</span>
@@ -3377,7 +3377,7 @@ export default function App({
               active={workspaceLocation.route === "settings"}
             >
               <SettingsWorkspace
-                section={workspaceLocation.settingsSection ?? "accounts"}
+                section={workspaceLocation.settingsSection ?? "general"}
                 auth={auth}
                 authState={authState}
                 authBusy={authBusy}

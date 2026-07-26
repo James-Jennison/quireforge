@@ -41,9 +41,9 @@ const sections: readonly {
   description: string;
 }[] = [
   {
-    id: "accounts",
-    label: "Accounts & connections",
-    description: "Codex status and supported connection controls",
+    id: "general",
+    label: "General",
+    description: "Application defaults and managed account status",
   },
   {
     id: "appearance",
@@ -51,11 +51,93 @@ const sections: readonly {
     description: "Local QuireForge display preferences",
   },
   {
-    id: "about",
-    label: "About",
+    id: "chat",
+    label: "Chat",
+    description: "No-project conversation capability and account readiness",
+  },
+  {
+    id: "codex",
+    label: "Codex",
+    description: "Attached-project task controls and native execution boundary",
+  },
+  {
+    id: "permissions-safety",
+    label: "Permissions & safety",
+    description: "Reviewed approval and sandbox policy boundaries",
+  },
+  {
+    id: "models-providers",
+    label: "Models & providers",
+    description: "Runtime-reported model availability and provider limits",
+  },
+  {
+    id: "integrations",
+    label: "Integrations",
+    description: "Supported Codex integrations and connection status",
+  },
+  {
+    id: "privacy-data",
+    label: "Privacy & data",
+    description: "Local metadata, credential ownership, and data boundaries",
+  },
+  {
+    id: "keyboard-shortcuts",
+    label: "Keyboard shortcuts",
+    description: "Discoverable keyboard navigation and focus behavior",
+  },
+  {
+    id: "about-updates",
+    label: "About & updates",
     description: "Version, runtime, and product boundaries",
   },
 ];
+
+const foundationSections: Readonly<
+  Partial<Record<SettingsSection, { eyebrow: string; title: string; detail: string }>>
+> = {
+  chat: {
+    eyebrow: "Chat",
+    title: "A separate, no-project conversation capability.",
+    detail:
+      "Chat requires the managed ChatGPT browser sign-in owned by the supported Codex runtime. API keys, browser cookies, external tokens, and consumer ChatGPT session reuse are not accepted.",
+  },
+  codex: {
+    eyebrow: "Codex",
+    title: "Attached projects remain an explicit execution boundary.",
+    detail:
+      "Codex conversations require a verified attached project. Model, reasoning, sandbox, and approval controls remain native-owned and project-scoped.",
+  },
+  "permissions-safety": {
+    eyebrow: "Permissions & safety",
+    title: "Capability changes stay visible and reviewable.",
+    detail:
+      "QuireForge will not auto-approve commands, file changes, or permissions. A Chat conversation never inherits project execution authority.",
+  },
+  "models-providers": {
+    eyebrow: "Models & providers",
+    title: "Runtime capability is reported, not configured with secrets.",
+    detail:
+      "The installed Codex runtime remains the only approved account boundary. OpenAI API or project keys are separate and are not a substitute for managed ChatGPT account access.",
+  },
+  integrations: {
+    eyebrow: "Integrations",
+    title: "Existing Codex integrations stay opt-in.",
+    detail:
+      "This foundation does not install, authorize, or enable integrations. Any future mode-specific availability must be explicitly advertised by the native capability contract.",
+  },
+  "privacy-data": {
+    eyebrow: "Privacy & data",
+    title: "Credentials remain with Codex; QuireForge stores bounded metadata.",
+    detail:
+      "Passwords, API keys, access tokens, browser cookies, account identifiers, and raw provider responses never enter QuireForge settings or local metadata.",
+  },
+  "keyboard-shortcuts": {
+    eyebrow: "Keyboard shortcuts",
+    title: "Keyboard access is part of every workspace boundary.",
+    detail:
+      "Settings navigation, mode selection, confirmations, and recovery states will preserve visible focus, semantic labels, and predictable escape behavior.",
+  },
+};
 
 function accountKindLabel(accountKind: CodexAuthSnapshot["accountKind"]) {
   switch (accountKind) {
@@ -179,14 +261,14 @@ export function SettingsWorkspace({
       </aside>
 
       <div className="settings-workspace__content">
-        {section === "accounts" && (
+        {section === "general" && (
           <div
             className="settings-section"
-            aria-labelledby="settings-accounts-title"
+            aria-labelledby="settings-general-title"
           >
             <div className="settings-section__heading">
-              <p className="eyebrow">Accounts & connections</p>
-              <h2 id="settings-accounts-title">Codex owns authentication.</h2>
+              <p className="eyebrow">General</p>
+              <h2 id="settings-general-title">Codex owns authentication.</h2>
               <p>
                 QuireForge receives a bounded connection state. It never reads,
                 stores, or displays account identifiers, email addresses,
@@ -370,14 +452,14 @@ export function SettingsWorkspace({
           </div>
         )}
 
-        {section === "about" && (
+        {section === "about-updates" && (
           <div
             className="settings-section"
-            aria-labelledby="settings-about-title"
+            aria-labelledby="settings-about-updates-title"
           >
             <div className="settings-section__heading">
-              <p className="eyebrow">About</p>
-              <h2 id="settings-about-title">{productName}</h2>
+              <p className="eyebrow">About & updates</p>
+              <h2 id="settings-about-updates-title">{productName}</h2>
               <p>Build boldly. Work locally.</p>
             </div>
 
@@ -408,6 +490,29 @@ export function SettingsWorkspace({
                 QuireForge is not made, endorsed, supported, or distributed by
                 OpenAI. Attached projects remain in place, and Codex continues
                 to own its authentication, configuration, and session data.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {foundationSections[section] && (
+          <div
+            className="settings-section"
+            aria-labelledby={`settings-${section}-title`}
+          >
+            <div className="settings-section__heading">
+              <p className="eyebrow">{foundationSections[section].eyebrow}</p>
+              <h2 id={`settings-${section}-title`}>
+                {foundationSections[section].title}
+              </h2>
+              <p>{foundationSections[section].detail}</p>
+            </div>
+            <div className="settings-boundary-note">
+              <strong>Foundation in progress.</strong>
+              <p>
+                This section exposes the approved ownership boundary before it
+                offers any new control. Unsupported actions remain unavailable
+                instead of being simulated.
               </p>
             </div>
           </div>

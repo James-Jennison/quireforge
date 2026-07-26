@@ -828,6 +828,16 @@ automation, external branded assets, and Qt work. Fresh pinned Ubuntu 22.04
 Debian/AppImage lifecycle and launch evidence passed from clean implementation
 commit `0ae0de7995f10128728116b148d49f2cb5b2cf79`.
 
+### 27 — Unified Conversation Engine
+
+In progress on `feat/milestone-27-unified-conversation-engine`. Establish a
+managed-ChatGPT-account feasibility gate and native capability-separated Chat
+and Codex conversation modes. Chat must use only the documented Codex
+app-server browser-login path; API keys, external tokens, cookies, consumer
+ChatGPT APIs, background behavior, and automatic context transfer are out of
+scope. Completion requires strict migration/contract coverage, full desktop
+validation, and fresh pinned Ubuntu 22.04 package evidence.
+
 ## Forecast policy
 
 The initial whole-project estimate is several hundred active engineering hours

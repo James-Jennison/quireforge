@@ -88,6 +88,10 @@ import {
   type ConversationStartRequest,
 } from "./conversation";
 import {
+  chatAuthenticationSnapshotSchema,
+  type ChatAuthenticationSnapshot,
+} from "./conversationMode";
+import {
   projectPreflightSchema,
   projectWorkspaceSchema,
   type ProjectPreflightSnapshot,
@@ -198,6 +202,7 @@ export const GIT_MUTATION_PREVIEW_COMMAND = "git_mutation_preview";
 export const GIT_MUTATION_CONFIRM_COMMAND = "git_mutation_confirm";
 export const GIT_MUTATION_RECOVER_COMMAND = "git_mutation_recover";
 export const CONVERSATION_STATUS_COMMAND = "conversation_status";
+export const CHAT_AUTHENTICATION_STATUS_COMMAND = "chat_authentication_status";
 export const CONVERSATION_ACTIVE_COMMAND = "conversation_active";
 export const CONVERSATION_NOTIFY_COMMAND = "conversation_notify";
 export const CONVERSATION_START_COMMAND = "conversation_start";
@@ -329,6 +334,13 @@ export async function loadCodexAuth(
 ): Promise<CodexAuthSnapshot> {
   const payload = await invokeFunction(CODEX_AUTH_STATUS_COMMAND);
   return codexAuthSchema.parse(payload);
+}
+
+export async function loadChatAuthentication(
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<ChatAuthenticationSnapshot> {
+  const payload = await invokeFunction(CHAT_AUTHENTICATION_STATUS_COMMAND);
+  return chatAuthenticationSnapshotSchema.parse(payload);
 }
 
 export async function refreshCodexAuth(

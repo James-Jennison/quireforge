@@ -18,6 +18,7 @@ use attachment::{
     },
     ClaimedConversationAttachments, ConversationAttachmentService,
 };
+use codex::conversation_mode::{chat_authentication_snapshot, ChatAuthenticationSnapshot};
 use codex::{
     types::CodexRuntimeSnapshot, AuthLoginMethod, CodexAuthService, CodexAuthSnapshot,
     CodexRuntimeService, CodexUsageService, CodexUsageSnapshot,
@@ -184,6 +185,13 @@ async fn codex_auth_refresh(
     service: tauri::State<'_, CodexAuthService>,
 ) -> Result<CodexAuthSnapshot, ()> {
     Ok(service.refresh().await)
+}
+
+#[tauri::command]
+async fn chat_authentication_status(
+    service: tauri::State<'_, CodexAuthService>,
+) -> Result<ChatAuthenticationSnapshot, ()> {
+    Ok(chat_authentication_snapshot(&service.status().await))
 }
 
 #[tauri::command]
@@ -993,6 +1001,7 @@ pub fn run() {
             integration_mutation_confirm,
             codex_auth_status,
             codex_auth_refresh,
+            chat_authentication_status,
             codex_auth_start,
             codex_auth_cancel,
             codex_auth_logout,

@@ -27,6 +27,10 @@ released a usable application.
 
 ### Added
 
+- Milestone 27 foundation: managed-ChatGPT-account feasibility contract,
+  explicit Chat/Codex capability separation, and accessible Settings
+  destinations. Chat rejects API-key readiness and has no project, terminal,
+  Git, worktree, integration, or native-action authority.
 - Milestone 26 Appearance Themes: eight closed, accessible local palettes;
   live settings preview; keyboard selection; local restoration; and direct
   desktop/mobile visual regression coverage without a native, backend,
