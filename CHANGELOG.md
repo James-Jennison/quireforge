@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — 0.1.0-beta.10
+## Unreleased — 0.1.0-beta.11
 
 - Pin the transitive Node `brace-expansion` resolution to `5.0.8`, removing
   the high-severity Dependabot advisory from the linting toolchain.

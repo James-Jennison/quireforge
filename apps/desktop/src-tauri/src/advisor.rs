@@ -131,6 +131,7 @@ pub struct AdvisorDraftCreateRequest {
 pub struct AdvisorApprovalDecisionRequest {
     pub proposal_id: String,
     pub decision: AdvisorDispatchState,
+    pub binding: AdvisorDraftCreateRequest,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]

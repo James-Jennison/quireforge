@@ -386,6 +386,31 @@ fn advisor_draft_decide(
 ) -> Result<advisor::AdvisorApprovalSnapshot, ()> {
     if !valid_uuid_v7(&request.proposal_id)
         || matches!(request.decision, advisor::AdvisorDispatchState::Draft)
+        || !valid_advisor_draft_request(&request.binding)
+    {
+        return Err(());
+    }
+    let proposal = projects
+        .advisor_dispatch_proposal(&request.proposal_id)
+        .map_err(|_| ())?;
+    if proposal.state != advisor::AdvisorDispatchState::Draft
+        || proposal.advisor_conversation_id != request.binding.advisor_conversation_id
+        || proposal.target_project_id != request.binding.target_project_id
+        || proposal.prompt_sha256 != sha256(&request.binding.prompt)
+        || proposal.context_manifest_sha256
+            != sha256(
+                &serde_json::to_string(&request.binding.selected_project_state).map_err(|_| ())?,
+            )
+        || proposal.capability_manifest_sha256
+            != sha256(
+                &serde_json::to_string(&request.binding.declared_capabilities).map_err(|_| ())?,
+            )
+        || proposal.requested_model.as_deref() != Some(request.binding.requested_model.as_str())
+        || proposal.requested_reasoning_effort.as_deref()
+            != Some(request.binding.requested_reasoning_effort.as_str())
+        || projects
+            .execution_cwd(&request.binding.target_project_id)
+            .is_err()
     {
         return Err(());
     }

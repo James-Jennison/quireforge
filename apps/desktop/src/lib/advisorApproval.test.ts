@@ -8,6 +8,15 @@ import {
 
 const conversationId = "019d4e3c-3b14-7a2b-8c91-3f27d4f7aa10";
 const projectId = "019d4e3c-3b17-7e50-9f35-3f27d4f7aa13";
+const binding = {
+  advisorConversationId: conversationId,
+  targetProjectId: projectId,
+  prompt: "Prepare a focused implementation plan.",
+  selectedProjectState: null,
+  declaredCapabilities: ["workspace-write"],
+  requestedModel: "default",
+  requestedReasoningEffort: "default",
+};
 
 describe("Phase A Advisor approval contract", () => {
   it("accepts a bounded draft but rejects unknown fields and empty capability declarations", () => {
@@ -55,12 +64,14 @@ describe("Phase A Advisor approval contract", () => {
       advisorApprovalDecisionRequestSchema.parse({
         proposalId: conversationId,
         decision: "approved",
+        binding,
       }),
     ).toMatchObject({ decision: "approved" });
     expect(() =>
       advisorApprovalDecisionRequestSchema.parse({
         proposalId: conversationId,
         decision: "draft",
+        binding,
       }),
     ).toThrow();
     expect(

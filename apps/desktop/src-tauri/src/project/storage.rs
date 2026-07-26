@@ -1176,6 +1176,16 @@ impl ProjectRepository {
             .ok_or(StorageError::ProjectNotFound)
     }
 
+    pub(crate) fn advisor_dispatch_proposal(
+        &self,
+        proposal_id: &str,
+    ) -> Result<AdvisorDispatchProposal, StorageError> {
+        self.load_advisor_dispatch_proposals()?
+            .into_iter()
+            .find(|proposal| proposal.id == proposal_id)
+            .ok_or(StorageError::ProjectNotFound)
+    }
+
     pub(crate) fn conversation_reference(
         &self,
         conversation_id: &str,

@@ -104,6 +104,10 @@ export function AdvisorWorkspace({
   const approvalBindingKey = JSON.stringify({
     advisorConversationId: conversation.conversationId,
     targetProjectId,
+    draft,
+    declaredCapability,
+    requestedModel,
+    requestedReasoning,
     selectedProjectState:
       includeProjectState && canIncludeProjectState
         ? selectedProjectState
@@ -170,6 +174,18 @@ export function AdvisorWorkspace({
       const snapshot = await decideAdvisorDraft({
         proposalId: currentApproval.proposalId,
         decision,
+        binding: {
+          advisorConversationId: conversation.conversationId!,
+          targetProjectId: targetProjectId!,
+          prompt: draft,
+          selectedProjectState:
+            includeProjectState && canIncludeProjectState
+              ? selectedProjectState
+              : null,
+          declaredCapabilities: [declaredCapability],
+          requestedModel,
+          requestedReasoningEffort: requestedReasoning,
+        },
       });
       setApproval({ snapshot, bindingKey: approvalBindingKey });
     } catch {
@@ -383,6 +399,14 @@ export function AdvisorWorkspace({
                 <option value="workspace-write">Workspace write</option>
                 <option value="danger-full-access">Danger full access</option>
               </select>
+              <p className="project-message">
+                Proposed execution profile:{" "}
+                {declaredCapability === "read-only"
+                  ? "read-only sandbox; untrusted approvals"
+                  : declaredCapability === "workspace-write"
+                    ? "workspace-write sandbox; on-request approvals"
+                    : "danger full access requested for a future execution; it is not granted here."}
+              </p>
               <div className="project-actions">
                 <button
                   type="button"
@@ -413,7 +437,10 @@ export function AdvisorWorkspace({
                 <div className="project-confirmation" role="status">
                   <p>
                     Draft is {currentApproval.state}. Dispatch remains
-                    unavailable. This record expires at{" "}
+                    unavailable. Approval is revalidated against this exact
+                    draft, context, target project, capability profile, model,
+                    and reasoning choice before any future handoff. This record
+                    expires at{" "}
                     {new Date(currentApproval.expiresAtMs).toLocaleTimeString()}
                     .
                   </p>

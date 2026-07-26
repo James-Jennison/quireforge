@@ -883,10 +883,12 @@ visible-launch, and installed-host smoke gates. See the
 
 ### Advisor Approval/Dispatch Phase A (unnumbered)
 
-Approved implementation scope is an editable, transient draft and explicit,
-expiring digest-only approval controller. It binds the prompt, exact temporary
-safe selected-context projection, target project, declared capability manifest,
-requested model and reasoning labels, timestamp, and decision. It has no dispatch command and no
+The approved Phase A/B1 controller is an editable, transient draft and explicit,
+expiring digest-only approval record. It binds the prompt, exact temporary safe
+selected-context projection, target project, declared capability/profile manifest,
+requested model and reasoning labels, timestamp, and decision. Approval
+revalidates the complete transient binding and native target-project preflight
+immediately before recording a decision. It has no dispatch command and no
 reference to the Codex execution service; changing any bound input requires a
 new approval. Supported dispatch and completion-report return remain separate
 proposal and approval gates.

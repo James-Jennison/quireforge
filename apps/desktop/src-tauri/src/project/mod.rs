@@ -288,6 +288,21 @@ impl ProjectService {
         })
     }
 
+    pub(crate) fn advisor_dispatch_proposal(
+        &self,
+        proposal_id: &str,
+    ) -> Result<AdvisorDispatchProposal, ProjectExecutionError> {
+        let repository = self
+            .repository
+            .lock()
+            .map_err(|_| ProjectExecutionError::MetadataUnavailable)?;
+        repository
+            .as_ref()
+            .ok_or(ProjectExecutionError::MetadataUnavailable)?
+            .advisor_dispatch_proposal(proposal_id)
+            .map_err(map_project_execution_storage_error)
+    }
+
     pub fn picker_unavailable(&self) -> ProjectWorkspaceSnapshot {
         self.build_snapshot(Some(ProjectDiagnosticCode::PickerUnavailable))
     }

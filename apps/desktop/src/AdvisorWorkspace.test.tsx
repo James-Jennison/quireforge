@@ -290,4 +290,53 @@ describe("AdvisorWorkspace", () => {
       expect(screen.queryByText(/Draft is draft/u)).not.toBeInTheDocument(),
     );
   });
+
+  it("re-sends the complete transient binding when approving a draft", async () => {
+    advisorDraftBridge.createAdvisorDraft.mockResolvedValue({
+      proposalId: "018f0000-0000-7000-8000-000000000006",
+      state: "draft",
+      expiresAtMs: 1771235467000,
+      dispatchAvailable: false,
+    });
+    advisorDraftBridge.decideAdvisorDraft.mockResolvedValue({
+      proposalId: "018f0000-0000-7000-8000-000000000006",
+      state: "approved",
+      expiresAtMs: 1771235467000,
+      dispatchAvailable: false,
+    });
+    render(
+      <AdvisorWorkspace
+        {...props}
+        targetProjectId="018f0000-0000-7000-8000-000000000002"
+        conversation={{
+          ...scaffoldAdvisorConversation,
+          state: "completed",
+          conversationId: "018f0000-0000-7000-8000-000000000003",
+        }}
+      />,
+    );
+    fireEvent.change(screen.getByRole("textbox", { name: "Editable draft" }), {
+      target: { value: "Review the bounded handoff." },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Create approval draft" }),
+    );
+    await screen.findByRole("button", { name: "Approve draft" });
+    fireEvent.click(screen.getByRole("button", { name: "Approve draft" }));
+    await waitFor(() =>
+      expect(advisorDraftBridge.decideAdvisorDraft).toHaveBeenCalledWith({
+        proposalId: "018f0000-0000-7000-8000-000000000006",
+        decision: "approved",
+        binding: {
+          advisorConversationId: "018f0000-0000-7000-8000-000000000003",
+          targetProjectId: "018f0000-0000-7000-8000-000000000002",
+          prompt: "Review the bounded handoff.",
+          selectedProjectState: null,
+          declaredCapabilities: ["workspace-write"],
+          requestedModel: "default",
+          requestedReasoningEffort: "default",
+        },
+      }),
+    );
+  });
 });

@@ -38,6 +38,7 @@ export const advisorApprovalDecisionRequestSchema = z
   .object({
     proposalId: uuidV7,
     decision: z.enum(["approved", "rejected"]),
+    binding: advisorDraftCreateRequestSchema,
   })
   .strict();
 
