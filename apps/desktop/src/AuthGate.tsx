@@ -2,7 +2,6 @@ import brandMark from "../../../assets/brand/quireforge-app-icon.svg";
 import type { AuthLoginMethod, CodexAuthSnapshot } from "./lib/auth";
 
 type AuthGateState = CodexAuthSnapshot["state"] | "checking" | "preview";
-type Theme = "light" | "dark";
 
 interface AuthGateProps {
   state: AuthGateState;
@@ -10,7 +9,7 @@ interface AuthGateProps {
   busy: boolean;
   actionError: boolean;
   cliVersion: string | null;
-  theme: Theme;
+  nextThemeLabel: string;
   onThemeChange: () => void;
   onStart: (method: AuthLoginMethod) => void;
   onOpenBrowser: () => void;
@@ -32,7 +31,7 @@ export function AuthGate({
   busy,
   actionError,
   cliVersion,
-  theme,
+  nextThemeLabel,
   onThemeChange,
   onStart,
   onOpenBrowser,
@@ -47,14 +46,12 @@ export function AuthGate({
           <strong>QuireForge</strong>
         </div>
         <button
-          className="theme-toggle"
+          className="theme-shortcut"
           type="button"
-          aria-label={`Use ${theme === "dark" ? "light" : "dark"} theme`}
+          aria-label={`Use next appearance theme: ${nextThemeLabel}`}
           onClick={onThemeChange}
         >
-          <span className="theme-toggle__track" aria-hidden="true">
-            <span className="theme-toggle__thumb" />
-          </span>
+          Appearance
         </button>
       </header>
 

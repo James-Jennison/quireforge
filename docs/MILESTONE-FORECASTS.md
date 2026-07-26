@@ -1775,3 +1775,14 @@ prototype is a separate approval-gated milestone.
 | Main uncertainty     | Dense desktop/mobile composition and installed-app visual smoke without changing native behavior        |
 | Exclusions           | Backend/contracts, new capabilities, automation, external branded assets, and Qt work                  |
 | Outcome              | Complete; presentation refinement and fresh Ubuntu package gate closed without behavior changes         |
+
+## Milestone 26 — Appearance Themes
+
+| Field                | Record                                                                                                                        |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Forecast date        | 2026-07-26                                                                                                                    |
+| Preliminary forecast | 12–20 active hours; medium confidence                                                                                         |
+| Scope                | Closed local palette registry, semantic CSS tokens, accessible Appearance picker, visual regression, and package gate       |
+| Main uncertainty     | Preserving every semantic state and terminal surface across eight palettes without changing existing layout or native state |
+| Exclusions           | Custom themes, typography/density/layout redesign, backend/contracts, automation, external branded assets, and Qt work      |
+| Outcome              | Implementation complete; final full validation and fresh Ubuntu 22.04 package evidence pending                               |

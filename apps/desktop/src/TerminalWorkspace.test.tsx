@@ -104,6 +104,7 @@ describe("TerminalWorkspace", () => {
   it("starts from an app-owned project ID without accepting a cwd", async () => {
     render(
       <TerminalWorkspace
+        theme="forge"
         availability="native"
         registry={scaffoldTerminalRegistry}
         projects={projects}
@@ -133,6 +134,7 @@ describe("TerminalWorkspace", () => {
     });
     render(
       <TerminalWorkspace
+        theme="forge"
         availability="native"
         registry={registry}
         projects={projects}
@@ -155,6 +157,7 @@ describe("TerminalWorkspace", () => {
     });
     render(
       <TerminalWorkspace
+        theme="forge"
         availability="native"
         registry={registry}
         projects={projects}
@@ -198,6 +201,7 @@ describe("TerminalWorkspace", () => {
     });
     render(
       <TerminalWorkspace
+        theme="forge"
         availability="native"
         registry={registry}
         projects={projects}
@@ -221,6 +225,7 @@ describe("TerminalWorkspace", () => {
   it("does not simulate a native shell in browser preview", () => {
     render(
       <TerminalWorkspace
+        theme="forge"
         availability="preview"
         registry={scaffoldTerminalRegistry}
         projects={projects}

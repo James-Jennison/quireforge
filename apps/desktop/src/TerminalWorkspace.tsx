@@ -3,6 +3,7 @@ import { FitAddon } from "@xterm/addon-fit";
 import { Terminal } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
 
+import type { ThemeId } from "./appearanceThemes";
 import type { ProjectWorkspaceSnapshot } from "./lib/project";
 import type {
   TerminalCloseRequest,
@@ -17,6 +18,7 @@ import type {
 type TerminalAvailability = "checking" | "native" | "preview";
 
 interface TerminalWorkspaceProps {
+  theme: ThemeId;
   availability: TerminalAvailability;
   registry: TerminalRegistrySnapshot;
   projects: ProjectWorkspaceSnapshot;
@@ -28,6 +30,16 @@ interface TerminalWorkspaceProps {
   onResize: (request: TerminalResizeRequest) => Promise<TerminalSnapshot>;
   onClose: (request: TerminalCloseRequest) => Promise<TerminalRegistrySnapshot>;
   onSnapshot: (snapshot: TerminalSnapshot) => void;
+}
+
+function terminalTheme() {
+  const style = getComputedStyle(document.documentElement);
+  return {
+    background: style.getPropertyValue("--terminal-bg").trim(),
+    foreground: style.getPropertyValue("--terminal-text").trim(),
+    cursor: style.getPropertyValue("--accent").trim(),
+    selectionBackground: style.getPropertyValue("--accent-soft").trim(),
+  };
 }
 
 const diagnosticMessages: Record<
@@ -85,6 +97,7 @@ function writeRenderedOutput(
 
 interface TerminalPaneProps {
   snapshot: TerminalSnapshot;
+  theme: ThemeId;
   visible: boolean;
   onPoll: TerminalWorkspaceProps["onPoll"];
   onWrite: TerminalWorkspaceProps["onWrite"];
@@ -94,6 +107,7 @@ interface TerminalPaneProps {
 
 function TerminalPane({
   snapshot,
+  theme,
   visible,
   onPoll,
   onWrite,
@@ -126,12 +140,7 @@ function TerminalPane({
       lineHeight: 1.2,
       screenReaderMode: true,
       scrollback: 5_000,
-      theme: {
-        background: "#11100e",
-        foreground: "#f3efe5",
-        cursor: "#e8a85d",
-        selectionBackground: "#7e5b3566",
-      },
+      theme: terminalTheme(),
     });
     const fitAddon = new FitAddon();
     terminal.loadAddon(fitAddon);
@@ -259,6 +268,11 @@ function TerminalPane({
     }
   }, [snapshot.state]);
 
+  useEffect(() => {
+    if (terminalRef.current)
+      terminalRef.current.options.theme = terminalTheme();
+  }, [theme]);
+
   return (
     <div
       className="terminal-pane"
@@ -272,6 +286,7 @@ function TerminalPane({
 }
 
 export function TerminalWorkspace({
+  theme,
   availability,
   registry,
   projects,
@@ -526,6 +541,7 @@ export function TerminalWorkspace({
               return (
                 <TerminalPane
                   snapshot={terminal}
+                  theme={theme}
                   visible={terminalId === activeTerminalId}
                   onPoll={onPoll}
                   onWrite={onWrite}

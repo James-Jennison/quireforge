@@ -11,6 +11,14 @@ import {
 } from "react";
 
 import brandMark from "../../../assets/brand/quireforge-app-icon.svg";
+import {
+  applyAppearanceTheme,
+  appearanceThemes,
+  appearanceThemeStorageKey,
+  nextAppearanceTheme,
+  storedAppearanceTheme,
+  type ThemeId,
+} from "./appearanceThemes";
 import { AuthGate } from "./AuthGate";
 import { ConversationWorkspace } from "./ConversationWorkspace";
 import { FilePreviewWorkspace } from "./FilePreviewWorkspace";
@@ -225,7 +233,6 @@ type SessionViewState = "checking" | "native" | "preview";
 type TerminalViewState = "checking" | "native" | "preview";
 type IntegrationViewState = "checking" | "native" | "preview";
 type UsageViewState = "checking" | "native" | "preview" | "unavailable";
-type Theme = "light" | "dark";
 const workspaceStorageKey = "quireforge-workspace-location";
 const inspectorWidthStorageKey = "quireforge-inspector-width";
 const sidebarCompactStorageKey = "quireforge-sidebar-compact";
@@ -383,12 +390,8 @@ interface TrackedConversation {
   events: ConversationEvent[];
 }
 
-function initialTheme(): Theme {
-  const stored = window.localStorage.getItem("quireforge-theme");
-  if (stored === "light" || stored === "dark") return stored;
-  return window.matchMedia?.("(prefers-color-scheme: light)").matches
-    ? "light"
-    : "dark";
+function initialTheme(): ThemeId {
+  return storedAppearanceTheme();
 }
 
 function initialWorkspaceLocation(): WorkspaceLocation {
@@ -734,7 +737,8 @@ export default function App({
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
     null,
   );
-  const [theme, setTheme] = useState<Theme>(initialTheme);
+  const [theme, setTheme] = useState<ThemeId>(initialTheme);
+  const [themePreview, setThemePreview] = useState<ThemeId | null>(null);
   const [workspaceLocation, setWorkspaceLocation] = useState<WorkspaceLocation>(
     initialWorkspaceLocation,
   );
@@ -1339,8 +1343,11 @@ export default function App({
   }, [activeTaskProjectKey, loadGitStatusTask]);
 
   useEffect(() => {
-    document.documentElement.dataset.theme = theme;
-    window.localStorage.setItem("quireforge-theme", theme);
+    applyAppearanceTheme(themePreview ?? theme);
+  }, [theme, themePreview]);
+
+  useEffect(() => {
+    window.localStorage.setItem(appearanceThemeStorageKey, theme);
   }, [theme]);
 
   useEffect(() => {
@@ -2398,8 +2405,11 @@ export default function App({
         busy={authBusy}
         actionError={authActionError}
         cliVersion={runtime.cliVersion}
-        theme={theme}
-        onThemeChange={() => setTheme(theme === "dark" ? "light" : "dark")}
+        nextThemeLabel={
+          appearanceThemes.find(({ id }) => id === nextAppearanceTheme(theme))
+            ?.label ?? "Forge"
+        }
+        onThemeChange={() => setTheme(nextAppearanceTheme(theme))}
         onStart={beginLogin}
         onOpenBrowser={() => {
           setAuthActionError(false);
@@ -3075,14 +3085,12 @@ export default function App({
             )}
             <span className="foundation-badge">Native Linux</span>
             <button
-              className="theme-toggle"
+              className="theme-shortcut"
               type="button"
-              aria-label={`Use ${theme === "dark" ? "light" : "dark"} theme`}
-              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              aria-label="Open appearance settings"
+              onClick={() => navigateWorkspace("settings", "appearance")}
             >
-              <span className="theme-toggle__track" aria-hidden="true">
-                <span className="theme-toggle__thumb" />
-              </span>
+              Appearance
             </button>
           </div>
         </header>
@@ -3220,6 +3228,7 @@ export default function App({
                 }
               >
                 <TerminalWorkspace
+                  theme={themePreview ?? theme}
                   availability={terminalState}
                   registry={terminals}
                   projects={projects}
@@ -3394,7 +3403,12 @@ export default function App({
                   void applyAuthAction(logoutAuth);
                 }}
                 onCancelLogout={() => setConfirmLogout(false)}
-                onThemeChange={setTheme}
+                onThemeChange={(nextTheme) => {
+                  setThemePreview(null);
+                  setTheme(nextTheme);
+                }}
+                onThemePreview={setThemePreview}
+                onThemePreviewEnd={() => setThemePreview(null)}
               />
             </WorkspaceView>
           </div>

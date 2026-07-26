@@ -815,6 +815,18 @@ triggers. See the [Milestone 23 report](MILESTONE_23_UI_PLATFORM_FEASIBILITY.md)
 No code, dependencies, prototypes, migrations, package changes, or full
 repository audit occurred.
 
+### 26 — Appearance Themes
+
+Approved presentation-only palette work. Forge remains the default local
+appearance; the closed built-in set adds Midnight Atelier, Blueprint Terminal,
+Signal Noir, Aurora Workbench, Obsidian & Copper, Monochrome Editorial, and
+Pacific Night through Settings → Appearance. The work is limited to semantic
+CSS tokens, local preference restoration, keyboard-accessible live preview,
+and visual/accessibility regression coverage. It excludes custom themes,
+layout/density/typography redesign, native or repository-state contracts,
+automation, external branded assets, and Qt work. Fresh Ubuntu 22.04 package
+evidence remains required before completion.
+
 ## Forecast policy
 
 The initial whole-project estimate is several hundred active engineering hours

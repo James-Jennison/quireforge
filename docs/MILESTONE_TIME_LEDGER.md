@@ -1283,3 +1283,19 @@ greater precision than the underlying ranges.
 - **Status:** Complete on `2026-07-26`; no backend, contract, automation, or
   Qt behavior was added. Precise active and automated time was not instrumented
   and is not reconstructed.
+
+## Milestone 26 — Appearance Themes
+
+- **Objective:** Add a closed, palette-only local appearance system while
+  preserving Forge as the default and retaining QuireForge's behavior and
+  identity.
+- **Start:** `2026-07-26`.
+- **Forecast:** 12–20 active hours; medium confidence.
+- **Boundary:** React/CSS/local presentation preference and direct
+  accessibility/visual coverage only. No native, backend, repository-state,
+  typography, density, automation, or Qt work.
+- **Package implication:** Installed presentation changes require fresh pinned
+  Ubuntu 22.04 Debian/AppImage lifecycle and visible-launch evidence.
+- **Status:** Implementation complete; final validation and package evidence
+  pending. Precise active and automated time is not instrumented and is not
+  reconstructed.

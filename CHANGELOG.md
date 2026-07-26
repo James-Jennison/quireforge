@@ -24,6 +24,10 @@ released a usable application.
 
 ### Added
 
+- Milestone 26 Appearance Themes: eight closed, accessible local palettes;
+  live settings preview; keyboard selection; local restoration; and direct
+  desktop/mobile visual regression coverage without a native, backend,
+  repository-state, or automation change.
 - Milestone 25 desktop visual polish: denser branded sidebar and top bar,
   clearer dark-theme hierarchy, centered task entry, rounded conversation
   composer, and desktop/mobile visual-accessibility coverage without new
