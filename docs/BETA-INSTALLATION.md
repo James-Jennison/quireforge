@@ -68,7 +68,7 @@ After checksum verification, use `apt` so Ubuntu can resolve the declared GTK
 and WebKitGTK dependencies:
 
 ```bash
-sudo apt install ./quireforge_0.1.0.beta.2_amd64.deb
+sudo apt install --reinstall ./quireforge_0.1.0.beta.2_amd64.deb
 ```
 
 The dot in the downloaded filename is intentional. After installation,

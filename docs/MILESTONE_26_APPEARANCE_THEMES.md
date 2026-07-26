@@ -108,8 +108,12 @@ xvfb-run --auto-servernum python3 scripts/smoke_linux_package.py \
 A local Debian installation would use:
 
 ```bash
-sudo apt install ./target/ubuntu-22.04/release/packages/quireforge_0.1.0.beta.2_amd64.deb
+sudo apt install --reinstall ./target/ubuntu-22.04/release/packages/quireforge_0.1.0.beta.2_amd64.deb
 ```
+
+Candidate rebuilds deliberately retain the same prerelease package version.
+Use `--reinstall` when replacing an already installed candidate so APT does not
+retain an older package with the same Debian version and stale bundled assets.
 
 The bounded 24B reader's producer-compatible package parsing and both closed
 metadata-only and local-artifact-verification contract paths are covered by its

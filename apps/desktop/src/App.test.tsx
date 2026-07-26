@@ -473,7 +473,7 @@ describe("QuireForge desktop shell", () => {
   });
 
   it("persists the explicit appearance choice", async () => {
-    render(
+    const firstRender = render(
       <App
         loadBootstrap={() => Promise.resolve(scaffoldBootstrap)}
         loadRuntime={() => Promise.resolve(scaffoldCodexRuntime)}
@@ -493,6 +493,19 @@ describe("QuireForge desktop shell", () => {
       document.documentElement.dataset.theme,
     );
     expect(document.documentElement.dataset.theme).toBe("aurora-workbench");
+
+    firstRender.unmount();
+    render(
+      <App
+        loadBootstrap={() => Promise.resolve(scaffoldBootstrap)}
+        loadRuntime={() => Promise.resolve(scaffoldCodexRuntime)}
+        loadAuth={() => Promise.resolve(authenticatedAuth)}
+        loadProjects={() => Promise.resolve(scaffoldProjectWorkspace)}
+      />,
+    );
+    await waitFor(() =>
+      expect(document.documentElement.dataset.theme).toBe("aurora-workbench"),
+    );
   });
 
   it("migrates the former light preference to the matching built-in palette", async () => {
@@ -512,6 +525,51 @@ describe("QuireForge desktop shell", () => {
     expect(window.localStorage.getItem("quireforge-theme")).toBe(
       "aurora-workbench",
     );
+  });
+
+  it("uses Forge when local appearance data is invalid", async () => {
+    window.localStorage.setItem("quireforge-theme", "unsupported-palette");
+    render(
+      <App
+        loadBootstrap={() => Promise.resolve(scaffoldBootstrap)}
+        loadRuntime={() => Promise.resolve(scaffoldCodexRuntime)}
+        loadAuth={() => Promise.resolve(authenticatedAuth)}
+        loadProjects={() => Promise.resolve(scaffoldProjectWorkspace)}
+      />,
+    );
+
+    await waitFor(() =>
+      expect(document.documentElement.dataset.theme).toBe("forge"),
+    );
+    expect(window.localStorage.getItem("quireforge-theme")).toBe("forge");
+  });
+
+  it("keeps Appearance reachable from the Settings navigation", async () => {
+    render(
+      <App
+        loadBootstrap={() => Promise.resolve(scaffoldBootstrap)}
+        loadRuntime={() => Promise.resolve(scaffoldCodexRuntime)}
+        loadAuth={() => Promise.resolve(authenticatedAuth)}
+        loadProjects={() => Promise.resolve(scaffoldProjectWorkspace)}
+      />,
+    );
+
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "Open Codex account and connection settings",
+      }),
+    );
+    fireEvent.click(
+      within(screen.getByRole("navigation", { name: "Settings" })).getByRole(
+        "button",
+        { name: /^Appearance/u },
+      ),
+    );
+
+    expect(
+      await screen.findByRole("radiogroup", { name: "QuireForge theme" }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByRole("radio")).toHaveLength(8);
   });
 
   it("previews one native-selected file through an opaque project ID", async () => {

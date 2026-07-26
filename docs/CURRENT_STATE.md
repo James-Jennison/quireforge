@@ -154,7 +154,7 @@ and icon checks, the disposable Debian installation/upgrade/removal lifecycle,
 visible installed-Debian and AppImage launches, and the representative
 installed-app smoke test. The lifecycle validator installed the Debian package
 with `dpkg --root "$root" --admindir "$admin" --instdir "$root" --install
-"$package"`; a local manual installation would use `sudo apt install
+"$package"`; a local manual installation would use `sudo apt install --reinstall
 ./target/ubuntu-22.04/release/packages/quireforge_0.1.0.beta.2_amd64.deb`.
 Launch the AppImage with `./target/ubuntu-22.04/release/packages/QuireForge-0.1.0-beta.2-x86_64.AppImage`.
 
@@ -202,7 +202,7 @@ disposable Debian install/upgrade/remove lifecycle, visible Debian and AppImage
 launches, and representative smoke validation. The ignored release evidence is
 the version-1 manifest and checksum pair under
 `target/ubuntu-22.04/release/packages/`; local installation uses `sudo apt
-install ./target/ubuntu-22.04/release/packages/quireforge_0.1.0.beta.2_amd64.deb`
+install --reinstall ./target/ubuntu-22.04/release/packages/quireforge_0.1.0.beta.2_amd64.deb`
 and AppImage launch uses
 `./target/ubuntu-22.04/release/packages/QuireForge-0.1.0-beta.2-x86_64.AppImage`.
 
