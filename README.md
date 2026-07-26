@@ -170,6 +170,13 @@ Milestone 26 completed a closed set of accessible local appearance palettes thro
 Settings → Appearance, retaining Forge as the default while leaving layout,
 typography, native behavior, repository-state contracts, and automation
 boundaries unchanged.
+Milestone 27 completes a managed-ChatGPT-only native conversation boundary:
+Chat and Codex have distinct capability policies, Chat has no project, terminal,
+Git, worktree, tool, integration, approval, or API-key authority, and mode
+transitions require explicit confirmation. Only the confirmed `chat` or `codex`
+local workspace preference persists; missing or invalid values safely fall back
+to Codex without transferring project context, content, credentials, or other
+capability-bearing state.
 Webuzo is the selected static origin host, with Cloudflare retained as the DNS,
 TLS, and cache edge. The reviewed static site is publicly deployed at
 `https://quireforge.jamesjennison.net` through the approved proxied Cloudflare

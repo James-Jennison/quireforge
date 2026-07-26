@@ -2,13 +2,17 @@
 
 ## Unreleased — 0.1.0-beta.4
 
-- Begin Milestone 27’s managed-ChatGPT-only conversation foundation: closed
+- Complete Milestone 27’s managed-ChatGPT-only conversation engine: closed
   Chat/Codex capability contracts, bounded no-project Chat metadata, and a
   fixed native Chat bridge that rejects project, tool, approval, and API-key
   authority.
 - Persist only the explicitly confirmed Chat/Codex workspace preference, with
   a safe Codex fallback for missing or invalid local values and no transfer of
   project context or conversation content.
+- Close the clean `0.1.0-beta.4` pinned Ubuntu 22.04 Debian/AppImage package
+  gate with manifest/checksum agreement, desktop/icon checks, disposable
+  lifecycle validation, visible launches, installed-host smoke, and no public
+  release publication.
 
 All notable project changes will be documented here. The project has not
 released a usable application.

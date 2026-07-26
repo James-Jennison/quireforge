@@ -1,6 +1,6 @@
 # Milestone 27 — Unified Conversation Engine
 
-Status: in progress.
+Status: complete.
 
 ## Objective
 
@@ -54,7 +54,7 @@ safely to Codex if absent or invalid; no project context, attachment,
 integration, approval, or transcript is persisted or transferred. Unified
 history and continuation remain deferred.**
 4. Close full Rust/TypeScript/desktop/browser validation and the pinned Ubuntu
-   22.04 Debian/AppImage package gate.
+   22.04 Debian/AppImage package gate. **Implemented.**
 
 ## Settings foundation
 
@@ -77,11 +77,74 @@ its local `quireforge-theme` preference remain unchanged.
   SQLite stores only bounded local metadata.
 - No QuireForge-Qt work occurs.
 
-## Remaining work
+## Final validation and package evidence
+
+The final implementation commit is
+`cc4d0cea7d28d275e5ad1c8aa9d7a2a4f0627d6c`. It was built from a clean source
+tree as the unique incremental package version `0.1.0-beta.4` (Debian internal
+version `0.1.0~beta.4`). The ignored, version-1 release manifest and checksum
+file are at `target/ubuntu-22.04/release/packages/release-manifest.json` and
+`target/ubuntu-22.04/release/packages/SHA256SUMS` respectively. They identify
+that implementation commit and agree with the locally measured artifact sizes
+and checksums.
+
+| Artifact | Path | Size | SHA-256 |
+| --- | --- | ---: | --- |
+| Debian | `target/ubuntu-22.04/release/packages/quireforge_0.1.0.beta.4_amd64.deb` | 4,674,456 bytes | `3cdb4eda670a9b771efbb53b8ac84c70ea92189330a334a06788f262268cc9f7` |
+| AppImage | `target/ubuntu-22.04/release/packages/QuireForge-0.1.0-beta.4-x86_64.AppImage` | 83,905,016 bytes | `b527286c55565690b9b26f52fe18a8d7d4904f4466bec5ba07d909d580815ba9` |
+
+The digest-pinned Ubuntu 22.04 builder contains `/usr/bin/xvfb-run`. Its
+release validator passed manifest/checksum, desktop-entry, PNG icon, disposable
+Debian install/upgrade/remove lifecycle, visible Debian and AppImage launches,
+and representative smoke validation. The executable requires at most
+`GLIBC_2.34`, within the Ubuntu 22.04 `GLIBC_2.35` baseline. The package gate
+used its normal closed package workflow and then this explicit validation:
+
+```bash
+docker run --rm --init --user "$(id -u):$(id -g)" \
+  --volume "$PWD:/workspace" --volume "$PWD/.cache/packaging:/cache" \
+  --env HOME=/cache/home --env CARGO_TARGET_DIR=/workspace/target/ubuntu-22.04 \
+  --env QUIRE_FORGE_PACKAGE_DIR=target/ubuntu-22.04/release/packages \
+  --workdir /workspace quireforge-packaging:ubuntu-22.04 /bin/bash -c \
+  'command -v xvfb-run && python3 scripts/validate_release_artifacts.py \
+    --artifact-dir target/ubuntu-22.04/release/packages --lifecycle --smoke'
+```
+
+The installed host was upgraded with the following command and reports Debian
+version `0.1.0~beta.4`:
+
+```bash
+sudo apt install --reinstall -y \
+  /mnt/faststorage/quireforge/target/ubuntu-22.04/release/packages/quireforge_0.1.0.beta.4_amd64.deb
+```
+
+With the host's active display, visible installed-artifact smoke passed for
+both `/usr/bin/quireforge` and the AppImage:
+
+```bash
+python3 scripts/smoke_linux_package.py --label 'Installed Debian beta.4' /usr/bin/quireforge
+python3 scripts/smoke_linux_package.py --label 'Installed AppImage beta.4' \
+  ./target/ubuntu-22.04/release/packages/QuireForge-0.1.0-beta.4-x86_64.AppImage \
+  --appimage-extract-and-run
+```
+
+The implementation gate passed `pnpm test` (203 desktop and 7 website tests),
+desktop TypeScript and ESLint checks, `cargo fmt --all -- --check`,
+warning-denying workspace Clippy, locked workspace Rust tests (200 passed, 3
+ignored), repository validation, production builds, Tauri no-bundle
+compilation, and the complete-chunk distribution budget. The final distribution
+measured 861.71 KiB JavaScript and 99.80 KiB CSS against 865 KiB and 105 KiB
+ceilings. The strict package-evidence reader's focused producer-format and
+commit-freshness test passed; its evidence semantics were not changed. The
+ignored version-1 validation summary records the package gate against the
+implementation commit.
+
+## Deferred work
 
 Unified history/continuation presentation and migration/backfill coverage for
-an already populated production database remain deferred. The remaining M27
-completion work is the full validation and final pinned Ubuntu 22.04
-package/evidence gate. The desktop distribution gate retains complete-chunk
-accounting with measured ceilings of 865 KiB JavaScript and 105 KiB CSS; it
-does not exclude the Chat/Codex contract or any appearance palette.
+an already populated production database remain deferred to separately
+approved work. No Advisor/Planner agent, Python sidecar, watcher, automatic
+handoff, contradiction resolution, or autonomous repair was added. The desktop
+distribution gate retains complete-chunk accounting with measured ceilings of
+865 KiB JavaScript and 105 KiB CSS; it does not exclude the Chat/Codex contract
+or any appearance palette.

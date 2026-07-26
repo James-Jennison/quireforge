@@ -117,6 +117,8 @@ discovery; scheduling management and execution remain unsupported.
 |       24B | Repository-state reader                                           | Large        | Complete; attached-project-only read service, no UI or automation        |
 |       24C | Project-state workspace                                           | Medium       | Complete; read-only presentation over the existing normalized reader     |
 |        25 | Desktop visual polish                                             | Medium       | Complete; branded presentation refinement with fresh Ubuntu package gate |
+|        26 | Appearance Themes                                                 | Medium       | Complete; closed local palettes, accessibility, and package gate        |
+|        27 | Unified Conversation Engine                                       | Large        | Complete; managed Chat/Codex boundary and fresh Ubuntu package gate      |
 
 ## Milestone definitions
 
@@ -830,16 +832,19 @@ commit `0ae0de7995f10128728116b148d49f2cb5b2cf79`.
 
 ### 27 — Unified Conversation Engine
 
-In progress on `feat/milestone-27-unified-conversation-engine`. Establish a
-managed-ChatGPT-account feasibility gate and native capability-separated Chat
-and Codex conversation modes. Chat must use only the documented Codex
-app-server browser-login path; API keys, external tokens, cookies, consumer
-ChatGPT APIs, background behavior, and automatic context transfer are out of
-scope. The explicit Chat/Codex choice persists only after confirmation and
-falls back safely to Codex if its local preference is absent or invalid;
-project context and other capability-bearing state never transfer. Completion
-requires strict migration/contract coverage, full desktop validation, and fresh
-pinned Ubuntu 22.04 package evidence.
+Complete on `feat/milestone-27-unified-conversation-engine`. The managed
+ChatGPT-only native conversation boundary distinguishes Chat from Codex by real
+capability policy, not styling: Chat has no attached project, terminal, Git,
+worktree, tool, integration, approval, or API-key authority. It uses only the
+documented Codex app-server browser-login path, never consumer ChatGPT APIs,
+external tokens, cookies, or credentials. A Chat/Codex transition is explicit;
+only a confirmed closed local preference persists, safely defaulting to Codex
+when absent or invalid, with no project context or other capability-bearing
+state transfer. Final implementation commit
+`cc4d0cea7d28d275e5ad1c8aa9d7a2a4f0627d6c` and clean incremental
+`0.1.0-beta.4` Ubuntu 22.04 Debian/AppImage evidence passed the complete
+validation, lifecycle, visible-launch, and installed-host smoke gates. See the
+[Milestone 27 report](MILESTONE_27_UNIFIED_CONVERSATION_ENGINE.md).
 
 ## Forecast policy
 
