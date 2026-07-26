@@ -52,6 +52,8 @@ import {
   detachProject,
   interruptConversation,
   interruptChatConversation,
+  interruptAdvisorConversation,
+  loadAdvisorConversation,
   loadChatConversation,
   loadActiveConversations,
   loadCodexAuth,
@@ -84,6 +86,7 @@ import {
   pollIntegrationControl,
   refreshIntegrationCatalog as refreshIntegrationCatalogNative,
   pollConversation,
+  pollAdvisorConversation,
   pollChatConversation,
   refreshCodexAuth,
   refreshCodexUsage,
@@ -92,6 +95,7 @@ import {
   resumeConversation,
   forkConversation,
   startConversation,
+  startAdvisorConversation,
   startChatConversation,
   startCodexAuth,
   stageDroppedConversationAttachments,
@@ -145,6 +149,11 @@ import {
   type ConversationSnapshot,
   type ConversationStartRequest,
 } from "./lib/conversation";
+import {
+  scaffoldAdvisorConversation,
+  type AdvisorConversationSnapshot,
+  type AdvisorConversationStartRequest,
+} from "./lib/advisorConversation";
 import {
   scaffoldChatConversation,
   type ChatConversationSnapshot,
@@ -361,6 +370,16 @@ interface AppProps {
   interruptChatConversationTask?: (
     conversationId: string,
   ) => Promise<ChatConversationSnapshot>;
+  loadAdvisorConversationTask?: () => Promise<AdvisorConversationSnapshot>;
+  startAdvisorConversationTask?: (
+    request: AdvisorConversationStartRequest,
+  ) => Promise<AdvisorConversationSnapshot>;
+  pollAdvisorConversationTask?: (
+    conversationId: string,
+  ) => Promise<AdvisorConversationSnapshot>;
+  interruptAdvisorConversationTask?: (
+    conversationId: string,
+  ) => Promise<AdvisorConversationSnapshot>;
   decideConversationApprovalTask?: (
     request: ConversationApprovalDecisionRequest,
   ) => Promise<ConversationSnapshot>;
@@ -643,6 +662,10 @@ export default function App({
   startChatConversationTask = startChatConversation,
   pollChatConversationTask = pollChatConversation,
   interruptChatConversationTask = interruptChatConversation,
+  loadAdvisorConversationTask = loadAdvisorConversation,
+  startAdvisorConversationTask = startAdvisorConversation,
+  pollAdvisorConversationTask = pollAdvisorConversation,
+  interruptAdvisorConversationTask = interruptAdvisorConversation,
   decideConversationApprovalTask = decideConversationApproval,
   updateModelSelectionTask = updateModelSelection,
   loadSessions = loadConversationSessions,
@@ -700,6 +723,8 @@ export default function App({
     useState<AdvisorViewState>("checking");
   const [advisorProjectStateSnapshot, setAdvisorProjectStateSnapshot] =
     useState<AdvisorSelectedProjectStateSnapshot | null>(null);
+  const [advisorProjectStateProjectId, setAdvisorProjectStateProjectId] =
+    useState<string | null>(null);
   const [advisorProjectStateSelection, setAdvisorProjectStateSelection] =
     useState<"idle" | "confirming" | "reading" | "error">("idle");
   const [filePreview, setFilePreview] =
@@ -761,6 +786,9 @@ export default function App({
   const [chatConversation, setChatConversation] =
     useState<ChatConversationSnapshot>(scaffoldChatConversation);
   const [chatConversationBusy, setChatConversationBusy] = useState(false);
+  const [advisorConversation, setAdvisorConversation] =
+    useState<AdvisorConversationSnapshot>(scaffoldAdvisorConversation);
+  const [advisorConversationBusy, setAdvisorConversationBusy] = useState(false);
   const conversationActionGenerations = useRef<Record<string, number>>({});
   const observedConversationStates = useRef<
     Record<string, ConversationSnapshot["state"]>
@@ -884,6 +912,21 @@ export default function App({
       active = false;
     };
   }, [accessGranted, loadChatConversationTask]);
+
+  useEffect(() => {
+    if (!accessGranted) return;
+    let active = true;
+    void loadAdvisorConversationTask()
+      .then((result) => {
+        if (active) setAdvisorConversation(result);
+      })
+      .catch(() => {
+        if (active) setAdvisorConversation(scaffoldAdvisorConversation);
+      });
+    return () => {
+      active = false;
+    };
+  }, [accessGranted, loadAdvisorConversationTask]);
 
   useEffect(() => {
     if (!accessGranted) return;
@@ -1594,16 +1637,19 @@ export default function App({
     void readAdvisorProjectStateSnapshotTask({ projectId })
       .then((snapshot) => {
         setAdvisorProjectStateSnapshot(snapshot);
+        setAdvisorProjectStateProjectId(projectId);
         setAdvisorProjectStateSelection("idle");
       })
       .catch(() => {
         setAdvisorProjectStateSnapshot(null);
+        setAdvisorProjectStateProjectId(null);
         setAdvisorProjectStateSelection("error");
       });
   }
 
   function removeAdvisorProjectState() {
     setAdvisorProjectStateSnapshot(null);
+    setAdvisorProjectStateProjectId(null);
     setAdvisorProjectStateSelection("idle");
   }
 
@@ -2210,6 +2256,40 @@ export default function App({
       return result;
     } finally {
       setChatConversationBusy(false);
+    }
+  }
+
+  async function beginAdvisorConversation(
+    request: AdvisorConversationStartRequest,
+  ): Promise<AdvisorConversationSnapshot> {
+    setAdvisorConversationBusy(true);
+    try {
+      const result = await startAdvisorConversationTask(request);
+      setAdvisorConversation(result);
+      return result;
+    } finally {
+      setAdvisorConversationBusy(false);
+    }
+  }
+
+  async function pollAdvisorConversationById(
+    conversationId: string,
+  ): Promise<AdvisorConversationSnapshot> {
+    const result = await pollAdvisorConversationTask(conversationId);
+    setAdvisorConversation(result);
+    return result;
+  }
+
+  async function stopAdvisorConversation(
+    conversationId: string,
+  ): Promise<AdvisorConversationSnapshot> {
+    setAdvisorConversationBusy(true);
+    try {
+      const result = await interruptAdvisorConversationTask(conversationId);
+      setAdvisorConversation(result);
+      return result;
+    } finally {
+      setAdvisorConversationBusy(false);
     }
   }
 
@@ -3364,6 +3444,13 @@ export default function App({
                 onConfirmProjectState={confirmAdvisorProjectState}
                 onCancelProjectState={cancelAdvisorProjectState}
                 onRemoveProjectState={removeAdvisorProjectState}
+                auth={auth}
+                conversation={advisorConversation}
+                conversationBusy={advisorConversationBusy}
+                selectedProjectId={advisorProjectStateProjectId}
+                onConversationStart={beginAdvisorConversation}
+                onConversationPoll={pollAdvisorConversationById}
+                onConversationInterrupt={stopAdvisorConversation}
               />
             </WorkspaceView>
 

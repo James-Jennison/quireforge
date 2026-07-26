@@ -426,7 +426,7 @@ describe("QuireForge desktop shell", () => {
 
     expect(
       await screen.findByRole("heading", {
-        name: "Reference-only planning, without execution.",
+        name: "Read-only planning, without execution.",
       }),
     ).toBeInTheDocument();
     expect(loadAdvisorSnapshotTask).toHaveBeenCalledWith();

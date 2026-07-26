@@ -332,6 +332,33 @@ const nativeResponses = {
   },
   advisor_snapshot_read: advisorWorkspaceFixture,
   advisor_project_state_snapshot_read: advisorProjectStateFixture,
+  advisor_conversation_status: {
+    schemaVersion: 1,
+    mode: "advisor",
+    state: "empty",
+    conversationId: null,
+    projectStateIncluded: false,
+    events: [],
+    diagnosticCode: null,
+  },
+  advisor_conversation_start: {
+    schemaVersion: 1,
+    mode: "advisor",
+    state: "running",
+    conversationId: "018f0000-0000-7000-8000-000000000061",
+    projectStateIncluded: false,
+    events: [],
+    diagnosticCode: null,
+  },
+  advisor_conversation_interrupt: {
+    schemaVersion: 1,
+    mode: "advisor",
+    state: "interrupted",
+    conversationId: "018f0000-0000-7000-8000-000000000061",
+    projectStateIncluded: false,
+    events: [],
+    diagnosticCode: null,
+  },
   repository_state_read: repositoryStateFixture,
   worktree_status: {
     schemaVersion: 2,
@@ -809,9 +836,9 @@ test("every sidebar destination replaces the active workspace without page scrol
   }
 });
 
-test("Advisor presents only read-only safe summaries accessibly", async ({
+test("Advisor presents a bounded managed conversation with safe summaries", async ({
   page,
-}) => {
+}, testInfo) => {
   await installNativeFixture(page);
   await page.goto("/");
 
@@ -819,13 +846,36 @@ test("Advisor presents only read-only safe summaries accessibly", async ({
   const advisor = page.locator('[data-workspace-view="advisor"]');
   await expect(
     advisor.getByRole("heading", {
-      name: "Reference-only planning, without execution.",
+      name: "Read-only planning, without execution.",
     }),
   ).toBeVisible();
   await expect(
     advisor.getByText("project-state: verified, current"),
   ).toBeVisible();
-  await expect(advisor.getByRole("textbox")).toHaveCount(0);
+  await expect(
+    advisor.getByRole("textbox", { name: "Advisor message" }),
+  ).toBeVisible();
+  const advisorNotice = advisor
+    .getByRole("note")
+    .filter({ hasText: "Advisor is read-only" });
+  await expect(advisorNotice).toBeVisible();
+  await expect(advisor.getByRole("status")).toContainText(
+    "Enter a message to send.",
+  );
+  const sendButton = advisor.getByRole("button", { name: "Send to Advisor" });
+  await expect(sendButton).toBeDisabled();
+  await advisor
+    .getByRole("textbox", { name: "Advisor message" })
+    .fill("Review the current boundary.");
+  await expect(sendButton).toBeEnabled();
+  await expect(advisor.getByText("Enter a message to send.")).toHaveCount(0);
+  await expect(async () => {
+    const noticeBox = await advisorNotice.boundingBox();
+    const buttonBox = await sendButton.boundingBox();
+    expect(noticeBox).not.toBeNull();
+    expect(buttonBox).not.toBeNull();
+    expect(noticeBox!.y + noticeBox!.height).toBeLessThanOrEqual(buttonBox!.y);
+  }).toPass();
   await advisor
     .getByRole("button", { name: "Select current Project State snapshot" })
     .click();
@@ -837,7 +887,17 @@ test("Advisor presents only read-only safe summaries accessibly", async ({
     advisor.getByRole("button", { name: "Remove temporary snapshot" }),
   ).toBeVisible();
   await expect(advisor.getByText(/advisor-thread|gpt-5.6/u)).toHaveCount(0);
-  await expect(advisor.getByText(/QuireForge|main|\/mnt\//u)).toHaveCount(0);
+  await expect(advisor.getByText(/\/mnt\//u)).toHaveCount(0);
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - window.innerWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(1);
+  await page.screenshot({
+    path: testInfo.outputPath(
+      `advisor-action-row-${testInfo.project.name.includes("mobile") ? "mobile" : "desktop"}.png`,
+    ),
+    animations: "disabled",
+  });
   const accessibility = await new AxeBuilder({ page }).analyze();
   expect(accessibility.violations).toEqual([]);
 });

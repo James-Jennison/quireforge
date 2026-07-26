@@ -7,8 +7,8 @@ locally.” Tauri + React + TypeScript is the current functional prototype. ADR
 0028 accepts retaining Tauri conditionally; no Qt migration has been selected.
 
 - **Branch:** `main`
-- **Checkpoint:** Milestones 22, 22B, 23, 24A, 24B, 24C, 25, 26, 27, and 28
-  are complete.
+- **Checkpoint:** Milestones 22, 22B, 23, 24A, 24B, 24C, 25, 26, 27, 28, and
+  29 are complete.
   Milestone 27 is complete at implementation commit
   `cc4d0cea7d28d275e5ad1c8aa9d7a2a4f0627d6c`; its final package evidence is
   recorded by this documentation checkpoint. The clean `0.1.0-beta.4` Ubuntu
@@ -114,6 +114,25 @@ values; it never transfers project context, attachments, approvals,
 integrations, transcripts, or credentials. The clean, incremented
 `0.1.0-beta.4` package set passed the pinned Ubuntu 22.04 and installed-host
 gates. See [Milestone 27](MILESTONE_27_UNIFIED_CONVERSATION_ENGINE.md).
+
+Milestone 29 — **Managed Advisor Conversation Foundation** is complete at
+implementation commit `45a6d5f2219a5531cf336ed27f0cf7f389d984be`. It adds a
+distinct, fixed no-project Advisor turn through the existing
+Codex-managed browser ChatGPT sign-in boundary. Advisor prompts and replies are
+transient in QuireForge; only opaque thread metadata is retained. Including
+the temporary Project State safe projection requires a second per-send
+confirmation. It adds no execution, dispatch, tool, terminal, Git, project
+write, API-key, or transcript-retention capability. The clean `0.1.0-beta.6`
+Ubuntu 22.04 Debian/AppImage set passed the pinned container lifecycle,
+desktop/icon, visible-launch, and installed-host smoke gates. See
+[Milestone 29](MILESTONE_29_MANAGED_ADVISOR_CONVERSATION.md).
+
+The scoped Milestone 29 post-completion UI hotfix separates the Advisor
+read-only capability notice from the action row and makes the disabled-send
+reason explicit without changing Advisor permissions, context rules, or
+execution boundaries. Its clean `0.1.0-beta.7` Ubuntu 22.04 Debian/AppImage
+package set passed the pinned container lifecycle, desktop/icon,
+visible-launch, and installed-host visual gate.
 
 Milestone 28 — **Reference-Only Advisor Foundation** is complete. It includes a
 read-only Advisor metadata route and one explicitly confirmed, temporary safe

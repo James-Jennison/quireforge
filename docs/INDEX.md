@@ -45,6 +45,8 @@ implementation position and [Roadmap](ROADMAP.md) for approved sequencing.
 
 - [Milestone reports](.) — numbered milestone specifications, acceptance
   evidence, and package records.
+- [Milestone 29 — Managed Advisor conversation foundation](MILESTONE_29_MANAGED_ADVISOR_CONVERSATION.md)
+  — managed, transient Advisor conversation evidence and boundaries.
 - [Milestone forecasts](MILESTONE-FORECASTS.md) — planning estimates and
   uncertainty records.
 - [Milestone time ledger](MILESTONE_TIME_LEDGER.md) — recorded effort evidence.

@@ -26,7 +26,7 @@ static project site is [quireforge.jamesjennison.net](https://quireforge.jamesje
 - Managed Codex account onboarding and bounded native conversation workflows.
 - User-selected project attachment, reviewed Git and worktree workflows, and a
   native integrated terminal with explicit controls.
-- Read-only normalized Project State evidence and a reference-only Advisor
+- Read-only normalized Project State evidence and a managed, transient Advisor
   workspace with explicitly confirmed temporary context.
 - Accessible routed workspaces, local appearance preferences, and reproducible
   Ubuntu 22.04 Debian/AppImage candidate validation.
@@ -42,7 +42,8 @@ and next approved work are maintained in [Current State](docs/CURRENT_STATE.md).
   processes or consume raw Codex protocol messages.
 - Project operations are scoped to attached directories and explicit user
   actions. Detach, archive, and remove actions are not filesystem deletion.
-- Advisor remains read-only and non-executable. Approval and execution
+- Advisor remains read-only and non-executable; optional Project State context
+  requires explicit selection and per-send confirmation. Approval and execution
   workflows retain their separate confirmation boundaries.
 - The project does not scrape ChatGPT, reverse engineer private protocols, or
   imply OpenAI endorsement.

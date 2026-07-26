@@ -35,10 +35,11 @@ const limits = {
   entry: 256 * 1024,
   app: 300 * 1024,
   // M27's native Chat/Codex capability contracts, the eight closed M26
-  // palettes, and M28's explicitly confirmed, strict safe snapshot boundary
-  // are included in the shipped desktop bundle. Keep a narrow, measured
-  // ceiling instead of weakening the check or excluding chunks.
-  javascript: 870 * 1024,
+  // palettes, M28's explicitly confirmed safe snapshot boundary, and M29's
+  // bounded managed Advisor conversation are included in the shipped desktop
+  // bundle. Keep a narrow, measured ceiling instead of weakening the check or
+  // excluding chunks.
+  javascript: 875 * 1024,
   stylesheets: 105 * 1024,
 };
 

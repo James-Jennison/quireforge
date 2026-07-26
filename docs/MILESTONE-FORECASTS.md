@@ -1808,3 +1808,14 @@ prototype is a separate approval-gated milestone.
 | Main uncertainty     | Maintaining a useful future Approval/Dispatch boundary while guaranteeing no prompt/transcript or execution capability leaks                                |
 | Exclusions           | Advisor model calls, arbitrary project reads, screenshot ingestion, action/dispatch UI, Python, watchers, automation, 24D behavior, Qt                      |
 | Outcome              | Complete; shell and explicitly confirmed temporary local Project State projection passed full validation and the fresh `0.1.0-beta.5` Ubuntu package gate, with no model or execution behavior |
+
+## Milestone 29 — Managed Advisor Conversation Foundation
+
+| Field                | Record                                                                                                                                      |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Forecast date        | 2026-07-26                                                                                                                                  |
+| Preliminary forecast | 12–20 active hours; medium confidence                                                                                                      |
+| Scope                | One managed no-project Advisor turn, transient QuireForge text handling, per-send safe-context confirmation, regression, and package gate |
+| Main uncertainty     | Preserving managed-account boundaries and no-execution guarantees through native and installed-host validation                              |
+| Exclusions           | Dispatch, Codex execution, transcript retention, provider configuration, arbitrary browsing, tools, automation, Python, and Qt work       |
+| Outcome              | Complete; the bounded Advisor turn and fresh `0.1.0-beta.6` Ubuntu 22.04 package gate closed without new execution authority               |

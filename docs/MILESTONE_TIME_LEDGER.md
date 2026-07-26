@@ -1352,3 +1352,24 @@ greater precision than the underlying ranges.
   `0.1.0-beta.5`. The pinned Ubuntu 22.04 Debian/AppImage lifecycle,
   visible-launch, and installed-host smoke gates passed. Precise active and
   automated time is not instrumented and is not reconstructed.
+
+## Milestone 29 — Managed Advisor Conversation Foundation
+
+- **Objective:** Add one bounded managed Advisor turn through the documented
+  local Codex app-server without granting project, tool, approval, or execution
+  authority.
+- **Start and completion:** `2026-07-26`.
+- **Forecast:** 12–20 active hours; medium confidence.
+- **Boundary:** Transient Advisor prompt/reply handling, opaque metadata only,
+  explicit per-send temporary Project State inclusion, strict Rust/Zod
+  contracts, browser regression, and package validation. No dispatch, stored
+  transcript, arbitrary project browsing, automation, provider configuration,
+  or Qt work.
+- **Evidence:** Clean implementation commit
+  `45a6d5f2219a5531cf336ed27f0cf7f389d984be`; 213 Rust tests (3 explicit
+  manual-probe ignores), 220 desktop and 7 website Vitest tests, 44 desktop and
+  8 website Playwright scenarios, full repository validation, unbundled Tauri
+  build, and a clean `0.1.0-beta.6` Ubuntu 22.04 package gate.
+- **Status:** Complete; pinned-container lifecycle, desktop/icon, GLIBC,
+  visible launch, and installed-host smoke passed. Precise active and automated
+  time is not instrumented and is not reconstructed.

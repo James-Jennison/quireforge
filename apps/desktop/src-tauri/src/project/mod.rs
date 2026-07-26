@@ -123,6 +123,13 @@ pub(crate) struct ChatConversationMetadata<'a> {
     pub codex_thread_id: &'a str,
 }
 
+/// Bounded metadata for an Advisor conversation. The thread remains owned by
+/// Codex; QuireForge stores neither prompt nor response text.
+pub(crate) struct AdvisorConversationMetadata<'a> {
+    pub conversation_id: &'a str,
+    pub codex_thread_id: &'a str,
+}
+
 pub(crate) struct ConversationSelectionMetadata<'a> {
     pub availability: &'a str,
     pub ownership: &'a str,
@@ -786,6 +793,25 @@ impl ProjectService {
             .ok_or(ProjectExecutionError::MetadataUnavailable)?;
         repository
             .insert_chat_conversation_metadata(&metadata)
+            .map_err(|_| ProjectExecutionError::MetadataUnavailable)
+    }
+
+    pub(crate) fn record_advisor_conversation_metadata(
+        &self,
+        metadata: AdvisorConversationMetadata<'_>,
+    ) -> Result<(), ProjectExecutionError> {
+        if !valid_id(metadata.conversation_id) || !valid_id(metadata.codex_thread_id) {
+            return Err(ProjectExecutionError::InvalidProjectId);
+        }
+        let mut repository_guard = self
+            .repository
+            .lock()
+            .map_err(|_| ProjectExecutionError::MetadataUnavailable)?;
+        let repository = repository_guard
+            .as_mut()
+            .ok_or(ProjectExecutionError::MetadataUnavailable)?;
+        repository
+            .insert_advisor_conversation_metadata(&metadata)
             .map_err(|_| ProjectExecutionError::MetadataUnavailable)
     }
 
