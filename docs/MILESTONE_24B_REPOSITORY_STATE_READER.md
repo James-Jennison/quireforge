@@ -1,6 +1,6 @@
 # Milestone 24B — Repository State Reader
 
-Status: active implementation on `feat/milestone-24b-repository-state-reader`.
+Status: complete on `feat/milestone-24b-repository-state-reader`.
 
 ## Scope
 
@@ -80,10 +80,11 @@ artifact evidence keeps the manifest version, declared size, and optional local
 presence distinct from checksum observations; absent optional package records
 remain partial evidence rather than fabricated success.
 
-The strict package envelope also carries optional closed Ubuntu 22.04 platform,
-architecture, GLIBC, desktop/icon, lifecycle, launch, and smoke observations.
-Those values are evidence only: absent fields remain absent until the final
-package gate produces fresh validated artifacts.
+The strict package envelope carries closed Ubuntu 22.04 platform and
+architecture observations plus distinct manifest, checksum-file, and optional
+local-verification results. Lifecycle, launch, desktop/icon, smoke, and GLIBC
+results remain explicit package-gate evidence rather than invented manifest
+fields.
 
 Handoff phrases remain reported Markdown evidence. A pushed-checkpoint phrase
 receives current or stale freshness only after the closed Git reader confirms a
@@ -96,8 +97,36 @@ a full source commit, bounded operation ID, UTC-style timestamp, and safe
 repository-relative evidence path. Optional malformed validation evidence is
 diagnostic only and never causes the reader to execute validation.
 
+## Final package evidence
+
+The final implementation commit is
+`bd4c428405425d78d4df439a600c7e02085a83fb`. From its clean tree, the pinned
+`ubuntu:22.04@sha256:0e0a0fc6d18feda9db1590da249ac93e8d5abfea8f4c3c0c849ce512b5ef8982`
+workflow produced ignored local artifacts at
+`target/ubuntu-22.04/release/packages/` and passed its manifest/checksum,
+desktop-entry, icon, GLIBC, disposable Debian install/upgrade/remove, and
+visible Debian/AppImage launch-smoke gates.
+
+- `quireforge_0.1.0.beta.2_amd64.deb` — 4,629,924 bytes; SHA-256
+  `05c7036320be8fe900fd7b52cef1f4f8b54041244b3bf88a83e1d36a3080c293`.
+- `QuireForge-0.1.0-beta.2-x86_64.AppImage` — 83,855,864 bytes; SHA-256
+  `6db4cb5f1c585f252cf06bbc825b5ce61311b63ad6bd030a9546e1950990eb74`.
+
+The source manifest is version 1, a clean `release-candidate` for that
+implementation commit; both artifacts target Ubuntu 22.04 `x86_64`, and the
+packaged executable's maximum observed GLIBC symbol is `2.34`, within the
+Ubuntu 22.04 `2.35` baseline. The lifecycle gate used disposable `dpkg` roots;
+the local installation command is `sudo apt install
+./target/ubuntu-22.04/release/packages/quireforge_0.1.0.beta.2_amd64.deb` and
+the AppImage launch command is `./target/ubuntu-22.04/release/packages/QuireForge-0.1.0-beta.2-x86_64.AppImage`.
+
+`target/validation-summary.json` records the successful package operation in
+the reader's strict version-1 validation format. The reader's metadata-only
+and local-artifact-verification paths accept the producer-compatible manifest,
+checksum file, and local files without a source, size, or checksum conflict.
+
 ## Deferred work
 
-Broader established validation-report formats, lifecycle/package-evidence
-fields, and final package validation remain 24B work. No 24C UI, 24D handoff
-generation, contradiction resolution, watcher, or autonomous repair exists.
+No 24C UI, 24D handoff generation, contradiction resolution, watcher, or
+autonomous repair exists. A project-state workspace is the next proposed
+milestone and requires separate approval.

@@ -7,11 +7,12 @@ locally.” Tauri + React + TypeScript is the current functional prototype. ADR
 0028 accepts retaining Tauri conditionally; no Qt migration has been selected.
 
 - **Branch:** `feat/milestone-24b-repository-state-reader`
-- **Checkpoint:** Milestones 22, 22B, 23, and 24A are complete; 24B has an
-  attached-project-only repository-reader checkpoint. No 24C workspace or 24D
-  handoff/consistency behavior has begun.
+- **Checkpoint:** Milestones 22, 22B, 23, 24A, and 24B are complete. Milestone
+  24B implementation is `bd4c428405425d78d4df439a600c7e02085a83fb`; its final
+  Ubuntu 22.04 package evidence is recorded by this documentation checkpoint.
+  No 24C workspace or 24D handoff/consistency behavior has begun.
 
-  The current 24B fixture checkpoint proves local-only and existing-tracking
+  The completed 24B fixture suite proves local-only and existing-tracking
   reads preserve an inspected repository, while the explicitly authorized
   fetch mode can advance only its `origin` tracking ref with no `FETCH_HEAD`,
   HEAD, index, worktree, or configuration mutation. Package, validation, and
@@ -21,8 +22,10 @@ locally.” Tauri + React + TypeScript is the current functional prototype. ADR
   evidence with commit-based freshness and diagnostics; it does not execute
   validation, rebuild packages, or generate a handoff.
 
-  Package evidence now retains distinct manifest, checksum-file, and optional
+  Package evidence retains distinct manifest, checksum-file, and optional
   local-verification observations; conflicting accepted records remain visible.
+  The release-manifest producer's version-1 `appimage`/`x86_64` wire values are
+  normalized by the strict Rust/TypeScript reader contract.
 - **Milestone 22B:** the routed desktop architecture was refined without
   changing route, native-bridge, authentication, or account-data ownership.
 - **Host readiness:** Qt 6.10.2/QML tooling is installed on this host only.
@@ -40,10 +43,12 @@ the current presentation layer and calls that façade through its bridge.
 
 ## Next action
 
-Milestone 24B — **Repository State Reader** begins with explicit,
-attached-project-only local/tracking/fetch-authorized read modes. It returns a
+Milestone 24B — **Repository State Reader** is complete. It provides explicit,
+attached-project-only local/tracking/fetch-authorized read modes and a
 validated contract plus diagnostics, with no UI, watcher, document rewrite, or
-contradiction resolution. See [Milestone 24B](MILESTONE_24B_REPOSITORY_STATE_READER.md).
+contradiction resolution. The next proposed work is 24C, which requires a new
+approval before any project-state workspace is implemented. See
+[Milestone 24B](MILESTONE_24B_REPOSITORY_STATE_READER.md).
 
 Milestone 24A — **Project State Contract** is complete at implementation commit
 `f62ba5c68fe0002d3d3f6b5faa0bd2d522d81f0d`. Its versioned Rust/Zod contract

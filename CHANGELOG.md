@@ -23,6 +23,10 @@ released a usable application.
 - Milestone 24B repository-state reader checkpoint: attached-project-only,
   typed local/tracking/explicit-fetch reads with contract diagnostics and no UI
   or repository mutation except the separately authorized fetch mode.
+- Milestone 24B final reader and Ubuntu 22.04 package evidence: strict
+  producer-compatible package/validation/handoff evidence, deterministic
+  fixture safety coverage, and clean Debian/AppImage lifecycle and launch smoke
+  validation without a project-state UI or automation.
 - Milestone 24A project-state contract: strict Rust/Zod serialization,
   provenance/trust, approvals, checkpoints, validation/package evidence,
   blockers, contradictions, and handoff state with no reader, UI, or automation;
