@@ -6,9 +6,12 @@ QuireForge is an unofficial Linux workspace for Codex: “Build boldly. Work
 locally.” Tauri + React + TypeScript is the current functional prototype. ADR
 0028 accepts retaining Tauri conditionally; no Qt migration has been selected.
 
-- **Branch:** `feat/milestone-26-appearance-themes`
-- **Checkpoint:** Milestones 22, 22B, 23, 24A, 24B, 24C, and 25 are complete.
-  Milestone 26's palette-only implementation is
+- **Branch:** `main`
+- **Checkpoint:** Milestones 22, 22B, 23, 24A, 24B, 24C, 25, and 26 are
+  complete.
+  Milestone 26 is complete and its cumulative branch was integrated into
+  `main` at `81be6882b76aa17df454497b58fe5a69ae84f56d`. Its palette-only
+  implementation is
   `0ae0de7995f10128728116b148d49f2cb5b2cf79`. Its selector-hotfix candidate is
   `8f7b505f24a489d468f02e82d0e6197606a83abe`; it records the required
   same-version Debian `--reinstall` path after verifying that the installed

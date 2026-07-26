@@ -117,6 +117,7 @@ discovery; scheduling management and execution remain unsupported.
 |       24B | Repository-state reader                                           | Large        | Complete; attached-project-only read service, no UI or automation        |
 |       24C | Project-state workspace                                           | Medium       | Complete; read-only presentation over the existing normalized reader     |
 |        25 | Desktop visual polish                                             | Medium       | Complete; branded presentation refinement with fresh Ubuntu package gate |
+|        26 | Appearance themes                                                 | Medium       | Complete; eight closed local palettes with fresh Ubuntu package gate     |
 
 ## Milestone definitions
 

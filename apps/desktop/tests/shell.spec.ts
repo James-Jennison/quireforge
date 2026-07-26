@@ -1347,6 +1347,7 @@ test("reduced-motion preference disables animation and scripted smooth scrolling
 test("forced-colors mode retains visible controls without horizontal overflow", async ({
   page,
 }) => {
+  await installNativeFixture(page);
   await page.emulateMedia({ forcedColors: "active" });
   await page.goto("/");
 

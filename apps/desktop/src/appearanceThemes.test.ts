@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  applyAppearanceTheme,
   appearanceThemes,
+  appearanceThemeTokenNames,
   defaultAppearanceTheme,
   isThemeId,
   nextAppearanceTheme,
@@ -21,6 +23,12 @@ describe("appearance themes", () => {
       "pacific-night",
     ]);
     expect(defaultAppearanceTheme).toBe("forge");
+    expect(
+      appearanceThemes.every(
+        ({ tokens }) =>
+          tokens === null || tokens.length === appearanceThemeTokenNames.length,
+      ),
+    ).toBe(true);
     expect(isThemeId("custom-theme")).toBe(false);
     expect(restoreAppearanceTheme("custom-theme")).toBe("forge");
   });
@@ -34,5 +42,21 @@ describe("appearance themes", () => {
   it("cycles only through the closed built-in list", () => {
     expect(nextAppearanceTheme("forge")).toBe("midnight-atelier");
     expect(nextAppearanceTheme("pacific-night")).toBe("forge");
+  });
+
+  it("applies runtime palette tokens and restores the Forge CSS fallback", () => {
+    applyAppearanceTheme("midnight-atelier");
+
+    expect(document.documentElement.dataset.theme).toBe("midnight-atelier");
+    expect(document.documentElement.style.colorScheme).toBe("dark");
+    expect(document.documentElement.style.getPropertyValue("--bg")).toBe(
+      "#0b1020",
+    );
+
+    applyAppearanceTheme("forge");
+
+    expect(document.documentElement.dataset.theme).toBe("forge");
+    expect(document.documentElement.style.colorScheme).toBe("dark");
+    expect(document.documentElement.style.getPropertyValue("--bg")).toBe("");
   });
 });
