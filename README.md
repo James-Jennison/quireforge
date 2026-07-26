@@ -9,395 +9,93 @@
 > **Build boldly. Work locally.**
 
 > [!IMPORTANT]
-> This is an unofficial community project. It is not made, endorsed, supported,
-> or distributed by OpenAI. QuireForge is an unofficial native Linux workspace
-> for Codex.
+> QuireForge is an unofficial community project. It is not made, endorsed,
+> supported, or distributed by OpenAI.
 
-QuireForge is an early-stage community-developed project building a native
-graphical Codex workspace for Linux. It works toward a direct, local-first project model:
-user-selected directories remain in place and Codex operates against those
-original directories through supported interfaces. The original Codex
-discovery, QuireForge identity, governance, and the local static website
-foundation are complete. The Tauri desktop foundation also builds and launches
-locally, and its versioned Rust adapter detects the installed Codex CLI and
-normalizes the supported app-server model catalog and Codex-owned account
-state. Browser/device onboarding, cancellation, logout, and redacted recovery
-are implemented locally without storing credentials. Milestone 6's project
-metadata, directory attachment, cwd preflight, and accessible workspace are
-merged. Milestone 7A's native conversation runtime now starts a verified
-thread/turn, normalizes its bounded stream, interrupts the exact active turn,
-and stores reference-only metadata. Milestone 7B adds the responsive composer,
-runtime-derived model and reasoning controls, explicit sandbox and approval
-choices, normalized progress stream, and exact stop action. Milestone 8A adds
-native app-reference-only resume, fork, archive/restore, authoritative session
-reconciliation, and conservative crash recovery. Milestone 8B adds bounded
-Codex-authoritative title search, project/fork grouping, keyboard-accessible
-tabs, and the user-facing resume/fork/archive/restore interface without
-persisting titles or transcript content.
-Milestone 9A adds a strict native approval boundary, app-owned approval and
-activity identity, turn-scoped decisions, safe pending-request cancellation,
-and bounded redacted command/tool/file progress. Milestone 9B groups that
-progress into selectable, in-place expanded activity rows and adds an
-accessible approval card that offers only the native-advertised decisions.
-Milestone 10A adds a read-only native Git boundary with branch/status review,
-staged and working-tree diffs, a responsive changed-file interface, and an
-explicit revalidated editor handoff. Milestone 10B adds fixed stage, unstage,
-bounded revert/recovery, and commit workflows with native-held expiring
-confirmations, concurrency and postcondition checks, attachment-scoped staged
-paths, repository-local identity, and high-confidence secret refusal. It does
-not expose arbitrary Git arguments or remote operations. Milestone 11A adds a
-managed-worktree foundation: bounded native inventory, app-generated
-destinations, native-picker attachment, expiring confirmations, source-HEAD and
-identity revalidation, and ordinary project registration. Milestone 11B adds
-bounded parallel execution for up to four distinct worktree projects, an
-aggregate task monitor, exact per-task controls, and normalized changed-file
-and conflict counts. Selecting a task opens its live bounded activity stream;
-raw Codex and process identity remains native-only. Milestone 11C adds opaque
-recovery of retained app-managed checkouts and explicit removal of only clean,
-inactive, app-managed worktrees after confirmation-time identity and status
-revalidation. Cleanup preserves the branch and never offers force or generic
-prune behavior. Milestone 12 adds up to eight app-owned native PTY tabs rooted
-in freshly reverified attached projects, with byte-safe bounded output,
-input/resize, controlled environment inheritance, explicit process cleanup,
-and metadata-only recovery that never stores shell content or process identity.
-Milestone 13A refreshed the Codex 0.145.0 protocol evidence and added strict
-shared contracts for connector, plugin, marketplace, skill, MCP, policy,
-requirement, scope, health, and app-owned dynamic-tool discovery. The contract
-preserves blocked, degraded, and unknown states. Milestone 13B adds the live
-read-only native catalog: supported app-server reads for connectors, skills,
-MCP, and policy; stable CLI JSON reads for plugins and marketplaces; strict
-normalization, version gating, cache invalidation, partial-failure handling, and
-one narrow typed IPC command. Installation, authorization, configuration
-mutation, and Integration Center UI remain Milestone 14 work. Milestone 14A
-adds a native, fixed-command preview/confirm boundary for pinned plugin and
-marketplace install/remove/add/upgrade operations, with one-use confirmations,
-fresh catalog revalidation, and exact postcondition checks. Milestone 14B adds
-the responsive Integration Center: category-preserving search, filters and
-details, normalized trust review, and accessible confirmation for only those
-14A operations whose capability is ready. Milestone 14C adds confirmed
-connector and MCP authorization handoffs, confirmed skill enable/disable,
-explicit catalog/health refresh, and native-constructed connector mentions on
-new turns. URLs, skill paths, MCP names, and `app://` paths remain native-only;
-unsupported generic configuration, plugin enablement, connector installation
-RPCs, MCP management, and repair paths stay unavailable.
-Milestone 17A advances the normalized integration catalog to version 2 and adds
-read-only discovery of scheduled task templates declared by installed, enabled
-plugins through stable `plugin/read`. React receives only a normalized plugin
-reference, bounded inert prompt preview, truncation state, and typed schedule.
-Marketplace roots stay native-only, and QuireForge exposes no task creation,
-editing, enablement, execution, pause, or deletion control.
-Milestone 18 adds app-owned model and reasoning ownership for the next turn.
-Codex can inspect only a normalized catalog and may make at most one bounded
-request per turn. Manual and locked modes reject that request, Recommend mode
-requires explicit acceptance, and Automatic mode requires a user-selected
-allowlist or reasoning ceiling. Effective and pending choices, provenance, and
-rationale remain visibly distinct; every pending choice is refreshed and
-revalidated before the next `turn/start`, and registration failure degrades
-honestly without web automation or Codex configuration edits.
-Milestone 19 hardens the implemented product boundary before packaging. Tauri
-now explicitly disables the global JavaScript API and asset protocol, prunes
-unused plugin commands, narrows CSP and response headers, and retains an empty
-main-window permission set. Node and RustSec dependency audits, immutable
-workflow-action checks, frontend active-content checks, and production asset
-budgets are repeatable gates. Keyboard skip/focus, reduced motion, forced
-colors, terminal confirmation focus ownership, and raw-error-free reload
-recovery are verified across desktop and website profiles. A bounded native
-startup view remains visible while WebKit loads the application shell, and the
-terminal renderer is a third production chunk. The 193,549-byte startup entry
-is about 76% smaller than the former 805,736-byte monolith; the pre-terminal
-application path remains about 43% smaller.
-Milestone 15A adds a native-selected safe file-preview surface. Rust revalidates
-the selected project attachment and file identity, keeps absolute paths native,
-and sends React only bounded normalized UTF-8 text, PNG/JPEG data, or
-metadata-only PDF state. Active HTML/SVG rendering, APNG, unknown binary
-content, oversized files, and browser-side local selection remain unavailable;
-UTF-8 markup can appear only as inert normalized text. Milestone 15B adds
-explicit PNG/JPEG conversation attachments through the documented Codex
-`localImage` turn input. Native picker selections, bounded browser drop bytes,
-and Linux file-manager drops captured only in Rust are revalidated into
-private, short-lived app-owned copies; React receives only opaque IDs and
-normalized metadata. Generic file attachments and path-bearing frontend
-drag/drop remain unavailable. Milestone 15C adds a separately confirmed,
-one-use default-application handoff for a revalidated preview plus fixed-copy
-background approval/completion/failure notifications. React receives no
-absolute path or notification content input, and generic opener IPC remains
-unavailable. Full Wayland/X11-session acceptance is recorded separately.
-Milestone 20 adds x86_64 AppImage and Debian release candidates built and
-launched on a pinned Ubuntu 22.04 baseline. Their package identity, checksums,
-GLIBC baseline, install/upgrade/uninstall behavior, and data-preserving removal
-are verified. The current `0.1.0-beta.2` contract uses a GitHub-safe outer
-Debian filename while retaining Debian prerelease ordering inside the package.
-Website download data remains inactive.
-Milestone 21A adds the product startup experience: an authenticated
-Codex-owned access gate, a responsive QuireForge home informed by the approved
-three-region visual reference, product navigation without internal milestone
-labels, and documented read-only remaining usage with honest unmetered and
-unavailable states. Workspace and account-data readers do not start until the
-normalized Codex account state grants access. QuireForge does not store
-credentials, scrape ChatGPT, estimate quota, expose raw account data, or redeem
-reset credits.
-Milestone 21B has passed its local package/platform preflight and prepared the
-dormant public-download contract, installation copy, known limitations, and
-rollback sequence. The source repository and GitHub prerelease/provenance
-records are public. The committed website continues to report no downloads
-until the exact owner-hosted package location, public retrieval, activation,
-and deployment operations receive their separate approvals.
-Milestone 22 replaces the former combined scrolling workspace with ten
-dedicated, deep-linkable application views inside one persistent QuireForge
-desktop shell. It adds independent pane scrolling, an optional contextual
-inspector, responsive compact/drawer navigation, preserved mounted tool state,
-and a real account-to-Settings action that exposes only supported normalized
-Codex refresh, usage, and logout controls.
-Milestone 22B completed the existing routed workspace presentation refinement
-with
-shared visual conventions and responsive/accessibility polish; it does not add
-new remote account, agent, or backend capabilities. The current slice aligns
-the Scheduled, Integrations, Files, and Settings route surfaces while retaining
-their distinct read-only, reviewed-action, preview, and local-preference roles.
-Milestone 23's documentation-only feasibility decision retains Tauri
-conditionally: reusable Rust services may later sit behind a UI-neutral
-boundary, but a Qt 6 migration is not authorized unless defined measurable
-triggers are met and separately approved.
-Milestone 24A established the machine-readable project-state contract, and
-Milestone 24B completed its attached-project-only repository reader.
-Milestone 24C completed a demand-driven, read-only Project state workspace over
-that normalized evidence. Fetch controls, background scans, state writes,
-automatic handoffs, and contradiction resolution remain unavailable.
-Milestone 25 refines the native shell's branded density, dark-surface hierarchy,
-empty-state composition, and responsive conversation composer without changing
-native behavior, repository-state contracts, or automation boundaries.
-Milestone 26 completed a closed set of accessible local appearance palettes through
-Settings → Appearance, retaining Forge as the default while leaving layout,
-typography, native behavior, repository-state contracts, and automation
-boundaries unchanged.
-Milestone 27 completes a managed-ChatGPT-only native conversation boundary:
-Chat and Codex have distinct capability policies, Chat has no project, terminal,
-Git, worktree, tool, integration, approval, or API-key authority, and mode
-transitions require explicit confirmation. Only the confirmed `chat` or `codex`
-local workspace preference persists; missing or invalid values safely fall back
-to Codex without transferring project context, content, credentials, or other
-capability-bearing state.
-Milestone 28 is complete as a reference-only Advisor foundation. It adds strict
-local metadata contracts and a read-only Advisor route for safe reference
-summaries and digest-only future dispatch proposals. A user may explicitly
-confirm one temporary projection of the existing local Project State reader;
-the result excludes project identity, paths, refs, source content, and image
-attachments and is not retained. It does not add arbitrary project reading,
-model calls, prompt/transcript retention, execution dispatch, or automation.
-Its clean `0.1.0-beta.5` Ubuntu 22.04 Debian/AppImage package set passed the
-pinned lifecycle, visible-launch, and installed-host smoke gates.
-Webuzo is the selected static origin host, with Cloudflare retained as the DNS,
-TLS, and cache edge. The reviewed static site is publicly deployed at
-`https://quireforge.jamesjennison.net` through the approved proxied Cloudflare
-record, with trusted edge and origin TLS. There is no public application
-download yet. The source repository and development activity are public.
+QuireForge is a native Linux workspace for planning and supervising
+AI-assisted software development with Codex. It keeps user-selected projects
+in place, uses documented interfaces, and keeps QuireForge metadata separate
+from Codex authentication, configuration, and session data.
 
-## Project status
+The canonical desktop identifier is `io.github.codeframe78.QuireForge`; the
+static project site is [quireforge.jamesjennison.net](https://quireforge.jamesjennison.net).
 
-- Supported distributions: no public support promise yet; the proposed initial
-  beta target is x86_64 Ubuntu 22.04 or newer on GNOME Wayland/X11, backed by
-  the pinned GLIBC 2.35 package baseline and separately recorded session QA.
-- Installation: local AppImage and Debian candidates are validated; public
-  installation guidance is staged, while package promotion and download
-  activation remain Milestone 21B approval gates.
-- Website: the Astro site builds, passes local responsive/accessibility checks,
-  and is publicly deployed at `https://quireforge.jamesjennison.net` through
-  Webuzo and Cloudflare. Live desktop/mobile accessibility and Lighthouse
-  validation pass. The canonical hostname uses verified Webuzo-managed
-  automatic origin TLS.
-- Integration support: runtime compatibility retains Codex CLI 0.144.6
-  fixtures and now includes a reviewed 0.145.0 integration schema subset.
-  Account status and Codex-managed authentication are implemented; the 13A
-  catalog/dynamic-tool contract, 13B native read-only discovery service, and
-  14A native plugin/marketplace lifecycle, 14B Integration Center, and 14C
-  authorization/control boundary are complete, merged, and verified on `main`.
-  The schema-v2 Milestone 17A scheduled-template catalog is implemented and
-  verified locally on its feature branch.
-- Desktop: the Tauri 2, React, TypeScript, and Rust shell builds and launches
-  locally with narrow typed IPC, a supervised non-billable Codex runtime and
-  account-status probe, a verified native project-attachment workflow, and a
-  strict native conversation runtime with a responsive task UI and native
-  session-lifecycle/recovery boundary, accessible session history controls,
-  the complete Milestone 9 native approval and detailed-activity interface, and
-  complete Milestone 10 reviewed Git status/diff and mutation workflows, plus
-  the Milestone 11A managed-worktree inventory/create/attach foundation and
-  Milestone 11B bounded parallel task monitor, retained-worktree recovery, and
-  Milestone 11C clean managed-worktree cleanup, plus the Milestone 12 native
-  integrated terminal, the Milestone 13B normalized read-only integration
-  catalog boundary, the Milestone 14A confirmed native plugin/marketplace
-  mutation boundary, the Milestone 14B accessible Integration Center, and the
-  Milestone 14C confirmed authorization/control boundary, plus the Milestone
-  15A bounded project-file preview surface and Milestone 15B bounded
-  conversation-image staging and explicit attachment flow, plus the Milestone
-  15C reviewed default-application handoff and privacy-safe notification code
-  checkpoint, plus the Milestone 17A read-only scheduled-template workspace.
-  Milestone 18's policy-bounded next-turn selector and Milestone 19's security,
-  accessibility, performance, and recovery hardening are complete locally.
-  Milestone 20's package candidates and guarded release automation are also
-  complete and verified locally. Milestone 21A's authenticated startup gate,
-  home/workspace redesign, milestone-label removal, and normalized remaining
-  usage are complete and verified locally. Milestone 21B's clean package
-  preflight, platform launch review, repeat normalization, and dormant public
-  download validation are also complete locally. Milestone 22's routed
-  workspace shell, contextual pane layout, responsive navigation, and
-  account/settings fallback are complete and verified locally.
-- CI status: repository, website, and desktop quality gates are configured for
-  pull requests and `main` pushes; deployment remains separately gated.
-- Current milestone: Milestone 15 is implemented and verified locally, the
-  Webuzo-hosted static website is complete through production Milestone 16,
-  and Milestone 17A's read-only scheduled task catalog is implemented and
-  verified locally. Milestone 18's policy-bounded next-turn model selector is
-  also implemented and verified locally. Milestone 19's pre-packaging
-  hardening pass and Milestone 20 packaging/release automation are implemented
-  and verified locally. Milestone 21A product readiness is also implemented and
-  verified locally. Milestone 21B local release readiness has passed and the
-  public beta 1 evidence is retained as superseded; beta 2 corrects its Debian
-  asset-name mismatch. Milestone 22's routed desktop workspace and Settings
-  milestone is complete locally. Owner-hosted package promotion, anonymous
-  retrieval, website download activation, and deployment remain separately
-  approval-gated.
-  Native Wayland evidence covers project, file, and image pickers, bounded
-  preview, a real Nautilus image drop, and fixed-copy notification delivery;
-  complete XWayland and true-X11 handoff paths remain separately recorded.
-  Scheduled-task management/execution and other unsupported advanced features
-  remain deferred. Unsupported generic openers, generic file attachments, and
-  integration-management paths remain unavailable.
-- Known limitations: Agent-directed selection can affect only the next turn,
-  requires the reviewed app-server lifecycle, and degrades when registration is
-  unavailable; the current turn cannot replace its own executing model.
-  Concurrency is capped at four active worktree tasks; durable
-  task recovery, automatic conflict resolution, attached-worktree cleanup,
-  force/prune workflows, advanced remote operations, owner-hosted public
-  package downloads, and stable releases do not exist yet. The Tauri Linux
-  dependency graph retains
-  explicitly reviewed GTK3 maintenance and GLib iterator advisories, and
-  `freezePrototype` remains disabled because enabling it prevents the current
-  production frontend from mounting. The Milestone 21B audit refresh found no
-  unaccepted vulnerability or warning; the exact-source terminal gate must
-  repeat it before publication.
+## What QuireForge provides
 
-## Discovery documents
+- A Tauri desktop workspace built with Rust, React, TypeScript, and Vite.
+- Managed Codex account onboarding and bounded native conversation workflows.
+- User-selected project attachment, reviewed Git and worktree workflows, and a
+  native integrated terminal with explicit controls.
+- Read-only normalized Project State evidence and a reference-only Advisor
+  workspace with explicitly confirmed temporary context.
+- Accessible routed workspaces, local appearance preferences, and reproducible
+  Ubuntu 22.04 Debian/AppImage candidate validation.
 
-- [Architecture](docs/ARCHITECTURE.md)
-- [Codex integration findings](docs/CODEX-INTEGRATION.md)
-- [Compatibility](docs/COMPATIBILITY.md)
-- [Feature parity](docs/FEATURE-PARITY.md)
-- [Threat model](docs/THREAT-MODEL.md)
-- [Historical Cloudflare Pages capability audit](docs/CLOUDFLARE-PAGES-CAPABILITY-AUDIT.md)
-- [Webuzo deployment](docs/WEBUZO-DEPLOYMENT.md)
-- [Webuzo static-hosting decision](docs/DECISIONS/0024-webuzo-static-website-hosting.md)
-- [Read-only scheduled task decision](docs/DECISIONS/0025-read-only-scheduled-task-catalog.md)
-- [Milestone 16A website reconciliation](docs/MILESTONE_16A_WEBSITE_RECONCILIATION.md)
-- [Milestone 16B origin-only staging](docs/MILESTONE_16B_ORIGIN_STAGING.md)
-- [Milestone 16C production activation](docs/MILESTONE_16C_PRODUCTION_ACTIVATION.md)
-- [Milestone 16D automatic SSL enrollment](docs/MILESTONE_16D_AUTOMATIC_SSL.md)
-- [Website architecture](docs/WEBSITE.md)
-- [Building](docs/BUILDING.md)
-- [Testing](docs/TESTING.md)
-- [Release procedure](docs/RELEASING.md)
-- [Staged beta installation](docs/BETA-INSTALLATION.md)
-- [0.1.0-beta.2 release notes](docs/RELEASE_NOTES_0.1.0_BETA_2.md)
-- [Superseded 0.1.0-beta.1 release notes](docs/RELEASE_NOTES_0.1.0_BETA_1.md)
-- [Milestone 21B release readiness](docs/MILESTONE_21B_RELEASE_READINESS.md)
-- [Public disclosure audit](docs/PUBLIC_DISCLOSURE_AUDIT.md)
-- [Public-source and runner-boundary decision](docs/DECISIONS/0027-public-source-and-runner-boundary.md)
-- [Local build performance](docs/LOCAL-BUILD-PERFORMANCE.md)
-- [Milestone forecasts](docs/MILESTONE-FORECASTS.md)
-- [Milestone real-world time ledger](docs/MILESTONE_TIME_LEDGER.md)
-- [Normalized integration contracts decision](docs/DECISIONS/0018-normalized-integration-contracts.md)
-- [Confirmed integration mutations decision](docs/DECISIONS/0019-confirmed-integration-mutations.md)
-- [Confirmed integration authorization and controls decision](docs/DECISIONS/0020-confirmed-integration-authorization-and-controls.md)
-- [Safe project file previews decision](docs/DECISIONS/0021-safe-project-file-previews.md)
-- [Bounded conversation image attachments decision](docs/DECISIONS/0022-bounded-conversation-image-attachments.md)
-- [Reviewed desktop handoffs and notifications decision](docs/DECISIONS/0023-reviewed-desktop-handoffs-and-notifications.md)
-- [Superseded GitHub Pages plan](docs/GITHUB-PAGES.md)
-- [Permanent identity decision](docs/DECISIONS/0003-permanent-quireforge-identity.md)
-- [Native approval and activity decision](docs/DECISIONS/0011-native-approvals-and-activity-contract.md)
-- [Reviewed Git mutation decision](docs/DECISIONS/0013-reviewed-git-mutation-boundary.md)
-- [Managed worktree foundation decision](docs/DECISIONS/0014-managed-worktree-foundation.md)
-- [Bounded parallel worktree execution decision](docs/DECISIONS/0015-bounded-parallel-worktree-execution.md)
-- [Safe managed-worktree cleanup decision](docs/DECISIONS/0016-safe-managed-worktree-cleanup.md)
-- [Native integrated terminal decision](docs/DECISIONS/0017-native-integrated-terminal.md)
-- [Brand sources and usage](assets/brand/README.md)
-- [Roadmap](docs/ROADMAP.md)
-- [Changelog](CHANGELOG.md)
+The current implementation status, completed milestones, known limitations,
+and next approved work are maintained in [Current State](docs/CURRENT_STATE.md).
 
-The application will use only supported Codex and ChatGPT integration
-mechanisms. It will not scrape ChatGPT, copy browser tokens, reverse engineer a
-proprietary desktop application, or present account-specific integrations as a
-guaranteed public catalog.
+## Safety boundaries
 
-## Permanent identity
+- QuireForge does not collect passwords, browser cookies, session tokens, or
+  API keys for Codex or ChatGPT authentication.
+- The frontend uses narrow typed native commands; it does not spawn arbitrary
+  processes or consume raw Codex protocol messages.
+- Project operations are scoped to attached directories and explicit user
+  actions. Detach, archive, and remove actions are not filesystem deletion.
+- Advisor remains read-only and non-executable. Approval and execution
+  workflows retain their separate confirmation boundaries.
+- The project does not scrape ChatGPT, reverse engineer private protocols, or
+  imply OpenAI endorsement.
 
-The public repository is `James-Jennison/quireforge`. Future application and
-packaging work must use `quireforge` for the executable and Debian package,
-`QuireForge` for the desktop display name and AppImage basename, and
-`io.github.codeframe78.QuireForge` as the application identifier. Its syntax is
-validated for Tauri and freedesktop application identity; functional bundle,
-and packaging wiring remains an implementation-milestone test obligation. The
-unbundled GTK/D-Bus runtime identity is verified locally.
-The canonical desktop entry is
-`io.github.codeframe78.QuireForge.desktop`; its `Exec` target remains
-`quireforge`.
+See the [architecture](docs/ARCHITECTURE.md), [threat model](docs/THREAT-MODEL.md),
+and [Codex integration findings](docs/CODEX-INTEGRATION.md) for the detailed
+boundaries.
 
-The production website target is
-`https://quireforge.jamesjennison.net`, hosted as a static Astro site on
-Webuzo. Cloudflare remains the authoritative DNS, proxied TLS, and cache edge.
-The source repository, CI, issues, and development activity are public and are
-linked from the static website source. GitHub Pages and Cloudflare Pages are
-disabled and are not production fallbacks. The website source is under
-`apps/website/`; future DNS, TLS, hosting, and deployment changes remain
-separately approval-gated.
+## Quick start
 
-## Website development
-
-With Node 22 and pnpm 11.15.0 available:
+Use a Linux host with the supported Node, pnpm, Rust, Tauri, Python, and Git
+prerequisites described in [Building](docs/BUILDING.md).
 
 ```bash
 pnpm install --frozen-lockfile
 pnpm validate
 pnpm test:e2e
-```
-
-See [Building](docs/BUILDING.md) and [Testing](docs/TESTING.md) for the complete
-local workflow and a fallback when an older distribution Corepack cannot launch
-the pinned pnpm release.
-
-## Desktop development
-
-With Rust 1.95 or newer and the documented Tauri Linux development packages:
-
-```bash
 pnpm desktop:dev
-pnpm desktop:build
-pnpm codex:schema
 ```
 
-The first command launches the local development shell. The second produces an
-unbundled local executable for verification; it does not create or publish an
-installable package. The third refreshes the reviewed Codex app-server schema
-subset and requires explicit diff review. See [Building](docs/BUILDING.md) for
-prerequisites.
+`pnpm validate` is the full non-browser quality gate. `pnpm test:e2e` adds the
+desktop browser and accessibility coverage. See [Testing](docs/TESTING.md) for
+targeted checks and [Building](docs/BUILDING.md) for the pinned Ubuntu 22.04
+package workflow.
 
-To build and fully validate ignored local AppImage and Debian candidates in the
-pinned Ubuntu 22.04 baseline:
+## Repository layout
 
-```bash
-./scripts/run_linux_package_container.sh
-```
+| Path | Purpose |
+| --- | --- |
+| `apps/desktop/` | Tauri desktop application, Rust core, React UI, and desktop tests |
+| `apps/website/` | Static Astro website |
+| `docs/` | Architecture, decisions, milestone evidence, and operating guidance |
+| `scripts/` | Repository, package, and release-validation utilities |
+| `assets/brand/` | QuireForge brand sources and usage guidance |
 
-This performs no host installation or publication. See
-[Releasing](docs/RELEASING.md) for the separate approval boundary.
+## Documentation
 
-Application-owned files will use the XDG locations `~/.config/quireforge`,
-`~/.local/share/quireforge`, `~/.cache/quireforge`, and, where needed,
-`~/.local/state/quireforge`. Codex-owned authentication, configuration, and
-session storage are outside this identity migration.
+Start with the [documentation index](docs/INDEX.md). The most common references
+are:
 
-## Governance
+- [Current State](docs/CURRENT_STATE.md) and [Roadmap](docs/ROADMAP.md)
+- [Architecture](docs/ARCHITECTURE.md) and [decisions](docs/DECISIONS/)
+- [Building](docs/BUILDING.md), [Testing](docs/TESTING.md), and
+  [Releasing](docs/RELEASING.md)
+- [Compatibility](docs/COMPATIBILITY.md), [Website](docs/WEBSITE.md), and
+  [Changelog](CHANGELOG.md)
+- [Milestone evidence](docs/), [forecasts](docs/MILESTONE-FORECASTS.md), and
+  [time ledger](docs/MILESTONE_TIME_LEDGER.md)
 
-QuireForge is licensed under the [Apache License 2.0](LICENSE). Contributions
-follow [CONTRIBUTING.md](CONTRIBUTING.md) and the
-[Code of Conduct](CODE_OF_CONDUCT.md). Review [SECURITY.md](SECURITY.md) before
-reporting a vulnerability and [SUPPORT.md](SUPPORT.md) before sharing sanitized
-diagnostics.
+## Contributing and support
+
+QuireForge is licensed under the [Apache License 2.0](LICENSE). Read
+[Contributing](CONTRIBUTING.md), the [Code of Conduct](CODE_OF_CONDUCT.md), and
+the [security policy](SECURITY.md) before opening a contribution or report.
+For project-status expectations and sanitized diagnostics guidance, see
+[Support](SUPPORT.md).
