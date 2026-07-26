@@ -8,6 +8,9 @@ export const repositoryStateReadRequestSchema = z
   .object({
     projectId: z.string().uuid(),
     remoteMode: z.enum(["local-only", "existing-tracking", "fetch-authorized"]),
+    artifactVerification: z
+      .enum(["metadata-only", "verify-local-artifacts"])
+      .default("metadata-only"),
   })
   .strict();
 
@@ -38,6 +41,7 @@ export const repositoryStateReadSnapshotSchema = z
               sourceCommit: z.string().nullable(),
               artifactPath: z.string().nullable(),
               checksum: z.string().nullable(),
+              localVerified: z.boolean(),
               freshness: z.enum([
                 "current",
                 "stale",

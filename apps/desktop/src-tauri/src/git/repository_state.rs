@@ -1,7 +1,8 @@
-use std::{fs, path::Path};
+use std::{fs, io::Read, path::Path};
 
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use sha2::{Digest, Sha256};
 
 use crate::{
     project::{ProjectExecutionError, ProjectService},
@@ -26,6 +27,15 @@ pub enum RepositoryRemoteMode {
 pub struct RepositoryStateReadRequest {
     pub project_id: String,
     pub remote_mode: RepositoryRemoteMode,
+    #[serde(default)]
+    pub artifact_verification: ArtifactVerificationMode,
+}
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "kebab-case")]
+pub enum ArtifactVerificationMode {
+    #[default]
+    MetadataOnly,
+    VerifyLocalArtifacts,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -113,6 +123,7 @@ pub struct PackageEvidence {
     pub artifact_path: Option<String>,
     pub checksum: Option<String>,
     pub freshness: Freshness,
+    pub local_verified: bool,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -273,6 +284,7 @@ impl RepositoryStateReader {
             &root.worktree_root,
             local_head.as_deref(),
             branch.head.as_deref(),
+            request.artifact_verification,
             &mut diagnostics,
         );
         let mut snapshot = snapshot_from_parts(
@@ -347,6 +359,7 @@ fn read_supported_evidence(
     root: &Path,
     current_head: Option<&str>,
     branch: Option<&str>,
+    artifact_verification: ArtifactVerificationMode,
     diagnostics: &mut Vec<RepositoryStateDiagnostic>,
 ) -> RepositoryEvidence {
     let mut evidence = RepositoryEvidence::default();
@@ -373,12 +386,21 @@ fn read_supported_evidence(
                         && valid_sha256(&artifact.sha256)
                         && safe_artifact_path(&artifact.path)
                     {
+                        let local_verified = verify_artifact(
+                            root,
+                            &artifact.path,
+                            artifact.size,
+                            &artifact.sha256,
+                            artifact_verification,
+                            diagnostics,
+                        );
                         evidence.packages.push(PackageEvidence {
                             kind: artifact.kind,
                             source_commit: source_commit.clone(),
                             artifact_path: Some(artifact.path),
                             checksum: Some(artifact.sha256),
                             freshness: freshness(source_commit.as_deref(), current_head),
+                            local_verified,
                         });
                     } else {
                         diagnostics.push(diagnostic("invalid-package-manifest", RepositoryStateDiagnosticSeverity::Warning, "packages", Some(manifest_path.to_owned()), "A package record has an invalid commit, checksum, or repository-relative path.".to_owned(), false, "Regenerate reviewed package evidence."));
@@ -570,6 +592,82 @@ fn read_supported_evidence(
         }
     }
     evidence
+}
+
+fn verify_artifact(
+    root: &Path,
+    relative: &str,
+    size: u64,
+    expected: &str,
+    mode: ArtifactVerificationMode,
+    diagnostics: &mut Vec<RepositoryStateDiagnostic>,
+) -> bool {
+    if mode == ArtifactVerificationMode::MetadataOnly {
+        return false;
+    }
+    let path = root.join(relative);
+    let Ok(metadata) = fs::symlink_metadata(&path) else {
+        diagnostics.push(diagnostic(
+            "package-artifact-missing",
+            RepositoryStateDiagnosticSeverity::Warning,
+            "packages",
+            Some(relative.to_owned()),
+            "A declared local artifact is missing.".to_owned(),
+            false,
+            "Build the declared artifact before local verification.",
+        ));
+        return false;
+    };
+    if metadata.file_type().is_symlink() || !metadata.is_file() {
+        diagnostics.push(diagnostic(
+            "unsafe-package-artifact",
+            RepositoryStateDiagnosticSeverity::Warning,
+            "packages",
+            Some(relative.to_owned()),
+            "A declared artifact is unsafe or not a regular file.".to_owned(),
+            false,
+            "Inspect the declared artifact manually.",
+        ));
+        return false;
+    }
+    if metadata.len() != size {
+        diagnostics.push(diagnostic(
+            "package-size-mismatch",
+            RepositoryStateDiagnosticSeverity::Warning,
+            "packages",
+            Some(relative.to_owned()),
+            "The declared artifact size does not match local evidence.".to_owned(),
+            false,
+            "Rebuild or correct package evidence.",
+        ));
+        return false;
+    }
+    let Ok(mut file) = fs::File::open(path) else {
+        return false;
+    };
+    let mut hasher = Sha256::new();
+    let mut buffer = [0_u8; 8192];
+    loop {
+        match file.read(&mut buffer) {
+            Ok(0) => break,
+            Ok(count) => hasher.update(&buffer[..count]),
+            Err(_) => return false,
+        }
+    }
+    let actual = format!("{:x}", hasher.finalize());
+    if actual != expected.to_ascii_lowercase() {
+        diagnostics.push(diagnostic(
+            "package-checksum-mismatch",
+            RepositoryStateDiagnosticSeverity::Warning,
+            "packages",
+            Some(relative.to_owned()),
+            "The declared artifact checksum does not match local evidence.".to_owned(),
+            false,
+            "Rebuild or correct package evidence.",
+        ));
+        return false;
+    }
+    true
 }
 
 async fn fetch_tracking_refs(root: &Path) -> Result<(), GitRunError> {
@@ -1106,6 +1204,7 @@ mod tests {
                 RepositoryStateReadRequest {
                     project_id,
                     remote_mode: RepositoryRemoteMode::LocalOnly,
+                    artifact_verification: ArtifactVerificationMode::MetadataOnly,
                 },
                 &projects,
             )
@@ -1148,6 +1247,7 @@ mod tests {
                     RepositoryStateReadRequest {
                         project_id: project_id.clone(),
                         remote_mode,
+                        artifact_verification: ArtifactVerificationMode::MetadataOnly,
                     },
                     &projects,
                 )
@@ -1179,6 +1279,7 @@ mod tests {
                 RepositoryStateReadRequest {
                     project_id,
                     remote_mode: RepositoryRemoteMode::FetchAuthorized,
+                    artifact_verification: ArtifactVerificationMode::MetadataOnly,
                 },
                 &projects,
             )
@@ -1229,6 +1330,7 @@ mod tests {
                 RepositoryStateReadRequest {
                     project_id,
                     remote_mode: RepositoryRemoteMode::ExistingTracking,
+                    artifact_verification: ArtifactVerificationMode::MetadataOnly,
                 },
                 &projects,
             )
@@ -1262,6 +1364,7 @@ mod tests {
                 RepositoryStateReadRequest {
                     project_id: project_id.clone(),
                     remote_mode: RepositoryRemoteMode::ExistingTracking,
+                    artifact_verification: ArtifactVerificationMode::MetadataOnly,
                 },
                 &projects,
             )
@@ -1280,6 +1383,7 @@ mod tests {
                 RepositoryStateReadRequest {
                     project_id: project_id.clone(),
                     remote_mode: RepositoryRemoteMode::LocalOnly,
+                    artifact_verification: ArtifactVerificationMode::MetadataOnly,
                 },
                 &projects,
             )
@@ -1304,6 +1408,7 @@ mod tests {
                 RepositoryStateReadRequest {
                     project_id,
                     remote_mode: RepositoryRemoteMode::ExistingTracking,
+                    artifact_verification: ArtifactVerificationMode::MetadataOnly,
                 },
                 &projects,
             )
@@ -1327,6 +1432,7 @@ mod tests {
                 RepositoryStateReadRequest {
                     project_id: behind_id.clone(),
                     remote_mode: RepositoryRemoteMode::ExistingTracking,
+                    artifact_verification: ArtifactVerificationMode::MetadataOnly,
                 },
                 &behind_projects,
             )
@@ -1337,6 +1443,7 @@ mod tests {
                 RepositoryStateReadRequest {
                     project_id: behind_id,
                     remote_mode: RepositoryRemoteMode::FetchAuthorized,
+                    artifact_verification: ArtifactVerificationMode::MetadataOnly,
                 },
                 &behind_projects,
             )
@@ -1367,6 +1474,7 @@ mod tests {
                 RepositoryStateReadRequest {
                     project_id,
                     remote_mode: RepositoryRemoteMode::FetchAuthorized,
+                    artifact_verification: ArtifactVerificationMode::MetadataOnly,
                 },
                 &projects,
             )
@@ -1417,7 +1525,13 @@ mod tests {
         )
         .unwrap();
         let mut diagnostics = Vec::new();
-        let evidence = read_supported_evidence(&fixture.root, Some(&head), None, &mut diagnostics);
+        let evidence = read_supported_evidence(
+            &fixture.root,
+            Some(&head),
+            None,
+            ArtifactVerificationMode::MetadataOnly,
+            &mut diagnostics,
+        );
         assert_eq!(evidence.packages.len(), 1);
         assert!(matches!(evidence.packages[0].freshness, Freshness::Current));
         assert!(matches!(
@@ -1430,7 +1544,13 @@ mod tests {
 
         fs::write(packages.join("release-manifest.json"), "not-json").unwrap();
         let mut malformed = Vec::new();
-        let evidence = read_supported_evidence(&fixture.root, Some(&head), None, &mut malformed);
+        let evidence = read_supported_evidence(
+            &fixture.root,
+            Some(&head),
+            None,
+            ArtifactVerificationMode::MetadataOnly,
+            &mut malformed,
+        );
         assert!(evidence.packages.is_empty());
         assert!(malformed
             .iter()
