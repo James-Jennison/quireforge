@@ -811,6 +811,49 @@ test("project state workspace presents read-only normalized evidence accessibly"
   expect(overflow).toBeLessThanOrEqual(1);
 });
 
+test("visual polish keeps the branded shell and composer accessible", async ({
+  page,
+  isMobile,
+}, testInfo) => {
+  await installNativeFixture(page);
+  await page.goto("/");
+
+  const homeComposer = page.locator('[data-visual-region="home-composer"]');
+  await expect(homeComposer).toBeVisible();
+  expect(
+    await homeComposer.evaluate(
+      (element) => getComputedStyle(element).borderRadius,
+    ),
+  ).toBe("22px");
+
+  await openWorkspace(page, "New task");
+  const composer = page.locator('[data-visual-region="conversation-composer"]');
+  await expect(composer).toBeVisible();
+  expect(
+    await composer.evaluate(
+      (element) => getComputedStyle(element).borderRadius,
+    ),
+  ).toBe("16px");
+  await page.getByRole("textbox", { name: "Task" }).focus();
+  await expect(page.getByRole("textbox", { name: "Task" })).toBeFocused();
+  await expect(page.locator(".sidebar .nav-item--active")).toContainText(
+    "New task",
+  );
+
+  const accessibility = await new AxeBuilder({ page }).analyze();
+  expect(accessibility.violations).toEqual([]);
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - window.innerWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(1);
+  await page.screenshot({
+    path: testInfo.outputPath(
+      `visual-polish-composer-${isMobile ? "mobile" : "desktop"}.png`,
+    ),
+    animations: "disabled",
+  });
+});
+
 test("native session fixture renders grouping, tabs, and bounded controls", async ({
   page,
 }) => {

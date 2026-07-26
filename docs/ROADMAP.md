@@ -116,6 +116,7 @@ discovery; scheduling management and execution remain unsupported.
 |       24A | Project-state contract                                            | Medium       | Complete; strict contract only, no ingestion, UI, or automation          |
 |       24B | Repository-state reader                                           | Large        | Complete; attached-project-only read service, no UI or automation        |
 |       24C | Project-state workspace                                           | Medium       | Complete; read-only presentation over the existing normalized reader     |
+|        25 | Desktop visual polish                                             | Medium       | In progress; presentation-only shell and composer refinement             |
 
 ## Milestone definitions
 

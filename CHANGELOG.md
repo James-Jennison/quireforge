@@ -24,6 +24,10 @@ released a usable application.
 
 ### Added
 
+- Milestone 25 desktop visual polish: denser branded sidebar and top bar,
+  clearer dark-theme hierarchy, centered task entry, rounded conversation
+  composer, and desktop/mobile visual-accessibility coverage without new
+  native behavior, external branded assets, or automation.
 - Milestone 24C Project state workspace: a demand-driven, read-only route over
   the existing normalized repository-state snapshot, with explicit
   local-only/metadata-only access and no fetch, mutation, approval, handoff

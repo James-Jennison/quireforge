@@ -2995,7 +2995,7 @@ export default function App({
         tabIndex={-1}
         ref={workspaceMainRef}
       >
-        <header className="topbar">
+        <header className="topbar" data-visual-region="topbar">
           <div className="topbar-location">
             <button
               className="mobile-navigation-toggle"

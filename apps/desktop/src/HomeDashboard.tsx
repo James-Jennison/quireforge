@@ -40,7 +40,12 @@ export function HomeDashboard({
           </p>
         </div>
 
-        <button className="home-composer" type="button" onClick={onNewTask}>
+        <button
+          className="home-composer"
+          data-visual-region="home-composer"
+          type="button"
+          onClick={onNewTask}
+        >
           <span>Describe a change, investigation, or review…</span>
           <strong>New task</strong>
         </button>

@@ -163,6 +163,9 @@ Milestone 24B completed its attached-project-only repository reader.
 Milestone 24C completed a demand-driven, read-only Project state workspace over
 that normalized evidence. Fetch controls, background scans, state writes,
 automatic handoffs, and contradiction resolution remain unavailable.
+Milestone 25 refines the native shell's branded density, dark-surface hierarchy,
+empty-state composition, and responsive conversation composer without changing
+native behavior, repository-state contracts, or automation boundaries.
 Webuzo is the selected static origin host, with Cloudflare retained as the DNS,
 TLS, and cache edge. The reviewed static site is publicly deployed at
 `https://quireforge.jamesjennison.net` through the approved proxied Cloudflare

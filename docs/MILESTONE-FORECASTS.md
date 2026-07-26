@@ -1764,3 +1764,13 @@ prototype is a separate approval-gated milestone.
 | Main uncertainty     | Responsive evidence density and installed-app validation without expanding into 24D policy behavior                  |
 | Exclusions           | Reader changes, fetch UI, background scans, watchers, writes, handoff generation, contradiction resolution, repair   |
 | Outcome              | Complete; responsive read-only route and fresh Ubuntu package gate closed without reader or 24D behavior             |
+
+## Milestone 25 — Desktop visual polish
+
+| Field                | Record                                                                                                  |
+| -------------------- | ------------------------------------------------------------------------------------------------------- |
+| Forecast date        | 2026-07-26                                                                                              |
+| Preliminary forecast | 18–30 active hours; medium confidence                                                                   |
+| Scope                | Branded React/CSS presentation polish, visual regression, accessibility, responsive, and package gates |
+| Main uncertainty     | Dense desktop/mobile composition and installed-app visual smoke without changing native behavior        |
+| Exclusions           | Backend/contracts, new capabilities, automation, external branded assets, and Qt work                  |

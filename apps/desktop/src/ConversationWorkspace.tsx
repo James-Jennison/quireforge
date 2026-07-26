@@ -530,6 +530,7 @@ export function ConversationWorkspace({
       <div className="conversation-layout">
         <form
           className="conversation-composer"
+          data-visual-region="conversation-composer"
           onSubmit={(event) => {
             event.preventDefault();
             void beginTask();

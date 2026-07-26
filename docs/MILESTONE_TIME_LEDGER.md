@@ -1264,3 +1264,15 @@ greater precision than the underlying ranges.
   smoke evidence.
 - **Status:** Complete on `2026-07-26`; no 24D behavior was added. Precise
   active and automated time was not instrumented and is not reconstructed.
+
+## Milestone 25 — Desktop visual polish
+
+- **Objective:** Refine the native desktop shell, Home empty state, project
+  entry affordances, and conversation composer without changing behavior.
+- **Start:** `2026-07-26`.
+- **Forecast:** 18–30 active hours; medium confidence.
+- **Boundary:** React/CSS presentation and visual/accessibility coverage only.
+  No backend, contract, native command, automation, or Qt work.
+- **Package implication:** Installed presentation changes require fresh pinned
+  Ubuntu 22.04 Debian/AppImage lifecycle and visible-launch evidence.
+- **Status:** Implementation validation and final package evidence pending.
