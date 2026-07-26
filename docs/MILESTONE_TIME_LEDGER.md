@@ -24,24 +24,24 @@ Definitions used here:
 
 ## Cumulative project totals
 
-Last updated: `2026-07-23T11:22:11-07:00`
+Last updated: `2026-07-25T15:20:00-07:00`
 
-| Measure                                   | Cumulative record                                                                                                                                                 |
-| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Total milestones planned                  | 22 major milestones (0–21); Milestones 13 and 14 use separately gated submilestones                                                                               |
-| Total milestone entries completed         | 30 (Milestones 0–12 and submilestones 13A–21A); Milestone 21A is complete locally                                                                                 |
-| Milestones in progress                    | Milestone 21B local preflight is active; terminal publication/download activation remains separately approval-gated                                                |
-| Confirmed/reconstructed active execution  | Approximately 28.51–35.59 hours; uninstrumented Milestone 16 work excluded                                                                                        |
-| Confirmed/reconstructed automated wait    | Approximately 7.86–8.78 hours; early and Milestone 16 uninstrumented waits excluded                                                                               |
-| Reconstructed user-blocked time           | At least 11.73 hours, plus unmeasured early approvals/prerequisites                                                                                               |
-| Counted project time                      | Approximately 36.37–44.37 hours                                                                                                                                   |
-| Total elapsed across completed milestones | At least 44.20 evidenced hours; exact historical total is unknown                                                                                                 |
-| Average counted time                      | Approximately 1.40–1.71 hours across the 26 timed completed entries                                                                                               |
-| Median counted time                       | Approximately 0.80 hour using reconstructed range midpoints                                                                                                       |
-| Longest completed milestone               | Milestone 11, approximately 5.45–7.72 counted hours                                                                                                               |
-| Shortest completed milestone              | Milestone 0, approximately 0.15 counted hours                                                                                                                     |
-| Comparable forecast versus actual         | Timed Milestones 3–21A forecast 109.75–189.00 active hours in aggregate and used approximately 32.84–40.81 counted hours, about 63%–83% below the forecast envelope |
-| Confidence classifications                | 13 Confirmed, 11 Reconstructed, 2 Estimated, 4 Unknown completed entries                                                                                          |
+| Measure                                   | Cumulative record                                                                                                                                                  |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Total milestones planned                  | 23 major milestones (0–22); Milestones 13, 14, 15, 16, and 21 use separately gated submilestones                                                                   |
+| Total milestone entries completed         | 32 (Milestones 0–22 and recorded submilestones); Milestone 22 is complete locally                                                                                  |
+| Milestones in progress                    | Milestone 22B visual workspace refinement; owner-hosted package promotion and website download activation remain separate approval-gated operations                |
+| Confirmed/reconstructed active execution  | Approximately 30.44–38.02 hours; uninstrumented Milestone 16 work excluded                                                                                         |
+| Confirmed/reconstructed automated wait    | Approximately 8.58–9.70 hours; early and Milestone 16 uninstrumented waits excluded                                                                                |
+| Reconstructed user-blocked time           | At least 11.73 hours, plus unmeasured early approvals/prerequisites                                                                                                |
+| Counted project time                      | Approximately 39.02–47.72 hours                                                                                                                                    |
+| Total elapsed across completed milestones | At least 48.38 evidenced hours; exact historical total is unknown                                                                                                  |
+| Average counted time                      | Approximately 1.39–1.70 hours across the 28 timed completed entries                                                                                                |
+| Median counted time                       | Approximately 0.80 hour using reconstructed range midpoints                                                                                                        |
+| Longest completed milestone               | Milestone 11, approximately 5.45–7.72 counted hours                                                                                                                |
+| Shortest completed milestone              | Milestone 0, approximately 0.15 counted hours                                                                                                                      |
+| Comparable forecast versus actual         | Timed Milestones 3–22 forecast 119.25–205.50 active hours in aggregate and used approximately 35.49–44.16 counted hours, about 63%–83% below the forecast envelope |
+| Confidence classifications                | 14 Confirmed, 12 Reconstructed, 2 Estimated, 4 Unknown completed entries                                                                                           |
 
 The cumulative active and automated ranges are derived from historical reports
 and workflow evidence that were recorded with different granularity. They are
@@ -51,38 +51,41 @@ range endpoints.
 
 ## Summary
 
-| Milestone | Status   | Started                     | Completed                   | Forecast                             |      Active | Automated Wait |              User-Blocked | Counted Project Time | Total Elapsed | Variance                                     | Confidence    |
-| --------- | -------- | --------------------------- | --------------------------- | ------------------------------------ | ----------: | -------------: | ------------------------: | -------------------: | ------------: | -------------------------------------------- | ------------- |
-| 0         | Complete | `2026-07-19T08:52:30-07:00` | `2026-07-19T09:01:47-07:00` | Unknown                              |     ~0.15 h |    Unseparated |                   Unknown |              ~0.15 h |       ≥0.15 h | Unknown                                      | Reconstructed |
-| 1         | Complete | `2026-07-19T09:21:36-07:00` | `2026-07-19T12:37:30-07:00` | Unknown                              |     ~2.91 h |    Unseparated |                   Unknown |              ~2.91 h |       ≥3.27 h | Unknown                                      | Estimated     |
-| 2         | Complete | `2026-07-19T12:41:58-07:00` | `2026-07-19T13:10:15-07:00` | Unknown                              |     ~0.47 h |    Unseparated |                   Unknown |              ~0.47 h |       ≥0.47 h | Unknown                                      | Reconstructed |
-| 3         | Complete | `2026-07-19T13:29:01-07:00` | `2026-07-19T14:22:24-07:00` | 18–30 h active                       | 0.58–0.92 h |    0.05–0.12 h |                   Unknown |          0.63–1.04 h |       ≥0.89 h | ~23.17 h / 96.5% below midpoint              | Estimated     |
-| 4         | Complete | `2026-07-19T14:34:03-07:00` | `2026-07-19T15:02:03-07:00` | 4–7 h active                         | 0.42–0.58 h |    0.03–0.07 h | 0 h after start evidenced |          0.45–0.65 h |       ≥0.47 h | ~4.95 h / 90.0% below midpoint               | Reconstructed |
-| 5         | Complete | `2026-07-19T15:37:23-07:00` | `2026-07-19T16:05:45-07:00` | 2–4 h active                         | 0.42–0.67 h |    0.08–0.13 h | 0 h after start evidenced |          0.50–0.80 h |       ≥0.47 h | ~2.35 h / 78.3% below midpoint               | Reconstructed |
-| 6         | Complete | `2026-07-19T16:24:44-07:00` | `2026-07-19T18:02:33-07:00` | 2.5–5 h active                       | 1.33–2.08 h |    0.10–0.18 h |     Present; not measured |          1.43–2.26 h |       ≥1.63 h | ~1.91 h / 50.8% below midpoint               | Reconstructed |
-| 7         | Complete | `2026-07-19T18:26:16-07:00` | `2026-07-19T20:11:20-07:00` | 4–7.5 h active                       | 1.25–1.91 h |    0.91–0.98 h |                   ≥0.28 h |          2.16–2.89 h |       ≥1.75 h | ~3.23 h / 56.1% below midpoint               | Reconstructed |
-| 8         | Complete | `2026-07-19T20:23:15-07:00` | `2026-07-19T22:17:24-07:00` | 5.5–10 h active                      | 1.58–2.42 h |    0.73–0.81 h |                   ≥0.24 h |          2.31–3.23 h |       ≥1.90 h | ~4.98 h / 64.3% below midpoint               | Reconstructed |
-| 9         | Complete | `2026-07-19T22:29:22-07:00` | `2026-07-20T05:00:25-07:00` | 6–11 h active                        | 1.83–3.08 h |    1.07–1.17 h |                   ≥4.26 h |          2.90–4.25 h |       ≥6.52 h | ~4.93 h / 57.9% below midpoint               | Reconstructed |
-| 10        | Complete | `2026-07-20T05:05:51-07:00` | `2026-07-20T12:10:43-07:00` | 8.5–13.5 h active                    | 2.00–2.83 h |    1.06–1.19 h |                   ≥4.44 h |          3.06–4.02 h |       ≥7.08 h | ~7.46 h / 67.8% below midpoint               | Reconstructed |
-| 11        | Complete | `2026-07-20T12:19:40-07:00` | `2026-07-20T16:56:33-07:00` | 12.5–20.5 h active                   | 4.08–6.08 h |    1.37–1.64 h |                   ≥1.64 h |          5.45–7.72 h |       ≥4.61 h | ~9.91 h / 60.1% below midpoint               | Reconstructed |
-| 12        | Complete | `2026-07-20T18:27:06-07:00` | `2026-07-20T19:59:04-07:00` | 5–8 h active; 6–10 h elapsed         |     ~1.16 h |        ~0.38 h |                    0.00 h |               1.53 h |        1.53 h | ~4.97 h / 76.4% below midpoint               | Reconstructed |
-| 13A       | Complete | `2026-07-21T19:41:14-07:00` | `2026-07-21T20:21:58-07:00` | 3.5–6 h active; 4.5–7.5 h elapsed    |      0.43 h |         0.14 h |                    0.00 h |               0.57 h |        0.68 h | ~4.18 h / 88.0% below midpoint               | Confirmed     |
-| 13B       | Complete | `2026-07-21T20:39:50-07:00` | `2026-07-21T21:27:13-07:00` | 2.5–4.25 h active; 3–5 h elapsed     |      0.61 h |         0.18 h |                    0.00 h |               0.79 h |        0.79 h | ~2.59 h / 76.6% below midpoint               | Confirmed     |
-| 14A       | Complete | `2026-07-21T21:43:18-07:00` | `2026-07-21T22:26:02-07:00` | 2.75–5 h active; 3.25–6 h elapsed    |      0.58 h |         0.14 h |                    0.00 h |               0.71 h |        0.71 h | ~3.16 h / 81.7% below midpoint               | Confirmed     |
-| 14B       | Complete | `2026-07-22T04:42:01-07:00` | `2026-07-22T05:12:14-07:00` | 2–3.75 h active; 2.25–4.25 h elapsed |     ~0.34 h |        ~0.16 h |                    0.00 h |               0.50 h |        0.50 h | ~2.38 h / 82.6% below midpoint               | Confirmed     |
-| 14C       | Complete | `2026-07-22T10:42:02-07:00` | `2026-07-22T12:30:42-07:00` | 4.5–8 h active; 5–9.5 h elapsed      |     ~0.70 h |        ~0.24 h |                   ~0.87 h |               0.94 h |        1.81 h | ~5.55 h / 88.8% below midpoint               | Confirmed     |
-| 15A       | Local    | `2026-07-22T12:48:19-07:00` | `2026-07-22T13:35:21-07:00` | M15 aggregate: 4.5–8 h active        |     ~0.60 h |        ~0.13 h |                    0.00 h |               0.73 h |        0.78 h | Directionally 90.4% below aggregate midpoint | Confirmed     |
-| 15B       | Local    | `2026-07-22T13:44:10-07:00` | `2026-07-22T14:25:43-07:00` | 2.5–4.5 h active; 3–5.5 h elapsed    |     ~0.60 h |        ~0.08 h |                    0.00 h |               0.68 h |        0.69 h | ~2.90 h / 82.9% below midpoint               | Confirmed     |
-| 15C       | Local    | `2026-07-22T14:30:59-07:00` | `2026-07-22T17:42:22-07:00` | 2–4 h active; 2.5–5 h elapsed        |     ~3.01 h |        ~0.18 h |                    0.00 h |               3.19 h |        3.19 h | ~0.01 h / 0.3% above midpoint                | Confirmed     |
-| 16A       | Complete | Not recorded                | `2026-07-22T19:07:10-07:00` | Not recorded                         |     Unknown |        Unknown |                   Unknown |             Excluded |       Unknown | Not measurable                               | Unknown       |
-| 16B       | Complete | Not recorded                | `2026-07-22T19:46:24-07:00` | Not recorded                         |     Unknown |        Unknown |                   Unknown |             Excluded |       Unknown | Not measurable                               | Unknown       |
-| 16C       | Complete | Not recorded                | `2026-07-22T20:05:13-07:00` | Not recorded                         |     Unknown |        Unknown |                   Unknown |             Excluded |       Unknown | Not measurable                               | Unknown       |
-| 16D       | Complete | Not recorded                | `2026-07-22T20:17:45-07:00` | Not recorded                         |     Unknown |        Unknown |                   Unknown |             Excluded |       Unknown | Not measurable                               | Unknown       |
-| 17A       | Local    | `2026-07-22T21:01:38-07:00` | `2026-07-22T21:31:08-07:00` | 2.5–4.5 h active; 3–5.5 h elapsed    |     ~0.39 h |        ~0.10 h |                    0.00 h |               0.49 h |        0.49 h | ~3.11 h / 88.9% below midpoint               | Confirmed     |
-| 18        | Local    | `2026-07-22T21:41:56-07:00` | `2026-07-22T22:43:34-07:00` | 4–6.5 h active; 5–8 h elapsed        |     ~0.85 h |        ~0.18 h |                    0.00 h |               1.03 h |        1.03 h | ~4.40 h / 83.8% below midpoint               | Confirmed     |
-| 19        | Local    | `2026-07-23T04:23:14-07:00` | `2026-07-23T05:30:09-07:00` | 4.5–7.5 h active; 5.5–9.5 h elapsed  |     ~0.90 h |        ~0.21 h |                    0.00 h |               1.11 h |        1.12 h | ~5.10 h / 85.0% below midpoint               | Confirmed     |
-| 20        | Local    | `2026-07-23T05:34:59-07:00` | `2026-07-23T06:44:00-07:00` | 4.5–7.5 h active; 6–11 h elapsed     |     ~0.90 h |        ~0.25 h |                    0.00 h |               1.15 h |        1.15 h | ~5.10 h / 85.0% below midpoint               | Confirmed     |
-| 21A       | Local    | `2026-07-23T10:51:27-07:00` | `2026-07-23T11:22:11-07:00` | 4.5–7.5 h active; 5.5–9.5 h elapsed  |     ~0.42 h |        ~0.09 h |                    0.00 h |               0.51 h |        0.51 h | ~5.58 h / 93.0% below midpoint               | Confirmed     |
+| Milestone | Status   | Started                     | Completed                   | Forecast                             |      Active | Automated Wait |                  User-Blocked | Counted Project Time | Total Elapsed | Variance                                     | Confidence    |
+| --------- | -------- | --------------------------- | --------------------------- | ------------------------------------ | ----------: | -------------: | ----------------------------: | -------------------: | ------------: | -------------------------------------------- | ------------- |
+| 0         | Complete | `2026-07-19T08:52:30-07:00` | `2026-07-19T09:01:47-07:00` | Unknown                              |     ~0.15 h |    Unseparated |                       Unknown |              ~0.15 h |       ≥0.15 h | Unknown                                      | Reconstructed |
+| 1         | Complete | `2026-07-19T09:21:36-07:00` | `2026-07-19T12:37:30-07:00` | Unknown                              |     ~2.91 h |    Unseparated |                       Unknown |              ~2.91 h |       ≥3.27 h | Unknown                                      | Estimated     |
+| 2         | Complete | `2026-07-19T12:41:58-07:00` | `2026-07-19T13:10:15-07:00` | Unknown                              |     ~0.47 h |    Unseparated |                       Unknown |              ~0.47 h |       ≥0.47 h | Unknown                                      | Reconstructed |
+| 3         | Complete | `2026-07-19T13:29:01-07:00` | `2026-07-19T14:22:24-07:00` | 18–30 h active                       | 0.58–0.92 h |    0.05–0.12 h |                       Unknown |          0.63–1.04 h |       ≥0.89 h | ~23.17 h / 96.5% below midpoint              | Estimated     |
+| 4         | Complete | `2026-07-19T14:34:03-07:00` | `2026-07-19T15:02:03-07:00` | 4–7 h active                         | 0.42–0.58 h |    0.03–0.07 h |     0 h after start evidenced |          0.45–0.65 h |       ≥0.47 h | ~4.95 h / 90.0% below midpoint               | Reconstructed |
+| 5         | Complete | `2026-07-19T15:37:23-07:00` | `2026-07-19T16:05:45-07:00` | 2–4 h active                         | 0.42–0.67 h |    0.08–0.13 h |     0 h after start evidenced |          0.50–0.80 h |       ≥0.47 h | ~2.35 h / 78.3% below midpoint               | Reconstructed |
+| 6         | Complete | `2026-07-19T16:24:44-07:00` | `2026-07-19T18:02:33-07:00` | 2.5–5 h active                       | 1.33–2.08 h |    0.10–0.18 h |         Present; not measured |          1.43–2.26 h |       ≥1.63 h | ~1.91 h / 50.8% below midpoint               | Reconstructed |
+| 7         | Complete | `2026-07-19T18:26:16-07:00` | `2026-07-19T20:11:20-07:00` | 4–7.5 h active                       | 1.25–1.91 h |    0.91–0.98 h |                       ≥0.28 h |          2.16–2.89 h |       ≥1.75 h | ~3.23 h / 56.1% below midpoint               | Reconstructed |
+| 8         | Complete | `2026-07-19T20:23:15-07:00` | `2026-07-19T22:17:24-07:00` | 5.5–10 h active                      | 1.58–2.42 h |    0.73–0.81 h |                       ≥0.24 h |          2.31–3.23 h |       ≥1.90 h | ~4.98 h / 64.3% below midpoint               | Reconstructed |
+| 9         | Complete | `2026-07-19T22:29:22-07:00` | `2026-07-20T05:00:25-07:00` | 6–11 h active                        | 1.83–3.08 h |    1.07–1.17 h |                       ≥4.26 h |          2.90–4.25 h |       ≥6.52 h | ~4.93 h / 57.9% below midpoint               | Reconstructed |
+| 10        | Complete | `2026-07-20T05:05:51-07:00` | `2026-07-20T12:10:43-07:00` | 8.5–13.5 h active                    | 2.00–2.83 h |    1.06–1.19 h |                       ≥4.44 h |          3.06–4.02 h |       ≥7.08 h | ~7.46 h / 67.8% below midpoint               | Reconstructed |
+| 11        | Complete | `2026-07-20T12:19:40-07:00` | `2026-07-20T16:56:33-07:00` | 12.5–20.5 h active                   | 4.08–6.08 h |    1.37–1.64 h |                       ≥1.64 h |          5.45–7.72 h |       ≥4.61 h | ~9.91 h / 60.1% below midpoint               | Reconstructed |
+| 12        | Complete | `2026-07-20T18:27:06-07:00` | `2026-07-20T19:59:04-07:00` | 5–8 h active; 6–10 h elapsed         |     ~1.16 h |        ~0.38 h |                        0.00 h |               1.53 h |        1.53 h | ~4.97 h / 76.4% below midpoint               | Reconstructed |
+| 13A       | Complete | `2026-07-21T19:41:14-07:00` | `2026-07-21T20:21:58-07:00` | 3.5–6 h active; 4.5–7.5 h elapsed    |      0.43 h |         0.14 h |                        0.00 h |               0.57 h |        0.68 h | ~4.18 h / 88.0% below midpoint               | Confirmed     |
+| 13B       | Complete | `2026-07-21T20:39:50-07:00` | `2026-07-21T21:27:13-07:00` | 2.5–4.25 h active; 3–5 h elapsed     |      0.61 h |         0.18 h |                        0.00 h |               0.79 h |        0.79 h | ~2.59 h / 76.6% below midpoint               | Confirmed     |
+| 14A       | Complete | `2026-07-21T21:43:18-07:00` | `2026-07-21T22:26:02-07:00` | 2.75–5 h active; 3.25–6 h elapsed    |      0.58 h |         0.14 h |                        0.00 h |               0.71 h |        0.71 h | ~3.16 h / 81.7% below midpoint               | Confirmed     |
+| 14B       | Complete | `2026-07-22T04:42:01-07:00` | `2026-07-22T05:12:14-07:00` | 2–3.75 h active; 2.25–4.25 h elapsed |     ~0.34 h |        ~0.16 h |                        0.00 h |               0.50 h |        0.50 h | ~2.38 h / 82.6% below midpoint               | Confirmed     |
+| 14C       | Complete | `2026-07-22T10:42:02-07:00` | `2026-07-22T12:30:42-07:00` | 4.5–8 h active; 5–9.5 h elapsed      |     ~0.70 h |        ~0.24 h |                       ~0.87 h |               0.94 h |        1.81 h | ~5.55 h / 88.8% below midpoint               | Confirmed     |
+| 15A       | Local    | `2026-07-22T12:48:19-07:00` | `2026-07-22T13:35:21-07:00` | M15 aggregate: 4.5–8 h active        |     ~0.60 h |        ~0.13 h |                        0.00 h |               0.73 h |        0.78 h | Directionally 90.4% below aggregate midpoint | Confirmed     |
+| 15B       | Local    | `2026-07-22T13:44:10-07:00` | `2026-07-22T14:25:43-07:00` | 2.5–4.5 h active; 3–5.5 h elapsed    |     ~0.60 h |        ~0.08 h |                        0.00 h |               0.68 h |        0.69 h | ~2.90 h / 82.9% below midpoint               | Confirmed     |
+| 15C       | Local    | `2026-07-22T14:30:59-07:00` | `2026-07-22T17:42:22-07:00` | 2–4 h active; 2.5–5 h elapsed        |     ~3.01 h |        ~0.18 h |                        0.00 h |               3.19 h |        3.19 h | ~0.01 h / 0.3% above midpoint                | Confirmed     |
+| 16A       | Complete | Not recorded                | `2026-07-22T19:07:10-07:00` | Not recorded                         |     Unknown |        Unknown |                       Unknown |             Excluded |       Unknown | Not measurable                               | Unknown       |
+| 16B       | Complete | Not recorded                | `2026-07-22T19:46:24-07:00` | Not recorded                         |     Unknown |        Unknown |                       Unknown |             Excluded |       Unknown | Not measurable                               | Unknown       |
+| 16C       | Complete | Not recorded                | `2026-07-22T20:05:13-07:00` | Not recorded                         |     Unknown |        Unknown |                       Unknown |             Excluded |       Unknown | Not measurable                               | Unknown       |
+| 16D       | Complete | Not recorded                | `2026-07-22T20:17:45-07:00` | Not recorded                         |     Unknown |        Unknown |                       Unknown |             Excluded |       Unknown | Not measurable                               | Unknown       |
+| 17A       | Local    | `2026-07-22T21:01:38-07:00` | `2026-07-22T21:31:08-07:00` | 2.5–4.5 h active; 3–5.5 h elapsed    |     ~0.39 h |        ~0.10 h |                        0.00 h |               0.49 h |        0.49 h | ~3.11 h / 88.9% below midpoint               | Confirmed     |
+| 18        | Local    | `2026-07-22T21:41:56-07:00` | `2026-07-22T22:43:34-07:00` | 4–6.5 h active; 5–8 h elapsed        |     ~0.85 h |        ~0.18 h |                        0.00 h |               1.03 h |        1.03 h | ~4.40 h / 83.8% below midpoint               | Confirmed     |
+| 19        | Local    | `2026-07-23T04:23:14-07:00` | `2026-07-23T05:30:09-07:00` | 4.5–7.5 h active; 5.5–9.5 h elapsed  |     ~0.90 h |        ~0.21 h |                        0.00 h |               1.11 h |        1.12 h | ~5.10 h / 85.0% below midpoint               | Confirmed     |
+| 20        | Local    | `2026-07-23T05:34:59-07:00` | `2026-07-23T06:44:00-07:00` | 4.5–7.5 h active; 6–11 h elapsed     |     ~0.90 h |        ~0.25 h |                        0.00 h |               1.15 h |        1.15 h | ~5.10 h / 85.0% below midpoint               | Confirmed     |
+| 21A       | Local    | `2026-07-23T10:51:27-07:00` | `2026-07-23T11:22:11-07:00` | 4.5–7.5 h active; 5.5–9.5 h elapsed  |     ~0.42 h |        ~0.09 h |                        0.00 h |               0.51 h |        0.51 h | ~5.58 h / 93.0% below midpoint               | Confirmed     |
+| 21B       | Complete | `2026-07-23T11:58:45-07:00` | `2026-07-23T15:12:40-07:00` | 3.5–6.5 h active; 4.5–9 h elapsed    | 1.25–1.75 h |    0.45–0.65 h | Reconstructed within interval |          1.70–2.40 h |        3.23 h | ~3.50 h / 70.0% below midpoint               | Reconstructed |
+| 22        | Local    | `2026-07-23T16:09:10-07:00` | `2026-07-23T17:06:00-07:00` | 6–10 h active; 7–12.5 h elapsed      |     ~0.68 h |        ~0.27 h |                        0.00 h |               0.95 h |        0.95 h | ~7.32 h / 91.5% below midpoint               | Confirmed     |
+| 23        | Complete | `2026-07-25`                | `2026-07-25`                | 8–16 h active                        |     Unknown |        Unknown |                       Unknown |             Excluded |       Unknown | Not measurable                               | Documented    |
 
 Variance uses the midpoint of the historical forecast and counted-time ranges.
 It is included only where a recorded forecast exists and should not be read as
@@ -1097,3 +1100,186 @@ greater precision than the underlying ranges.
   authentication, live account-usage read, reset-credit operation, personal
   Codex-state mutation, or live/billable model call occurred. Milestone 21B
   remains separately approval-gated.
+
+## Milestone 21B — Release readiness, public source, and beta correction
+
+- **Objective:** Complete the exact-source package/platform preflight and
+  release handoff, audit the repository's complete disclosure surface, preserve
+  the organization-runner trust boundary, and correct immutable beta evidence
+  without activating owner-hosted downloads.
+- **Start / completion:** `2026-07-23T11:58:45-07:00` /
+  `2026-07-23T15:12:40-07:00`, from the prospective forecast commit through the
+  final Integration Center test-stabilization merge after the public-source and
+  beta-2 correction sequence.
+- **Model and reasoning:** GPT-5.6 Sol, XHigh.
+- **Calibrated forecast:** 3.5–6.5 active hours, 75–180 minutes of
+  local/container commands, and 4.5–9 total elapsed hours; medium confidence.
+- **Active / automated / user-blocked:** Approximately 1.25–1.75 active hours
+  and 0.45–0.65 automated hour. Approval, external publication, and hosted-run
+  intervals are interleaved in the historical record and cannot be separated
+  more precisely without inventing stopwatch evidence.
+- **Counted / total elapsed:** Approximately 1.70–2.40 counted hours across a
+  confirmed 3.23-hour wall-clock interval.
+- **Evidence:** Clean pinned Ubuntu 22.04 package and lifecycle evidence,
+  repeated normalization, current-host package launches, signed-out pixel
+  review, full-history disclosure audit, public-source runner boundary,
+  immutable beta-1 mismatch record, beta-2 outer Debian filename correction,
+  and final stabilization merge `53a66ce`.
+- **Variance:** Approximately 3.50 active hours, or 70.0%, below the five-hour
+  calibrated midpoint using the reconstructed active-range midpoint.
+- **Confidence:** **Reconstructed** for category separation; the start,
+  completion, publication, merge, and artifact timestamps are durable.
+- **Status:** Source and GitHub prerelease evidence became public under explicit
+  authorization. Owner-hosted package promotion, anonymous retrieval, website
+  download activation, and deployment remain separately gated and did not
+  occur.
+
+## Milestone 22 — Routed desktop workspace and account Settings
+
+- **Objective:** Replace the combined scrolling document with ten dedicated
+  workspaces, preserve mounted tool state, establish a responsive desktop pane
+  hierarchy, and give the account summary a supported account-or-Settings
+  action without inventing remote account APIs.
+- **Start / completion:** `2026-07-23T16:09:10-07:00` /
+  `2026-07-23T17:06:00-07:00`, from the clean milestone branch through the
+  documented local closure.
+- **Model and reasoning:** GPT-5.6 Sol, XHigh.
+- **Calibrated forecast:** 6–10 active hours plus 1–2.5 hours of checks and
+  7–12.5 total elapsed hours; medium confidence.
+- **Active / automated / user-blocked:** Approximately 0.68 active hour, 0.27
+  automated hour, and 0.00 post-start user-blocked hour.
+- **Counted / total elapsed:** Approximately 0.95 counted and elapsed hour.
+- **Evidence:** 162 desktop and seven website tests; 178 runnable Rust tests
+  with three deliberate live probes ignored; 38 desktop/mobile Playwright
+  scenarios; repository, format, lint, type, production-build, dist-budget,
+  Cargo check, warning-denying Clippy, and local Debian/AppImage packaging
+  gates; plus screenshots covering every destination and responsive
+  shell state.
+- **Visual and accessibility review:** Every route exposes one level-one
+  heading, route changes transfer focus, active navigation is explicit,
+  page-level scroll remains zero, pane scrolling is independent, the mobile
+  drawer is opaque and scrollable, and axe-core reports no violations in the
+  exercised flows.
+- **Variance:** Approximately 7.32 active hours, or 91.5%, below the eight-hour
+  active midpoint. Reusing established tool components and adding no backend or
+  dependency kept the implementation narrow; validation still caught mobile
+  drawer overflow, heading hierarchy, broken in-page-anchor semantics, and the
+  CSS budget before closure.
+- **Confidence:** **Confirmed** from the prospective branch timestamp,
+  continuous execution interval, command outputs, package artifacts, and
+  captured browser evidence.
+- **Status:** Complete and verified locally. No push, merge, publication,
+  release, deployment, DNS/hosting mutation, external authentication, personal
+  account mutation, or billable model call occurred.
+
+## Milestone 22B — Visual workspace refinement
+
+- **Objective:** Refine the existing routed desktop presentation system while
+  preserving route ownership, native boundaries, and established workspace
+  behavior.
+- **Start / completion:** Started and completed `2026-07-25`.
+- **Evidence so far:** Responsive CSS consolidation, reduced-motion coverage,
+  shell hierarchy refinement, Home current-workspace context, shared
+  workspace-header consolidation, and representative Scheduled, Integrations,
+  Files, and Settings surface alignment. The focused desktop gate covers 33
+  test files / 172 tests, TypeScript, ESLint, production build, the enforced
+  distribution budget, and 38 desktop/mobile Playwright scenarios. The approved
+  mechanical Prettier cleanup restored the full repository gate; fresh pinned
+  Ubuntu 22.04 `.deb` and AppImage validation covers manifest, checksums, GLIBC,
+  lifecycle, metadata, and visible launch smoke checks.
+- **Status:** Complete locally. No release, merge, deployment, or
+  external-account action occurred for this milestone.
+
+## Milestone 23 — UI platform feasibility decision
+
+- **Objective:** Produce a neutral, primary-source-backed decision between
+  retaining Tauri, migrating to Qt 6, or deferring a conditional migration
+  without changing the application.
+- **Start / completion:** `2026-07-25`; precise work intervals were not
+  instrumented and are deliberately not reconstructed.
+- **Forecast:** 8–16 active research/documentation hours; low-to-medium
+  confidence because app-specific Qt parity was intentionally not prototyped.
+- **Evidence:** Targeted React/Tauri/Rust boundary inspection; Milestone 22B
+  validation and package baseline; official Tauri and Qt documentation; and
+  CXX-Qt primary bridge documentation. The weighted matrix, unknowns, ranges,
+  and source retrieval date are in `docs/MILESTONE_23_UI_PLATFORM_FEASIBILITY.md`.
+- **Decision:** ADR 0028 accepts retaining Tauri conditionally. Reconsideration
+  requires measurable triggers; no migration, prototype, dependency, package,
+  release, or merge is authorized by this record.
+- **Status:** Complete documentation decision evidence. Actual time remains
+  unmeasured rather than fabricated.
+
+## Milestone 24A — Project state contract
+
+- **Objective:** Define the smallest strict machine-readable project-state
+  contract and its trust, provenance, ownership, and persistence boundaries.
+- **Start / checkpoint:** `2026-07-25`; active implementation checkpoint.
+- **Forecast:** 6–12 active hours; medium confidence.
+- **Boundary:** Rust/TypeScript contracts, fixtures, tests, and documentation
+  only. Repository ingestion, UI, handoff generation, contradiction detection,
+  autonomous correction, and persistence mutation remain deferred to 24B–24D.
+- **Ownership:** user-approved policy remains separate from repository-derived
+  evidence, QuireForge-managed local metadata, and transient agent reports.
+  The canonical persistent policy location is intentionally not selected here.
+- **Evidence:** Final implementation commit
+  `f62ba5c68fe0002d3d3f6b5faa0bd2d522d81f0d`; fresh clean pinned Ubuntu 22.04
+  package manifest, checksums, maximum GLIBC `2.34`, lifecycle, launch, and smoke
+  evidence are recorded in `docs/MILESTONE_24A_PROJECT_STATE_CONTRACT.md`.
+- **Status:** Complete; no 24B reader, 24C workspace, or 24D handoff or
+  contradiction engine was introduced.
+
+## Milestone 24B — Repository state reader
+
+- **Objective:** Read and normalize attached-project repository evidence without
+  modifying project state or resolving contradictions.
+- **Start / completion:** `2026-07-25` to `2026-07-26`.
+- **Forecast:** 18–32 active hours; medium confidence.
+- **Boundary:** no project-state UI, automatic handoff, watcher, document
+  rewrite, contradiction resolution, or autonomous repair.
+- **Evidence:** Final implementation commit
+  `ecc556f9a7025e9e5da3ab63dc34eb1c9f6c3d47`; strict Rust/Zod reader parity,
+  deterministic Git fixtures and mutation fingerprints, full Rust/frontend
+  validation, and fresh pinned Ubuntu 22.04 Debian/AppImage lifecycle and
+  visible-launch smoke evidence.
+- **Status:** Complete; no 24C workspace or 24D handoff/consistency behavior
+  was added.
+
+## Milestone 24C — Project state workspace
+
+- **Objective:** Present the existing normalized repository-state snapshot in
+  one accessible, responsive, read-only workspace.
+- **Start:** `2026-07-26`.
+- **Forecast:** 6–10 active hours; medium confidence.
+- **Boundary:** demand-driven `local-only`, `metadata-only` presentation only.
+  No reader extension, fetch control, background scan, watcher, state write,
+  approval, generated handoff, contradiction resolution, or autonomous repair.
+- **Package implication:** The routed workspace changes the installed desktop
+  application, so final closure requires fresh pinned Ubuntu 22.04 Debian and
+  AppImage lifecycle, launch, and smoke evidence from the clean implementation
+  commit.
+- **Evidence:** Final combined implementation commit
+  `6d8f302297fe01f2afb0dad855a4e81f1a8782b2`; 188 frontend tests, 40
+  desktop/mobile Playwright scenarios, full repository/Rust/Tauri validation,
+  and fresh pinned Ubuntu 22.04 Debian/AppImage lifecycle and visible-launch
+  smoke evidence.
+- **Status:** Complete on `2026-07-26`; no 24D behavior was added. Precise
+  active and automated time was not instrumented and is not reconstructed.
+
+## Milestone 25 — Desktop visual polish
+
+- **Objective:** Refine the native desktop shell, Home empty state, project
+  entry affordances, and conversation composer without changing behavior.
+- **Start:** `2026-07-26`.
+- **Forecast:** 18–30 active hours; medium confidence.
+- **Boundary:** React/CSS presentation and visual/accessibility coverage only.
+  No backend, contract, native command, automation, or Qt work.
+- **Package implication:** Installed presentation changes require fresh pinned
+  Ubuntu 22.04 Debian/AppImage lifecycle and visible-launch evidence.
+- **Evidence:** Clean implementation commit
+  `9ae07167448d81c18c8e6fb293ffe52a146b346b`; fresh version-1 manifest and
+  `SHA256SUMS` at `target/ubuntu-22.04/release/packages/`; maximum GLIBC
+  `2.34`; Debian/AppImage lifecycle, visible-launch, and smoke checks passed
+  in the digest-pinned Ubuntu 22.04 container with `/usr/bin/xvfb-run`.
+- **Status:** Complete on `2026-07-26`; no backend, contract, automation, or
+  Qt behavior was added. Precise active and automated time was not instrumented
+  and is not reconstructed.

@@ -76,6 +76,7 @@ import {
   type ModelSelectionUpdateRequest,
 } from "./modelSelection";
 import {
+  ConversationActionFailure,
   conversationSnapshotSchema,
   conversationRegistrySchema,
   conversationStartRequestSchema,
@@ -92,6 +93,10 @@ import {
   type ProjectPreflightSnapshot,
   type ProjectWorkspaceSnapshot,
 } from "./project";
+import type {
+  RepositoryStateReadRequest,
+  RepositoryStateReadSnapshot,
+} from "./repositoryState";
 import {
   conversationContinueRequestSchema,
   sessionListRequestSchema,
@@ -186,6 +191,7 @@ export const WORKTREE_PICK_ATTACH_COMMAND = "worktree_pick_attach";
 export const WORKTREE_CONFIRM_COMMAND = "worktree_confirm";
 export const WORKTREE_CANCEL_COMMAND = "worktree_cancel";
 export const GIT_STATUS_COMMAND = "git_status";
+export const REPOSITORY_STATE_READ_COMMAND = "repository_state_read";
 export const GIT_DIFF_COMMAND = "git_diff";
 export const GIT_OPEN_FILE_COMMAND = "git_open_file";
 export const GIT_MUTATION_PREVIEW_COMMAND = "git_mutation_preview";
@@ -391,6 +397,21 @@ export function loadProjectWorkspace(
     undefined,
     invokeFunction,
   );
+}
+
+export async function readRepositoryState(
+  request: RepositoryStateReadRequest,
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<RepositoryStateReadSnapshot> {
+  const {
+    repositoryStateReadRequestSchema,
+    repositoryStateReadSnapshotSchema,
+  } = await import("./repositoryState");
+  const reviewedRequest = repositoryStateReadRequestSchema.parse(request);
+  const payload = await invokeFunction(REPOSITORY_STATE_READ_COMMAND, {
+    request: reviewedRequest,
+  });
+  return repositoryStateReadSnapshotSchema.parse(payload);
 }
 
 export function pickProjectDirectory(
@@ -731,11 +752,25 @@ export async function startConversation(
   request: ConversationStartRequest,
   invokeFunction: InvokeFunction = invokeTauri,
 ): Promise<ConversationSnapshot> {
-  const reviewedRequest = conversationStartRequestSchema.parse(request);
-  const payload = await invokeFunction(CONVERSATION_START_COMMAND, {
-    request: reviewedRequest,
-  });
-  return conversationSnapshotSchema.parse(payload);
+  const reviewedRequest = conversationStartRequestSchema.safeParse(request);
+  if (!reviewedRequest.success) {
+    throw new ConversationActionFailure("request-invalid");
+  }
+
+  let payload: unknown;
+  try {
+    payload = await invokeFunction(CONVERSATION_START_COMMAND, {
+      request: reviewedRequest.data,
+    });
+  } catch {
+    throw new ConversationActionFailure("native-command-failed");
+  }
+
+  const snapshot = conversationSnapshotSchema.safeParse(payload);
+  if (!snapshot.success) {
+    throw new ConversationActionFailure("native-response-invalid");
+  }
+  return snapshot.data;
 }
 
 export async function pollConversation(

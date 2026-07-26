@@ -1,0 +1,539 @@
+{
+  "minimalValid": {
+    "schemaVersion": 1,
+    "project": {
+      "id": "sample",
+      "displayName": "Sample",
+      "repository": "owner/sample",
+      "localWorkspaceId": null,
+      "primaryPlatform": "linux",
+      "activeUiPlatform": "tauri",
+      "productDirectionRef": "docs/ROADMAP.md",
+      "lifecyclePhase": "unknown",
+      "provenance": {
+        "trust": "unknown",
+        "sourceType": "unknown",
+        "sourceRef": null,
+        "sourceCommit": null,
+        "observedAt": null,
+        "verifiedAt": null,
+        "note": null
+      }
+    },
+    "roadmapRef": "docs/ROADMAP.md",
+    "repository": {
+      "currentBranch": null,
+      "baseBranch": null,
+      "localHead": null,
+      "remoteHead": null,
+      "ahead": null,
+      "behind": null,
+      "worktree": "unknown",
+      "lastVerifiedCheckpoint": null,
+      "mergeAuthorization": {
+        "decision": "unknown",
+        "authority": null,
+        "approvedAt": null,
+        "scope": null,
+        "supersededAt": null,
+        "provenance": {
+          "trust": "unknown",
+          "sourceType": "unknown",
+          "sourceRef": null,
+          "sourceCommit": null,
+          "observedAt": null,
+          "verifiedAt": null,
+          "note": null
+        }
+      },
+      "releaseAuthorization": {
+        "decision": "unknown",
+        "authority": null,
+        "approvedAt": null,
+        "scope": null,
+        "supersededAt": null,
+        "provenance": {
+          "trust": "unknown",
+          "sourceType": "unknown",
+          "sourceRef": null,
+          "sourceCommit": null,
+          "observedAt": null,
+          "verifiedAt": null,
+          "note": null
+        }
+      },
+      "provenance": {
+        "trust": "unknown",
+        "sourceType": "unknown",
+        "sourceRef": null,
+        "sourceCommit": null,
+        "observedAt": null,
+        "verifiedAt": null,
+        "note": null
+      }
+    },
+    "milestone": {
+      "id": "m1",
+      "title": "Unknown",
+      "status": "planned",
+      "objective": "Unknown",
+      "approvedScope": [],
+      "exclusions": [],
+      "completionRequirements": [],
+      "predecessorId": null,
+      "successorId": null,
+      "ownerApproval": {
+        "decision": "unknown",
+        "authority": null,
+        "approvedAt": null,
+        "scope": null,
+        "supersededAt": null,
+        "provenance": {
+          "trust": "unknown",
+          "sourceType": "unknown",
+          "sourceRef": null,
+          "sourceCommit": null,
+          "observedAt": null,
+          "verifiedAt": null,
+          "note": null
+        }
+      },
+      "provenance": {
+        "trust": "unknown",
+        "sourceType": "unknown",
+        "sourceRef": null,
+        "sourceCommit": null,
+        "observedAt": null,
+        "verifiedAt": null,
+        "note": null
+      }
+    },
+    "workSessions": [],
+    "checkpoints": [],
+    "validations": [],
+    "packages": {
+      "required": false,
+      "evidence": [],
+      "provenance": {
+        "trust": "unknown",
+        "sourceType": "unknown",
+        "sourceRef": null,
+        "sourceCommit": null,
+        "observedAt": null,
+        "verifiedAt": null,
+        "note": null
+      }
+    },
+    "boundaries": {
+      "approvedActions": [],
+      "prohibitedActions": [],
+      "confirmationRequiredActions": [],
+      "approvals": [],
+      "provenance": {
+        "trust": "unknown",
+        "sourceType": "unknown",
+        "sourceRef": null,
+        "sourceCommit": null,
+        "observedAt": null,
+        "verifiedAt": null,
+        "note": null
+      }
+    },
+    "blockers": [],
+    "contradictions": [],
+    "nextAction": null,
+    "handoff": {
+      "status": "paused",
+      "phrase": "Codex paused. Continue.",
+      "generatedAt": null,
+      "sourceCheckpoint": null,
+      "provenance": {
+        "trust": "unknown",
+        "sourceType": "unknown",
+        "sourceRef": null,
+        "sourceCommit": null,
+        "observedAt": null,
+        "verifiedAt": null,
+        "note": null
+      }
+    },
+    "provenance": {
+      "trust": "unknown",
+      "sourceType": "unknown",
+      "sourceRef": null,
+      "sourceCommit": null,
+      "observedAt": null,
+      "verifiedAt": null,
+      "note": null
+    }
+  },
+  "activeMilestone": {
+    "schemaVersion": 1,
+    "project": {
+      "id": "quireforge",
+      "displayName": "QuireForge",
+      "repository": "james-jennison/quireforge",
+      "localWorkspaceId": null,
+      "primaryPlatform": "linux",
+      "activeUiPlatform": "tauri-react",
+      "productDirectionRef": "docs/ROADMAP.md",
+      "lifecyclePhase": "project-state",
+      "provenance": {
+        "trust": "verified",
+        "sourceType": "repository-document",
+        "sourceRef": "docs/CURRENT_STATE.md",
+        "sourceCommit": "31a39c6263614bee1d3619f66c4450fe209457c0",
+        "observedAt": "2026-07-25T00:00:00Z",
+        "verifiedAt": "2026-07-25T00:00:00Z",
+        "note": null
+      }
+    },
+    "roadmapRef": "docs/ROADMAP.md",
+    "repository": {
+      "currentBranch": "feat/milestone-24a-project-state-contract",
+      "baseBranch": "main",
+      "localHead": null,
+      "remoteHead": null,
+      "ahead": null,
+      "behind": null,
+      "worktree": "clean",
+      "lastVerifiedCheckpoint": "31a39c6263614bee1d3619f66c4450fe209457c0",
+      "mergeAuthorization": {
+        "decision": "required",
+        "authority": null,
+        "approvedAt": null,
+        "scope": "merge",
+        "supersededAt": null,
+        "provenance": {
+          "trust": "verified",
+          "sourceType": "user-approval",
+          "sourceRef": "AGENTS.md",
+          "sourceCommit": null,
+          "observedAt": null,
+          "verifiedAt": null,
+          "note": null
+        }
+      },
+      "releaseAuthorization": {
+        "decision": "required",
+        "authority": null,
+        "approvedAt": null,
+        "scope": "release",
+        "supersededAt": null,
+        "provenance": {
+          "trust": "verified",
+          "sourceType": "user-approval",
+          "sourceRef": "AGENTS.md",
+          "sourceCommit": null,
+          "observedAt": null,
+          "verifiedAt": null,
+          "note": null
+        }
+      },
+      "provenance": {
+        "trust": "reported",
+        "sourceType": "agent-session",
+        "sourceRef": null,
+        "sourceCommit": null,
+        "observedAt": "2026-07-25T00:00:00Z",
+        "verifiedAt": null,
+        "note": "Illustrative contract fixture"
+      }
+    },
+    "milestone": {
+      "id": "24a",
+      "title": "Project State Contract",
+      "status": "active",
+      "objective": "Define the project-state contract.",
+      "approvedScope": ["contract", "fixtures"],
+      "exclusions": ["repository-ingestion", "ui"],
+      "completionRequirements": ["strict-validation"],
+      "predecessorId": "23",
+      "successorId": "24b",
+      "ownerApproval": {
+        "decision": "approved",
+        "authority": "James",
+        "approvedAt": "2026-07-25T00:00:00Z",
+        "scope": "Milestone 24A",
+        "supersededAt": null,
+        "provenance": {
+          "trust": "verified",
+          "sourceType": "user-approval",
+          "sourceRef": "Milestone 24A brief",
+          "sourceCommit": null,
+          "observedAt": "2026-07-25T00:00:00Z",
+          "verifiedAt": "2026-07-25T00:00:00Z",
+          "note": null
+        }
+      },
+      "provenance": {
+        "trust": "verified",
+        "sourceType": "repository-document",
+        "sourceRef": "docs/ROADMAP.md",
+        "sourceCommit": null,
+        "observedAt": null,
+        "verifiedAt": null,
+        "note": null
+      }
+    },
+    "workSessions": [
+      {
+        "id": "session-24a",
+        "actor": "codex",
+        "executionContext": "local",
+        "status": "active",
+        "target": "project-state-contract",
+        "startedAt": "2026-07-25T00:00:00Z",
+        "endedAt": null,
+        "lastActivityAt": "2026-07-25T00:00:00Z",
+        "pauseReason": null,
+        "uncommittedWorkMayExist": true,
+        "provenance": {
+          "trust": "reported",
+          "sourceType": "agent-session",
+          "sourceRef": null,
+          "sourceCommit": null,
+          "observedAt": "2026-07-25T00:00:00Z",
+          "verifiedAt": null,
+          "note": null
+        }
+      }
+    ],
+    "checkpoints": [
+      {
+        "status": "paused",
+        "commit": null,
+        "branch": "feat/milestone-24a-project-state-contract",
+        "pushed": false,
+        "validationsCurrent": false,
+        "documentationCurrent": false,
+        "completionClaimed": false,
+        "timestamp": "2026-07-25T00:00:00Z",
+        "remainingWork": ["implement-contract"],
+        "provenance": {
+          "trust": "reported",
+          "sourceType": "agent-session",
+          "sourceRef": null,
+          "sourceCommit": null,
+          "observedAt": "2026-07-25T00:00:00Z",
+          "verifiedAt": null,
+          "note": null
+        }
+      }
+    ],
+    "validations": [],
+    "packages": {
+      "required": false,
+      "evidence": [],
+      "provenance": {
+        "trust": "inferred",
+        "sourceType": "repository-document",
+        "sourceRef": "docs/BUILDING.md",
+        "sourceCommit": null,
+        "observedAt": null,
+        "verifiedAt": null,
+        "note": "No installed application change"
+      }
+    },
+    "boundaries": {
+      "approvedActions": ["define-contract"],
+      "prohibitedActions": ["repository-ingestion", "ui-workspace"],
+      "confirmationRequiredActions": ["merge", "release"],
+      "approvals": [],
+      "provenance": {
+        "trust": "verified",
+        "sourceType": "user-approval",
+        "sourceRef": "Milestone 24A brief",
+        "sourceCommit": null,
+        "observedAt": null,
+        "verifiedAt": null,
+        "note": null
+      }
+    },
+    "blockers": [],
+    "contradictions": [],
+    "nextAction": {
+      "action": "implement-contract",
+      "why": "Milestone is active.",
+      "approvalRequired": false,
+      "targetMilestone": "24a",
+      "requiredStartingCommit": "31a39c6263614bee1d3619f66c4450fe209457c0",
+      "requiredBranch": "feat/milestone-24a-project-state-contract",
+      "provenance": {
+        "trust": "inferred",
+        "sourceType": "agent-session",
+        "sourceRef": null,
+        "sourceCommit": null,
+        "observedAt": null,
+        "verifiedAt": null,
+        "note": null
+      }
+    },
+    "handoff": {
+      "status": "paused",
+      "phrase": "Codex paused. Continue.",
+      "generatedAt": "2026-07-25T00:00:00Z",
+      "sourceCheckpoint": null,
+      "provenance": {
+        "trust": "reported",
+        "sourceType": "agent-session",
+        "sourceRef": null,
+        "sourceCommit": null,
+        "observedAt": null,
+        "verifiedAt": null,
+        "note": null
+      }
+    },
+    "provenance": {
+      "trust": "inferred",
+      "sourceType": "repository-document",
+      "sourceRef": "docs/CURRENT_STATE.md",
+      "sourceCommit": null,
+      "observedAt": null,
+      "verifiedAt": null,
+      "note": null
+    }
+  },
+  "pushedCheckpoint": {
+    "status": "pushed",
+    "commit": "31a39c6263614bee1d3619f66c4450fe209457c0",
+    "branch": "docs/milestone-23-ui-platform-feasibility",
+    "pushed": true,
+    "validationsCurrent": true,
+    "documentationCurrent": true,
+    "completionClaimed": false,
+    "timestamp": "2026-07-25T00:00:00Z",
+    "remainingWork": ["next-milestone"],
+    "provenance": {
+      "trust": "verified",
+      "sourceType": "git",
+      "sourceRef": "origin/docs/milestone-23-ui-platform-feasibility",
+      "sourceCommit": "31a39c6263614bee1d3619f66c4450fe209457c0",
+      "observedAt": "2026-07-25T00:00:00Z",
+      "verifiedAt": "2026-07-25T00:00:00Z",
+      "note": null
+    }
+  },
+  "pausedSession": {
+    "id": "session-24a-paused",
+    "actor": "codex",
+    "executionContext": "local",
+    "status": "paused",
+    "target": "project-state-contract",
+    "startedAt": "2026-07-25T00:00:00Z",
+    "endedAt": null,
+    "lastActivityAt": "2026-07-25T00:00:00Z",
+    "pauseReason": "Awaiting approval",
+    "uncommittedWorkMayExist": true,
+    "provenance": {
+      "trust": "reported",
+      "sourceType": "agent-session",
+      "sourceRef": null,
+      "sourceCommit": null,
+      "observedAt": "2026-07-25T00:00:00Z",
+      "verifiedAt": null,
+      "note": null
+    }
+  },
+  "completedMilestone": {
+    "status": "finished",
+    "commit": "31a39c6263614bee1d3619f66c4450fe209457c0",
+    "branch": "docs/milestone-23-ui-platform-feasibility",
+    "pushed": true,
+    "validationsCurrent": true,
+    "documentationCurrent": true,
+    "completionClaimed": true,
+    "timestamp": "2026-07-25T00:00:00Z",
+    "remainingWork": [],
+    "provenance": {
+      "trust": "verified",
+      "sourceType": "git",
+      "sourceRef": "origin/docs/milestone-23-ui-platform-feasibility",
+      "sourceCommit": "31a39c6263614bee1d3619f66c4450fe209457c0",
+      "observedAt": "2026-07-25T00:00:00Z",
+      "verifiedAt": "2026-07-25T00:00:00Z",
+      "note": null
+    }
+  },
+  "missingEvidence": {
+    "required": true,
+    "evidence": [],
+    "provenance": {
+      "trust": "unknown",
+      "sourceType": "unknown",
+      "sourceRef": null,
+      "sourceCommit": null,
+      "observedAt": null,
+      "verifiedAt": null,
+      "note": "Evidence has not been collected."
+    }
+  },
+  "missingValidationEvidence": {
+    "category": "formatting",
+    "checkId": "format-check",
+    "command": "pnpm format:check",
+    "result": "not-run",
+    "scope": "repository",
+    "timestamp": null,
+    "evidenceRef": null,
+    "commitTested": null,
+    "current": false,
+    "blockerId": "validation-missing",
+    "provenance": {
+      "trust": "unknown",
+      "sourceType": "unknown",
+      "sourceRef": null,
+      "sourceCommit": null,
+      "observedAt": null,
+      "verifiedAt": null,
+      "note": "Validation evidence has not been collected."
+    }
+  },
+  "contradictoryEvidence": [
+    {
+      "id": "branch-mismatch",
+      "kind": "branch-mismatch",
+      "description": "Reported branch differs from the verified checkpoint branch.",
+      "affectedRequirement": "repository-identity",
+      "provenance": {
+        "trust": "inferred",
+        "sourceType": "agent-session",
+        "sourceRef": null,
+        "sourceCommit": null,
+        "observedAt": null,
+        "verifiedAt": null,
+        "note": null
+      }
+    },
+    {
+      "id": "completion-without-push",
+      "kind": "completion-without-pushed-commit",
+      "description": "Completion was reported without a pushed checkpoint.",
+      "affectedRequirement": "checkpoint",
+      "provenance": {
+        "trust": "inferred",
+        "sourceType": "agent-session",
+        "sourceRef": null,
+        "sourceCommit": null,
+        "observedAt": null,
+        "verifiedAt": null,
+        "note": null
+      }
+    },
+    {
+      "id": "policy-scope-conflict",
+      "kind": "policy-scope-conflict",
+      "description": "Reported work exceeds an approved milestone boundary.",
+      "affectedRequirement": "approved-scope",
+      "provenance": {
+        "trust": "inferred",
+        "sourceType": "agent-session",
+        "sourceRef": null,
+        "sourceCommit": null,
+        "observedAt": null,
+        "verifiedAt": null,
+        "note": null
+      }
+    }
+  ]
+}

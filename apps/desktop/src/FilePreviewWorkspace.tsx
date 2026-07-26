@@ -109,9 +109,9 @@ export function FilePreviewWorkspace({
             <span />
             Safe local review and handoff
           </p>
-          <h2 id="file-preview-title">
+          <h1 id="file-preview-title" data-workspace-heading tabIndex={-1}>
             Preview a file without widening trust.
-          </h2>
+          </h1>
           <p>
             The native picker chooses one project-contained regular file. A
             separate confirmation opens that reviewed target through the system
@@ -178,7 +178,7 @@ export function FilePreviewWorkspace({
               <span className="detail-kicker">
                 {visibleSnapshot.kind} · {visibleSnapshot.rendering}
               </span>
-              <h3>{visibleSnapshot.displayPath}</h3>
+              <h2>{visibleSnapshot.displayPath}</h2>
             </div>
             <span>{formatBytes(visibleSnapshot.byteSize!)}</span>
           </header>

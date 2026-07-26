@@ -552,11 +552,15 @@ boundary. Logout requires a second explicit action. Milestone 21A additionally
 keeps every project and Codex work surface behind that normalized account gate;
 pre-authentication startup does not begin workspace/session/integration reads.
 
-Remaining usage is read only through documented
-`account/rateLimits/read`. QuireForge displays the reported window percentages
-and reset times but does not infer tokens, messages, costs, or future
-availability; inspect Codex credential files; scrape ChatGPT; call a private
-endpoint; or redeem rate-limit reset credits.
+Codex usage is read only through the currently reviewed
+`account/rateLimits/read` app-server response shape. QuireForge summarizes the
+exact 10,080-minute window from the general upstream `codex` meter when it is
+reported, while retaining model-specific meters only in details. It does not
+calculate, estimate, predict, combine, or infer quota; missing or invalid
+weekly data remains unavailable. Refresh ChatGPT Usage settings before
+comparing values because the browser page can be stale. QuireForge does not
+inspect Codex credential files, scrape ChatGPT, call a private endpoint, or
+redeem rate-limit reset credits.
 
 ## Apps and connectors
 

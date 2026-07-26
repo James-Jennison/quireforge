@@ -59,7 +59,7 @@ Rust returns only:
 - up to eight sanitized meter identifiers and labels;
 - primary and secondary windows;
 - integer used and remaining percentages;
-- bounded window duration and Unix reset time; and
+- bounded window duration and Unix reset time in seconds; and
 - a coarse limit-reached boolean from a reviewed closed enum.
 
 Plan type, credit balance, spend controls, account metadata, reset-credit
@@ -69,6 +69,16 @@ control or bidirectional label characters, unknown reached-state enums, and
 oversized meter sets fail closed. Missing windows produce `not-metered`;
 transport, RPC, timeout, or protocol failures produce `unavailable`. The UI
 does not calculate tokens, predict quota, or present a reset-credit action.
+
+The compact sidebar summarizes an exact 10,080-minute Codex-reported window
+when present. Otherwise it uses the longest reported window with a valid
+duration. Equal candidates are resolved by meter identifier and then window
+kind in lexical order, solely to make the display deterministic; `primary` and
+`secondary` are not treated as semantic names for weekly quota. The displayed
+percentage and reset are always from that one selected window. The full panel
+continues to show every normalized reported window. A refresh clears the prior
+display until Codex returns a new snapshot, and unavailable, unmetered,
+preview, and loading states show no numeric estimate.
 
 ## Product interface
 

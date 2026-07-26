@@ -194,7 +194,9 @@ export function GitWorkspace({
       <div className="git-workspace__heading">
         <div>
           <p className="eyebrow">Source control · reviewed operations</p>
-          <h2 id="git-title">Review each Git change before applying it.</h2>
+          <h1 id="git-title" data-workspace-heading tabIndex={-1}>
+            Review each Git change before applying it.
+          </h1>
           <p>
             QuireForge uses fixed native workflows for status, diffs, staging,
             unstaging, reverting, and commits. Every write receives a fresh

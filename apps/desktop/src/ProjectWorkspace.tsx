@@ -96,7 +96,9 @@ export function ProjectWorkspace({
       <div className="project-workspace__heading">
         <div>
           <p className="eyebrow">Local projects</p>
-          <h2 id="projects-title">Work where your files already live.</h2>
+          <h1 id="projects-title" data-workspace-heading tabIndex={-1}>
+            Work where your files already live.
+          </h1>
           <p>
             QuireForge records directory identity and metadata only. It does not
             copy, move, upload, or delete the attached source directory.

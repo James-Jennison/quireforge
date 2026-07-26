@@ -1,10 +1,9 @@
 # Architecture
 
-Status: desktop implementation is locally verified through Milestone 19 and
-the static website is complete through production Milestone 16 with Milestone
-19 accessibility hardening applied locally. Packaging, release publication,
-and unsupported integration-management expansion remain subject to separately
-gated work.
+Status: desktop implementation is locally verified through Milestone 22B and
+the static website is complete through production Milestone 16. Packaging,
+release publication, and unsupported integration-management expansion remain
+subject to separately gated work.
 
 QuireForge is an unofficial native Linux workspace for Codex. It is not made,
 endorsed, supported, or distributed by OpenAI.
@@ -145,6 +144,90 @@ capability: Home summarizes existing project and reference-only session state,
 then links to the established fixed-purpose workspaces. Internal roadmap
 milestones remain repository metadata and are not rendered as product
 navigation.
+
+### Milestone 22 routed desktop-workspace boundary
+
+The authenticated shell owns one typed `WorkspaceLocation`. Its hash is a
+deep-linkable presentation route and its last valid value is retained in local
+QuireForge preferences. Home, New task, Projects, Threads, Scheduled,
+Integrations, Files, Changes, Worktrees, and Terminal each occupy one dedicated
+primary workspace; navigation never scrolls to a section in a combined
+document. The shell, sidebar, and existing tool components remain mounted, so
+temporary terminal, task, file, Git, worktree, and integration presentation
+state survives ordinary destination switches. Inactive workspaces are hidden
+from layout and the accessibility tree.
+
+The desktop frame owns independent scrolling for the sidebar, active workspace,
+and optional contextual inspector. The inspector contains only normalized state
+already available to the selected workspace and is omitted when it has no
+meaningful content. Its bounded width and the compact-sidebar choice are local
+presentation preferences. Below the desktop breakpoint it becomes an overlay;
+below the navigation breakpoint the sidebar becomes a keyboard-accessible,
+scrollable drawer rather than disappearing.
+
+The account summary is a real button into QuireForge Settings, initially
+selecting Accounts & connections. That view can refresh normalized Codex
+connection and usage state and invoke the existing two-step Codex logout. It
+does not claim a direct ChatGPT account-management API, expose billing, collect
+credentials, scrape private pages, or add a browser handoff. Appearance and
+About remain explicitly local QuireForge preferences and product information.
+This milestone adds no native command, Tauri permission, dependency, storage
+schema, authentication route, or remote-account capability.
+
+### Milestone 22B presentation boundary
+
+Milestone 22B refined the existing React presentation layer only. Shared
+workspace-header conventions cover equivalent title, context, and action
+layouts without creating a second route system or moving workspace ownership.
+The shell keeps its three independently scrollable regions, optional inspector,
+and hidden inactive routes. Scheduled, Integrations, Files, and Settings retain
+their distinct structures while sharing surface, heading, and responsive-state
+conventions. CSS consolidation is constrained by the existing production bundle
+budget; it does not alter the native façade or data contract.
+
+### Milestone 23 UI-platform decision boundary
+
+ADR 0028 accepts retaining Tauri conditionally. The documented durable seam is
+a UI-neutral Rust core containing closed domain operations, normalized
+snapshots, persistence, validation, policy, process ownership, and confirmation
+state; Tauri commands/plugins today and any future Qt bridge/adapters remain
+outside it. This describes a future extraction boundary, not an existing
+standalone crate. React/TypeScript presentation, the Tauri façade, and package
+workflow remain active; no Qt source, bridge, dependency, prototype, or
+migration has begun. See the
+[Milestone 23 feasibility decision](MILESTONE_23_UI_PLATFORM_FEASIBILITY.md).
+
+### Milestone 24A project-state contract boundary
+
+The reusable `project_state` Rust library defines strict, versioned project
+state with provenance and no Tauri command, reader, persistence mutation, or
+UI. Its Zod mirror and shared fixtures fail closed for future versions, unknown
+fields, invalid checkpoints, and approvals without an authority. Source
+ingestion, display, handoff generation, and contradiction detection remain
+Milestones 24B–24D.
+
+### Milestone 24B repository-reader boundary
+
+The repository-state reader is a demand-driven Rust service for an already
+attached project ID. It uses the reviewed Git environment and returns typed
+contract state plus diagnostics through one explicit Tauri read command. It
+does not accept paths or Git arguments, add a UI, watch repositories, rewrite
+evidence, or resolve conflicts.
+
+### Milestone 24C project-state workspace boundary
+
+The React Project state route consumes the existing strict TypeScript mirror of
+the Milestone 24B snapshot. Opening or explicitly refreshing that route issues
+one fixed `local-only`, `metadata-only` read for the selected attached project.
+Rust still owns identity, repository access, evidence parsing, trust,
+provenance, freshness, and diagnostics; React only presents the normalized
+result.
+
+The route has no fetch control, arbitrary path, mutation request, approval
+action, diagnostic resolution, background scan, watcher, generated handoff, or
+persistence change. Browser preview does not substitute fixture state for a
+native repository. Milestone 24D remains the separate approval gate for any
+operational consistency or handoff behavior.
 
 ### Milestone 6 implementation boundary
 

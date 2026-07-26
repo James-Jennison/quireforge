@@ -247,9 +247,9 @@ export function SessionWorkspace({
       <div className="session-workspace__intro">
         <div>
           <p className="eyebrow">Session history</p>
-          <h2 id="sessions-title">
+          <h1 id="sessions-title" data-workspace-heading tabIndex={-1}>
             Return to work without copying its history.
-          </h2>
+          </h1>
         </div>
         <p>
           Codex remains authoritative. QuireForge shows bounded titles and
@@ -336,9 +336,9 @@ export function SessionWorkspace({
                 key={projectId}
               >
                 <div className="session-group__heading">
-                  <h3 id={`session-group-${projectId}`}>
+                  <h2 id={`session-group-${projectId}`}>
                     {projectNames.get(projectId) ?? "Unavailable project"}
-                  </h3>
+                  </h2>
                   <span>{sessions.length}</span>
                 </div>
                 <ul>
@@ -431,7 +431,7 @@ export function SessionWorkspace({
                     <div className="session-detail__heading">
                       <div>
                         <span>{stateLabels[selectedSession.state]}</span>
-                        <h3>{titleFor(selectedSession)}</h3>
+                        <h2>{titleFor(selectedSession)}</h2>
                       </div>
                       <span>
                         {selectedSession.modelId} ·{" "}

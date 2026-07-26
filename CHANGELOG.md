@@ -7,6 +7,14 @@ released a usable application.
 
 ### Fixed
 
+- Kept multiline native conversation tasks in one guarded start action and one
+  app-server text input. Re-entrant submissions are ignored while the first
+  start is pending, and request, native-command, and native-response failures
+  now produce distinct bounded recovery guidance without exposing raw errors.
+- Corrected the compact desktop usage summary so unscoped Codex runtime meters
+  do not replace the general Codex weekly meter. The sidebar shows only the
+  exact reported `codex` seven-day window and its paired reset time; it remains
+  nonnumeric when that window is unavailable.
 - Prepared immutable `0.1.0-beta.2` artifacts after GitHub Releases normalized
   the tilde in the beta 1 Debian asset name. The downloadable file is now
   `quireforge_0.1.0.beta.2_amd64.deb`, while its Debian control version remains
@@ -16,6 +24,51 @@ released a usable application.
 
 ### Added
 
+- Milestone 25 desktop visual polish: denser branded sidebar and top bar,
+  clearer dark-theme hierarchy, centered task entry, rounded conversation
+  composer, and desktop/mobile visual-accessibility coverage without new
+  native behavior, external branded assets, or automation.
+- Milestone 24C Project state workspace: a demand-driven, read-only route over
+  the existing normalized repository-state snapshot, with explicit
+  local-only/metadata-only access and no fetch, mutation, approval, handoff
+  generation, contradiction resolution, or background scanning. Its complete
+  frontend/native gate and fresh pinned Ubuntu 22.04 Debian/AppImage lifecycle
+  and launch evidence are recorded without publishing a release.
+- Milestone 24B repository-state reader checkpoint: attached-project-only,
+  typed local/tracking/explicit-fetch reads with contract diagnostics and no UI
+  or repository mutation except the separately authorized fetch mode.
+- Milestone 24B final reader and Ubuntu 22.04 package evidence: strict
+  producer-compatible package/validation/handoff evidence, deterministic
+  fixture safety coverage, and clean Debian/AppImage lifecycle and launch smoke
+  validation without a project-state UI or automation.
+- Milestone 24A project-state contract: strict Rust/Zod serialization,
+  provenance/trust, approvals, checkpoints, validation/package evidence,
+  blockers, contradictions, and handoff state with no reader, UI, or automation;
+  its final implementation commit has fresh pinned Ubuntu 22.04 package evidence.
+- Milestone 23 UI-platform feasibility evidence and ADR 0028 decision: retain
+  Tauri conditionally, preserve the Rust-domain/Tauri-adapter boundary, and
+  reconsider Qt 6 only on documented measurable triggers. This documentation
+  change adds no Qt prototype, migration, dependency, package, or capability.
+- Milestone 22B presentation refinements: Home now surfaces the current
+  workspace using existing project data, while shared desktop header rules keep
+  New task, Threads, Projects, Changes, Worktrees, and Terminal aligned without
+  changing route or native-bridge behavior.
+- Milestone 22B route-surface refinement: Scheduled, Integrations, Files, and
+  Settings now share calmer surface elevation, heading rhythm, responsive
+  status wrapping, and mobile-drawer Playwright evidence without changing
+  native actions or route ownership.
+- Completed Milestone 22B's presentation, accessibility, responsive, browser,
+  native, formatting, and pinned Ubuntu 22.04 package-validation gates without
+  adding product capabilities or changing approved ownership boundaries.
+- Milestone 22 routed desktop workspace: ten typed, deep-linkable primary
+  destinations; preserved mounted tool state; route-aware toolbar and status
+  bar; independent pane scrolling; contextual inspectors; compact navigation;
+  and a responsive off-canvas drawer without a second routing dependency.
+- A dedicated QuireForge Settings workspace. The interactive account row opens
+  Accounts & connections with only supported normalized Codex refresh, usage,
+  and two-step logout controls; Appearance and About remain explicitly local.
+- Desktop/mobile routing, focus, accessibility, state-restoration, no-page-
+  scroll, and opt-in visual-evidence coverage for the routed shell.
 - A dedicated full-history public-disclosure audit covering every reachable
   branch, tag, pull-request head, Git object, collaboration record, Actions
   run/log, and exact release artifact; no credential, token, private key, or

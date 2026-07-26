@@ -90,7 +90,7 @@ function renderWorkspace(
     attachments: scaffoldConversationAttachments,
     busy: false,
     attachmentBusy: false,
-    actionError: false,
+    actionError: null,
     attachmentActionError: false,
     onStart,
     onInterrupt,
@@ -138,6 +138,48 @@ describe("ConversationWorkspace", () => {
       }),
     );
     expect(screen.getByLabelText("Task")).toHaveValue("");
+  });
+
+  it("submits a multiline task once as one unchanged prompt", async () => {
+    let resolveStart:
+      ((snapshot: typeof runningConversation) => void) | undefined;
+    const onStart = vi.fn(
+      () =>
+        new Promise<typeof runningConversation>((resolve) => {
+          resolveStart = resolve;
+        }),
+    );
+    renderWorkspace({ onStart });
+    const task =
+      "Inspect the native action.\n\n- Preserve this list.\n- Run one task.";
+    const textarea = screen.getByLabelText("Task");
+    const form = textarea.closest("form");
+    expect(form).not.toBeNull();
+
+    fireEvent.change(textarea, { target: { value: task } });
+    fireEvent.submit(form!);
+    fireEvent.submit(form!);
+
+    expect(onStart).toHaveBeenCalledTimes(1);
+    expect(onStart).toHaveBeenCalledWith(
+      expect.objectContaining({ prompt: task }),
+    );
+    expect(textarea).toHaveValue(task);
+
+    resolveStart?.(runningConversation);
+    await waitFor(() => expect(textarea).toHaveValue(""));
+  });
+
+  it("shows a bounded actionable native response diagnostic", () => {
+    renderWorkspace({ actionError: "native-response-invalid" });
+
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent(
+      /native conversation service returned an unsupported response/iu,
+    );
+    expect(alert).toHaveTextContent(
+      /matching QuireForge frontend and native versions/iu,
+    );
   });
 
   it("submits a selected healthy connector by normalized catalog ID", async () => {

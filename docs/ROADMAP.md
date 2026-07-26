@@ -111,7 +111,12 @@ discovery; scheduling management and execution remain unsupported.
 |        18 | Agent-directed model and reasoning selection                      | Large        | Complete and verified locally; not published                             |
 |        19 | Security, accessibility, and performance hardening                | Very large   | Complete and verified locally                                            |
 |        20 | Packaging and release automation                                  | Large        | Complete and verified locally; not published                             |
-|        21 | Product readiness, beta publication, and download activation       | Very large   | 21A complete; 21B local preflight passed, publication approval-gated      |
+|        21 | Product readiness, beta publication, and download activation      | Very large   | 21A complete; 21B local preflight passed, publication approval-gated     |
+|        23 | UI platform feasibility decision                                  | Medium       | Complete; ADR 0028 retains Tauri conditionally                           |
+|       24A | Project-state contract                                            | Medium       | Complete; strict contract only, no ingestion, UI, or automation          |
+|       24B | Repository-state reader                                           | Large        | Complete; attached-project-only read service, no UI or automation        |
+|       24C | Project-state workspace                                           | Medium       | Complete; read-only presentation over the existing normalized reader     |
+|        25 | Desktop visual polish                                             | Medium       | Complete; branded presentation refinement with fresh Ubuntu package gate  |
 
 ## Milestone definitions
 
@@ -722,6 +727,12 @@ protocol metadata are discarded in Rust. User-facing milestone labels are no
 longer rendered. See the
 [Milestone 21A product-readiness report](MILESTONE_21A_PRODUCT_READINESS.md).
 
+The compact sidebar summarizes only the exact 10,080-minute window of the
+general upstream `codex` meter; model-specific meters remain detailed-only.
+It never treats `primary`/`secondary` position or array order as evidence of a
+weekly allowance, substitutes a short window, or calculates, estimates,
+predicts, combines, or infers a quota.
+
 Milestone 21B retains the external release boundary:
 
 Run final package and supported-platform QA; confirm the approved distribution
@@ -746,6 +757,63 @@ prerelease version. Beta 1 remains immutable and superseded. Exact owner-hosted
 package promotion, public retrieval checks, website activation, and deployment
 remain separate terminal gates. See the
 [Milestone 21B release-readiness report](MILESTONE_21B_RELEASE_READINESS.md).
+
+### 22 — Routed Desktop Workspace and Account Settings
+
+Complete locally. The persistent QuireForge shell now routes Home, New task,
+Projects, Threads, Scheduled, Integrations, Files, Changes, Worktrees, and
+Terminal into dedicated primary workspaces instead of stacking them in one
+scrolling document. The typed hash route supports deep links and local
+restoration, active navigation and route-change focus are explicit, and
+existing stateful tool components remain mounted while inactive views are
+hidden from layout and assistive technology.
+
+The desktop frame now has a compact route-aware toolbar, independently
+scrollable primary content, a meaningful collapsible/resizable contextual
+inspector, a persistent status bar, compact navigation at medium widths, and a
+scrollable off-canvas drawer at small widths. Inspector width and compact
+sidebar choice remain local presentation preferences. No pane is rendered only
+to imitate a reference.
+
+The full account row now opens QuireForge Settings at Accounts & connections.
+It uses only the existing normalized Codex refresh, remaining-usage, and
+two-step logout controls. Direct ChatGPT account management is not a supported
+interface, so the view states that boundary and exposes no fabricated account,
+billing, credential, or private-page control. Appearance and About clearly
+remain local QuireForge settings.
+
+No frontend routing/pane dependency, backend capability, Tauri permission,
+credential store, deployment, release, or hosting change was added. The local
+acceptance gate passed 162 desktop and seven website unit/component tests, 178
+runnable Rust tests with three deliberate live probes ignored, 38 desktop and
+mobile Playwright scenarios, production asset budgets, and local Debian and
+AppImage packaging. See the
+[Milestone 22 completion report](MILESTONE_22_ROUTED_DESKTOP_WORKSPACE.md).
+
+### 22B — Visual Workspace Refinement
+
+Complete locally on `feat/milestone-22b-visual-workspace-refinement`. This was a
+presentation and usability refinement of the existing routed desktop shell,
+not a replacement for it: shared header and surface conventions, improved
+route hierarchy, responsive behavior, and accessibility polish must preserve
+the existing Tauri bridge, hash routing, safety boundaries, and workspace
+actions. The current refinement includes the representative Scheduled,
+Integrations, Files, and Settings surfaces and mobile-drawer evidence. Each
+checkpoint remains under the 100 KiB production CSS budget. Full repository,
+browser, native, and fresh Ubuntu 22.04-compatible Debian/AppImage validation
+now close the work.
+
+### 23 — UI Platform Feasibility Decision
+
+Complete on `docs/milestone-23-ui-platform-feasibility`. The read-only evidence
+maps the Tauri façade against reusable Rust services, defines a future
+UI-neutral core/adapters boundary, and compares retaining Tauri, a full Qt 6
+migration, and a deferred conditional migration. ADR 0028 accepts retaining
+Tauri conditionally; Qt reconsideration requires measurable documented
+triggers. See the [Milestone 23 report](MILESTONE_23_UI_PLATFORM_FEASIBILITY.md).
+
+No code, dependencies, prototypes, migrations, package changes, or full
+repository audit occurred.
 
 ## Forecast policy
 

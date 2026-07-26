@@ -951,7 +951,7 @@ async fn start_on_process(
         })
         .map_err(|_| ConversationDiagnosticCode::MetadataUnavailable)?;
 
-    let mut input = vec![json!({"type": "text", "text": request.prompt})];
+    let mut input = vec![conversation_text_input(&request.prompt)];
     input.extend(
         attachments
             .iter()
@@ -1902,6 +1902,10 @@ fn nonempty(value: String) -> Option<String> {
     (!value.is_empty()).then_some(value)
 }
 
+pub(super) fn conversation_text_input(prompt: &str) -> Value {
+    json!({"type": "text", "text": prompt})
+}
+
 fn validate_start_request(
     request: &ConversationStartRequest,
 ) -> Result<(), ConversationDiagnosticCode> {
@@ -2378,6 +2382,44 @@ printf '%s\n' '{{"method":"turn/completed","params":{{"threadId":"{THREAD_ID}","
         assert_ne!(
             projects.archive(project_id).diagnostic_code,
             Some(crate::project::types::ProjectDiagnosticCode::ProjectBusy)
+        );
+
+        fs::remove_dir_all(directory).expect("temporary project must be removed");
+    }
+
+    #[tokio::test]
+    async fn sends_a_multiline_prompt_as_one_turn_text_input() {
+        let (projects, directory, project_id) = attached_project();
+        let capture = directory.join("turn-request.json");
+        let capture_turn = format!(
+            "read -r turn_request\nprintf '%s' \"$turn_request\" > '{}'",
+            capture.to_string_lossy()
+        );
+        let script =
+            successful_start_script(&directory, "").replacen("read -r _turn", &capture_turn, 1);
+        let service =
+            ConversationService::with_command(AppServerCommand::test("sh", &["-c", &script]));
+        let prompt = "Inspect the native action.\n\n- Preserve this list.\n- Run one task.";
+        let mut request = start_request(project_id);
+        request.prompt = prompt.to_owned();
+
+        let started = service.start(request, &projects).await;
+
+        assert_eq!(started.state, ConversationState::Running);
+        let turn_request: Value = serde_json::from_str(
+            &fs::read_to_string(&capture).expect("turn request must be captured"),
+        )
+        .expect("turn request must be valid JSON");
+        let input = turn_request["params"]["input"]
+            .as_array()
+            .expect("turn input must be an array");
+        assert_eq!(input.len(), 1);
+        assert_eq!(
+            input[0],
+            json!({
+                "type": "text",
+                "text": prompt,
+            })
         );
 
         fs::remove_dir_all(directory).expect("temporary project must be removed");

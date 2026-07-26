@@ -76,9 +76,9 @@ export function ScheduledWorkspace({
       <div className="scheduled-workspace__intro">
         <div>
           <p className="eyebrow">Scheduled task catalog</p>
-          <h2 id="scheduled-title">
+          <h1 id="scheduled-title" data-workspace-heading tabIndex={-1}>
             Review task templates without handing over control.
-          </h2>
+          </h1>
         </div>
         <p>
           Installed plugins can declare task names, prompts, and schedules.
@@ -128,7 +128,7 @@ export function ScheduledWorkspace({
               <div className="scheduled-card__heading">
                 <div>
                   <span>{plugins.get(task.sourcePluginId) ?? "Plugin"}</span>
-                  <h3>{task.name}</h3>
+                  <h2>{task.name}</h2>
                 </div>
                 <strong>{scheduledTaskScheduleLabel(task.schedule)}</strong>
               </div>

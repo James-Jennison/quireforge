@@ -17,6 +17,7 @@ import { scaffoldCodexRuntime } from "./lib/codex";
 import { scaffoldBootstrap } from "./lib/contract";
 import { sharedFilePreviewFixture } from "./lib/filePreview";
 import {
+  ConversationActionFailure,
   type ConversationSnapshot,
   conversationSnapshotSchema,
   scaffoldConversation,
@@ -25,6 +26,7 @@ import {
   projectWorkspaceSchema,
   scaffoldProjectWorkspace,
 } from "./lib/project";
+import { scaffoldRepositoryStateSnapshot } from "./lib/repositoryState";
 import {
   integrationCatalogSchema,
   integrationControlResultSchema,
@@ -150,9 +152,16 @@ const controlReadyIntegrationCatalog = integrationCatalogSchema.parse({
   ),
 });
 
+async function navigateTo(label: string) {
+  const link = await screen.findByRole("link", { name: label });
+  fireEvent.click(link);
+  await waitFor(() => expect(link).toHaveAttribute("aria-current", "page"));
+}
+
 describe("QuireForge desktop shell", () => {
   beforeEach(() => {
     window.localStorage.clear();
+    window.history.replaceState(null, "", "#home");
     document.documentElement.removeAttribute("data-theme");
   });
 
@@ -172,21 +181,168 @@ describe("QuireForge desktop shell", () => {
         name: "What should we build today?",
       }),
     ).toBeInTheDocument();
-    expect(await screen.findByText("Native IPC verified")).toBeInTheDocument();
-    expect(await screen.findAllByText("Codex adapter ready")).toHaveLength(1);
-    expect(screen.getAllByText("No project attached")).toHaveLength(2);
-    expect(
-      await screen.findByText("Codex account connected"),
-    ).toBeInTheDocument();
+    expect(await screen.findAllByText("Native IPC verified")).toHaveLength(2);
+    expect(screen.getAllByText("No project attached").length).toBeGreaterThan(
+      0,
+    );
     expect(screen.queryByText(/Milestone/u)).not.toBeInTheDocument();
-    expect(screen.getAllByText("73%")).not.toHaveLength(0);
-    expect(screen.getAllByText("ready")).toHaveLength(12);
+    expect(await screen.findByText("Usage available")).toBeInTheDocument();
+    expect(screen.getByText("99%")).toBeInTheDocument();
     expect(screen.queryByText("planned")).not.toBeInTheDocument();
+
+    expect(screen.getByRole("link", { name: "Home" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    expect(
+      screen.queryByRole("heading", {
+        name: "Preview a project file without widening filesystem access.",
+      }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "Open Codex account and connection settings",
+      }),
+    );
+    expect(
+      await screen.findByRole("heading", {
+        name: "Codex owns authentication.",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText("Connected").length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole("button", { name: /About/u }));
     expect(
       screen.getByText(
         /not made, endorsed, supported, or distributed by OpenAI/u,
       ),
     ).toBeInTheDocument();
+  });
+
+  it("routes every sidebar destination into one persistent workspace slot", async () => {
+    render(
+      <App
+        loadBootstrap={() => Promise.resolve(scaffoldBootstrap)}
+        loadRuntime={() => Promise.resolve(scaffoldCodexRuntime)}
+        loadAuth={() => Promise.resolve(authenticatedAuth)}
+        loadProjects={() => Promise.resolve(attachedProject)}
+        loadRepositoryStateTask={() =>
+          Promise.resolve(scaffoldRepositoryStateSnapshot)
+        }
+      />,
+    );
+
+    const destinations = [
+      ["Home", "home"],
+      ["New task", "conversation"],
+      ["Projects", "projects"],
+      ["Project state", "project-state"],
+      ["Threads", "sessions"],
+      ["Scheduled", "scheduled"],
+      ["Integrations", "integrations"],
+      ["Files", "files"],
+      ["Changes", "changes"],
+      ["Worktrees", "worktrees"],
+      ["Terminal", "terminal"],
+    ] as const;
+
+    for (const [label, route] of destinations) {
+      await navigateTo(label);
+      const activeView = document.querySelector<HTMLElement>(
+        `[data-workspace-view="${route}"]`,
+      );
+      expect(activeView).not.toHaveAttribute("hidden");
+      expect(window.location.hash).toBe(`#${route}`);
+      expect(
+        document.querySelectorAll(".workspace-view:not([hidden])"),
+      ).toHaveLength(1);
+    }
+
+    await navigateTo("Files");
+    const fileView = document.querySelector('[data-workspace-view="files"]');
+    await navigateTo("Home");
+    expect(fileView).toBeInTheDocument();
+    expect(fileView).toHaveAttribute("hidden");
+    await navigateTo("Files");
+    expect(document.querySelector('[data-workspace-view="files"]')).toBe(
+      fileView,
+    );
+    expect(window.localStorage.getItem("quireforge-workspace-location")).toBe(
+      "#files",
+    );
+  });
+
+  it("loads project state only through the local metadata-only reader mode", async () => {
+    window.history.replaceState(null, "", "#project-state");
+    const loadRepositoryStateTask = vi
+      .fn()
+      .mockResolvedValue(scaffoldRepositoryStateSnapshot);
+    render(
+      <App
+        loadBootstrap={() => Promise.resolve(scaffoldBootstrap)}
+        loadRuntime={() => Promise.resolve(scaffoldCodexRuntime)}
+        loadAuth={() => Promise.resolve(authenticatedAuth)}
+        loadProjects={() => Promise.resolve(attachedProject)}
+        loadRepositoryStateTask={loadRepositoryStateTask}
+      />,
+    );
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "Project state, without automation.",
+      }),
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(loadRepositoryStateTask).toHaveBeenCalledWith({
+        projectId,
+        remoteMode: "local-only",
+        artifactVerification: "metadata-only",
+      }),
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Refresh local evidence" }),
+    );
+    await waitFor(() =>
+      expect(loadRepositoryStateTask).toHaveBeenCalledTimes(2),
+    );
+  });
+
+  it("restores a validated deep link and rejects unknown workspace hashes", async () => {
+    window.history.replaceState(null, "", "#terminal");
+    const { unmount } = render(
+      <App
+        loadBootstrap={() => Promise.resolve(scaffoldBootstrap)}
+        loadRuntime={() => Promise.resolve(scaffoldCodexRuntime)}
+        loadAuth={() => Promise.resolve(authenticatedAuth)}
+        loadProjects={() => Promise.resolve(attachedProject)}
+        loadRepositoryStateTask={() =>
+          Promise.resolve(scaffoldRepositoryStateSnapshot)
+        }
+      />,
+    );
+    expect(
+      await screen.findByRole("link", { name: "Terminal" }),
+    ).toHaveAttribute("aria-current", "page");
+    expect(
+      document.querySelector('[data-workspace-view="terminal"]'),
+    ).not.toHaveAttribute("hidden");
+
+    unmount();
+    window.history.replaceState(null, "", "#unsupported");
+    render(
+      <App
+        loadBootstrap={() => Promise.resolve(scaffoldBootstrap)}
+        loadRuntime={() => Promise.resolve(scaffoldCodexRuntime)}
+        loadAuth={() => Promise.resolve(authenticatedAuth)}
+        loadProjects={() => Promise.resolve(attachedProject)}
+      />,
+    );
+    expect(await screen.findByRole("link", { name: "Home" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    expect(window.location.hash).toBe("#home");
   });
 
   it("labels a browser-only render without simulating native success", async () => {
@@ -209,6 +365,75 @@ describe("QuireForge desktop shell", () => {
     expect(
       screen.queryByRole("button", { name: "Attach local project" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("replaces usage on refresh and clears it when the refresh fails", async () => {
+    const refreshedUsage = {
+      ...scaffoldCodexUsage,
+      runtimeMeters: [
+        {
+          ...scaffoldCodexUsage.runtimeMeters[0],
+          windows: [
+            {
+              kind: "primary" as const,
+              usedPercent: 0,
+              remainingPercent: 100,
+              windowDurationMinutes: 300,
+              resetsAt: 1_784_808_000,
+            },
+            {
+              kind: "secondary" as const,
+              usedPercent: 68,
+              remainingPercent: 32,
+              windowDurationMinutes: 10_080,
+              resetsAt: 1_785_412_800,
+            },
+          ],
+        },
+      ],
+    };
+    const refreshUsage = vi
+      .fn()
+      .mockResolvedValueOnce(refreshedUsage)
+      .mockRejectedValueOnce(new Error("refresh failed"));
+
+    render(
+      <App
+        loadBootstrap={() => Promise.resolve(scaffoldBootstrap)}
+        loadRuntime={() => Promise.resolve(scaffoldCodexRuntime)}
+        loadAuth={() => Promise.resolve(authenticatedAuth)}
+        loadUsage={() => Promise.resolve(scaffoldCodexUsage)}
+        refreshUsage={refreshUsage}
+        loadProjects={() => Promise.resolve(scaffoldProjectWorkspace)}
+      />,
+    );
+
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "Open Codex account and connection settings",
+      }),
+    );
+    await screen.findByRole("heading", { name: "Codex owns authentication." });
+    expect(await screen.findAllByText("99% remaining")).not.toHaveLength(0);
+    fireEvent.click(
+      screen
+        .getAllByRole("button", { name: "Refresh" })
+        .find((button) => !button.hasAttribute("disabled"))!,
+    );
+    expect(await screen.findAllByText("32% remaining")).not.toHaveLength(0);
+    expect(screen.queryByText("99% remaining")).not.toBeInTheDocument();
+
+    fireEvent.click(
+      screen
+        .getAllByRole("button", { name: "Refresh" })
+        .find((button) => !button.hasAttribute("disabled"))!,
+    );
+    expect(
+      await screen.findByText(
+        /Codex runtime limits are currently unavailable/u,
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("32% remaining")).not.toBeInTheDocument();
   });
 
   it("does not read workspace data before Codex authentication", async () => {
@@ -281,6 +506,7 @@ describe("QuireForge desktop shell", () => {
       />,
     );
 
+    await navigateTo("Files");
     const chooseProjectFile = await screen.findByRole("button", {
       name: "Choose project file",
     });
@@ -342,6 +568,7 @@ describe("QuireForge desktop shell", () => {
       />,
     );
 
+    await navigateTo("New task");
     const chooseImages = await screen.findByRole("button", {
       name: "Choose images",
     });
@@ -429,6 +656,11 @@ describe("QuireForge desktop shell", () => {
     );
 
     fireEvent.click(
+      await screen.findByRole("button", {
+        name: "Open Codex account and connection settings",
+      }),
+    );
+    fireEvent.click(
       await screen.findByRole("button", { name: "Sign out of Codex" }),
     );
     expect(logoutAuth).not.toHaveBeenCalled();
@@ -451,6 +683,7 @@ describe("QuireForge desktop shell", () => {
       />,
     );
 
+    await navigateTo("Projects");
     const attachProject = await screen.findByRole("button", {
       name: "Attach local project",
     });
@@ -486,6 +719,7 @@ describe("QuireForge desktop shell", () => {
       />,
     );
 
+    await navigateTo("Projects");
     fireEvent.click(await screen.findByRole("button", { name: "Detach" }));
     expect(detachProjectDirectory).not.toHaveBeenCalled();
     expect(
@@ -522,6 +756,7 @@ describe("QuireForge desktop shell", () => {
       />,
     );
 
+    await navigateTo("Projects");
     fireEvent.click(
       await screen.findByRole("button", { name: "Verify directory" }),
     );
@@ -588,6 +823,7 @@ describe("QuireForge desktop shell", () => {
       />,
     );
 
+    await navigateTo("New task");
     const start = await screen.findByRole("button", { name: "Start task" });
     fireEvent.change(screen.getByLabelText("Task"), {
       target: { value: "Review the shell wiring." },
@@ -609,6 +845,38 @@ describe("QuireForge desktop shell", () => {
     expect(await screen.findByText("Task completed")).toBeInTheDocument();
     expect(screen.getAllByText("Reviewing the task.")).toHaveLength(1);
     expect(notifyConversationTask).toHaveBeenCalledWith(conversationId);
+  });
+
+  it("preserves the task and explains a native conversation start failure", async () => {
+    const startConversationTask = vi
+      .fn()
+      .mockRejectedValue(
+        new ConversationActionFailure("native-command-failed"),
+      );
+
+    render(
+      <App
+        loadBootstrap={() => Promise.resolve(scaffoldBootstrap)}
+        loadRuntime={() => Promise.resolve(scaffoldCodexRuntime)}
+        loadAuth={() => Promise.resolve(authenticatedAuth)}
+        loadProjects={() => Promise.resolve(attachedProject)}
+        loadConversation={() => Promise.resolve(scaffoldConversation)}
+        startConversationTask={startConversationTask}
+      />,
+    );
+
+    await navigateTo("New task");
+    const prompt = "Keep this task available after the failed action.";
+    const task = screen.getByLabelText("Task");
+    fireEvent.change(task, { target: { value: prompt } });
+    fireEvent.click(screen.getByRole("button", { name: "Start task" }));
+
+    expect(
+      await screen.findByText(
+        /could not reach the native conversation service/iu,
+      ),
+    ).toBeInTheDocument();
+    expect(task).toHaveValue(prompt);
   });
 
   it("cancels pending conversation polling when the shell unmounts", async () => {
@@ -638,6 +906,7 @@ describe("QuireForge desktop shell", () => {
       />,
     );
 
+    await navigateTo("New task");
     expect(
       await screen.findByRole("button", { name: "Stop task" }),
     ).toBeInTheDocument();
@@ -714,6 +983,7 @@ describe("QuireForge desktop shell", () => {
       />,
     );
 
+    await navigateTo("New task");
     const approve = await screen.findByRole("button", {
       name: "Approve once",
     });
@@ -834,6 +1104,7 @@ describe("QuireForge desktop shell", () => {
       />,
     );
 
+    await navigateTo("Worktrees");
     expect(await screen.findByText("2 of 4 active")).toBeInTheDocument();
     resolveLegacyStatus?.(first);
     await waitFor(() =>
@@ -904,6 +1175,7 @@ describe("QuireForge desktop shell", () => {
       />,
     );
 
+    await navigateTo("Threads");
     fireEvent.change(await screen.findByLabelText("Search session titles"), {
       target: { value: "wiring" },
     });
@@ -965,6 +1237,7 @@ describe("QuireForge desktop shell", () => {
       />,
     );
 
+    await navigateTo("Integrations");
     expect(
       await screen.findByRole("heading", {
         name: "Inspect trust before changing state.",
@@ -1037,6 +1310,7 @@ describe("QuireForge desktop shell", () => {
       />,
     );
 
+    await navigateTo("Integrations");
     await screen.findByRole("heading", {
       name: "Inspect trust before changing state.",
     });

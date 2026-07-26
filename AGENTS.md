@@ -30,7 +30,10 @@ protocol fields, and third-party integration identifiers.
 
 ## Change workflow
 
-1. Read the relevant architecture decision, roadmap entry, and subsystem docs.
+1. For a fresh milestone, read `docs/CURRENT_STATE.md`, the active roadmap
+   entry, any relevant ADR, and only the subsystem files in scope. Do not
+   repeatedly load a full master specification when concise milestone context
+   is sufficient.
 2. Preserve pre-existing changes and confirm the branch before editing.
 3. Keep changes within the active milestone and use focused commits.
 4. Update tests, README status, `docs/ROADMAP.md`, and `CHANGELOG.md` when a
@@ -44,7 +47,11 @@ specific approval required for that action.
 
 ## Implementation direction
 
-- Desktop: Tauri 2, Rust, Tokio, React, TypeScript, and Vite.
+- Desktop: Tauri 2, Rust, Tokio, React, TypeScript, and Vite are the current
+  functional prototype. The long-term UI-platform decision is pending. Do not
+  begin a Qt migration until ADR 0028 is accepted after its dedicated
+  read-only feasibility milestone, and do not develop Tauri and Qt features in
+  parallel.
 - Website: Astro static output on a Webuzo-managed Apache origin; Cloudflare is
   DNS/proxy only, and Cloudflare Pages remains disabled.
 - Metadata: migrated SQLite owned by QuireForge; never a credential store.

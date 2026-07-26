@@ -7,6 +7,7 @@ import integrationMutationFixture from "../fixtures/integration-mutation.json" w
 import filePreviewFixture from "../fixtures/file-preview.json" with { type: "json" };
 import conversationAttachmentFixture from "../fixtures/conversation-attachments.json" with { type: "json" };
 import usageFixture from "../fixtures/codex-usage.json" with { type: "json" };
+import projectStateFixtures from "../fixtures/project-state.json" with { type: "json" };
 
 const nativeIntegrationCatalog = {
   ...integrationCatalogFixture,
@@ -63,6 +64,51 @@ const recommendationSelectionFixture = {
     ...modelSelectionFixture.policy,
     ownership: "recommend",
   },
+} as const;
+
+const repositoryStateFixture = {
+  schemaVersion: 1,
+  state: projectStateFixtures.activeMilestone,
+  git: {
+    upstream: "origin/feat/milestone-24c-project-state-workspace",
+    detached: false,
+    stagedCount: 0,
+    unstagedCount: 0,
+    untrackedCount: 0,
+    mergeInProgress: false,
+    rebaseInProgress: false,
+    cherryPickInProgress: false,
+    bisectInProgress: false,
+    shallow: false,
+  },
+  evidence: {
+    packages: [],
+    validations: [
+      {
+        version: 1,
+        id: "frontend-tests",
+        family: "frontend-tests",
+        status: "passed",
+        sourceCommit: "0123456789abcdef0123456789abcdef01234567",
+        evidencePath: "target/validation-summary.json",
+        operation: "pnpm-test",
+        timestamp: "2026-07-26T00:00:00Z",
+        freshness: "current",
+      },
+    ],
+    handoff: null,
+  },
+  diagnostics: [
+    {
+      id: "tracking-freshness-unknown",
+      severity: "info",
+      affectedField: "repository.remoteHead",
+      sourceRef: null,
+      explanation: "Remote tracking freshness was not requested.",
+      approvalRequired: false,
+      recommendedAction: "Inspect existing tracking evidence if needed.",
+    },
+  ],
 } as const;
 
 const nativeResponses = {
@@ -262,6 +308,7 @@ const nativeResponses = {
     pendingAttachment: null,
     diagnosticCode: null,
   },
+  repository_state_read: repositoryStateFixture,
   worktree_status: {
     schemaVersion: 2,
     state: "ready",
@@ -551,6 +598,29 @@ async function installNativeFixture(
   }, responses);
 }
 
+async function openWorkspace(
+  page: import("@playwright/test").Page,
+  label: string,
+) {
+  const destination = page.getByRole("link", { name: label, exact: true });
+  if ((page.viewportSize()?.width ?? 0) <= 760) {
+    await page.getByRole("button", { name: "Open navigation" }).click();
+  }
+  await destination.click();
+  await expect(destination).toHaveAttribute("aria-current", "page");
+}
+
+async function openAccountSettings(page: import("@playwright/test").Page) {
+  const account = page.getByRole("button", {
+    name: "Open Codex account and connection settings",
+  });
+  if ((page.viewportSize()?.width ?? 0) <= 760) {
+    await page.getByRole("button", { name: "Open navigation" }).click();
+  }
+  await account.click();
+  await expect(page).toHaveURL(/#settings\/accounts$/u);
+}
+
 const approvalConversation = {
   schemaVersion: 3,
   state: "waiting-for-approval",
@@ -649,7 +719,6 @@ test("desktop preview renders the honest semantic shell", async ({ page }) => {
 
 test("authenticated home shows real usage without milestone labels", async ({
   page,
-  isMobile,
 }) => {
   await installNativeFixture(page);
   await page.goto("/");
@@ -657,26 +726,132 @@ test("authenticated home shows real usage without milestone labels", async ({
   await expect(
     page.getByRole("heading", { name: "What should we build today?" }),
   ).toBeVisible();
-  await expect(page.getByText("Codex account connected")).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Current workspace" }),
+  ).toBeVisible();
+  await expect(page.getByText("Verified Git workspace")).toBeVisible();
+  await openAccountSettings(page);
+  await expect(
+    page.getByRole("heading", { name: "Codex owns authentication." }),
+  ).toBeVisible();
   await expect(page.getByText("73% remaining")).toBeVisible();
-  await expect(page.getByText("44% remaining")).toBeVisible();
+  await expect(page.getByText("99% remaining")).toBeVisible();
   await expect(page.getByText(/Milestone/u)).toHaveCount(0);
-  if (isMobile) {
-    await expect(
-      page.getByRole("button", { name: /Open terminal/u }),
-    ).toBeEnabled();
-  } else {
-    await expect(page.getByRole("link", { name: "Terminal" })).toHaveAttribute(
-      "href",
-      "#terminal",
-    );
-  }
 
   await page
-    .getByLabel("Remaining usage")
+    .getByRole("region", { name: "Codex usage limits" })
     .getByRole("button", { name: "Refresh", exact: true })
     .click();
   await expect(page.getByText("73% remaining")).toBeVisible();
+  const accessibility = await new AxeBuilder({ page }).analyze();
+  expect(accessibility.violations).toEqual([]);
+});
+
+test("every sidebar destination replaces the active workspace without page scrolling", async ({
+  page,
+}) => {
+  await installNativeFixture(page);
+  await page.goto("/");
+
+  const destinations = [
+    ["Home", "home"],
+    ["New task", "conversation"],
+    ["Projects", "projects"],
+    ["Project state", "project-state"],
+    ["Threads", "sessions"],
+    ["Scheduled", "scheduled"],
+    ["Integrations", "integrations"],
+    ["Files", "files"],
+    ["Changes", "changes"],
+    ["Worktrees", "worktrees"],
+    ["Terminal", "terminal"],
+  ] as const;
+
+  for (const [label, route] of destinations) {
+    await openWorkspace(page, label);
+    await expect(
+      page.locator(`[data-workspace-view="${route}"]`),
+    ).toBeVisible();
+    await expect(page.locator(".workspace-view:not([hidden])")).toHaveCount(1);
+    expect(
+      await page.evaluate(
+        () =>
+          document.documentElement.scrollTop +
+          document.body.scrollTop +
+          window.scrollY,
+      ),
+    ).toBe(0);
+  }
+});
+
+test("project state workspace presents read-only normalized evidence accessibly", async ({
+  page,
+}) => {
+  await installNativeFixture(page);
+  await page.goto("/");
+
+  await openWorkspace(page, "Project state");
+  await expect(
+    page.getByRole("heading", {
+      name: "Project state, without automation.",
+    }),
+  ).toBeVisible();
+  await expect(page.getByText("Validation and packages")).toBeVisible();
+  await expect(
+    page.getByText("Remote tracking freshness was not requested."),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /approve|resolve|fetch/iu }),
+  ).toHaveCount(0);
+  const accessibility = await new AxeBuilder({ page }).analyze();
+  expect(accessibility.violations).toEqual([]);
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - window.innerWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(1);
+});
+
+test("visual polish keeps the branded shell and composer accessible", async ({
+  page,
+  isMobile,
+}, testInfo) => {
+  await installNativeFixture(page);
+  await page.goto("/");
+
+  const homeComposer = page.locator('[data-visual-region="home-composer"]');
+  await expect(homeComposer).toBeVisible();
+  expect(
+    await homeComposer.evaluate(
+      (element) => getComputedStyle(element).borderRadius,
+    ),
+  ).toBe("22px");
+
+  await openWorkspace(page, "New task");
+  const composer = page.locator('[data-visual-region="conversation-composer"]');
+  await expect(composer).toBeVisible();
+  expect(
+    await composer.evaluate(
+      (element) => getComputedStyle(element).borderRadius,
+    ),
+  ).toBe("16px");
+  await page.getByRole("textbox", { name: "Task" }).focus();
+  await expect(page.getByRole("textbox", { name: "Task" })).toBeFocused();
+  await expect(page.locator(".sidebar .nav-item--active")).toContainText(
+    "New task",
+  );
+
+  const accessibility = await new AxeBuilder({ page }).analyze();
+  expect(accessibility.violations).toEqual([]);
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - window.innerWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(1);
+  await page.screenshot({
+    path: testInfo.outputPath(
+      `visual-polish-composer-${isMobile ? "mobile" : "desktop"}.png`,
+    ),
+    animations: "disabled",
+  });
 });
 
 test("native session fixture renders grouping, tabs, and bounded controls", async ({
@@ -685,6 +860,7 @@ test("native session fixture renders grouping, tabs, and bounded controls", asyn
   await installNativeFixture(page);
   await page.goto("/");
 
+  await openWorkspace(page, "Threads");
   await expect(page.getByText("2 app-owned sessions.")).toBeVisible();
   await expect(
     page.getByText(/Fork of Review lifecycle boundaries/u),
@@ -710,16 +886,6 @@ test("native session fixture renders grouping, tabs, and bounded controls", asyn
   await expect(
     page.getByRole("button", { name: "Resume", exact: true }),
   ).toBeDisabled();
-  await expect(
-    page.getByRole("heading", { name: "A real shell, rooted where you work." }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "New terminal" }),
-  ).toBeEnabled();
-  await expect(page.getByText("No terminal open")).toBeVisible();
-  await expect(
-    page.getByRole("checkbox", { name: "Fixture calendar connector" }),
-  ).toBeEnabled();
 
   const results = await new AxeBuilder({ page }).analyze();
   expect(results.violations).toEqual([]);
@@ -735,6 +901,7 @@ test("native file preview uses the bounded shared contract", async ({
   await installNativeFixture(page);
   await page.goto("/");
 
+  await openWorkspace(page, "Files");
   await page.getByRole("button", { name: "Choose project file" }).click();
   await expect(
     page.getByRole("article", { name: "Preview of docs/preview.md" }),
@@ -766,6 +933,7 @@ test("native conversation attachments expose only bounded draft metadata", async
   await installNativeFixture(page);
   await page.goto("/");
 
+  await openWorkspace(page, "New task");
   await page.getByRole("button", { name: "Choose images" }).click();
   await expect(page.getByText("review.png")).toBeVisible();
   await expect(page.getByText(/67 B · 1 × 1 · drag drop/u)).toBeVisible();
@@ -789,6 +957,7 @@ test("native terminal fixture mounts the app-owned xterm tab", async ({
   await installNativeFixture(page, nativeTerminalResponses);
   await page.goto("/");
 
+  await openWorkspace(page, "Terminal");
   await expect(
     page.getByRole("heading", { name: "A real shell, rooted where you work." }),
   ).toBeVisible();
@@ -826,13 +995,7 @@ test("native Integration Center reviews trust before a fixed mutation", async ({
   await installNativeFixture(page);
   await page.goto("/");
 
-  const navigation = page.getByRole("button", { name: /Integrations/u });
-  if (await navigation.isVisible()) {
-    await expect(navigation).toBeEnabled();
-    await navigation.click();
-  } else {
-    await page.locator("#integrations").scrollIntoViewIfNeeded();
-  }
+  await openWorkspace(page, "Integrations");
   await expect(
     page.getByRole("heading", { name: "Inspect trust before changing state." }),
   ).toBeVisible();
@@ -888,13 +1051,7 @@ test("native Scheduled catalog presents inert plugin task templates", async ({
   await installNativeFixture(page);
   await page.goto("/");
 
-  const navigation = page.getByRole("button", { name: /Scheduled/u });
-  if (await navigation.isVisible()) {
-    await expect(navigation).toBeEnabled();
-    await navigation.click();
-  } else {
-    await page.locator("#scheduled").scrollIntoViewIfNeeded();
-  }
+  await openWorkspace(page, "Scheduled");
 
   const scheduled = page.locator("#scheduled");
   await expect(
@@ -928,6 +1085,7 @@ test("native Git fixture reviews a diff and confirms a fixed mutation", async ({
   await installNativeFixture(page);
   await page.goto("/");
 
+  await openWorkspace(page, "Changes");
   await expect(
     page
       .getByLabel("Review each Git change before applying it.")
@@ -967,6 +1125,7 @@ test("native worktree fixture reviews creation, recovery, and managed cleanup", 
   await installNativeFixture(page);
   await page.goto("/");
 
+  await openWorkspace(page, "Worktrees");
   await expect(
     page.getByRole("heading", {
       name: "Give each line of work its own checkout.",
@@ -1032,6 +1191,7 @@ test("parallel worktree monitor opens live activity and reports conflicts", asyn
   });
   await page.goto("/");
 
+  await openWorkspace(page, "Worktrees");
   await expect(page.getByText("1 of 4 active")).toBeVisible();
   await expect(page.getByText("Approval needed")).toBeVisible();
   await expect(page.getByText("1 conflict")).toBeVisible();
@@ -1061,6 +1221,7 @@ test("native activity fixture renders bounded real-time approval detail", async 
   });
   await page.goto("/");
 
+  await openWorkspace(page, "New task");
   await expect(page.getByText("Codex is waiting for approval")).toBeVisible();
   await expect(
     page.getByText("The project check needs permission."),
@@ -1133,7 +1294,6 @@ test("keyboard users can bypass navigation and use semantic workspace links", as
 
 test("reduced-motion preference disables animation and scripted smooth scrolling", async ({
   page,
-  isMobile,
 }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.addInitScript(() => {
@@ -1166,11 +1326,13 @@ test("reduced-motion preference disables animation and scripted smooth scrolling
     : Number.parseFloat(animationDuration) * 1_000;
   expect(animationDurationMs).toBeLessThanOrEqual(0.01);
 
-  if (isMobile) return;
-
-  const newThread = page.getByRole("button", { name: /New task/u });
+  const newThread = page.getByRole("button", {
+    name: "New task",
+    exact: true,
+  });
   await expect(newThread).toBeEnabled();
   await newThread.click();
+  await expect(page).toHaveURL(/#conversation$/u);
   const behaviors = await page.evaluate(
     () =>
       (
@@ -1179,7 +1341,7 @@ test("reduced-motion preference disables animation and scripted smooth scrolling
         }
       ).__quireforgeScrollBehaviors,
   );
-  expect(behaviors).toEqual(["auto"]);
+  expect(behaviors).toEqual([]);
 });
 
 test("forced-colors mode retains visible controls without horizontal overflow", async ({
@@ -1216,4 +1378,97 @@ test("theme control changes and persists the selected theme", async ({
     "data-theme",
     after ?? "dark",
   );
+});
+
+test("captures routed desktop workspace evidence", async ({
+  page,
+  isMobile,
+}, testInfo) => {
+  await installNativeFixture(page);
+
+  if (isMobile) {
+    await page.goto("/");
+    await expect(
+      page.getByRole("heading", { name: "What should we build today?" }),
+    ).toBeVisible();
+    await page.screenshot({
+      path: testInfo.outputPath("after-responsive-home.png"),
+      animations: "disabled",
+    });
+    await page.getByRole("button", { name: "Open navigation" }).click();
+    await page.screenshot({
+      path: testInfo.outputPath("after-responsive-navigation.png"),
+      animations: "disabled",
+    });
+    await page.keyboard.press("Escape");
+    await expect(
+      page.getByRole("button", { name: "Open navigation" }),
+    ).toBeVisible();
+    for (const label of [
+      "Scheduled",
+      "Integrations",
+      "Files",
+      "Project state",
+    ] as const) {
+      await openWorkspace(page, label);
+      await page.screenshot({
+        path: testInfo.outputPath(
+          `after-mobile-${label.toLowerCase()}-drawer.png`,
+        ),
+        animations: "disabled",
+      });
+    }
+    await openAccountSettings(page);
+    await page.screenshot({
+      path: testInfo.outputPath("after-mobile-settings-drawer.png"),
+      animations: "disabled",
+    });
+    return;
+  }
+
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto("/");
+  await expect(
+    page.getByRole("heading", { name: "What should we build today?" }),
+  ).toBeVisible();
+  await page.screenshot({
+    path: testInfo.outputPath("after-home-three-pane-1920x1080.png"),
+    animations: "disabled",
+  });
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  for (const label of [
+    "New task",
+    "Projects",
+    "Project state",
+    "Threads",
+    "Scheduled",
+    "Integrations",
+    "Files",
+    "Changes",
+    "Worktrees",
+    "Terminal",
+  ]) {
+    await openWorkspace(page, label);
+    await page.screenshot({
+      path: testInfo.outputPath(
+        `after-${label.toLowerCase().replaceAll(" ", "-")}-1440x900.png`,
+      ),
+      animations: "disabled",
+    });
+  }
+
+  await page.setViewportSize({ width: 1366, height: 768 });
+  await openAccountSettings(page);
+  await page.screenshot({
+    path: testInfo.outputPath("after-settings-account-1366x768.png"),
+    animations: "disabled",
+  });
+
+  await page.setViewportSize({ width: 720, height: 900 });
+  await openWorkspace(page, "Changes");
+  await page.screenshot({
+    path: testInfo.outputPath("after-collapsed-changes-720x900.png"),
+    animations: "disabled",
+  });
 });

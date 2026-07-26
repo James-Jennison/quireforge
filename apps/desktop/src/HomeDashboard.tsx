@@ -1,15 +1,8 @@
 import type { ProjectWorkspaceSnapshot } from "./lib/project";
-import type { SessionLifecycleSnapshot } from "./lib/session";
-import type { CodexUsageSnapshot } from "./lib/usage";
-import { UsagePanel } from "./UsagePanel";
 
 interface HomeDashboardProps {
   projects: ProjectWorkspaceSnapshot;
-  sessions: SessionLifecycleSnapshot;
-  usage: CodexUsageSnapshot;
-  usageState: "checking" | "native" | "preview";
-  usageBusy: boolean;
-  onRefreshUsage: () => void;
+  currentProject: ProjectWorkspaceSnapshot["projects"][number] | null;
   onNewTask: () => void;
   onAttachProject: () => void;
   onOpenProjects: () => void;
@@ -18,23 +11,9 @@ interface HomeDashboardProps {
   onOpenTerminal: () => void;
 }
 
-function sessionUpdatedLabel(updatedAtMs: number): string {
-  const elapsed = Math.max(0, Date.now() - updatedAtMs);
-  const minutes = Math.floor(elapsed / 60_000);
-  if (minutes < 1) return "Just now";
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return `${Math.floor(hours / 24)}d ago`;
-}
-
 export function HomeDashboard({
   projects,
-  sessions,
-  usage,
-  usageState,
-  usageBusy,
-  onRefreshUsage,
+  currentProject,
   onNewTask,
   onAttachProject,
   onOpenProjects,
@@ -45,16 +24,15 @@ export function HomeDashboard({
   const visibleProjects = projects.projects
     .filter((project) => !project.archived)
     .slice(0, 3);
-  const recentSessions = [...sessions.sessions]
-    .sort((left, right) => right.updatedAtMs - left.updatedAtMs)
-    .slice(0, 5);
 
   return (
     <section className="home-dashboard" id="home" aria-labelledby="home-title">
       <div className="home-dashboard__main">
         <div className="home-welcome">
           <p className="eyebrow">QuireForge home</p>
-          <h1 id="home-title">What should we build today?</h1>
+          <h1 id="home-title" data-workspace-heading tabIndex={-1}>
+            What should we build today?
+          </h1>
           <p>
             Start a focused Codex task inside a verified local project. Your
             files stay where they are, and every execution uses the project’s
@@ -62,10 +40,48 @@ export function HomeDashboard({
           </p>
         </div>
 
-        <button className="home-composer" type="button" onClick={onNewTask}>
+        <button
+          className="home-composer"
+          data-visual-region="home-composer"
+          type="button"
+          onClick={onNewTask}
+        >
           <span>Describe a change, investigation, or review…</span>
           <strong>New task</strong>
         </button>
+
+        <div className="home-section-heading">
+          <h2>Current workspace</h2>
+          <button type="button" onClick={onOpenProjects}>
+            Manage projects
+          </button>
+        </div>
+
+        <div className="home-projects">
+          {currentProject ? (
+            <button type="button" onClick={onNewTask}>
+              <span aria-hidden="true">⌑</span>
+              <strong>{currentProject.displayName}</strong>
+              <small>
+                {currentProject.directory?.state === "connected-accessible"
+                  ? "Ready for a focused task"
+                  : "Project needs attention before work can start"}
+              </small>
+              <em>
+                {currentProject.directory?.git.isRepository
+                  ? "Verified Git workspace"
+                  : "Verified local workspace"}
+              </em>
+            </button>
+          ) : (
+            <button type="button" onClick={onAttachProject}>
+              <span aria-hidden="true">+</span>
+              <strong>Choose a workspace</strong>
+              <small>Attach an existing local project to begin</small>
+              <em>Native picker</em>
+            </button>
+          )}
+        </div>
 
         <div className="home-section-heading">
           <h2>Projects</h2>
@@ -127,40 +143,6 @@ export function HomeDashboard({
           </button>
         </div>
       </div>
-
-      <aside className="home-dashboard__rail" aria-label="Workspace overview">
-        <section className="recent-card" aria-labelledby="recent-title">
-          <div>
-            <h2 id="recent-title">Recent threads</h2>
-            {recentSessions.length > 0 && (
-              <button type="button" onClick={onOpenSessions}>
-                View all
-              </button>
-            )}
-          </div>
-          {recentSessions.length ? (
-            <ul>
-              {recentSessions.map((session) => (
-                <li key={session.conversationId}>
-                  <button type="button" onClick={onOpenSessions}>
-                    <strong>{session.title ?? "Untitled Codex task"}</strong>
-                    <span>{sessionUpdatedLabel(session.updatedAtMs)}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p>Your recent Codex threads will appear here.</p>
-          )}
-        </section>
-
-        <UsagePanel
-          snapshot={usage}
-          state={usageState}
-          busy={usageBusy}
-          onRefresh={onRefreshUsage}
-        />
-      </aside>
     </section>
   );
 }

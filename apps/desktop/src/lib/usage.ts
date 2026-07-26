@@ -41,6 +41,7 @@ const usageMeterSchema = z
       .min(1)
       .max(64)
       .regex(/^[A-Za-z0-9_.-]+$/u),
+    scope: z.enum(["shared-account", "model", "client", "unknown"]),
     windows: z
       .array(usageWindowSchema)
       .min(1)
@@ -51,6 +52,13 @@ const usageMeterSchema = z
         "Usage window kinds must be unique",
       ),
     limited: z.boolean(),
+  })
+  .strict();
+
+const sharedUsageSchema = z
+  .object({
+    remainingPercent: z.number().int().min(0).max(100),
+    resetsAt: z.number().int().min(0).max(32_503_680_000).nullable(),
   })
   .strict();
 
@@ -66,22 +74,25 @@ export const codexUsageSchema = z
   .object({
     schemaVersion: z.literal(1),
     state: z.enum(["ready", "not-metered", "unavailable"]),
-    meters: z.array(usageMeterSchema).max(8),
+    sharedUsage: sharedUsageSchema.nullable(),
+    runtimeMeters: z.array(usageMeterSchema).max(8),
     diagnosticCode: usageDiagnosticSchema.nullable(),
   })
   .strict()
   .superRefine((snapshot, context) => {
     const ready =
       snapshot.state === "ready" &&
-      snapshot.meters.length > 0 &&
+      (snapshot.sharedUsage !== null || snapshot.runtimeMeters.length > 0) &&
       snapshot.diagnosticCode === null;
     const notMetered =
       snapshot.state === "not-metered" &&
-      snapshot.meters.length === 0 &&
+      snapshot.sharedUsage === null &&
+      snapshot.runtimeMeters.length === 0 &&
       snapshot.diagnosticCode === "no-usage-windows";
     const unavailable =
       snapshot.state === "unavailable" &&
-      snapshot.meters.length === 0 &&
+      snapshot.sharedUsage === null &&
+      snapshot.runtimeMeters.length === 0 &&
       snapshot.diagnosticCode !== null &&
       snapshot.diagnosticCode !== "no-usage-windows";
     if (!ready && !notMetered && !unavailable) {
@@ -91,17 +102,66 @@ export const codexUsageSchema = z
       });
     }
 
-    const ids = snapshot.meters.map((meter) => meter.limitId);
+    const ids = snapshot.runtimeMeters.map((meter) => meter.limitId);
     if (new Set(ids).size !== ids.length) {
       context.addIssue({
         code: "custom",
         message: "Codex usage meter identifiers must be unique",
-        path: ["meters"],
+        path: ["runtimeMeters"],
       });
     }
   });
 
 export type CodexUsageSnapshot = z.infer<typeof codexUsageSchema>;
 export type CodexUsageWindow =
-  CodexUsageSnapshot["meters"][number]["windows"][number];
+  CodexUsageSnapshot["runtimeMeters"][number]["windows"][number];
+export interface MeteredUsageWindow {
+  meter: CodexUsageSnapshot["runtimeMeters"][number];
+  window: CodexUsageWindow;
+}
 export const scaffoldCodexUsage = codexUsageSchema.parse(usageFixture);
+
+/** A cleared view value; never use the scaffold fixture as unavailable data. */
+export const unavailableCodexUsage = codexUsageSchema.parse({
+  schemaVersion: 1,
+  state: "unavailable",
+  sharedUsage: null,
+  runtimeMeters: [],
+  diagnosticCode: "runtime-unavailable",
+});
+
+/**
+ * Summarize only an exact Codex-reported seven-day window. The general
+ * `codex` meter is the only sidebar source; model-specific meters remain in
+ * details. Any remaining tie is sorted by upstream meter ID and window kind.
+ */
+export function selectSidebarUsageWindow(
+  windows: MeteredUsageWindow[],
+): MeteredUsageWindow | undefined {
+  return windows
+    .filter(
+      ({ meter, window }) =>
+        meter.limitId === "codex" && window.windowDurationMinutes === 10_080,
+    )
+    .sort((left, right) => {
+      const leftGeneral = left.meter.limitId === "codex" ? 1 : 0;
+      const rightGeneral = right.meter.limitId === "codex" ? 1 : 0;
+      if (leftGeneral !== rightGeneral) return rightGeneral - leftGeneral;
+      if (left.meter.limitId !== right.meter.limitId) {
+        return left.meter.limitId.localeCompare(right.meter.limitId);
+      }
+      return left.window.kind.localeCompare(right.window.kind);
+    })[0];
+}
+
+export function usageResetLabel(timestamp: number | null): string {
+  if (timestamp === null) return "Reset time unavailable";
+  const date = new Date(timestamp * 1000);
+  if (Number.isNaN(date.getTime())) return "Reset time unavailable";
+  return `Resets ${new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date)}`;
+}

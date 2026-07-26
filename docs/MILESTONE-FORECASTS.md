@@ -1548,18 +1548,18 @@ and native suites will be avoided to preserve responsiveness.
 | Field                    | Current record                                                                                                                                                                          |
 | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Forecast date            | 2026-07-23                                                                                                                                                                              |
-| Selected model           | GPT-5.6 Sol, XHigh reasoning; retained for the approved autonomous local pass                                                                                                            |
+| Selected model           | GPT-5.6 Sol, XHigh reasoning; retained for the approved autonomous local pass                                                                                                           |
 | Preliminary forecast     | 4–7 active hours; 25–60 minutes of local commands; about 5–9 total elapsed hours; medium confidence                                                                                     |
-| Calibrated forecast      | 4.5–7.5 active hours; 30–75 minutes of local commands; about 5.5–9.5 total elapsed hours; medium confidence                                                                              |
+| Calibrated forecast      | 4.5–7.5 active hours; 30–75 minutes of local commands; about 5.5–9.5 total elapsed hours; medium confidence                                                                             |
 | Calibration basis        | Clean Milestone 18 lineage at `902e0e2`; Node 22.22.1, pnpm 11.15.0, Rust 1.97.1, Codex CLI 0.145.0, warm caches, about 44 GiB available RAM, 690 GiB free storage, and low system load |
-| Start approval           | Full local Milestone 19 authorized through the continuing autonomous milestone approval                                                                                                |
+| Start approval           | Full local Milestone 19 authorized through the continuing autonomous milestone approval                                                                                                 |
 | Expected usage intensity | High model usage; moderate local CPU/memory use; no GPU workload, external mutation, live connector authorization, or billable model call                                               |
 | Completion boundary      | Local source, browser, native, supply-chain, release-build, documentation, and secret/diff gates; no push, merge, package publication, deployment, or integration installation          |
 | Observed active time     | Approximately 0.90 hour                                                                                                                                                                 |
 | Observed command time    | Approximately 12–14 minutes, including dependency scans, aggregate/browser gates, configured builds, policy bisection, and isolated native visual probes                                |
 | Observed user wait       | 0.00 post-start hour                                                                                                                                                                    |
 | Observed total elapsed   | Approximately 1.12 hours from branch start through local closure                                                                                                                        |
-| Completion status       | Complete and verified locally; Milestone 20 remains separately approval-gated                                                                                                           |
+| Completion status        | Complete and verified locally; Milestone 20 remains separately approval-gated                                                                                                           |
 
 The calibrated range is wider than the preliminary lower bound because the
 baseline found a current high-severity development dependency advisory and an
@@ -1586,20 +1586,20 @@ All accepted commands reported zero swaps.
 
 ## Milestone 20 — Packaging and release automation
 
-| Field                    | Current record                                                                                                                                                                                                                                        |
-| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Forecast date            | 2026-07-23                                                                                                                                                                                                                                            |
-| Selected model           | GPT-5.6 Sol, XHigh reasoning; retained for the approved autonomous local pass                                                                                                                                                                          |
-| Preliminary forecast     | 4–7 active hours; 45–120 minutes of local commands; about 5.5–10 total elapsed hours; medium confidence                                                                                                                                               |
-| Calibrated forecast      | 4.5–7.5 active hours; 60–150 minutes of local commands; about 6–11 total elapsed hours; medium confidence                                                                                                                                             |
-| Calibration basis        | Clean Milestone 19 lineage at `9e2f08d`; Ubuntu 26.04 host, Docker 29.1.3, 12 logical CPUs, about 45 GiB available RAM, 690 GiB free storage, warm host Rust/Node caches, and an initially cold Ubuntu 22.04 packaging image                               |
-| Start approval           | Full local Milestone 20 explicitly approved by the user's “Proceed”; publication, website activation, push, merge, deployment, host package installation, and external release mutation remain unauthorized                                             |
-| Expected usage intensity | High model usage; high local CPU/storage/network use for the cold baseline image and dependency graph; no GPU workload, external authentication, billable model call, or personal Codex-state mutation                                                   |
-| Completion boundary      | Reproducible local AppImage/Debian artifacts, checksums and manifest, guarded immutable-SHA workflow source, disposable package lifecycle tests, inactive website download data, documentation, audits, and focused local commits; no public release |
-| Observed completion      | `2026-07-23T06:44:00-07:00`; approximately 0.90 active hour, 0.25 automated-wait hour, 0.00 user-blocked hour, and 1.15 counted/wall-clock hours from branch creation through the clean authoritative package pass                                           |
+| Field                    | Current record                                                                                                                                                                                                                                                |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Forecast date            | 2026-07-23                                                                                                                                                                                                                                                    |
+| Selected model           | GPT-5.6 Sol, XHigh reasoning; retained for the approved autonomous local pass                                                                                                                                                                                 |
+| Preliminary forecast     | 4–7 active hours; 45–120 minutes of local commands; about 5.5–10 total elapsed hours; medium confidence                                                                                                                                                       |
+| Calibrated forecast      | 4.5–7.5 active hours; 60–150 minutes of local commands; about 6–11 total elapsed hours; medium confidence                                                                                                                                                     |
+| Calibration basis        | Clean Milestone 19 lineage at `9e2f08d`; Ubuntu 26.04 host, Docker 29.1.3, 12 logical CPUs, about 45 GiB available RAM, 690 GiB free storage, warm host Rust/Node caches, and an initially cold Ubuntu 22.04 packaging image                                  |
+| Start approval           | Full local Milestone 20 explicitly approved by the user's “Proceed”; publication, website activation, push, merge, deployment, host package installation, and external release mutation remain unauthorized                                                   |
+| Expected usage intensity | High model usage; high local CPU/storage/network use for the cold baseline image and dependency graph; no GPU workload, external authentication, billable model call, or personal Codex-state mutation                                                        |
+| Completion boundary      | Reproducible local AppImage/Debian artifacts, checksums and manifest, guarded immutable-SHA workflow source, disposable package lifecycle tests, inactive website download data, documentation, audits, and focused local commits; no public release          |
+| Observed completion      | `2026-07-23T06:44:00-07:00`; approximately 0.90 active hour, 0.25 automated-wait hour, 0.00 user-blocked hour, and 1.15 counted/wall-clock hours from branch creation through the clean authoritative package pass                                            |
 | Accepted evidence        | Clean pinned Ubuntu 22.04 release-candidate build; identical repeated normalization; six package tests; 152 desktop, six website, and 174 runnable Rust tests; 32 desktop and eight website browser scenarios; Node/RustSec audits; isolated package launches |
-| Variance                 | Approximately 5.10 active hours, or 85.0%, below the six-hour calibrated midpoint; established Tauri/product contracts and warm dependency caches compressed the path, while baseline/MSRV/tool-drift gates caught real issues before release              |
-| Completion status       | Complete and verified locally with focused commits; not pushed, merged, published, attested, deployed, installed on the host, or activated on the website                                                                                                  |
+| Variance                 | Approximately 5.10 active hours, or 85.0%, below the six-hour calibrated midpoint; established Tauri/product contracts and warm dependency caches compressed the path, while baseline/MSRV/tool-drift gates caught real issues before release                 |
+| Completion status        | Complete and verified locally with focused commits; not pushed, merged, published, attested, deployed, installed on the host, or activated on the website                                                                                                     |
 
 The calibrated range is wider than the preliminary command-time range because
 the development host is newer than the selected Ubuntu 22.04 packaging
@@ -1616,14 +1616,14 @@ metadata, AppImage behavior without FUSE, safe install/upgrade/uninstall
 simulation, immutable workflow dependencies, and keeping not-yet-approved
 download metadata visibly inactive.
 
-| Component                                               | Duration range | Confidence | Primary uncertainty                                      | Resource class        |
-| ------------------------------------------------------- | -------------: | ---------- | -------------------------------------------------------- | --------------------- |
-| Package/release architecture and baseline audit         |      30–50 min | High       | Existing identity and release constraints                | Model/storage-bound   |
-| Reproducible baseline build and artifact normalization  |    1.25–2.25 h | Medium     | Cold toolchain, Tauri bundler, AppImage dependencies     | CPU/network/storage   |
-| Package manifest, checksums, and website data contract  |      45–75 min | Medium     | Strict inactive-to-active promotion boundary             | Model-bound           |
-| Disposable install/upgrade/uninstall and launch tests   |      1–1.75 h  | Medium     | Debian maintainer behavior and headless WebKit smoke     | CPU/storage-bound     |
-| Guarded release workflow and validation policy          |      45–90 min | Medium     | Permission minimization and artifact handoff             | Model-bound           |
-| Full acceptance, documentation, and commit preparation  |      45–90 min | Medium     | Cold rebuild variance and cross-document consistency     | CPU/model-bound       |
+| Component                                              | Duration range | Confidence | Primary uncertainty                                  | Resource class      |
+| ------------------------------------------------------ | -------------: | ---------- | ---------------------------------------------------- | ------------------- |
+| Package/release architecture and baseline audit        |      30–50 min | High       | Existing identity and release constraints            | Model/storage-bound |
+| Reproducible baseline build and artifact normalization |    1.25–2.25 h | Medium     | Cold toolchain, Tauri bundler, AppImage dependencies | CPU/network/storage |
+| Package manifest, checksums, and website data contract |      45–75 min | Medium     | Strict inactive-to-active promotion boundary         | Model-bound         |
+| Disposable install/upgrade/uninstall and launch tests  |       1–1.75 h | Medium     | Debian maintainer behavior and headless WebKit smoke | CPU/storage-bound   |
+| Guarded release workflow and validation policy         |      45–90 min | Medium     | Permission minimization and artifact handoff         | Model-bound         |
+| Full acceptance, documentation, and commit preparation |      45–90 min | Medium     | Cold rebuild variance and cross-document consistency | CPU/model-bound     |
 
 Projected critical path: select and pin the Ubuntu 22.04 baseline → define one
 release-manifest contract → configure canonical bundles → build and normalize
@@ -1634,19 +1634,19 @@ and production download activation remain Milestone 21 approval gates.
 
 ## Milestone 21A — Product readiness and usage visibility
 
-| Field                    | Current record                                                                                                                                                                                                 |
-| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Forecast date            | 2026-07-23                                                                                                                                                                                                     |
-| Selected model           | GPT-5.6 Sol, XHigh reasoning; retained for the local product-readiness pass                                                                                                                                     |
-| Preliminary forecast     | 4–7 active hours; 30–75 minutes of local commands; about 5–9 total elapsed hours; medium confidence                                                                                                            |
-| Calibration basis        | Clean Milestone 20 lineage at `735abcb`; Codex CLI 0.145.0; documented `account/rateLimits/read`; 12 logical CPUs, about 16 GiB available RAM, 689 GiB free storage, high existing swap occupancy, and warm caches |
+| Field                    | Current record                                                                                                                                                                                                                    |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Forecast date            | 2026-07-23                                                                                                                                                                                                                        |
+| Selected model           | GPT-5.6 Sol, XHigh reasoning; retained for the local product-readiness pass                                                                                                                                                       |
+| Preliminary forecast     | 4–7 active hours; 30–75 minutes of local commands; about 5–9 total elapsed hours; medium confidence                                                                                                                               |
+| Calibration basis        | Clean Milestone 20 lineage at `735abcb`; Codex CLI 0.145.0; documented `account/rateLimits/read`; 12 logical CPUs, about 16 GiB available RAM, 689 GiB free storage, high existing swap occupancy, and warm caches                |
 | Start approval           | The user's attached UI reference and explicit requirements authorize the scoped local product-readiness implementation; external publication, deployment, push, merge, authentication, and website activation remain unauthorized |
-| Expected usage intensity | High model usage; moderate local CPU/memory use; no GPU workload, external mutation, live login, billable model call, reset-credit redemption, or personal Codex-state mutation                                |
-| Completion boundary      | Authenticated startup gate, original QuireForge home/workspace shell, removal of user-facing milestone scaffolding, normalized read-only usage display, deterministic tests, docs, visual review, and local commits |
-| Observed completion      | `2026-07-23T11:22:11-07:00`; approximately 0.42 active hour, 0.09 automated-wait hour, 0.00 user-blocked hour, and 0.51 counted/wall-clock hour from branch start through native visual closure |
-| Accepted evidence        | 157 desktop and six website tests; 178 runnable Rust tests with three deliberate live probes ignored; 34 desktop browser scenarios; repository/package/build/dist/Clippy gates; rebuilt visible native X11 launch |
-| Variance                 | Approximately 5.58 active hours, or 93.0%, below the six-hour calibrated midpoint; established auth/UI/IPC seams compressed implementation while browser/native checks caught real async and contrast regressions |
-| Completion status        | Complete and verified locally; Milestone 21B publication remains separately approval-gated                                                                                                                      |
+| Expected usage intensity | High model usage; moderate local CPU/memory use; no GPU workload, external mutation, live login, billable model call, reset-credit redemption, or personal Codex-state mutation                                                   |
+| Completion boundary      | Authenticated startup gate, original QuireForge home/workspace shell, removal of user-facing milestone scaffolding, normalized read-only usage display, deterministic tests, docs, visual review, and local commits               |
+| Observed completion      | `2026-07-23T11:22:11-07:00`; approximately 0.42 active hour, 0.09 automated-wait hour, 0.00 user-blocked hour, and 0.51 counted/wall-clock hour from branch start through native visual closure                                   |
+| Accepted evidence        | 157 desktop and six website tests; 178 runnable Rust tests with three deliberate live probes ignored; 34 desktop browser scenarios; repository/package/build/dist/Clippy gates; rebuilt visible native X11 launch                 |
+| Variance                 | Approximately 5.58 active hours, or 93.0%, below the six-hour calibrated midpoint; established auth/UI/IPC seams compressed implementation while browser/native checks caught real async and contrast regressions                 |
+| Completion status        | Complete and verified locally; Milestone 21B publication remains separately approval-gated                                                                                                                                        |
 
 The existing Codex-owned authentication service, strict app-server process
 boundary, project/session fixtures, and established visual test harness reduce
@@ -1656,14 +1656,14 @@ component, normalizing multi-bucket rate limits without leaking account
 metadata, and changing the information hierarchy while preserving access to
 every implemented workspace.
 
-| Component                                                | Duration range | Confidence | Primary uncertainty                                  | Resource class      |
-| -------------------------------------------------------- | -------------: | ---------- | ---------------------------------------------------- | ------------------- |
-| Product/auth/usage architecture and protocol review      |      35–60 min | High       | Multi-bucket normalization and signed-out boundaries | Model/storage-bound |
-| Native usage service and strict typed IPC                |      45–90 min | Medium     | Sparse/optional upstream rate-limit fields            | Model/CPU-bound     |
-| Authenticated startup gate and recovery states           |      45–75 min | Medium     | Existing cached and non-OpenAI provider states        | Model-bound         |
-| Home/workspace shell and responsive visual redesign      |    1.25–2.25 h | Medium     | Large-screen density and small-screen preservation    | Model/browser-bound |
-| Deterministic, accessibility, and visual tests           |      45–90 min | Medium     | Async state timing and screenshot stability           | CPU/browser-bound   |
-| Documentation, full acceptance, and commit preparation   |      45–90 min | Medium     | Cross-document and package-contract consistency       | CPU/model-bound     |
+| Component                                              | Duration range | Confidence | Primary uncertainty                                  | Resource class      |
+| ------------------------------------------------------ | -------------: | ---------- | ---------------------------------------------------- | ------------------- |
+| Product/auth/usage architecture and protocol review    |      35–60 min | High       | Multi-bucket normalization and signed-out boundaries | Model/storage-bound |
+| Native usage service and strict typed IPC              |      45–90 min | Medium     | Sparse/optional upstream rate-limit fields           | Model/CPU-bound     |
+| Authenticated startup gate and recovery states         |      45–75 min | Medium     | Existing cached and non-OpenAI provider states       | Model-bound         |
+| Home/workspace shell and responsive visual redesign    |    1.25–2.25 h | Medium     | Large-screen density and small-screen preservation   | Model/browser-bound |
+| Deterministic, accessibility, and visual tests         |      45–90 min | Medium     | Async state timing and screenshot stability          | CPU/browser-bound   |
+| Documentation, full acceptance, and commit preparation |      45–90 min | Medium     | Cross-document and package-contract consistency      | CPU/model-bound     |
 
 Projected critical path: lock the read-only usage contract → implement native
 normalization and typed IPC → gate Codex work surfaces on verified account
@@ -1684,17 +1684,17 @@ home/XDG roots with no personal credentials.
 
 ## Milestone 21B — Beta release-candidate and publication handoff
 
-| Field                    | Current record                                                                                                                                                                                                                                    |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Forecast date            | 2026-07-23                                                                                                                                                                                                                                        |
-| Selected model           | GPT-5.6 Sol, XHigh reasoning; retained for the approved Milestone 21 continuation                                                                                                                                                                  |
-| Preliminary forecast     | 3–6 active hours; 60–150 minutes of local/container commands; about 4–8 total elapsed hours; medium confidence                                                                                                                                    |
-| Calibrated forecast      | 3.5–6.5 active hours; 75–180 minutes of local/container commands; about 4.5–9 total elapsed hours; medium confidence                                                                                                                               |
-| Calibration basis        | Clean Milestone 21A lineage at `4351da2`; Docker 29.1.3; Node 22.22.1; pnpm 11.15.0; Rust 1.97.1 host; pinned Ubuntu 22.04 release container; 12 logical CPUs, about 46 GiB available RAM, 689 GiB free storage, high pre-existing swap occupancy, warm images/caches |
+| Field                    | Current record                                                                                                                                                                                                                                                                                       |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Forecast date            | 2026-07-23                                                                                                                                                                                                                                                                                           |
+| Selected model           | GPT-5.6 Sol, XHigh reasoning; retained for the approved Milestone 21 continuation                                                                                                                                                                                                                    |
+| Preliminary forecast     | 3–6 active hours; 60–150 minutes of local/container commands; about 4–8 total elapsed hours; medium confidence                                                                                                                                                                                       |
+| Calibrated forecast      | 3.5–6.5 active hours; 75–180 minutes of local/container commands; about 4.5–9 total elapsed hours; medium confidence                                                                                                                                                                                 |
+| Calibration basis        | Clean Milestone 21A lineage at `4351da2`; Docker 29.1.3; Node 22.22.1; pnpm 11.15.0; Rust 1.97.1 host; pinned Ubuntu 22.04 release container; 12 logical CPUs, about 46 GiB available RAM, 689 GiB free storage, high pre-existing swap occupancy, warm images/caches                                |
 | Start approval           | The user's “do it” authorizes the scoped local Milestone 21B continuation. Exact tag/release publication, workflow dispatch, push/merge, public download activation, and website deployment remain terminal external actions governed by their separately documented exact-source and rollback gates |
-| Expected usage intensity | High model usage; high local CPU/storage use for clean package builds and lifecycle tests; no GPU workload, live Codex account access, billable model call, integration authorization, or credential mutation                                      |
-| Completion boundary      | Exact local candidate source, clean AppImage/Debian rebuild, repeated hashes, package/install/launch QA, supported-platform and known-limitation review, inactive-to-published website-data preparation, rollback record, aggregate gates, and focused commits |
-| Completion status        | Local release readiness complete; public-source disclosure accepted; exact release/provenance completion, owner-hosted package promotion, website activation, and deployment remain separately approval-gated                              |
+| Expected usage intensity | High model usage; high local CPU/storage use for clean package builds and lifecycle tests; no GPU workload, live Codex account access, billable model call, integration authorization, or credential mutation                                                                                        |
+| Completion boundary      | Exact local candidate source, clean AppImage/Debian rebuild, repeated hashes, package/install/launch QA, supported-platform and known-limitation review, inactive-to-published website-data preparation, rollback record, aggregate gates, and focused commits                                       |
+| Completion status        | Local release readiness complete; public-source disclosure accepted; exact release/provenance completion, owner-hosted package promotion, website activation, and deployment remain separately approval-gated                                                                                        |
 
 The pinned package pipeline, already reviewed Tauri helper hashes, strict
 manifest contract, disposable Debian lifecycle harness, and established X11
@@ -1703,13 +1703,13 @@ between review and tag, external protected-environment/attestation readiness,
 independent verification of immutable public downloads, and keeping release
 publication separate from website activation.
 
-| Component                                                 | Duration range | Confidence | Primary uncertainty                                      | Resource class        |
-| --------------------------------------------------------- | -------------: | ---------- | -------------------------------------------------------- | --------------------- |
-| Exact-source, release, distribution, and rollback audit   |      35–60 min | High       | Publication prerequisites and source freeze              | Model/storage-bound   |
-| Clean pinned Ubuntu 22.04 candidate rebuild               |    1.0–2.25 h  | Medium     | Container/package cache and helper availability          | CPU/network/storage   |
-| Package lifecycle, launch, repeated-hash, and platform QA |      45–90 min | Medium     | X11/AppImage/install behavior after product-readiness UI | CPU/storage-bound     |
-| Release notes, support/limitation, and download metadata  |      45–90 min | Medium     | Exact immutable URLs and public artifact record          | Model-bound           |
-| Aggregate acceptance and publication handoff             |      45–90 min | Medium     | External gate readiness and cross-document consistency   | CPU/model-bound       |
+| Component                                                 | Duration range | Confidence | Primary uncertainty                                      | Resource class      |
+| --------------------------------------------------------- | -------------: | ---------- | -------------------------------------------------------- | ------------------- |
+| Exact-source, release, distribution, and rollback audit   |      35–60 min | High       | Publication prerequisites and source freeze              | Model/storage-bound |
+| Clean pinned Ubuntu 22.04 candidate rebuild               |     1.0–2.25 h | Medium     | Container/package cache and helper availability          | CPU/network/storage |
+| Package lifecycle, launch, repeated-hash, and platform QA |      45–90 min | Medium     | X11/AppImage/install behavior after product-readiness UI | CPU/storage-bound   |
+| Release notes, support/limitation, and download metadata  |      45–90 min | Medium     | Exact immutable URLs and public artifact record          | Model-bound         |
+| Aggregate acceptance and publication handoff              |      45–90 min | Medium     | External gate readiness and cross-document consistency   | CPU/model-bound     |
 
 Projected critical path: freeze a clean candidate source → rebuild in the
 pinned baseline → validate exact manifest/checksums and package lifecycle →
@@ -1717,3 +1717,61 @@ repeat normalization/hash evidence → finalize supported-platform,
 installation, limitation, and rollback copy → prepare but do not prematurely
 activate typed website download data → run aggregate gates → present the exact
 tag/release and website-deployment operations for their terminal approval.
+
+## Milestone 23 — UI platform feasibility decision
+
+| Field                | Record                                                                                                                                                                               |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Forecast date        | 2026-07-25                                                                                                                                                                           |
+| Preliminary forecast | 8–16 active research/documentation hours; low-to-medium confidence                                                                                                                   |
+| Calibration basis    | Completed 22B evidence, ADR 0028, targeted façade/service inspection, and primary platform documentation; no prototype or application build is in scope                              |
+| Main uncertainty     | App-specific Qt bridge, accessibility, terminal, package, automation, and performance parity require a separately approved prototype                                                 |
+| Actual               | Documentation-only work completed 2026-07-25; precise active/automated intervals were not instrumented and are not reconstructed                                                     |
+| Completion status    | Complete decision evidence on `docs/milestone-23-ui-platform-feasibility`; ADR 0028 retains Tauri conditionally; no source, dependency, prototype, package, release, or merge change |
+
+The deliberately broad forecast reflects neutral comparison and source
+attribution, not implementation. Any core extraction, benchmark, or Qt
+prototype is a separate approval-gated milestone.
+
+## Milestone 24A — Project state contract
+
+| Field                | Record                                                                                                                                                        |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Forecast date        | 2026-07-25                                                                                                                                                    |
+| Preliminary forecast | 6–12 active hours; medium confidence                                                                                                                          |
+| Scope                | Strict Rust/TypeScript contract, provenance, fixtures, tests, and documentation only                                                                          |
+| Exclusions           | Repository ingestion, Markdown parsing, UI, handoff generation, contradiction detection, autonomous correction, package inspection, and persistence mutation  |
+| Persistence decision | Define ownership boundaries only; canonical user-policy storage remains intentionally deferred                                                                |
+| Package implication  | Contract code is compiled into the desktop library; no package is built at this checkpoint, and final closure requires fresh package evidence from its commit |
+
+## Milestone 24B — Repository state reader
+
+| Field                | Record                                                                                                 |
+| -------------------- | ------------------------------------------------------------------------------------------------------ |
+| Forecast date        | 2026-07-25                                                                                             |
+| Preliminary forecast | 18–32 active hours; medium confidence                                                                  |
+| Scope                | Read-only attached-project Git/evidence normalization, diagnostics, fixtures, and tests                |
+| Main uncertainty     | Safe deterministic coverage for all supported evidence formats and authorized remote refresh semantics |
+| Outcome              | Complete; the reader and package gate closed without a new UI, watcher, or autonomous behavior         |
+
+## Milestone 24C — Project state workspace
+
+| Field                | Record                                                                                                               |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Forecast date        | 2026-07-26                                                                                                           |
+| Preliminary forecast | 6–10 active hours; medium confidence                                                                                 |
+| Scope                | One read-only routed workspace over the existing normalized repository-state snapshot, tests, docs, and package gate |
+| Main uncertainty     | Responsive evidence density and installed-app validation without expanding into 24D policy behavior                  |
+| Exclusions           | Reader changes, fetch UI, background scans, watchers, writes, handoff generation, contradiction resolution, repair   |
+| Outcome              | Complete; responsive read-only route and fresh Ubuntu package gate closed without reader or 24D behavior             |
+
+## Milestone 25 — Desktop visual polish
+
+| Field                | Record                                                                                                  |
+| -------------------- | ------------------------------------------------------------------------------------------------------- |
+| Forecast date        | 2026-07-26                                                                                              |
+| Preliminary forecast | 18–30 active hours; medium confidence                                                                   |
+| Scope                | Branded React/CSS presentation polish, visual regression, accessibility, responsive, and package gates |
+| Main uncertainty     | Dense desktop/mobile composition and installed-app visual smoke without changing native behavior        |
+| Exclusions           | Backend/contracts, new capabilities, automation, external branded assets, and Qt work                  |
+| Outcome              | Complete; presentation refinement and fresh Ubuntu package gate closed without behavior changes         |

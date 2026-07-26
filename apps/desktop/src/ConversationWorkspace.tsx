@@ -12,6 +12,7 @@ import type {
 import type { CodexRuntimeSnapshot } from "./lib/codex";
 import {
   conversationStartRequestSchema,
+  type ConversationActionFailureCode,
   type ConversationApprovalDecisionRequest,
   type ConversationEvent,
   type ConversationSnapshot,
@@ -42,7 +43,7 @@ interface ConversationWorkspaceProps {
   attachments: ConversationAttachmentSnapshot;
   busy: boolean;
   attachmentBusy: boolean;
-  actionError: boolean;
+  actionError: ConversationActionFailureCode | null;
   attachmentActionError: boolean;
   onStart: (request: ConversationStartRequest) => Promise<ConversationSnapshot>;
   onInterrupt: (conversationId: string) => Promise<ConversationSnapshot>;
@@ -118,6 +119,15 @@ const diagnosticMessages: Record<
   "protocol-invalid":
     "Codex returned data QuireForge could not safely display.",
   "rpc-rejected": "Codex rejected the requested operation.",
+};
+
+const actionFailureMessages: Record<ConversationActionFailureCode, string> = {
+  "request-invalid":
+    "The task request was rejected before native execution. Review the task text and controls, then try again.",
+  "native-command-failed":
+    "QuireForge could not reach the native conversation service. Verify the native bridge and Codex runtime, then try again.",
+  "native-response-invalid":
+    "The native conversation service returned an unsupported response. Restart matching QuireForge frontend and native versions, then try again.",
 };
 
 const activityLabels: Record<
@@ -319,6 +329,7 @@ export function ConversationWorkspace({
   const [pendingDecision, setPendingDecision] = useState<
     ConversationApprovalDecisionRequest["decision"] | null
   >(null);
+  const startInFlight = useRef(false);
   const decisionInFlight = useRef(false);
 
   const activities = useMemo(
@@ -431,12 +442,15 @@ export function ConversationWorkspace({
     requestValid;
 
   async function beginTask() {
-    if (!canStart) return;
+    if (!canStart || startInFlight.current) return;
+    startInFlight.current = true;
     try {
       const result = await onStart(request);
       if (result.state === "running") setPrompt("");
     } catch {
       // The bounded action message is owned by App state.
+    } finally {
+      startInFlight.current = false;
     }
   }
 
@@ -501,7 +515,9 @@ export function ConversationWorkspace({
       <div className="conversation-workspace__intro">
         <div>
           <p className="eyebrow">Native conversation</p>
-          <h2 id="conversation-title">Start a focused Codex task.</h2>
+          <h1 id="conversation-title" data-workspace-heading tabIndex={-1}>
+            Start a focused Codex task.
+          </h1>
         </div>
         <p>
           Work stays scoped to the attached directory. QuireForge displays a
@@ -514,6 +530,7 @@ export function ConversationWorkspace({
       <div className="conversation-layout">
         <form
           className="conversation-composer"
+          data-visual-region="conversation-composer"
           onSubmit={(event) => {
             event.preventDefault();
             void beginTask();
@@ -864,8 +881,7 @@ export function ConversationWorkspace({
           )}
           {actionError && (
             <p className="conversation-diagnostic" role="alert">
-              The native conversation action did not complete. No raw native
-              error was exposed to the interface.
+              {actionFailureMessages[actionError]}
             </p>
           )}
         </div>

@@ -1,10 +1,12 @@
 {
   "schemaVersion": 1,
   "state": "ready",
-  "meters": [
+  "sharedUsage": null,
+  "runtimeMeters": [
     {
       "label": "Codex",
       "limitId": "codex",
+      "scope": "unknown",
       "windows": [
         {
           "kind": "primary",
@@ -15,10 +17,25 @@
         },
         {
           "kind": "secondary",
-          "usedPercent": 56,
-          "remainingPercent": 44,
+          "usedPercent": 1,
+          "remainingPercent": 99,
           "windowDurationMinutes": 10080,
-          "resetsAt": 1785412800
+          "resetsAt": 1785612540
+        }
+      ],
+      "limited": false
+    },
+    {
+      "label": "GPT-5.3-Codex-Spark",
+      "limitId": "gpt-5.3-codex-spark",
+      "scope": "unknown",
+      "windows": [
+        {
+          "kind": "secondary",
+          "usedPercent": 0,
+          "remainingPercent": 100,
+          "windowDurationMinutes": 10080,
+          "resetsAt": 1785612540
         }
       ],
       "limited": false

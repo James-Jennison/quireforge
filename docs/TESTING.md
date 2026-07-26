@@ -36,6 +36,20 @@ Milestone 21B adds repeated byte-equality evidence, current-host package launch
 review, signed-out package pixels, and dormant same-origin website publication
 validation while keeping the committed download state inactive.
 
+## Validation selection
+
+Use targeted checks while implementing a scoped change. Use the full
+non-browser gate for meaningful milestone closure. Run desktop E2E only for UI
+behavior changes, and use package-container validation only for
+packaging-sensitive changes.
+
+| Scope | Existing commands |
+| --- | --- |
+| Targeted desktop | `pnpm --filter @quireforge/desktop check`<br>`pnpm --filter @quireforge/desktop lint`<br>`pnpm --filter @quireforge/desktop format:check`<br>`pnpm --filter @quireforge/desktop test`<br>`pnpm --filter @quireforge/desktop build`<br>`pnpm --filter @quireforge/desktop validate:dist` |
+| Rust | `cargo fmt --all --check`<br>`pnpm rust:check`<br>`pnpm rust:clippy`<br>`pnpm rust:test` |
+| Full non-browser | `pnpm validate` |
+| Additional when relevant | `pnpm --filter @quireforge/desktop test:e2e`<br>`pnpm desktop:build`<br>`./scripts/run_linux_package_container.sh` |
+
 ## Repository, website, and desktop checks
 
 Run these commands from the repository root after installing locked
@@ -153,6 +167,10 @@ control combinations, UUIDv7 correlation, bounded normalized events, exact
 interrupt, project reservation, exact approval correlation and decisions,
 pending-approval cancellation, detailed activity identity, split-secret
 redaction, protocol mismatch, child reaping, and reference-only persistence.
+The native-conversation hotfix additionally captures the exact mock app-server
+`turn/start` request to prove a multiline task remains one text input, prevents
+re-entrant composer starts, preserves the prompt after failure, and verifies
+distinct bounded request, native-command, and native-response diagnostics.
 Milestone 11B fixtures additionally start independent mock app-server children
 for distinct worktree projects, prove exact per-app-ID interruption, reject a
 second task in the same project, enforce the four-task capacity while starts
@@ -773,10 +791,29 @@ PLAYWRIGHT_CHROMIUM_EXECUTABLE=/path/to/chromium pnpm test:e2e
 The website suite exercises desktop and mobile viewports, every public route,
 horizontal overflow, semantic page structure, light/dark theme persistence,
 and axe-core checks on the home and integration pages. The desktop browser suite
-exercises its responsive semantic shell, honest browser-preview state, theme
-persistence, overflow, and axe-core baseline in both viewports. Automated
-accessibility checks complement rather than replace keyboard, screen-reader,
-zoom, and visual review.
+exercises all ten dedicated workspace routes, the account-to-Settings fallback,
+responsive semantic shell, honest browser-preview state, theme persistence,
+independent scrolling, overflow, keyboard routing, and axe-core baseline in
+both viewports. Automated accessibility checks complement rather than replace
+keyboard, screen-reader, zoom, and visual review.
+
+Milestone 22's visual pass writes ignored screenshots beneath
+`apps/desktop/test-results` at 1920×1080, 1440×900, 1366×768, a 720-pixel
+collapsed layout, and the configured mobile viewport:
+
+```bash
+pnpm --filter @quireforge/desktop exec playwright test --grep "captures routed desktop workspace evidence"
+```
+
+Milestone 22B retains those routed-shell checks while it consolidates shared
+presentation rules. Each visual slice must run the desktop type, lint, unit,
+production-build, and distribution-budget commands before it is committed;
+responsive and axe/Playwright evidence remain required before the milestone is
+closed. The current evidence capture includes the mobile drawer plus Scheduled,
+Integrations, Files, and Settings, alongside the established desktop and
+compact-rail route captures. The completion gate additionally passes the full
+repository formatter, Rust/Tauri checks, and the pinned Ubuntu 22.04 package
+lifecycle and visible-launch workflow.
 
 GitHub Actions installs its own isolated Chromium and runs the same suite. It
 does not deploy the site and receives no Cloudflare credentials.
