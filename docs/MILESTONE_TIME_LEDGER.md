@@ -1227,3 +1227,12 @@ greater precision than the underlying ranges.
   evidence are recorded in `docs/MILESTONE_24A_PROJECT_STATE_CONTRACT.md`.
 - **Status:** Complete; no 24B reader, 24C workspace, or 24D handoff or
   contradiction engine was introduced.
+
+## Milestone 24B — Repository state reader
+
+- **Objective:** Read and normalize attached-project repository evidence without
+  modifying project state or resolving contradictions.
+- **Start / checkpoint:** `2026-07-25`; active implementation checkpoint.
+- **Forecast:** 18–32 active hours; medium confidence.
+- **Boundary:** no project-state UI, automatic handoff, watcher, document
+  rewrite, contradiction resolution, or autonomous repair.

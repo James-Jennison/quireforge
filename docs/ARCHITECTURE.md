@@ -206,6 +206,14 @@ fields, invalid checkpoints, and approvals without an authority. Source
 ingestion, display, handoff generation, and contradiction detection remain
 Milestones 24B–24D.
 
+### Milestone 24B repository-reader boundary
+
+The repository-state reader is a demand-driven Rust service for an already
+attached project ID. It uses the reviewed Git environment and returns typed
+contract state plus diagnostics through one explicit Tauri read command. It
+does not accept paths or Git arguments, add a UI, watch repositories, rewrite
+evidence, or resolve conflicts.
+
 ### Milestone 6 implementation boundary
 
 The native `ProjectService` owns migrated QuireForge SQLite metadata and native

@@ -20,6 +20,9 @@ released a usable application.
 
 ### Added
 
+- Milestone 24B repository-state reader checkpoint: attached-project-only,
+  typed local/tracking/explicit-fetch reads with contract diagnostics and no UI
+  or repository mutation except the separately authorized fetch mode.
 - Milestone 24A project-state contract: strict Rust/Zod serialization,
   provenance/trust, approvals, checkpoints, validation/package evidence,
   blockers, contradictions, and handoff state with no reader, UI, or automation;

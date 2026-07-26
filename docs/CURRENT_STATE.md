@@ -6,9 +6,10 @@ QuireForge is an unofficial Linux workspace for Codex: “Build boldly. Work
 locally.” Tauri + React + TypeScript is the current functional prototype. ADR
 0028 accepts retaining Tauri conditionally; no Qt migration has been selected.
 
-- **Branch:** `feat/milestone-24a-project-state-contract`
-- **Checkpoint:** Milestones 22, 22B, 23, and 24A are complete; no 24B reader,
-  24C workspace, or 24D handoff/consistency behavior has begun.
+- **Branch:** `feat/milestone-24b-repository-state-reader`
+- **Checkpoint:** Milestones 22, 22B, 23, and 24A are complete; 24B has an
+  attached-project-only repository-reader checkpoint. No 24C workspace or 24D
+  handoff/consistency behavior has begun.
 - **Milestone 22B:** the routed desktop architecture was refined without
   changing route, native-bridge, authentication, or account-data ownership.
 - **Host readiness:** Qt 6.10.2/QML tooling is installed on this host only.
@@ -25,6 +26,11 @@ notifications, and one native drop-capture path. React/TypeScript/Vite remains
 the current presentation layer and calls that façade through its bridge.
 
 ## Next action
+
+Milestone 24B — **Repository State Reader** begins with explicit,
+attached-project-only local/tracking/fetch-authorized read modes. It returns a
+validated contract plus diagnostics, with no UI, watcher, document rewrite, or
+contradiction resolution. See [Milestone 24B](MILESTONE_24B_REPOSITORY_STATE_READER.md).
 
 Milestone 24A — **Project State Contract** is complete at implementation commit
 `f62ba5c68fe0002d3d3f6b5faa0bd2d522d81f0d`. Its versioned Rust/Zod contract

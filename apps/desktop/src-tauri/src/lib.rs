@@ -33,6 +33,9 @@ use desktop::{
     DesktopNotificationStatus,
 };
 use git::{
+    repository_state::{
+        RepositoryStateReadRequest, RepositoryStateReadSnapshot, RepositoryStateReader,
+    },
     types::{
         GitDiffRequest, GitDiffSnapshot, GitMutationConfirmRequest, GitMutationPreviewRequest,
         GitMutationPreviewSnapshot, GitMutationResultSnapshot, GitOpenFileRequest,
@@ -585,6 +588,15 @@ async fn git_status(
 }
 
 #[tauri::command]
+async fn repository_state_read(
+    request: RepositoryStateReadRequest,
+    service: tauri::State<'_, RepositoryStateReader>,
+    projects: tauri::State<'_, ProjectService>,
+) -> Result<RepositoryStateReadSnapshot, ()> {
+    Ok(service.read(request, &projects).await)
+}
+
+#[tauri::command]
 async fn git_diff(
     request: GitDiffRequest,
     service: tauri::State<'_, GitService>,
@@ -924,6 +936,7 @@ pub fn run() {
         .manage(ConversationService::default())
         .manage(DesktopNotificationService::default())
         .manage(GitService::default())
+        .manage(RepositoryStateReader)
         .manage(FilePreviewService::default())
         .manage(TerminalService::default())
         .setup(|app| {
@@ -1010,6 +1023,7 @@ pub fn run() {
             worktree_confirm,
             worktree_cancel,
             git_status,
+            repository_state_read,
             git_diff,
             git_open_file,
             git_mutation_preview,

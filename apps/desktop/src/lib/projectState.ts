@@ -234,10 +234,7 @@ export const projectStateContractSchema = z
       })
       .strict()
       .superRefine((repository, context) => {
-        if (
-          (repository.ahead === null) !== (repository.behind === null) ||
-          (repository.localHead === null) !== (repository.remoteHead === null)
-        ) {
+        if ((repository.ahead === null) !== (repository.behind === null)) {
           context.addIssue({
             code: "custom",
             message: "Repository pairs are inconsistent",

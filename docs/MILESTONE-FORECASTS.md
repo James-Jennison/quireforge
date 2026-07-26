@@ -1743,3 +1743,12 @@ prototype is a separate approval-gated milestone.
 | Exclusions           | Repository ingestion, Markdown parsing, UI, handoff generation, contradiction detection, autonomous correction, package inspection, and persistence mutation  |
 | Persistence decision | Define ownership boundaries only; canonical user-policy storage remains intentionally deferred                                                                |
 | Package implication  | Contract code is compiled into the desktop library; no package is built at this checkpoint, and final closure requires fresh package evidence from its commit |
+
+## Milestone 24B — Repository state reader
+
+| Field                | Record                                                                                                 |
+| -------------------- | ------------------------------------------------------------------------------------------------------ |
+| Forecast date        | 2026-07-25                                                                                             |
+| Preliminary forecast | 18–32 active hours; medium confidence                                                                  |
+| Scope                | Read-only attached-project Git/evidence normalization, diagnostics, fixtures, and tests                |
+| Main uncertainty     | Safe deterministic coverage for all supported evidence formats and authorized remote refresh semantics |

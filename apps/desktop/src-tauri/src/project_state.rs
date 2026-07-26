@@ -350,9 +350,7 @@ impl ProjectStateContract {
         for approval in &self.boundaries.approvals {
             validate_approval(approval)?;
         }
-        if self.repository.ahead.is_some() != self.repository.behind.is_some()
-            || self.repository.local_head.is_some() != self.repository.remote_head.is_some()
-        {
+        if self.repository.ahead.is_some() != self.repository.behind.is_some() {
             return Err(ProjectStateContractError::InvalidRepository);
         }
         if let Some(commit) = &self.repository.local_head {
