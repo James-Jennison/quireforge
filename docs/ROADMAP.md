@@ -113,7 +113,7 @@ discovery; scheduling management and execution remain unsupported.
 |        20 | Packaging and release automation                                  | Large        | Complete and verified locally; not published                             |
 |        21 | Product readiness, beta publication, and download activation      | Very large   | 21A complete; 21B local preflight passed, publication approval-gated     |
 |        23 | UI platform feasibility decision                                  | Medium       | Complete; ADR 0028 retains Tauri conditionally                           |
-|       24A | Project-state contract                                            | Medium       | Active; strict contract only, no ingestion or UI                         |
+|       24A | Project-state contract                                            | Medium       | Complete; strict contract only, no ingestion, UI, or automation          |
 
 ## Milestone definitions
 

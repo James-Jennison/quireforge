@@ -1221,3 +1221,9 @@ greater precision than the underlying ranges.
 - **Ownership:** user-approved policy remains separate from repository-derived
   evidence, QuireForge-managed local metadata, and transient agent reports.
   The canonical persistent policy location is intentionally not selected here.
+- **Evidence:** Final implementation commit
+  `f62ba5c68fe0002d3d3f6b5faa0bd2d522d81f0d`; fresh clean pinned Ubuntu 22.04
+  package manifest, checksums, maximum GLIBC `2.34`, lifecycle, launch, and smoke
+  evidence are recorded in `docs/MILESTONE_24A_PROJECT_STATE_CONTRACT.md`.
+- **Status:** Complete; no 24B reader, 24C workspace, or 24D handoff or
+  contradiction engine was introduced.

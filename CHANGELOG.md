@@ -22,7 +22,8 @@ released a usable application.
 
 - Milestone 24A project-state contract: strict Rust/Zod serialization,
   provenance/trust, approvals, checkpoints, validation/package evidence,
-  blockers, contradictions, and handoff state with no reader, UI, or automation.
+  blockers, contradictions, and handoff state with no reader, UI, or automation;
+  its final implementation commit has fresh pinned Ubuntu 22.04 package evidence.
 - Milestone 23 UI-platform feasibility evidence and ADR 0028 decision: retain
   Tauri conditionally, preserve the Rust-domain/Tauri-adapter boundary, and
   reconsider Qt 6 only on documented measurable triggers. This documentation

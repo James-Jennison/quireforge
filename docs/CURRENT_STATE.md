@@ -7,8 +7,8 @@ locally.” Tauri + React + TypeScript is the current functional prototype. ADR
 0028 accepts retaining Tauri conditionally; no Qt migration has been selected.
 
 - **Branch:** `feat/milestone-24a-project-state-contract`
-- **Checkpoint:** Milestones 22 and 22B are complete; Milestone 23 records the
-  UI-platform decision; Milestone 24A project-state contract is active.
+- **Checkpoint:** Milestones 22, 22B, 23, and 24A are complete; no 24B reader,
+  24C workspace, or 24D handoff/consistency behavior has begun.
 - **Milestone 22B:** the routed desktop architecture was refined without
   changing route, native-bridge, authentication, or account-data ownership.
 - **Host readiness:** Qt 6.10.2/QML tooling is installed on this host only.
@@ -26,11 +26,12 @@ the current presentation layer and calls that façade through its bridge.
 
 ## Next action
 
-Milestone 24A — **Project State Contract** defines a strict versioned Rust/Zod
-project-state contract with provenance, approvals, checkpoints, validation and
-package evidence, blockers, contradictions, next actions, and stable handoff
-states. It creates no reader, UI, generated handoff, contradiction engine, or
-canonical persistence location; those remain 24B–24D. See
+Milestone 24A — **Project State Contract** is complete at implementation commit
+`f62ba5c68fe0002d3d3f6b5faa0bd2d522d81f0d`. Its versioned Rust/Zod contract
+has provenance, approvals, checkpoints, validation/package evidence, blockers,
+contradictions, next actions, and stable handoff states. It creates no reader,
+UI, generated handoff, contradiction engine, or canonical persistence location;
+those remain 24B–24D pending explicit approval. See
 [Milestone 24A](MILESTONE_24A_PROJECT_STATE_CONTRACT.md).
 
 Milestone 23 — **UI Platform Feasibility Decision** is complete as a
@@ -82,6 +83,16 @@ with `dpkg --root "$root" --admindir "$admin" --instdir "$root" --install
 "$package"`; a local manual installation would use `sudo apt install
 ./target/ubuntu-22.04/release/packages/quireforge_0.1.0.beta.2_amd64.deb`.
 Launch the AppImage with `./target/ubuntu-22.04/release/packages/QuireForge-0.1.0-beta.2-x86_64.AppImage`.
+
+Milestone 24A refreshed those ignored candidates from clean implementation
+commit `f62ba5c68fe0002d3d3f6b5faa0bd2d522d81f0d`. The same manifest and checksum
+paths now record 4,475,272-byte Debian SHA-256
+`ce9a854e34964b57f125bdb723266023ef80e625b6d9e2fb56ab87f73dd02fc5` and
+83,655,160-byte AppImage SHA-256
+`933c09194720f12cc8ed991d4261f6acb0254be7f4241792d23548fc0564416e`.
+The packaged executable requires maximum GLIBC `2.34`, within the Ubuntu 22.04
+`2.35` policy baseline; the pinned workflow passed desktop/icon, Debian
+lifecycle, installed launch, AppImage launch, and smoke checks.
 
 For a fresh thread, read in this order:
 
