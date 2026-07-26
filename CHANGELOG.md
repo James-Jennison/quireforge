@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — 0.1.0-beta.4
+## Unreleased — 0.1.0-beta.5
 
 - Begin Milestone 28’s reference-only Advisor foundation with strict
   Rust/TypeScript contracts and bounded SQLite metadata for opaque references,
