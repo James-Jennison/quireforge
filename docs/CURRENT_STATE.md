@@ -8,8 +8,9 @@ locally.” Tauri + React + TypeScript is the current functional prototype. ADR
 
 - **Branch:** `feat/milestone-26-appearance-themes`
 - **Checkpoint:** Milestones 22, 22B, 23, 24A, 24B, 24C, and 25 are complete.
-  Milestone 26's palette-only implementation is ready for its final validation
-  and fresh Ubuntu 22.04 package gate. It adds eight closed, locally persisted
+  Milestone 26 is complete. Its palette-only implementation is
+  `0ae0de7995f10128728116b148d49f2cb5b2cf79`; this documentation checkpoint
+  records its fresh pinned Ubuntu 22.04 package evidence. It adds eight closed, locally persisted
   built-in appearances and settings preview behavior without changing the
   native bridge, repository-state contract, layout, typography, or automation
   boundaries.
@@ -66,11 +67,11 @@ the current presentation layer and calls that façade through its bridge.
 
 ## Next action
 
-Milestone 26 — **Appearance Themes** has completed its presentation-only
-implementation and requires final full validation plus fresh Ubuntu 22.04
-Debian/AppImage evidence before it can be marked complete. It retains Forge as
-the default and adds seven closed local palettes through Settings → Appearance.
-See [Milestone 26](MILESTONE_26_APPEARANCE_THEMES.md).
+Milestone 26 — **Appearance Themes** is complete. It retains Forge as the
+default and adds seven closed local palettes through Settings → Appearance with
+local restoration, direct accessibility/visual coverage, and fresh Ubuntu
+22.04 Debian/AppImage evidence. See
+[Milestone 26](MILESTONE_26_APPEARANCE_THEMES.md).
 
 Milestone 25 — **Desktop visual polish** is complete at implementation commit
 `9ae07167448d81c18c8e6fb293ffe52a146b346b`. Its final Ubuntu 22.04 package

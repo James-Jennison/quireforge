@@ -1,6 +1,6 @@
 # Milestone 26 — Appearance Themes
 
-Status: implementation complete; fresh package evidence pending.
+Status: complete.
 
 ## Objective
 
@@ -54,12 +54,68 @@ captures visual evidence.
 
 ## Verification and package gate
 
-Implementation validation covers TypeScript, direct appearance/App/terminal
-tests, browser accessibility/visual evidence, formatting, linting, production
-build, and the repository validation gate. Because themes change the installed
-desktop application, final completion still requires fresh, clean pinned Ubuntu
-22.04 Debian and AppImage candidates, lifecycle and launch checks, reader-safe
-package evidence, and a separate documentation-evidence commit.
+The implementation commit is `0ae0de7995f10128728116b148d49f2cb5b2cf79`.
+The full repository gate passed repository validation, package-contract tests,
+TypeScript/Astro checking, ESLint, Prettier and Rust formatting checks, 192
+desktop and 7 website unit tests, production builds and distribution budgets,
+locked workspace Rust check, warning-denying Clippy, and locked Rust tests.
+The Tauri no-bundle compilation passed. Full browser coverage passed the
+desktop and website suites; the focused appearance scenario covers desktop and
+mobile axe, keyboard, overflow, visual screenshots, and computed semantic
+contrast checks across all eight palettes.
+
+Fresh ignored release candidates were built from that clean implementation
+commit with `./scripts/run_linux_package_container.sh`. The digest-pinned
+Ubuntu 22.04 builder contains `/usr/bin/xvfb-run`, and its manifest/checksum,
+desktop-entry, PNG icon, disposable Debian lifecycle, visible Debian/AppImage
+launches, and representative smoke checks passed with:
+
+```bash
+docker run --rm --init --user "$(id -u):$(id -g)" \
+  --volume "$PWD:/workspace" --env HOME=/tmp --workdir /workspace \
+  quireforge-packaging:ubuntu-22.04 /bin/bash -c \
+  'command -v xvfb-run && python3 scripts/validate_release_artifacts.py \
+    --artifact-dir target/ubuntu-22.04/release/packages --lifecycle --smoke'
+```
+
+| Artifact | Path                                                                           |             Size | SHA-256                                                            |
+| -------- | ------------------------------------------------------------------------------ | ---------------: | ------------------------------------------------------------------ |
+| Debian   | `target/ubuntu-22.04/release/packages/quireforge_0.1.0.beta.2_amd64.deb`       |  4,637,704 bytes | `cf8505a7ad199083906c0fe5bf36f2385c7db57a62a3d8eeebf71727084d4b65` |
+| AppImage | `target/ubuntu-22.04/release/packages/QuireForge-0.1.0-beta.2-x86_64.AppImage` | 83,859,960 bytes | `68f783be8e03b304a88a2da29f2c96461c3c88faf737256a792c06e49ad45572` |
+
+The version-1 `release-manifest.json` and `SHA256SUMS` records under
+`target/ubuntu-22.04/release/packages/` agree with both locally measured sizes
+and SHA-256 values. The target is Ubuntu 22.04 `x86_64`; its maximum required
+GLIBC is `2.34`, within the Ubuntu 22.04 `2.35` baseline.
+
+The lifecycle gate creates a disposable lower-version Debian package, installs
+it, upgrades it with the candidate, and removes it through the validator's
+closed `dpkg --root=<temporary-root> --force-not-root --force-depends
+--force-script-chrootless --install <package>` and `--remove quireforge`
+operations. It proves that the executable and desktop entry are removed while
+an attached-project file and local QuireForge metadata remain intact. The
+actual visible launch commands are:
+
+```bash
+xvfb-run --auto-servernum python3 scripts/smoke_linux_package.py \
+  --label 'Debian package' <extracted>/usr/bin/quireforge
+xvfb-run --auto-servernum python3 scripts/smoke_linux_package.py \
+  --label AppImage \
+  ./target/ubuntu-22.04/release/packages/QuireForge-0.1.0-beta.2-x86_64.AppImage \
+  --appimage-extract-and-run
+```
+
+A local Debian installation would use:
+
+```bash
+sudo apt install ./target/ubuntu-22.04/release/packages/quireforge_0.1.0.beta.2_amd64.deb
+```
+
+The bounded 24B reader's producer-compatible package parsing and both closed
+metadata-only and local-artifact-verification contract paths are covered by its
+strict Rust/TypeScript fixture suite. The manifest and checksum pair above
+conform to that accepted producer format; reading them neither builds packages
+nor changes the inspected repository.
 
 ## Deferred work
 

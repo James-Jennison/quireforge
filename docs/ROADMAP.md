@@ -116,7 +116,7 @@ discovery; scheduling management and execution remain unsupported.
 |       24A | Project-state contract                                            | Medium       | Complete; strict contract only, no ingestion, UI, or automation          |
 |       24B | Repository-state reader                                           | Large        | Complete; attached-project-only read service, no UI or automation        |
 |       24C | Project-state workspace                                           | Medium       | Complete; read-only presentation over the existing normalized reader     |
-|        25 | Desktop visual polish                                             | Medium       | Complete; branded presentation refinement with fresh Ubuntu package gate  |
+|        25 | Desktop visual polish                                             | Medium       | Complete; branded presentation refinement with fresh Ubuntu package gate |
 
 ## Milestone definitions
 
@@ -817,15 +817,16 @@ repository audit occurred.
 
 ### 26 — Appearance Themes
 
-Approved presentation-only palette work. Forge remains the default local
+Complete presentation-only palette work. Forge remains the default local
 appearance; the closed built-in set adds Midnight Atelier, Blueprint Terminal,
 Signal Noir, Aurora Workbench, Obsidian & Copper, Monochrome Editorial, and
 Pacific Night through Settings → Appearance. The work is limited to semantic
 CSS tokens, local preference restoration, keyboard-accessible live preview,
 and visual/accessibility regression coverage. It excludes custom themes,
 layout/density/typography redesign, native or repository-state contracts,
-automation, external branded assets, and Qt work. Fresh Ubuntu 22.04 package
-evidence remains required before completion.
+automation, external branded assets, and Qt work. Fresh pinned Ubuntu 22.04
+Debian/AppImage lifecycle and launch evidence passed from clean implementation
+commit `0ae0de7995f10128728116b148d49f2cb5b2cf79`.
 
 ## Forecast policy
 

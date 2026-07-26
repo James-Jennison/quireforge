@@ -166,7 +166,7 @@ automatic handoffs, and contradiction resolution remain unavailable.
 Milestone 25 refines the native shell's branded density, dark-surface hierarchy,
 empty-state composition, and responsive conversation composer without changing
 native behavior, repository-state contracts, or automation boundaries.
-Milestone 26 adds a closed set of accessible local appearance palettes through
+Milestone 26 completed a closed set of accessible local appearance palettes through
 Settings → Appearance, retaining Forge as the default while leaving layout,
 typography, native behavior, repository-state contracts, and automation
 boundaries unchanged.

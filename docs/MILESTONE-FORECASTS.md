@@ -1767,22 +1767,22 @@ prototype is a separate approval-gated milestone.
 
 ## Milestone 25 — Desktop visual polish
 
-| Field                | Record                                                                                                  |
-| -------------------- | ------------------------------------------------------------------------------------------------------- |
-| Forecast date        | 2026-07-26                                                                                              |
-| Preliminary forecast | 18–30 active hours; medium confidence                                                                   |
+| Field                | Record                                                                                                 |
+| -------------------- | ------------------------------------------------------------------------------------------------------ |
+| Forecast date        | 2026-07-26                                                                                             |
+| Preliminary forecast | 18–30 active hours; medium confidence                                                                  |
 | Scope                | Branded React/CSS presentation polish, visual regression, accessibility, responsive, and package gates |
-| Main uncertainty     | Dense desktop/mobile composition and installed-app visual smoke without changing native behavior        |
+| Main uncertainty     | Dense desktop/mobile composition and installed-app visual smoke without changing native behavior       |
 | Exclusions           | Backend/contracts, new capabilities, automation, external branded assets, and Qt work                  |
-| Outcome              | Complete; presentation refinement and fresh Ubuntu package gate closed without behavior changes         |
+| Outcome              | Complete; presentation refinement and fresh Ubuntu package gate closed without behavior changes        |
 
 ## Milestone 26 — Appearance Themes
 
-| Field                | Record                                                                                                                        |
-| -------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| Forecast date        | 2026-07-26                                                                                                                    |
-| Preliminary forecast | 12–20 active hours; medium confidence                                                                                         |
+| Field                | Record                                                                                                                      |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Forecast date        | 2026-07-26                                                                                                                  |
+| Preliminary forecast | 12–20 active hours; medium confidence                                                                                       |
 | Scope                | Closed local palette registry, semantic CSS tokens, accessible Appearance picker, visual regression, and package gate       |
 | Main uncertainty     | Preserving every semantic state and terminal surface across eight palettes without changing existing layout or native state |
 | Exclusions           | Custom themes, typography/density/layout redesign, backend/contracts, automation, external branded assets, and Qt work      |
-| Outcome              | Implementation complete; final full validation and fresh Ubuntu 22.04 package evidence pending                               |
+| Outcome              | Complete; palette implementation and fresh Ubuntu 22.04 package gate closed without behavior changes                        |
