@@ -1,13 +1,30 @@
-import type { AdvisorWorkspaceSnapshot } from "./lib/advisorWorkspace";
+import type {
+  AdvisorSelectedProjectStateSnapshot,
+  AdvisorWorkspaceSnapshot,
+} from "./lib/advisorWorkspace";
 
 interface AdvisorWorkspaceProps {
   availability: "checking" | "native" | "preview" | "error";
   snapshot: AdvisorWorkspaceSnapshot | null;
+  selectedProjectState: AdvisorSelectedProjectStateSnapshot | null;
+  selectionState: "idle" | "confirming" | "reading" | "error";
+  canSelectProjectState: boolean;
+  onRequestProjectState: () => void;
+  onConfirmProjectState: () => void;
+  onCancelProjectState: () => void;
+  onRemoveProjectState: () => void;
 }
 
 export function AdvisorWorkspace({
   availability,
   snapshot,
+  selectedProjectState,
+  selectionState,
+  canSelectProjectState,
+  onRequestProjectState,
+  onConfirmProjectState,
+  onCancelProjectState,
+  onRemoveProjectState,
 }: AdvisorWorkspaceProps) {
   const empty =
     snapshot?.conversationCount === 0 &&
@@ -76,6 +93,80 @@ export function AdvisorWorkspace({
             </ul>
           )}
         </div>
+      )}
+      {availability === "native" && (
+        <section
+          className="project-card"
+          aria-labelledby="advisor-source-title"
+        >
+          <h2 id="advisor-source-title">Selected Project State</h2>
+          {selectedProjectState ? (
+            <>
+              <p>
+                Temporary safe summary: {selectedProjectState.freshness},{" "}
+                {selectedProjectState.worktree}. No project identity or source
+                content is retained.
+              </p>
+              <button type="button" onClick={onRemoveProjectState}>
+                Remove temporary snapshot
+              </button>
+            </>
+          ) : (
+            <>
+              <p>
+                Select one normalized local snapshot. Advisor does not browse
+                repositories or retain it after restart.
+              </p>
+              <button
+                type="button"
+                disabled={
+                  !canSelectProjectState || selectionState === "reading"
+                }
+                onClick={onRequestProjectState}
+              >
+                Select current Project State snapshot
+              </button>
+              {!canSelectProjectState && (
+                <p className="project-message">
+                  Select an attached project outside Advisor before choosing a
+                  Project State source.
+                </p>
+              )}
+            </>
+          )}
+          {selectionState === "confirming" && (
+            <div
+              className="project-confirmation"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Confirm Project State selection"
+            >
+              <p>
+                Read one local Project State summary. No files, paths, images,
+                remote refresh, or repository change is included.
+              </p>
+              <div className="project-actions">
+                <button type="button" onClick={onConfirmProjectState}>
+                  Confirm selection
+                </button>
+                <button type="button" onClick={onCancelProjectState}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+          {selectionState === "reading" && (
+            <p role="status">Reading the selected local snapshot.</p>
+          )}
+          {selectionState === "error" && (
+            <p
+              className="project-message project-message--warning"
+              role="alert"
+            >
+              The selected snapshot could not be read; no context was retained.
+            </p>
+          )}
+        </section>
       )}
     </section>
   );

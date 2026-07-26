@@ -122,6 +122,17 @@ const advisorWorkspaceFixture = {
   proposalSummaries: [{ state: "draft", requiresExplicitApproval: true }],
 } as const;
 
+const advisorProjectStateFixture = {
+  schemaVersion: 1,
+  sourceKind: "project-state",
+  selectedAtMs: 1,
+  trust: "verified",
+  freshness: "current",
+  provenanceSource: "project-state-snapshot",
+  worktree: "clean",
+  diagnosticCount: 0,
+} as const;
+
 const nativeResponses = {
   desktop_bootstrap: {
     schemaVersion: 1,
@@ -320,6 +331,7 @@ const nativeResponses = {
     diagnosticCode: null,
   },
   advisor_snapshot_read: advisorWorkspaceFixture,
+  advisor_project_state_snapshot_read: advisorProjectStateFixture,
   repository_state_read: repositoryStateFixture,
   worktree_status: {
     schemaVersion: 2,
@@ -814,8 +826,18 @@ test("Advisor presents only read-only safe summaries accessibly", async ({
     advisor.getByText("project-state: verified, current"),
   ).toBeVisible();
   await expect(advisor.getByRole("textbox")).toHaveCount(0);
-  await expect(advisor.getByRole("button")).toHaveCount(0);
+  await advisor
+    .getByRole("button", { name: "Select current Project State snapshot" })
+    .click();
+  await expect(
+    advisor.getByRole("dialog", { name: "Confirm Project State selection" }),
+  ).toBeVisible();
+  await advisor.getByRole("button", { name: "Confirm selection" }).click();
+  await expect(
+    advisor.getByRole("button", { name: "Remove temporary snapshot" }),
+  ).toBeVisible();
   await expect(advisor.getByText(/advisor-thread|gpt-5.6/u)).toHaveCount(0);
+  await expect(advisor.getByText(/QuireForge|main|\/mnt\//u)).toHaveCount(0);
   const accessibility = await new AxeBuilder({ page }).analyze();
   expect(accessibility.violations).toEqual([]);
 });

@@ -64,6 +64,7 @@ import {
   loadGitStatus,
   loadIntegrationCatalog,
   loadAdvisorSnapshot,
+  readAdvisorProjectStateSnapshot,
   notifyConversation,
   openFilePreview,
   openIntegrationControlBrowser,
@@ -109,7 +110,11 @@ import {
   startTerminal,
   writeTerminal,
 } from "./lib/bridge";
-import type { AdvisorWorkspaceSnapshot } from "./lib/advisorWorkspace";
+import type {
+  AdvisorProjectStateReadRequest,
+  AdvisorSelectedProjectStateSnapshot,
+  AdvisorWorkspaceSnapshot,
+} from "./lib/advisorWorkspace";
 import {
   scaffoldConversationAttachments,
   type ConversationAttachmentCancelRequest,
@@ -271,6 +276,9 @@ interface AppProps {
     request: RepositoryStateReadRequest,
   ) => Promise<RepositoryStateReadSnapshot>;
   loadAdvisorSnapshotTask?: () => Promise<AdvisorWorkspaceSnapshot>;
+  readAdvisorProjectStateSnapshotTask?: (
+    request: AdvisorProjectStateReadRequest,
+  ) => Promise<AdvisorSelectedProjectStateSnapshot>;
   pickProject?: () => Promise<ProjectWorkspaceSnapshot>;
   pickRelink?: (projectId: string) => Promise<ProjectWorkspaceSnapshot>;
   confirmProject?: () => Promise<ProjectWorkspaceSnapshot>;
@@ -598,6 +606,7 @@ export default function App({
   loadProjects = loadProjectWorkspace,
   loadRepositoryStateTask = readRepositoryState,
   loadAdvisorSnapshotTask = loadAdvisorSnapshot,
+  readAdvisorProjectStateSnapshotTask = readAdvisorProjectStateSnapshot,
   pickProject = pickProjectDirectory,
   pickRelink = pickProjectRelink,
   confirmProject = confirmProjectAttachment,
@@ -689,6 +698,10 @@ export default function App({
     useState<AdvisorWorkspaceSnapshot | null>(null);
   const [advisorViewState, setAdvisorViewState] =
     useState<AdvisorViewState>("checking");
+  const [advisorProjectStateSnapshot, setAdvisorProjectStateSnapshot] =
+    useState<AdvisorSelectedProjectStateSnapshot | null>(null);
+  const [advisorProjectStateSelection, setAdvisorProjectStateSelection] =
+    useState<"idle" | "confirming" | "reading" | "error">("idle");
   const [filePreview, setFilePreview] =
     useState<FilePreviewSnapshot>(scaffoldFilePreview);
   const [filePreviewBusy, setFilePreviewBusy] = useState(false);
@@ -1562,6 +1575,38 @@ export default function App({
     setInspectorOpen(initialInspectorOpen());
   }
 
+  function requestAdvisorProjectState() {
+    if (!currentProject) return;
+    setAdvisorProjectStateSelection("confirming");
+  }
+
+  function cancelAdvisorProjectState() {
+    setAdvisorProjectStateSelection("idle");
+  }
+
+  function confirmAdvisorProjectState() {
+    const projectId = currentProject?.id;
+    if (!projectId) {
+      setAdvisorProjectStateSelection("error");
+      return;
+    }
+    setAdvisorProjectStateSelection("reading");
+    void readAdvisorProjectStateSnapshotTask({ projectId })
+      .then((snapshot) => {
+        setAdvisorProjectStateSnapshot(snapshot);
+        setAdvisorProjectStateSelection("idle");
+      })
+      .catch(() => {
+        setAdvisorProjectStateSnapshot(null);
+        setAdvisorProjectStateSelection("error");
+      });
+  }
+
+  function removeAdvisorProjectState() {
+    setAdvisorProjectStateSnapshot(null);
+    setAdvisorProjectStateSelection("idle");
+  }
+
   function beginInspectorResize(event: ReactPointerEvent<HTMLDivElement>) {
     event.preventDefault();
     const resize = (pointerEvent: PointerEvent) => {
@@ -1675,6 +1720,7 @@ export default function App({
       const result = await action();
       setProjects(result);
       setProjectPreflights({});
+      removeAdvisorProjectState();
       if (
         conversationAttachments.state === "ready" &&
         !result.projects.some(
@@ -1975,6 +2021,7 @@ export default function App({
       discardConversationAttachmentDraft();
     }
     setSelectedProjectId(projectId);
+    removeAdvisorProjectState();
     discardFilePreview();
     const tracked = trackedConversations[projectId];
     setConversation(tracked?.snapshot ?? scaffoldConversation);
@@ -3308,6 +3355,15 @@ export default function App({
               <AdvisorWorkspace
                 availability={advisorViewState}
                 snapshot={advisorSnapshot}
+                selectedProjectState={advisorProjectStateSnapshot}
+                selectionState={advisorProjectStateSelection}
+                canSelectProjectState={
+                  bridgeState === "native" && currentProject !== undefined
+                }
+                onRequestProjectState={requestAdvisorProjectState}
+                onConfirmProjectState={confirmAdvisorProjectState}
+                onCancelProjectState={cancelAdvisorProjectState}
+                onRemoveProjectState={removeAdvisorProjectState}
               />
             </WorkspaceView>
 

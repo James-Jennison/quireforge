@@ -73,9 +73,13 @@ locally.” Tauri + React + TypeScript is the current functional prototype. ADR
   opaque Advisor conversation references, explicit selected-context references,
   provenance/freshness, and non-dispatching proposal digests. Its fixed
   `#advisor` route receives only a strict safe-summary projection and renders
-  it or an empty state. It has no model call, project read, prompt/transcript
-  retention, approval action, dispatch, Python sidecar, watcher, handoff
-  generation, contradiction resolution, or repository-write capability. See
+  it or an empty state. A user may explicitly confirm one temporary
+  local-only/metadata-only normalized Project State source; its safe projection
+  excludes identity, paths, Git refs, source content, artifacts, diagnostics,
+  and images, and is never retained in SQLite. It has no model call,
+  prompt/transcript retention, approval action, dispatch, Python sidecar,
+  watcher, handoff generation, contradiction resolution, or repository-write
+  capability. See
   [Milestone 28](MILESTONE_28_ADVISOR_FOUNDATION.md).
 
 - **Milestone 22B:** the routed desktop architecture was refined without
@@ -110,9 +114,10 @@ integrations, transcripts, or credentials. The clean, incremented
 gates. See [Milestone 27](MILESTONE_27_UNIFIED_CONVERSATION_ENGINE.md).
 
 Milestone 28 — **Reference-Only Advisor Foundation** is active. It includes a
-read-only Advisor metadata route over opaque contracts and deterministic
-validation; context reading, model calls, prompt text retention,
-approval/dispatch flow, and automation remain separately gated.
+read-only Advisor metadata route and one explicitly confirmed, temporary safe
+projection of the existing local Project State reader; arbitrary context
+reading, model calls, prompt text retention, approval/dispatch flow, and
+automation remain separately gated.
 
 Milestone 26 — **Appearance Themes** is complete. It retains Forge as the
 default and adds seven closed local palettes through Settings → Appearance with

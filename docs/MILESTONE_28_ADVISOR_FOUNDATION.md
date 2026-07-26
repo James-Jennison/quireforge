@@ -5,8 +5,8 @@ Status: active implementation checkpoint; reference-only workspace shell added.
 ## Objective
 
 Establish the smallest safe local foundation for an Advisor workspace and a
-future Approval/Dispatch controller without adding a model turn, repository
-reader, project attachment, prompt dispatch, or autonomous action.
+future Approval/Dispatch controller without adding a model turn, arbitrary
+repository reader, project attachment, prompt dispatch, or autonomous action.
 
 ## Implemented checkpoint
 
@@ -35,6 +35,22 @@ The read command executes no model, Git, terminal, filesystem, project-context,
 or network operation. It accepts no path, project ID, prompt, model, Git
 argument, or other caller input and does not mutate SQLite.
 
+The Selected Project-State Snapshot Reader adds one separate, explicit native
+read after the user confirms the currently selected attached project as an
+Advisor source. It hard-codes the established M24B reader to `local-only` and
+`metadata-only`; it accepts only an application-owned UUIDv7 project ID and
+cannot receive a path, Git argument, remote mode, artifact-verification mode,
+or document name. Rust derives a second strict safe projection containing only
+closed trust/freshness/provenance labels, coarse worktree state, and a bounded
+diagnostic count. It excludes
+project identity, repository, branch, commit, path, source document, artifact,
+diagnostic text, image, and arbitrary file content.
+
+This selection is in-memory only. It is cleared when removed, when the selected
+project changes, and at restart; it creates no Advisor SQLite context record.
+The Advisor route requires a visible confirmation before the read and has no
+automatic refresh or background scan.
+
 ## Boundaries
 
 - Codex remains authoritative for account state, browser authentication,
@@ -43,9 +59,11 @@ argument, or other caller input and does not mutate SQLite.
 - A future UI may hold editable prompt text transiently, but this foundation
   persists only its SHA-256 digest. A decision to retain verbatim local Advisor
   text requires separately approved privacy, storage, and migration work.
-- Context is represented as an explicit user selection. This checkpoint does
-  not read project files, screenshot images, or attached-project paths, and it
-  never transfers Codex attachment or execution authority into Advisor.
+- Context is represented as an explicit user selection. This checkpoint reads
+  only the existing normalized M24B Project State snapshot after confirmation;
+  it does not read project files, screenshot images, attached-project paths,
+  raw documentation, or arbitrary source content, and it never transfers Codex
+  attachment or execution authority into Advisor.
 - A dispatch proposal is not a dispatch. No text is parsed for `Approve`,
   `Proceed`, or `Confirmed`; a later controller must require an explicit user
   action and separately confirm any model or reasoning change.
@@ -64,7 +82,7 @@ content columns.
 
 The remaining Milestone 28 work is a separately reviewed, deterministic
 foundation completion audit and its normal desktop validation/package decision.
-No project-context reader, screenshot staging, managed Advisor model call,
-prompt editor, approval UI, dispatch bridge, Python sidecar, watcher, automatic
-handoff, contradiction resolution, or repository-write capability has been
-added.
+No additional project-context reader, screenshot staging, managed Advisor model
+call, prompt editor, approval UI, dispatch bridge, Python sidecar, watcher,
+automatic handoff, contradiction resolution, or repository-write capability has
+been added.

@@ -100,6 +100,10 @@ import {
 } from "./chat";
 import {
   advisorWorkspaceSnapshotSchema,
+  parseAdvisorProjectStateReadRequest,
+  parseAdvisorSelectedProjectStateSnapshot,
+  type AdvisorProjectStateReadRequest,
+  type AdvisorSelectedProjectStateSnapshot,
   type AdvisorWorkspaceSnapshot,
 } from "./advisorWorkspace";
 import {
@@ -179,6 +183,8 @@ export const INTEGRATION_MUTATION_CONFIRM_COMMAND =
   "integration_mutation_confirm";
 export const PROJECT_WORKSPACE_STATUS_COMMAND = "project_workspace_status";
 export const ADVISOR_SNAPSHOT_READ_COMMAND = "advisor_snapshot_read";
+export const ADVISOR_PROJECT_STATE_SNAPSHOT_READ_COMMAND =
+  "advisor_project_state_snapshot_read";
 export const PROJECT_PICK_DIRECTORY_COMMAND = "project_pick_directory";
 export const PROJECT_PICK_RELINK_COMMAND = "project_pick_relink";
 export const PROJECT_CONFIRM_ATTACHMENT_COMMAND = "project_confirm_attachment";
@@ -479,6 +485,23 @@ export async function loadAdvisorSnapshot(
 ): Promise<AdvisorWorkspaceSnapshot> {
   return advisorWorkspaceSnapshotSchema.parse(
     await invokeFunction(ADVISOR_SNAPSHOT_READ_COMMAND),
+  );
+}
+
+/**
+ * Reads a single attached project's normalized state through the fixed
+ * local-only/metadata-only native boundary. Callers cannot choose a path,
+ * remote mode, artifact-verification mode, or source document.
+ */
+export async function readAdvisorProjectStateSnapshot(
+  request: AdvisorProjectStateReadRequest,
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<AdvisorSelectedProjectStateSnapshot> {
+  const reviewedRequest = parseAdvisorProjectStateReadRequest(request);
+  return parseAdvisorSelectedProjectStateSnapshot(
+    await invokeFunction(ADVISOR_PROJECT_STATE_SNAPSHOT_READ_COMMAND, {
+      request: reviewedRequest,
+    }),
   );
 }
 

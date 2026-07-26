@@ -179,9 +179,11 @@ to Codex without transferring project context, content, credentials, or other
 capability-bearing state.
 Milestone 28 has begun as a reference-only Advisor foundation. It adds strict
 local metadata contracts and a read-only Advisor route for safe reference
-summaries and digest-only future dispatch proposals; it
-does not add a project reader, model call, prompt/transcript retention,
-execution dispatch, or automation.
+summaries and digest-only future dispatch proposals. A user may explicitly
+confirm one temporary projection of the existing local Project State reader;
+the result excludes project identity, paths, refs, source content, and image
+attachments and is not retained. It does not add arbitrary project reading,
+model calls, prompt/transcript retention, execution dispatch, or automation.
 Webuzo is the selected static origin host, with Cloudflare retained as the DNS,
 TLS, and cache edge. The reviewed static site is publicly deployed at
 `https://quireforge.jamesjennison.net` through the approved proxied Cloudflare

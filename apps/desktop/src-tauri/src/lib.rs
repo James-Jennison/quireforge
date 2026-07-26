@@ -35,8 +35,11 @@ use desktop::{
     DesktopNotificationRequest, DesktopNotificationResult, DesktopNotificationService,
     DesktopNotificationStatus,
 };
+use std::time::{SystemTime, UNIX_EPOCH};
+
 use git::{
     repository_state::{
+        ArtifactVerificationMode, RepositoryRemoteMode, RepositoryStateDiagnosticSeverity,
         RepositoryStateReadRequest, RepositoryStateReadSnapshot, RepositoryStateReader,
     },
     types::{
@@ -288,6 +291,50 @@ fn advisor_snapshot_read(
     service: tauri::State<'_, ProjectService>,
 ) -> Result<advisor::AdvisorWorkspaceSnapshot, ()> {
     service.advisor_workspace_snapshot()
+}
+
+/// Reads one explicitly selected attached project's normalized local state,
+/// then returns only the Advisor-safe summary projection. The remote and
+/// artifact modes are intentionally fixed; this command cannot browse paths,
+/// fetch, verify packages, or persist Advisor context.
+#[tauri::command]
+async fn advisor_project_state_snapshot_read(
+    request: advisor::AdvisorProjectStateReadRequest,
+    reader: tauri::State<'_, RepositoryStateReader>,
+    projects: tauri::State<'_, ProjectService>,
+) -> Result<advisor::AdvisorSelectedProjectStateSnapshot, ()> {
+    if !request.is_valid() {
+        return Err(());
+    }
+    let snapshot = reader
+        .read(
+            RepositoryStateReadRequest {
+                project_id: request.project_id,
+                remote_mode: RepositoryRemoteMode::LocalOnly,
+                artifact_verification: ArtifactVerificationMode::MetadataOnly,
+            },
+            &projects,
+        )
+        .await;
+    if snapshot
+        .diagnostics
+        .iter()
+        .any(|diagnostic| diagnostic.severity == RepositoryStateDiagnosticSeverity::Error)
+    {
+        return Err(());
+    }
+    let selected_at_ms = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|_| ())?
+        .as_millis()
+        .try_into()
+        .map_err(|_| ())?;
+    Ok(
+        advisor::AdvisorSelectedProjectStateSnapshot::from_repository_snapshot(
+            snapshot,
+            selected_at_ms,
+        ),
+    )
 }
 
 #[tauri::command]
@@ -1061,6 +1108,7 @@ pub fn run() {
             codex_usage_refresh,
             project_workspace_status,
             advisor_snapshot_read,
+            advisor_project_state_snapshot_read,
             project_pick_directory,
             project_pick_relink,
             project_confirm_attachment,

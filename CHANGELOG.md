@@ -9,6 +9,11 @@
   projection; it stores no prompt, response, transcript, credential, session,
   or arbitrary project-path data and introduces no model call or execution
   capability.
+- Add an explicit confirmation gate for one temporary Advisor Project State
+  source. Its native command is fixed to the existing attached-project-only
+  `local-only`/`metadata-only` reader and returns only a strict safe projection;
+  it never receives a path, Git argument, remote mode, artifact mode, document,
+  image, project identity, or raw repository content.
 - Complete Milestone 27’s managed-ChatGPT-only conversation engine: closed
   Chat/Codex capability contracts, bounded no-project Chat metadata, and a
   fixed native Chat bridge that rejects project, tool, approval, and API-key

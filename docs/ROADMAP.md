@@ -119,7 +119,7 @@ discovery; scheduling management and execution remain unsupported.
 |        25 | Desktop visual polish                                             | Medium       | Complete; branded presentation refinement with fresh Ubuntu package gate |
 |        26 | Appearance themes                                                 | Medium       | Complete; eight closed local palettes with fresh Ubuntu package gate     |
 |        27 | Unified Conversation Engine                                       | Large        | Complete; managed Chat/Codex boundary and fresh Ubuntu package gate      |
-|        28 | Reference-only Advisor foundation                                 | Medium       | Active; strict metadata contracts and SQLite migration, no UI/dispatch   |
+|        28 | Reference-only Advisor foundation                                 | Medium       | Active; safe shell and confirmed temporary Project State projection only |
 
 ## Milestone definitions
 
@@ -854,10 +854,14 @@ strictly local metadata and contract work: opaque Codex-thread references,
 explicit closed context-reference kinds, separate trust/provenance/freshness,
 and digest-only future dispatch proposals that always require a later explicit
 user approval. Its fixed `#advisor` route receives only a safe summary of
-app-owned reference metadata and presents no composer or action controls. It deliberately excludes
-model calls, project file/screenshot reading, transcript or prompt retention,
-dispatch bridge, Python sidecar, watcher, automatic handoff, contradiction
-resolution, and repository mutation. See the
+app-owned reference metadata and presents no composer or action controls. One
+user-confirmed source may invoke the existing M24B reader in fixed
+local-only/metadata-only mode and return only a temporary safe projection;
+project identity, paths, refs, source content, artifacts, and diagnostic text
+remain excluded. It deliberately excludes model calls, arbitrary project
+file/document/screenshot reading, transcript or prompt retention, dispatch
+bridge, Python sidecar, watcher, automatic handoff, contradiction resolution,
+and repository mutation. See the
 [Milestone 28 report](MILESTONE_28_ADVISOR_FOUNDATION.md).
 
 ## Forecast policy

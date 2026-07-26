@@ -1804,7 +1804,7 @@ prototype is a separate approval-gated milestone.
 | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Forecast date        | 2026-07-26                                                                                                                                                  |
 | Preliminary forecast | 10–18 active hours; medium confidence                                                                                                                       |
-| Scope                | Opaque Advisor metadata, a fixed read-only snapshot route, closed context/provenance contracts, digest-only proposal records, deterministic fixtures, tests |
+| Scope                | Opaque Advisor metadata, safe snapshot route, one confirmed temporary Project State projection, closed context/provenance contracts, digest-only proposal records, fixtures, tests |
 | Main uncertainty     | Maintaining a useful future Approval/Dispatch boundary while guaranteeing no prompt/transcript or execution capability leaks                                |
-| Exclusions           | Advisor model calls, project reads, screenshot ingestion, action/dispatch UI, Python, watchers, automation, 24D behavior, Qt                                |
-| Outcome              | Active; reference-only contract and safe read-only workspace shell are implemented, with no model or execution behavior                                     |
+| Exclusions           | Advisor model calls, arbitrary project reads, screenshot ingestion, action/dispatch UI, Python, watchers, automation, 24D behavior, Qt                      |
+| Outcome              | Active; shell and explicitly confirmed temporary local Project State projection are implemented, with no model or execution behavior                         |

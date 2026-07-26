@@ -40,7 +40,10 @@ import { sessionLifecycleSchema } from "./lib/session";
 import { worktreeWorkspaceSchema } from "./lib/worktree";
 import { scaffoldCodexUsage } from "./lib/usage";
 import { scaffoldChatConversation } from "./lib/chat";
-import { advisorWorkspaceSnapshotSchema } from "./lib/advisorWorkspace";
+import {
+  parseAdvisorSelectedProjectStateSnapshot,
+  advisorWorkspaceSnapshotSchema,
+} from "./lib/advisorWorkspace";
 
 const projectId = "018f0000-0000-7000-8000-000000000001";
 const associationId = "018f0000-0000-7000-8000-000000000002";
@@ -58,6 +61,16 @@ const advisorWorkspaceFixture = advisorWorkspaceSnapshotSchema.parse({
     { kind: "project-state", trust: "verified", freshness: "current" },
   ],
   proposalSummaries: [{ state: "draft", requiresExplicitApproval: true }],
+});
+const advisorProjectStateFixture = parseAdvisorSelectedProjectStateSnapshot({
+  schemaVersion: 1,
+  sourceKind: "project-state",
+  selectedAtMs: 1,
+  trust: "verified",
+  freshness: "current",
+  provenanceSource: "project-state-snapshot",
+  worktree: "clean",
+  diagnosticCount: 0,
 });
 function modelSelection(reasoningEffort = "high") {
   return {
@@ -418,6 +431,48 @@ describe("QuireForge desktop shell", () => {
     ).toBeInTheDocument();
     expect(loadAdvisorSnapshotTask).toHaveBeenCalledWith();
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+  });
+
+  it("requires confirmation before reading an ephemeral Advisor Project State snapshot", async () => {
+    window.history.replaceState(null, "", "#advisor");
+    const readAdvisorProjectStateSnapshotTask = vi
+      .fn()
+      .mockResolvedValue(advisorProjectStateFixture);
+    render(
+      <App
+        loadBootstrap={() => Promise.resolve(scaffoldBootstrap)}
+        loadRuntime={() => Promise.resolve(scaffoldCodexRuntime)}
+        loadAuth={() => Promise.resolve(authenticatedAuth)}
+        loadProjects={() => Promise.resolve(attachedProject)}
+        loadAdvisorSnapshotTask={() => Promise.resolve(advisorWorkspaceFixture)}
+        readAdvisorProjectStateSnapshotTask={
+          readAdvisorProjectStateSnapshotTask
+        }
+      />,
+    );
+
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "Select current Project State snapshot",
+      }),
+    );
+    expect(readAdvisorProjectStateSnapshotTask).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole("dialog", { name: "Confirm Project State selection" }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Confirm selection" }));
+    await waitFor(() =>
+      expect(readAdvisorProjectStateSnapshotTask).toHaveBeenCalledWith({
+        projectId,
+      }),
+    );
+    expect(
+      await screen.findByText("Remove temporary snapshot"),
+    ).toBeInTheDocument();
+    expect(
+      within(document.getElementById("advisor")!).queryByText(/main|\/mnt\//u),
+    ).not.toBeInTheDocument();
   });
 
   it("restores a validated deep link and rejects unknown workspace hashes", async () => {

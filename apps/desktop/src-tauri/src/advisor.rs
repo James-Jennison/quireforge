@@ -11,6 +11,11 @@ use std::collections::HashSet;
 use serde::{Deserialize, Serialize};
 use uuid::{Uuid, Version};
 
+use crate::{
+    git::repository_state::{Freshness as RepositoryFreshness, RepositoryStateReadSnapshot},
+    project_state::{TrustClassification, WorktreeState},
+};
+
 pub const ADVISOR_FOUNDATION_SCHEMA_VERSION: u16 = 1;
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -158,6 +163,34 @@ pub struct AdvisorProposalSummary {
     pub requires_explicit_approval: bool,
 }
 
+/// The only project-derived data the reference-only Advisor may receive in
+/// this checkpoint. It is a deliberately small projection of the existing
+/// normalized repository-state reader, never the reader's full payload.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AdvisorSelectedProjectStateSnapshot {
+    pub schema_version: u16,
+    pub source_kind: AdvisorContextKind,
+    pub selected_at_ms: i64,
+    pub trust: AdvisorTrust,
+    pub freshness: AdvisorFreshness,
+    pub provenance_source: AdvisorProvenanceSource,
+    pub worktree: WorktreeState,
+    pub diagnostic_count: u32,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct AdvisorProjectStateReadRequest {
+    pub project_id: String,
+}
+
+impl AdvisorProjectStateReadRequest {
+    pub fn is_valid(&self) -> bool {
+        valid_uuid_v7(&self.project_id)
+    }
+}
+
 impl AdvisorFoundationSnapshot {
     pub fn empty() -> Self {
         Self {
@@ -259,6 +292,77 @@ impl AdvisorFoundationSnapshot {
     }
 }
 
+impl AdvisorSelectedProjectStateSnapshot {
+    pub fn from_repository_snapshot(
+        snapshot: RepositoryStateReadSnapshot,
+        selected_at_ms: i64,
+    ) -> Self {
+        let validation_freshness = snapshot
+            .evidence
+            .validations
+            .iter()
+            .map(|record| record.freshness);
+        let package_freshness = snapshot
+            .evidence
+            .packages
+            .iter()
+            .map(|record| record.freshness);
+        let handoff_freshness = snapshot
+            .evidence
+            .handoff
+            .iter()
+            .map(|record| record.freshness);
+        let freshness = advisor_freshness(
+            validation_freshness
+                .chain(package_freshness)
+                .chain(handoff_freshness),
+            snapshot.state.repository.local_head.is_some(),
+        );
+        Self {
+            schema_version: ADVISOR_FOUNDATION_SCHEMA_VERSION,
+            source_kind: AdvisorContextKind::ProjectState,
+            selected_at_ms,
+            trust: advisor_trust(&snapshot.state.provenance.trust),
+            freshness,
+            provenance_source: AdvisorProvenanceSource::ProjectStateSnapshot,
+            worktree: snapshot.state.repository.worktree,
+            diagnostic_count: snapshot.diagnostics.len() as u32,
+        }
+    }
+}
+
+fn advisor_trust(value: &TrustClassification) -> AdvisorTrust {
+    match value {
+        TrustClassification::Verified => AdvisorTrust::Verified,
+        TrustClassification::Reported => AdvisorTrust::Reported,
+        TrustClassification::Inferred => AdvisorTrust::Inferred,
+        TrustClassification::Unknown => AdvisorTrust::Unknown,
+    }
+}
+
+fn advisor_freshness(
+    values: impl Iterator<Item = RepositoryFreshness>,
+    has_local_head: bool,
+) -> AdvisorFreshness {
+    let mut unknown = !has_local_head;
+    let mut stale = false;
+    for value in values {
+        match value {
+            RepositoryFreshness::Conflicting => return AdvisorFreshness::Conflicting,
+            RepositoryFreshness::Stale => stale = true,
+            RepositoryFreshness::Unknown => unknown = true,
+            RepositoryFreshness::Current | RepositoryFreshness::NotApplicable => {}
+        }
+    }
+    if stale {
+        AdvisorFreshness::Stale
+    } else if unknown {
+        AdvisorFreshness::Unknown
+    } else {
+        AdvisorFreshness::Current
+    }
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum AdvisorContractError {
     UnsupportedSchemaVersion,
@@ -353,6 +457,42 @@ mod tests {
         assert!(!serialized.contains("promptSha256"));
         assert!(!serialized.contains("targetProjectId"));
         assert_eq!(value["conversationCount"], 1);
+    }
+
+    #[test]
+    fn selected_project_state_projection_excludes_repository_identity_and_content() {
+        let fixture: serde_json::Value =
+            serde_json::from_str(include_str!("../../fixtures/project-state.json"))
+                .expect("project-state fixture collection must deserialize");
+        let state = serde_json::from_value(fixture["minimalValid"].clone())
+            .expect("representative project state must deserialize");
+        let selected = AdvisorSelectedProjectStateSnapshot::from_repository_snapshot(
+            RepositoryStateReadSnapshot {
+                schema_version: 1,
+                state,
+                git: Default::default(),
+                evidence: Default::default(),
+                diagnostics: Vec::new(),
+            },
+            1,
+        );
+        let serialized = serde_json::to_string(&selected).expect("projection must serialize");
+        assert!(serialized.contains("project-state"));
+        assert!(!serialized.contains("repository"));
+        assert!(!serialized.contains("sourceRef"));
+        assert!(!serialized.contains("localHead"));
+    }
+
+    #[test]
+    fn selected_project_state_request_rejects_paths() {
+        assert!(AdvisorProjectStateReadRequest {
+            project_id: "019d4e3c-3b14-7a2b-8c91-3f27d4f7aa10".to_owned(),
+        }
+        .is_valid());
+        assert!(!AdvisorProjectStateReadRequest {
+            project_id: "../../private/project".to_owned(),
+        }
+        .is_valid());
     }
 
     #[test]

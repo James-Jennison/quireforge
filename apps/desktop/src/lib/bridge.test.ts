@@ -12,10 +12,14 @@ import {
   scaffoldGitMutationResult,
   scaffoldGitWorkspace,
 } from "./git";
-import { advisorWorkspaceSnapshotSchema } from "./advisorWorkspace";
+import {
+  parseAdvisorSelectedProjectStateSnapshot,
+  advisorWorkspaceSnapshotSchema,
+} from "./advisorWorkspace";
 import { scaffoldSessionLifecycle } from "./session";
 import {
   ADVISOR_SNAPSHOT_READ_COMMAND,
+  ADVISOR_PROJECT_STATE_SNAPSHOT_READ_COMMAND,
   archiveConversation,
   archiveProject,
   cancelFilePreview,
@@ -64,6 +68,7 @@ import {
   FILE_PREVIEW_PICK_COMMAND,
   loadCodexAuth,
   loadAdvisorSnapshot,
+  readAdvisorProjectStateSnapshot,
   loadChatAuthentication,
   interruptChatConversation,
   loadChatConversation,
@@ -152,6 +157,16 @@ const advisorWorkspaceFixture = advisorWorkspaceSnapshotSchema.parse({
     { kind: "project-state", trust: "verified", freshness: "current" },
   ],
   proposalSummaries: [{ state: "draft", requiresExplicitApproval: true }],
+});
+const advisorProjectStateFixture = parseAdvisorSelectedProjectStateSnapshot({
+  schemaVersion: 1,
+  sourceKind: "project-state",
+  selectedAtMs: 1,
+  trust: "verified",
+  freshness: "current",
+  provenanceSource: "project-state-snapshot",
+  worktree: "clean",
+  diagnosticCount: 0,
 });
 import { sharedFilePreviewFixture } from "./filePreview";
 import { scaffoldProjectWorkspace } from "./project";
@@ -492,6 +507,31 @@ describe("desktop bridge", () => {
 
     invoke.mockResolvedValueOnce({ ...advisorWorkspaceFixture, prompt: "no" });
     await expect(loadAdvisorSnapshot(invoke)).rejects.toThrow();
+  });
+
+  it("reads a selected Advisor Project State through the fixed safe command", async () => {
+    const projectId = "018f0000-0000-7000-8000-000000000001";
+    const invoke = vi.fn().mockResolvedValue(advisorProjectStateFixture);
+
+    await expect(
+      readAdvisorProjectStateSnapshot({ projectId }, invoke),
+    ).resolves.toEqual(advisorProjectStateFixture);
+    expect(invoke).toHaveBeenCalledWith(
+      ADVISOR_PROJECT_STATE_SNAPSHOT_READ_COMMAND,
+      { request: { projectId } },
+    );
+
+    await expect(
+      readAdvisorProjectStateSnapshot({ projectId: "/private/path" }, invoke),
+    ).rejects.toThrow();
+    await expect(
+      readAdvisorProjectStateSnapshot(
+        { projectId },
+        vi
+          .fn()
+          .mockResolvedValue({ ...advisorProjectStateFixture, branch: "main" }),
+      ),
+    ).rejects.toThrow();
   });
 
   it("uses one fixed file picker command with only an opaque project ID", async () => {
