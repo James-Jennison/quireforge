@@ -57,8 +57,11 @@ reported, and suggested actions remain inferred. Malformed or absent evidence
 is never silently repaired or treated as completion.
 
 The reader adapts the established release producer's version-1 manifest
-(`schemaVersion`, source, builder, and format/filename artifacts) as closed
-Rust records. Validation summaries are likewise parsed as closed records:
+(`schemaVersion`, release state/version, `source.commit`/`treeState`, pinned
+Ubuntu builder metadata, and `format`/`filename` artifacts) as closed Rust
+records. The producer's `appimage` input spelling is normalized to the stable
+reader `app-image` value; emitted architecture remains `x86_64`. Validation
+summaries are likewise parsed as closed records:
 unknown fields, unsupported artifact/status values, invalid 40-character commit
 IDs, invalid SHA-256 values, and unsafe repository-relative artifact paths are
 rejected with diagnostics. The normal reader remains metadata-only and never

@@ -128,6 +128,7 @@ pub enum TargetOs {
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum Architecture {
+    #[serde(rename = "x86_64", alias = "x8664")]
     X8664,
 }
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
@@ -166,6 +167,7 @@ pub enum ValidationFamily {
 #[serde(rename_all = "kebab-case")]
 pub enum ArtifactKind {
     Deb,
+    #[serde(alias = "appimage")]
     AppImage,
 }
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
@@ -222,6 +224,8 @@ pub struct PackageEvidence {
     pub kind: ArtifactKind,
     pub source_commit: Option<String>,
     pub artifact_path: Option<String>,
+    pub filename: Option<String>,
+    pub clean_source: Option<bool>,
     pub checksum: Option<String>,
     pub checksum_file: Option<String>,
     pub freshness: Freshness,
@@ -501,6 +505,7 @@ async fn read_supported_evidence(
                     ));
                     return evidence;
                 }
+                let clean_source = matches!(manifest.source.tree_state, PackageTreeState::Clean);
                 let source_commit = Some(manifest.source.commit);
                 let artifacts = manifest.artifacts;
                 if artifacts.is_empty() {
@@ -519,6 +524,17 @@ async fn read_supported_evidence(
                         && valid_sha256(&artifact.sha256)
                         && safe_artifact_path(&artifact.filename)
                     {
+                        let local_present = if artifact_verification
+                            == ArtifactVerificationMode::VerifyLocalArtifacts
+                        {
+                            Some(
+                                root.join("target/ubuntu-22.04/release/packages")
+                                    .join(&artifact.filename)
+                                    .is_file(),
+                            )
+                        } else {
+                            None
+                        };
                         let local_verified = verify_artifact(
                             root,
                             &format!("target/ubuntu-22.04/release/packages/{}", artifact.filename),
@@ -535,21 +551,13 @@ async fn read_supported_evidence(
                                 "target/ubuntu-22.04/release/packages/{}",
                                 artifact.filename
                             )),
+                            filename: Some(artifact.filename),
+                            clean_source: Some(clean_source),
                             checksum: Some(artifact.sha256),
                             checksum_file: None,
                             freshness: freshness(source_commit.as_deref(), current_head),
                             local_verified,
-                            local_present: if artifact_verification
-                                == ArtifactVerificationMode::VerifyLocalArtifacts
-                            {
-                                Some(
-                                    root.join("target/ubuntu-22.04/release/packages")
-                                        .join(&artifact.filename)
-                                        .is_file(),
-                                )
-                            } else {
-                                None
-                            },
+                            local_present,
                             declared_size: artifact.size,
                             target_os: Some(TargetOs::Ubuntu2204),
                             architecture: Some(artifact.architecture),
@@ -1890,7 +1898,7 @@ mod tests {
         fs::create_dir_all(&packages).unwrap();
         fs::write(
             packages.join("release-manifest.json"),
-            format!(r#"{{"schemaVersion":1,"state":"release-candidate","version":"0.1.0","source":{{"commit":"{head}","treeState":"clean"}},"builder":{{"distribution":"ubuntu","version":"22.04","architecture":"x8664","image":"pinned"}},"artifacts":[{{"format":"deb","filename":"quireforge.deb","architecture":"x8664","sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","size":1}}]}}"#),
+            format!(r#"{{"schemaVersion":1,"state":"release-candidate","version":"0.1.0","source":{{"commit":"{head}","treeState":"clean"}},"builder":{{"distribution":"ubuntu","version":"22.04","architecture":"x86_64","image":"pinned"}},"artifacts":[{{"format":"deb","filename":"quireforge.deb","architecture":"x86_64","sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","size":1}},{{"format":"appimage","filename":"quireforge.AppImage","architecture":"x86_64","sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","size":2}}]}}"#),
         )
         .unwrap();
         fs::write(packages.join("SHA256SUMS"), "abc  quireforge.deb\n").unwrap();
@@ -1910,8 +1918,14 @@ mod tests {
             &mut diagnostics,
         )
         .await;
-        assert_eq!(evidence.packages.len(), 1);
+        assert_eq!(evidence.packages.len(), 2);
         assert!(matches!(evidence.packages[0].freshness, Freshness::Current));
+        assert_eq!(
+            evidence.packages[0].filename.as_deref(),
+            Some("quireforge.deb")
+        );
+        assert_eq!(evidence.packages[0].clean_source, Some(true));
+        assert!(matches!(evidence.packages[1].kind, ArtifactKind::AppImage));
         assert!(matches!(
             evidence.validations[0].freshness,
             Freshness::Current

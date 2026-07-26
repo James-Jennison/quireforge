@@ -41,13 +41,15 @@ export const repositoryStateReadSnapshotSchema = z
               kind: z.enum(["deb", "app-image"]),
               sourceCommit: z.string().nullable(),
               artifactPath: z.string().nullable(),
+              filename: z.string().nullable(),
+              cleanSource: z.boolean().nullable(),
               checksum: z.string().nullable(),
               checksumFile: z.string().nullable(),
               localVerified: z.boolean(),
               localPresent: z.boolean().nullable(),
               declaredSize: z.number().int().nonnegative(),
               targetOs: z.enum(["ubuntu-2204"]).nullable(),
-              architecture: z.enum(["x8664"]).nullable(),
+              architecture: z.enum(["x86_64"]).nullable(),
               maxGlibc: z.string().nullable(),
               desktopEntry: z
                 .enum(["passed", "failed", "skipped", "unavailable"])
