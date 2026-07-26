@@ -41,25 +41,68 @@ pub enum ArtifactVerificationMode {
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct PackageManifest {
-    version: u8,
-    source_commit: String,
+    schema_version: u8,
     #[allow(dead_code)]
-    clean_source: bool,
+    state: PackageState,
+    #[allow(dead_code)]
+    version: String,
+    source: PackageSource,
+    #[allow(dead_code)]
+    builder: PackageBuilder,
     artifacts: Vec<PackageManifestArtifact>,
 }
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct PackageSource {
+    commit: String,
+    #[allow(dead_code)]
+    tree_state: PackageTreeState,
+    #[serde(default)]
+    #[allow(dead_code)]
+    diff_sha256: Option<String>,
+}
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct PackageBuilder {
+    #[allow(dead_code)]
+    distribution: TargetDistribution,
+    #[allow(dead_code)]
+    version: String,
+    #[allow(dead_code)]
+    architecture: Architecture,
+    #[allow(dead_code)]
+    image: String,
+}
+#[derive(Clone, Copy, Debug, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+enum PackageState {
+    ReleaseCandidate,
+    LocalCandidate,
+}
+#[derive(Clone, Copy, Debug, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+enum PackageTreeState {
+    Clean,
+    Dirty,
+}
+#[derive(Clone, Copy, Debug, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+enum TargetDistribution {
+    Ubuntu,
+}
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct PackageManifestArtifact {
-    #[serde(rename = "type")]
+    #[serde(rename = "format")]
     kind: ArtifactKind,
-    path: String,
+    filename: String,
     sha256: String,
     #[allow(dead_code)]
     size: u64,
+    architecture: Architecture,
     #[serde(default)]
-    target_os: Option<TargetOs>,
-    #[serde(default)]
-    architecture: Option<Architecture>,
+    #[allow(dead_code)]
+    package_version: Option<String>,
     #[serde(default)]
     max_glibc: Option<String>,
     #[serde(default)]
@@ -446,7 +489,7 @@ async fn read_supported_evidence(
     match safe_text(root, manifest_path, diagnostics) {
         Some(contents) => match serde_json::from_str::<PackageManifest>(&contents) {
             Ok(manifest) => {
-                if manifest.version != 1 {
+                if manifest.schema_version != 1 {
                     diagnostics.push(diagnostic(
                         "unsupported-manifest-version",
                         RepositoryStateDiagnosticSeverity::Warning,
@@ -458,7 +501,7 @@ async fn read_supported_evidence(
                     ));
                     return evidence;
                 }
-                let source_commit = Some(manifest.source_commit);
+                let source_commit = Some(manifest.source.commit);
                 let artifacts = manifest.artifacts;
                 if artifacts.is_empty() {
                     diagnostics.push(diagnostic(
@@ -474,21 +517,24 @@ async fn read_supported_evidence(
                 for artifact in artifacts {
                     if valid_commit(source_commit.as_deref().unwrap_or_default())
                         && valid_sha256(&artifact.sha256)
-                        && safe_artifact_path(&artifact.path)
+                        && safe_artifact_path(&artifact.filename)
                     {
                         let local_verified = verify_artifact(
                             root,
-                            &artifact.path,
+                            &format!("target/ubuntu-22.04/release/packages/{}", artifact.filename),
                             artifact.size,
                             &artifact.sha256,
                             artifact_verification,
                             diagnostics,
                         );
                         evidence.packages.push(PackageEvidence {
-                            manifest_version: manifest.version,
+                            manifest_version: manifest.schema_version,
                             kind: artifact.kind,
                             source_commit: source_commit.clone(),
-                            artifact_path: Some(artifact.path.clone()),
+                            artifact_path: Some(format!(
+                                "target/ubuntu-22.04/release/packages/{}",
+                                artifact.filename
+                            )),
                             checksum: Some(artifact.sha256),
                             checksum_file: None,
                             freshness: freshness(source_commit.as_deref(), current_head),
@@ -496,13 +542,17 @@ async fn read_supported_evidence(
                             local_present: if artifact_verification
                                 == ArtifactVerificationMode::VerifyLocalArtifacts
                             {
-                                Some(root.join(&artifact.path).is_file())
+                                Some(
+                                    root.join("target/ubuntu-22.04/release/packages")
+                                        .join(&artifact.filename)
+                                        .is_file(),
+                                )
                             } else {
                                 None
                             },
                             declared_size: artifact.size,
-                            target_os: artifact.target_os,
-                            architecture: artifact.architecture,
+                            target_os: Some(TargetOs::Ubuntu2204),
+                            architecture: Some(artifact.architecture),
                             max_glibc: artifact.max_glibc,
                             desktop_entry: artifact.desktop_entry,
                             icon: artifact.icon,
@@ -609,7 +659,11 @@ async fn read_supported_evidence(
             let Some(path) = package.artifact_path.as_deref() else {
                 continue;
             };
-            match records.remove(path) {
+            let Some(filename) = Path::new(path).file_name().and_then(|value| value.to_str())
+            else {
+                continue;
+            };
+            match records.remove(filename) {
                 Some(hash) => {
                     if package.checksum.as_deref() != Some(hash.as_str()) {
                         package.freshness = Freshness::Conflicting;
@@ -1836,7 +1890,7 @@ mod tests {
         fs::create_dir_all(&packages).unwrap();
         fs::write(
             packages.join("release-manifest.json"),
-            format!(r#"{{"version":1,"sourceCommit":"{head}","cleanSource":true,"artifacts":[{{"type":"deb","path":"quireforge.deb","sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","size":1}}]}}"#),
+            format!(r#"{{"schemaVersion":1,"state":"release-candidate","version":"0.1.0","source":{{"commit":"{head}","treeState":"clean"}},"builder":{{"distribution":"ubuntu","version":"22.04","architecture":"x8664","image":"pinned"}},"artifacts":[{{"format":"deb","filename":"quireforge.deb","architecture":"x8664","sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","size":1}}]}}"#),
         )
         .unwrap();
         fs::write(packages.join("SHA256SUMS"), "abc  quireforge.deb\n").unwrap();

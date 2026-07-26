@@ -56,7 +56,9 @@ machine-readable files are verified as file contents, Markdown claims remain
 reported, and suggested actions remain inferred. Malformed or absent evidence
 is never silently repaired or treated as completion.
 
-Supported manifests and validation summaries are parsed as closed Rust records:
+The reader adapts the established release producer's version-1 manifest
+(`schemaVersion`, source, builder, and format/filename artifacts) as closed
+Rust records. Validation summaries are likewise parsed as closed records:
 unknown fields, unsupported artifact/status values, invalid 40-character commit
 IDs, invalid SHA-256 values, and unsafe repository-relative artifact paths are
 rejected with diagnostics. The normal reader remains metadata-only and never
