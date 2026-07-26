@@ -8,7 +8,7 @@ locally.” Tauri + React + TypeScript is the current functional prototype. ADR
 
 - **Branch:** `main`
 - **Checkpoint:** Milestones 22, 22B, 23, 24A, 24B, 24C, 25, 26, 27, and 28
-  are complete.
+  are complete; Milestone 29 is in progress.
   Milestone 27 is complete at implementation commit
   `cc4d0cea7d28d275e5ad1c8aa9d7a2a4f0627d6c`; its final package evidence is
   recorded by this documentation checkpoint. The clean `0.1.0-beta.4` Ubuntu
@@ -114,6 +114,15 @@ values; it never transfers project context, attachments, approvals,
 integrations, transcripts, or credentials. The clean, incremented
 `0.1.0-beta.4` package set passed the pinned Ubuntu 22.04 and installed-host
 gates. See [Milestone 27](MILESTONE_27_UNIFIED_CONVERSATION_ENGINE.md).
+
+Milestone 29 — **Managed Advisor Conversation Foundation** is in progress. It
+adds a distinct, fixed no-project Advisor turn through the existing
+Codex-managed browser ChatGPT sign-in boundary. Advisor prompts and replies are
+transient in QuireForge; only opaque thread metadata is retained. Including
+the temporary Project State safe projection requires a second per-send
+confirmation. It adds no execution, dispatch, tool, terminal, Git, project
+write, API-key, or transcript-retention capability. See
+[Milestone 29](MILESTONE_29_MANAGED_ADVISOR_CONVERSATION.md).
 
 Milestone 28 — **Reference-Only Advisor Foundation** is complete. It includes a
 read-only Advisor metadata route and one explicitly confirmed, temporary safe

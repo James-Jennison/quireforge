@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased — 0.1.0-beta.6
+
+- Begin Milestone 29’s managed Advisor conversation foundation. Its fixed
+  Codex app-server profile requires managed ChatGPT browser authentication and
+  rejects project, tool, approval, terminal, Git, worktree, network, and
+  API-key authority. QuireForge retains only opaque Advisor thread metadata;
+  Advisor prompt/response text stays transient. A temporary safe Project State
+  summary requires a second, per-send confirmation before inclusion.
+
 ## Unreleased — 0.1.0-beta.5
 
 - Begin Milestone 28’s reference-only Advisor foundation with strict

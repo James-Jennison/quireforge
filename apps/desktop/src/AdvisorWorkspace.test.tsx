@@ -1,11 +1,13 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+import { AdvisorWorkspace } from "./AdvisorWorkspace";
+import { scaffoldAdvisorConversation } from "./lib/advisorConversation";
+import { scaffoldCodexAuth } from "./lib/auth";
 import {
   parseAdvisorSelectedProjectStateSnapshot,
   advisorWorkspaceSnapshotSchema,
 } from "./lib/advisorWorkspace";
-import { AdvisorWorkspace } from "./AdvisorWorkspace";
 
 const advisorWorkspaceFixture = advisorWorkspaceSnapshotSchema.parse({
   schemaVersion: 1,
@@ -29,7 +31,9 @@ const selectedProjectStateFixture = parseAdvisorSelectedProjectStateSnapshot({
   diagnosticCount: 0,
 });
 
-const selectionProps = {
+const props = {
+  availability: "native" as const,
+  snapshot: advisorWorkspaceFixture,
   selectedProjectState: null,
   selectionState: "idle" as const,
   canSelectProjectState: true,
@@ -37,13 +41,24 @@ const selectionProps = {
   onConfirmProjectState: vi.fn(),
   onCancelProjectState: vi.fn(),
   onRemoveProjectState: vi.fn(),
+  auth: {
+    ...scaffoldCodexAuth,
+    state: "authenticated" as const,
+    accountKind: "chatgpt" as const,
+  },
+  conversation: scaffoldAdvisorConversation,
+  conversationBusy: false,
+  selectedProjectId: null,
+  onConversationStart: vi.fn().mockResolvedValue(scaffoldAdvisorConversation),
+  onConversationPoll: vi.fn(),
+  onConversationInterrupt: vi.fn(),
 };
 
 describe("AdvisorWorkspace", () => {
-  it("renders a reference-only empty state without executable controls", () => {
+  it("renders a managed read-only composer without executable controls", () => {
     render(
       <AdvisorWorkspace
-        availability="native"
+        {...props}
         snapshot={{
           ...advisorWorkspaceFixture,
           conversationCount: 0,
@@ -52,21 +67,20 @@ describe("AdvisorWorkspace", () => {
           contextSummaries: [],
           proposalSummaries: [],
         }}
-        {...selectionProps}
       />,
     );
 
     expect(
       screen.getByRole("heading", {
-        name: "Reference-only planning, without execution.",
+        name: "Read-only planning, without execution.",
       }),
     ).toBeInTheDocument();
     expect(screen.getByText("No Advisor metadata yet.")).toBeInTheDocument();
-    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
     expect(
-      screen.getByRole("button", {
-        name: "Select current Project State snapshot",
-      }),
+      screen.getByRole("textbox", { name: "Advisor message" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Send to Advisor" }),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /approve|dispatch|terminal/u }),
@@ -74,14 +88,7 @@ describe("AdvisorWorkspace", () => {
   });
 
   it("shows only safe reference summaries for valid metadata", () => {
-    render(
-      <AdvisorWorkspace
-        availability="native"
-        snapshot={advisorWorkspaceFixture}
-        {...selectionProps}
-      />,
-    );
-
+    render(<AdvisorWorkspace {...props} />);
     const summaries = within(
       screen.getByRole("list", { name: "Advisor metadata summaries" }),
     );
@@ -99,55 +106,64 @@ describe("AdvisorWorkspace", () => {
     expect(screen.queryByText(/gpt-5.6-terra/i)).not.toBeInTheDocument();
   });
 
-  it("announces native read failures without inventing Advisor state", () => {
-    render(
-      <AdvisorWorkspace
-        availability="error"
-        snapshot={null}
-        {...selectionProps}
-      />,
-    );
-    expect(screen.getByRole("alert")).toHaveTextContent(
-      "Advisor metadata could not be read",
-    );
-  });
-
-  it("requires explicit confirmation before asking for a selected snapshot", () => {
+  it("requires explicit confirmation before selecting a snapshot", () => {
     const onRequestProjectState = vi.fn();
-    const onConfirmProjectState = vi.fn();
     render(
       <AdvisorWorkspace
-        availability="native"
-        snapshot={advisorWorkspaceFixture}
-        {...selectionProps}
+        {...props}
         onRequestProjectState={onRequestProjectState}
-        onConfirmProjectState={onConfirmProjectState}
       />,
     );
-
     fireEvent.click(
       screen.getByRole("button", {
         name: "Select current Project State snapshot",
       }),
     );
     expect(onRequestProjectState).toHaveBeenCalledOnce();
-    expect(onConfirmProjectState).not.toHaveBeenCalled();
   });
 
-  it("renders only the safe selected-state summary", () => {
+  it("requires a second per-send confirmation before including selected context", () => {
+    const onConversationStart = vi
+      .fn()
+      .mockResolvedValue(scaffoldAdvisorConversation);
     render(
       <AdvisorWorkspace
-        availability="native"
-        snapshot={advisorWorkspaceFixture}
-        {...selectionProps}
+        {...props}
         selectedProjectState={selectedProjectStateFixture}
+        selectedProjectId="018f0000-0000-7000-8000-000000000001"
+        onConversationStart={onConversationStart}
       />,
     );
     expect(
-      screen.getByText(/Temporary safe summary: current, clean\./u),
+      screen.getByText(/Temporary safe summary: current, clean/u),
     ).toBeInTheDocument();
+    fireEvent.change(screen.getByRole("textbox", { name: "Advisor message" }), {
+      target: { value: "Prepare a safe milestone plan." },
+    });
+    fireEvent.click(
+      screen.getByRole("checkbox", {
+        name: /include the selected temporary project state summary/i,
+      }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Send to Advisor" }));
+    expect(onConversationStart).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Confirm inclusion" }));
+    expect(onConversationStart).toHaveBeenCalledWith({
+      prompt: "Prepare a safe milestone plan.",
+      projectId: "018f0000-0000-7000-8000-000000000001",
+    });
+  });
+
+  it("keeps an API-key account unavailable", () => {
+    render(
+      <AdvisorWorkspace
+        {...props}
+        auth={{ ...props.auth, accountKind: "api-key" }}
+      />,
+    );
     expect(
-      screen.queryByText(/attached project|main|\.git/u),
-    ).not.toBeInTheDocument();
+      screen.getByRole("button", { name: "Send to Advisor" }),
+    ).toBeDisabled();
+    expect(screen.getByRole("status")).toHaveTextContent(/managed ChatGPT/i);
   });
 });

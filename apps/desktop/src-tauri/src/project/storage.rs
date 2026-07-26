@@ -18,7 +18,8 @@ use crate::advisor::{
 use super::{
     identity::DirectoryIdentity,
     types::{DirectoryAccessibilityState, ExpectedAccess},
-    ChatConversationMetadata, ConversationReference, ConversationSelectionMetadata,
+    AdvisorConversationMetadata, ChatConversationMetadata, ConversationReference,
+    ConversationSelectionMetadata,
 };
 
 const INITIAL_MIGRATION: &str = r#"
@@ -1053,6 +1054,23 @@ impl ProjectRepository {
                 id, mode, project_id, conversation_reference_id, codex_thread_id,
                 created_at_ms, updated_at_ms
              ) VALUES (?1, 'chat', NULL, NULL, ?2, ?3, ?3)",
+            params![
+                metadata.conversation_id,
+                metadata.codex_thread_id,
+                timestamp
+            ],
+        )?;
+        Ok(())
+    }
+
+    pub(crate) fn insert_advisor_conversation_metadata(
+        &mut self,
+        metadata: &AdvisorConversationMetadata<'_>,
+    ) -> Result<(), StorageError> {
+        let timestamp = now_millis();
+        self.connection.execute(
+            "INSERT INTO advisor_conversations (id, codex_thread_id, created_at_ms, updated_at_ms)
+             VALUES (?1, ?2, ?3, ?3)",
             params![
                 metadata.conversation_id,
                 metadata.codex_thread_id,

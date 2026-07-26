@@ -21,14 +21,15 @@ use attachment::{
 };
 use codex::conversation_mode::{chat_authentication_snapshot, ChatAuthenticationSnapshot};
 use codex::{
-    types::CodexRuntimeSnapshot, AuthLoginMethod, ChatConversationService,
-    ChatConversationSnapshot, ChatConversationStartRequest, CodexAuthService, CodexAuthSnapshot,
-    CodexRuntimeService, CodexUsageService, CodexUsageSnapshot,
-    ConversationApprovalDecisionRequest, ConversationContinueRequest, ConversationDiagnosticCode,
-    ConversationRegistrySnapshot, ConversationService, ConversationSnapshot,
-    ConversationStartRequest, IntegrationCatalogService, IntegrationControlService,
-    IntegrationMutationService, ModelSelectionDiagnosticCode, ModelSelectionSnapshot,
-    ModelSelectionUpdateRequest, SessionLifecycleSnapshot,
+    types::CodexRuntimeSnapshot, AdvisorConversationDiagnosticCode, AdvisorConversationService,
+    AdvisorConversationSnapshot, AdvisorConversationStartRequest, AuthLoginMethod,
+    ChatConversationService, ChatConversationSnapshot, ChatConversationStartRequest,
+    CodexAuthService, CodexAuthSnapshot, CodexRuntimeService, CodexUsageService,
+    CodexUsageSnapshot, ConversationApprovalDecisionRequest, ConversationContinueRequest,
+    ConversationDiagnosticCode, ConversationRegistrySnapshot, ConversationService,
+    ConversationSnapshot, ConversationStartRequest, IntegrationCatalogService,
+    IntegrationControlService, IntegrationMutationService, ModelSelectionDiagnosticCode,
+    ModelSelectionSnapshot, ModelSelectionUpdateRequest, SessionLifecycleSnapshot,
 };
 use contract::DesktopBootstrap;
 use desktop::{
@@ -231,6 +232,87 @@ async fn chat_conversation_interrupt(
     conversation_id: String,
     service: tauri::State<'_, ChatConversationService>,
 ) -> Result<ChatConversationSnapshot, ()> {
+    Ok(service.interrupt(conversation_id).await)
+}
+
+#[tauri::command]
+async fn advisor_conversation_status(
+    service: tauri::State<'_, AdvisorConversationService>,
+) -> Result<AdvisorConversationSnapshot, ()> {
+    Ok(service.status().await)
+}
+
+#[tauri::command]
+async fn advisor_conversation_start(
+    request: AdvisorConversationStartRequest,
+    service: tauri::State<'_, AdvisorConversationService>,
+    authentication: tauri::State<'_, CodexAuthService>,
+    projects: tauri::State<'_, ProjectService>,
+    reader: tauri::State<'_, RepositoryStateReader>,
+) -> Result<AdvisorConversationSnapshot, ()> {
+    if !request.is_valid() {
+        return Ok(AdvisorConversationSnapshot::unavailable(
+            AdvisorConversationDiagnosticCode::InvalidRequest,
+        ));
+    }
+    let selected_project_state = if let Some(project_id) = request.project_id.as_ref() {
+        let snapshot = reader
+            .read(
+                RepositoryStateReadRequest {
+                    project_id: project_id.clone(),
+                    remote_mode: RepositoryRemoteMode::LocalOnly,
+                    artifact_verification: ArtifactVerificationMode::MetadataOnly,
+                },
+                &projects,
+            )
+            .await;
+        if snapshot
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.severity == RepositoryStateDiagnosticSeverity::Error)
+        {
+            return Ok(AdvisorConversationSnapshot::unavailable(
+                AdvisorConversationDiagnosticCode::ContextUnavailable,
+            ));
+        }
+        let selected_at_ms = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map_err(|_| ())?
+            .as_millis()
+            .try_into()
+            .map_err(|_| ())?;
+        Some(
+            advisor::AdvisorSelectedProjectStateSnapshot::from_repository_snapshot(
+                snapshot,
+                selected_at_ms,
+            ),
+        )
+    } else {
+        None
+    };
+    Ok(service
+        .start(
+            request,
+            &authentication.status().await,
+            &projects,
+            selected_project_state,
+        )
+        .await)
+}
+
+#[tauri::command]
+async fn advisor_conversation_poll(
+    conversation_id: String,
+    service: tauri::State<'_, AdvisorConversationService>,
+) -> Result<AdvisorConversationSnapshot, ()> {
+    Ok(service.poll(conversation_id).await)
+}
+
+#[tauri::command]
+async fn advisor_conversation_interrupt(
+    conversation_id: String,
+    service: tauri::State<'_, AdvisorConversationService>,
+) -> Result<AdvisorConversationSnapshot, ()> {
     Ok(service.interrupt(conversation_id).await)
 }
 
@@ -1036,6 +1118,7 @@ pub fn run() {
         .manage(IntegrationMutationService::default())
         .manage(ConversationService::default())
         .manage(ChatConversationService::default())
+        .manage(AdvisorConversationService::default())
         .manage(DesktopNotificationService::default())
         .manage(GitService::default())
         .manage(RepositoryStateReader)
@@ -1100,6 +1183,10 @@ pub fn run() {
             chat_conversation_start,
             chat_conversation_poll,
             chat_conversation_interrupt,
+            advisor_conversation_status,
+            advisor_conversation_start,
+            advisor_conversation_poll,
+            advisor_conversation_interrupt,
             codex_auth_start,
             codex_auth_cancel,
             codex_auth_logout,

@@ -76,6 +76,26 @@ Codex execution boundary. It must not infer consent from Advisor output or
 ordinary conversation text. Context reading, model calls, screenshot staging,
 dispatch, and all Milestone 24D consistency behavior are deferred.
 
+### Milestone 29 managed Advisor conversation boundary
+
+The managed Advisor conversation service is a distinct, fixed no-project
+app-server client. It may use only Codex's existing managed browser ChatGPT
+sign-in state; QuireForge never collects passwords, API keys, browser cookies,
+or external tokens. Every thread and turn starts with a null cwd, no dynamic
+tools or integrations, `never` approval, a read-only sandbox, and network
+access disabled. Any unexpected tool, activity, plan, or server permission
+request becomes a bounded blocked diagnostic rather than new authority.
+
+Advisor prompt and reply text stay in the live native process and UI. SQLite
+stores only an opaque Codex-thread reference paired with a QuireForge UUID; no
+transcript, project identity, project path, image, or model/reasoning choice is
+persisted. A user may select the existing temporary safe Project State
+projection, but must confirm its inclusion again for each individual message.
+Native code then re-reads only the fixed local-only, metadata-only normalized
+projection and supplies its closed trust/freshness/worktree/diagnostic summary;
+that does not attach a project or convey repository authority. Approval and
+dispatch remain deferred.
+
 ### Milestone 3 implementation boundary
 
 The initial desktop package lives under `apps/desktop`. React and strict

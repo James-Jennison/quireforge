@@ -99,6 +99,13 @@ import {
   type ChatConversationStartRequest,
 } from "./chat";
 import {
+  advisorConversationIdSchema,
+  advisorConversationSnapshotSchema,
+  advisorConversationStartRequestSchema,
+  type AdvisorConversationSnapshot,
+  type AdvisorConversationStartRequest,
+} from "./advisorConversation";
+import {
   advisorWorkspaceSnapshotSchema,
   parseAdvisorProjectStateReadRequest,
   parseAdvisorSelectedProjectStateSnapshot,
@@ -226,6 +233,12 @@ export const CHAT_CONVERSATION_START_COMMAND = "chat_conversation_start";
 export const CHAT_CONVERSATION_POLL_COMMAND = "chat_conversation_poll";
 export const CHAT_CONVERSATION_INTERRUPT_COMMAND =
   "chat_conversation_interrupt";
+export const ADVISOR_CONVERSATION_STATUS_COMMAND =
+  "advisor_conversation_status";
+export const ADVISOR_CONVERSATION_START_COMMAND = "advisor_conversation_start";
+export const ADVISOR_CONVERSATION_POLL_COMMAND = "advisor_conversation_poll";
+export const ADVISOR_CONVERSATION_INTERRUPT_COMMAND =
+  "advisor_conversation_interrupt";
 export const CONVERSATION_ACTIVE_COMMAND = "conversation_active";
 export const CONVERSATION_NOTIFY_COMMAND = "conversation_notify";
 export const CONVERSATION_START_COMMAND = "conversation_start";
@@ -404,6 +417,47 @@ export async function interruptChatConversation(
   return chatConversationSnapshotSchema.parse(
     await invokeFunction(CHAT_CONVERSATION_INTERRUPT_COMMAND, {
       conversationId: chatConversationIdSchema.parse(conversationId),
+    }),
+  );
+}
+
+export async function loadAdvisorConversation(
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<AdvisorConversationSnapshot> {
+  return advisorConversationSnapshotSchema.parse(
+    await invokeFunction(ADVISOR_CONVERSATION_STATUS_COMMAND),
+  );
+}
+
+export async function startAdvisorConversation(
+  request: AdvisorConversationStartRequest,
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<AdvisorConversationSnapshot> {
+  return advisorConversationSnapshotSchema.parse(
+    await invokeFunction(ADVISOR_CONVERSATION_START_COMMAND, {
+      request: advisorConversationStartRequestSchema.parse(request),
+    }),
+  );
+}
+
+export async function pollAdvisorConversation(
+  conversationId: string,
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<AdvisorConversationSnapshot> {
+  return advisorConversationSnapshotSchema.parse(
+    await invokeFunction(ADVISOR_CONVERSATION_POLL_COMMAND, {
+      conversationId: advisorConversationIdSchema.parse(conversationId),
+    }),
+  );
+}
+
+export async function interruptAdvisorConversation(
+  conversationId: string,
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<AdvisorConversationSnapshot> {
+  return advisorConversationSnapshotSchema.parse(
+    await invokeFunction(ADVISOR_CONVERSATION_INTERRUPT_COMMAND, {
+      conversationId: advisorConversationIdSchema.parse(conversationId),
     }),
   );
 }

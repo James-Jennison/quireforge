@@ -1,3 +1,4 @@
+mod advisor_conversation;
 mod app_server;
 mod auth;
 mod backend;
@@ -16,6 +17,10 @@ mod probe;
 pub mod types;
 mod usage;
 
+pub use advisor_conversation::{
+    AdvisorConversationDiagnosticCode, AdvisorConversationService, AdvisorConversationSnapshot,
+    AdvisorConversationStartRequest,
+};
 pub use auth::types::{AuthLoginMethod, CodexAuthSnapshot};
 pub use auth::CodexAuthService;
 pub use chat::{ChatConversationService, ChatConversationSnapshot, ChatConversationStartRequest};

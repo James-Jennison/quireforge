@@ -51,7 +51,7 @@ export const workspaceNavigation: readonly WorkspaceNavigationItem[] = [
     label: "Advisor",
     icon: "grid",
     group: "main",
-    description: "Inspect local reference-only planning metadata",
+    description: "Plan with a managed, read-only Advisor",
   },
   {
     route: "conversation",
