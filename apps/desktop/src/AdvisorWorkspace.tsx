@@ -83,6 +83,14 @@ export function AdvisorWorkspace({
   const canIncludeProjectState = Boolean(
     selectedProjectState && selectedProjectId,
   );
+  const sendDisabledReason =
+    authentication !== "ready"
+      ? "Sign in with managed ChatGPT to send."
+      : conversationBusy
+        ? "Advisor is preparing."
+        : !prompt.trim()
+          ? "Enter a message to send."
+          : null;
 
   useEffect(() => {
     if (!active || !conversation.conversationId) return undefined;
@@ -294,8 +302,10 @@ export function AdvisorWorkspace({
               ),
             )}
           </div>
-          <label className="conversation-composer" htmlFor="advisor-prompt">
-            <span className="sr-only">Advisor message</span>
+          <div className="conversation-composer">
+            <label className="sr-only" htmlFor="advisor-prompt">
+              Advisor message
+            </label>
             <textarea
               id="advisor-prompt"
               aria-label="Advisor message"
@@ -308,7 +318,7 @@ export function AdvisorWorkspace({
               rows={4}
             />
             {canIncludeProjectState && (
-              <div>
+              <label>
                 <input
                   type="checkbox"
                   aria-label="Include the selected temporary Project State summary with this message"
@@ -322,12 +332,18 @@ export function AdvisorWorkspace({
                 />{" "}
                 Include the selected temporary Project State summary with this
                 message
-              </div>
+              </label>
             )}
-            <div className="conversation-composer__actions">
-              <span>
-                {active ? "Advisor is responding" : "No execution capability"}
-              </span>
+            <p className="project-message" role="note">
+              Advisor is read-only: no commands, project changes, or dispatch.
+              Project State is optional and requires confirmation.
+            </p>
+            {sendDisabledReason && !active && (
+              <p className="project-message" role="status">
+                {sendDisabledReason}
+              </p>
+            )}
+            <div className="conversation-actions">
               {active ? (
                 <button
                   type="button"
@@ -357,7 +373,7 @@ export function AdvisorWorkspace({
                 </button>
               )}
             </div>
-          </label>
+          </div>
           {confirmContextSend && selectedProjectId && (
             <div
               className="project-confirmation"

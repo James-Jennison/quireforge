@@ -92,6 +92,18 @@ The designated package directory retains only the complete beta.6 release set;
 no installed package, source file, Git history, remote release, or required
 evidence was removed.
 
+## Post-completion action-row hotfix
+
+The scoped `0.1.0-beta.7` frontend hotfix separates the fixed read-only
+capability notice from the Advisor action row. It adds an explicit disabled
+reason for managed sign-in, an empty message, or a pending native action. A
+selected Project State snapshot remains optional; its existing explicit
+selection and per-send confirmation are unchanged. Desktop and narrow-width
+browser coverage verifies focus order, no visual overlap or horizontal
+clipping, screen-reader status/note semantics, and a captured action-row
+visual. The fresh beta.7 package evidence is recorded only after its clean
+pinned Ubuntu 22.04 package gate passes.
+
 ## Deferred work
 
 Approval/Dispatch, user-editable Codex prompt generation, a Codex dispatch

@@ -838,7 +838,7 @@ test("every sidebar destination replaces the active workspace without page scrol
 
 test("Advisor presents a bounded managed conversation with safe summaries", async ({
   page,
-}) => {
+}, testInfo) => {
   await installNativeFixture(page);
   await page.goto("/");
 
@@ -855,7 +855,27 @@ test("Advisor presents a bounded managed conversation with safe summaries", asyn
   await expect(
     advisor.getByRole("textbox", { name: "Advisor message" }),
   ).toBeVisible();
-  await expect(advisor.getByText("No execution capability")).toBeVisible();
+  const advisorNotice = advisor
+    .getByRole("note")
+    .filter({ hasText: "Advisor is read-only" });
+  await expect(advisorNotice).toBeVisible();
+  await expect(advisor.getByRole("status")).toContainText(
+    "Enter a message to send.",
+  );
+  const sendButton = advisor.getByRole("button", { name: "Send to Advisor" });
+  await expect(sendButton).toBeDisabled();
+  await advisor
+    .getByRole("textbox", { name: "Advisor message" })
+    .fill("Review the current boundary.");
+  await expect(sendButton).toBeEnabled();
+  await expect(advisor.getByText("Enter a message to send.")).toHaveCount(0);
+  await expect(async () => {
+    const noticeBox = await advisorNotice.boundingBox();
+    const buttonBox = await sendButton.boundingBox();
+    expect(noticeBox).not.toBeNull();
+    expect(buttonBox).not.toBeNull();
+    expect(noticeBox!.y + noticeBox!.height).toBeLessThanOrEqual(buttonBox!.y);
+  }).toPass();
   await advisor
     .getByRole("button", { name: "Select current Project State snapshot" })
     .click();
@@ -868,6 +888,16 @@ test("Advisor presents a bounded managed conversation with safe summaries", asyn
   ).toBeVisible();
   await expect(advisor.getByText(/advisor-thread|gpt-5.6/u)).toHaveCount(0);
   await expect(advisor.getByText(/\/mnt\//u)).toHaveCount(0);
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - window.innerWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(1);
+  await page.screenshot({
+    path: testInfo.outputPath(
+      `advisor-action-row-${testInfo.project.name.includes("mobile") ? "mobile" : "desktop"}.png`,
+    ),
+    animations: "disabled",
+  });
   const accessibility = await new AxeBuilder({ page }).analyze();
   expect(accessibility.violations).toEqual([]);
 });

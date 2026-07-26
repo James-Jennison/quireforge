@@ -83,6 +83,12 @@ describe("AdvisorWorkspace", () => {
       screen.getByRole("button", { name: "Send to Advisor" }),
     ).toBeInTheDocument();
     expect(
+      screen.getByText(/Advisor is read-only: no commands/u),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Enter a message to send.",
+    );
+    expect(
       screen.queryByRole("button", { name: /approve|dispatch|terminal/u }),
     ).not.toBeInTheDocument();
   });
@@ -164,6 +170,27 @@ describe("AdvisorWorkspace", () => {
     expect(
       screen.getByRole("button", { name: "Send to Advisor" }),
     ).toBeDisabled();
-    expect(screen.getByRole("status")).toHaveTextContent(/managed ChatGPT/i);
+    expect(
+      screen.getByText(
+        "Advisor is unavailable until managed ChatGPT browser sign-in is complete.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps the capability notice separate when a sendable message is entered", () => {
+    render(<AdvisorWorkspace {...props} />);
+    fireEvent.change(screen.getByRole("textbox", { name: "Advisor message" }), {
+      target: { value: "Review the milestone boundary." },
+    });
+
+    expect(
+      screen.getByRole("button", { name: "Send to Advisor" }),
+    ).toBeEnabled();
+    expect(
+      screen.getByText(/Project State is optional and requires confirmation/u),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Enter a message to send."),
+    ).not.toBeInTheDocument();
   });
 });

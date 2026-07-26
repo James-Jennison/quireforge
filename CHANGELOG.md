@@ -1,6 +1,14 @@
 # Changelog
 
-## Unreleased — 0.1.0-beta.6
+## Unreleased — 0.1.0-beta.7
+
+- Separate the Advisor capability notice from its action row so the disabled
+  send control remains readable at desktop and narrow widths. The visible
+  disabled reason now explains whether sign-in, an Advisor message, or a
+  pending native action prevents sending; Project State remains optional and
+  still requires explicit selection and per-send confirmation.
+
+## 0.1.0-beta.6
 
 - Complete Milestone 29’s managed Advisor conversation foundation. Its fixed
   Codex app-server profile requires managed ChatGPT browser authentication and

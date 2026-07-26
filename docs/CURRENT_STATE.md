@@ -127,6 +127,11 @@ Ubuntu 22.04 Debian/AppImage set passed the pinned container lifecycle,
 desktop/icon, visible-launch, and installed-host smoke gates. See
 [Milestone 29](MILESTONE_29_MANAGED_ADVISOR_CONVERSATION.md).
 
+The scoped Milestone 29 post-completion UI hotfix separates the Advisor
+read-only capability notice from the action row and makes the disabled-send
+reason explicit without changing Advisor permissions, context rules, or
+execution boundaries. Its incremented `0.1.0-beta.7` package gate is pending.
+
 Milestone 28 — **Reference-Only Advisor Foundation** is complete. It includes a
 read-only Advisor metadata route and one explicitly confirmed, temporary safe
 projection of the existing local Project State reader; arbitrary context
