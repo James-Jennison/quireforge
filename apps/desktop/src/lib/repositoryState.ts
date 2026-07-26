@@ -34,7 +34,7 @@ export const repositoryStateReadSnapshotSchema = z
         packages: z.array(
           z
             .object({
-              kind: z.string(),
+              kind: z.enum(["deb", "app-image"]),
               sourceCommit: z.string().nullable(),
               artifactPath: z.string().nullable(),
               checksum: z.string().nullable(),
@@ -52,7 +52,7 @@ export const repositoryStateReadSnapshotSchema = z
           z
             .object({
               id: z.string(),
-              status: z.string(),
+              status: z.enum(["passed", "failed", "skipped", "unavailable"]),
               sourceCommit: z.string().nullable(),
               evidencePath: z.string(),
               freshness: z.enum([

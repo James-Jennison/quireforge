@@ -56,6 +56,13 @@ machine-readable files are verified as file contents, Markdown claims remain
 reported, and suggested actions remain inferred. Malformed or absent evidence
 is never silently repaired or treated as completion.
 
+Supported manifests and validation summaries are parsed as closed Rust records:
+unknown fields, unsupported artifact/status values, invalid 40-character commit
+IDs, invalid SHA-256 values, and unsafe repository-relative artifact paths are
+rejected with diagnostics. The normal reader remains metadata-only and never
+hashes or rebuilds package artifacts; a future local-artifact verification mode
+would require an explicit approved request-contract addition.
+
 ## Deferred work
 
 Artifact checksum verification, broader validation-report formats, shallow

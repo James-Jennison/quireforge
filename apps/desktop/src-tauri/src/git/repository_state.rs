@@ -1,7 +1,7 @@
 use std::{fs, path::Path};
 
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::json;
 
 use crate::{
     project::{ProjectExecutionError, ProjectService},
@@ -26,6 +26,45 @@ pub enum RepositoryRemoteMode {
 pub struct RepositoryStateReadRequest {
     pub project_id: String,
     pub remote_mode: RepositoryRemoteMode,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct PackageManifest {
+    source_commit: String,
+    artifacts: Vec<PackageManifestArtifact>,
+}
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct PackageManifestArtifact {
+    #[serde(rename = "type")]
+    kind: ArtifactKind,
+    path: String,
+    sha256: String,
+    #[allow(dead_code)]
+    size: u64,
+}
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct ValidationSummary {
+    id: String,
+    status: ValidationStatus,
+    source_commit: String,
+    command: String,
+}
+#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum ArtifactKind {
+    Deb,
+    AppImage,
+}
+#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum ValidationStatus {
+    Passed,
+    Failed,
+    Skipped,
+    Unavailable,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
@@ -69,21 +108,21 @@ pub struct RepositoryEvidence {
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PackageEvidence {
-    pub kind: String,
+    pub kind: ArtifactKind,
     pub source_commit: Option<String>,
     pub artifact_path: Option<String>,
     pub checksum: Option<String>,
-    pub freshness: String,
+    pub freshness: Freshness,
 }
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ValidationEvidence {
     pub id: String,
-    pub status: String,
+    pub status: ValidationStatus,
     pub source_commit: Option<String>,
     pub evidence_path: String,
-    pub freshness: String,
+    pub freshness: Freshness,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -92,7 +131,19 @@ pub struct HandoffEvidence {
     pub status: String,
     pub phrase: String,
     pub source_commit: Option<String>,
-    pub freshness: String,
+    pub freshness: Freshness,
+}
+
+#[derive(Clone, Copy, Debug, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum Freshness {
+    Current,
+    Stale,
+    Unknown,
+    #[allow(dead_code)]
+    Conflicting,
+    #[allow(dead_code)]
+    NotApplicable,
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize)]
@@ -283,12 +334,12 @@ fn safe_text(
     }
 }
 
-fn freshness(source_commit: Option<&str>, current_head: Option<&str>) -> String {
+fn freshness(source_commit: Option<&str>, current_head: Option<&str>) -> Freshness {
     match (source_commit, current_head) {
-        (Some(source), Some(current)) if source == current => "current".to_owned(),
-        (Some(_), Some(_)) => "stale".to_owned(),
-        (None, _) => "unknown".to_owned(),
-        _ => "unknown".to_owned(),
+        (Some(source), Some(current)) if source == current => Freshness::Current,
+        (Some(_), Some(_)) => Freshness::Stale,
+        (None, _) => Freshness::Unknown,
+        _ => Freshness::Unknown,
     }
 }
 
@@ -302,17 +353,10 @@ fn read_supported_evidence(
     let manifest_path = "target/ubuntu-22.04/release/packages/release-manifest.json";
     let checksum_path = "target/ubuntu-22.04/release/packages/SHA256SUMS";
     match safe_text(root, manifest_path, diagnostics) {
-        Some(contents) => match serde_json::from_str::<Value>(&contents) {
+        Some(contents) => match serde_json::from_str::<PackageManifest>(&contents) {
             Ok(manifest) => {
-                let source_commit = manifest
-                    .get("sourceCommit")
-                    .and_then(Value::as_str)
-                    .map(str::to_owned);
-                let artifacts = manifest
-                    .get("artifacts")
-                    .and_then(Value::as_array)
-                    .cloned()
-                    .unwrap_or_default();
+                let source_commit = Some(manifest.source_commit);
+                let artifacts = manifest.artifacts;
                 if artifacts.is_empty() {
                     diagnostics.push(diagnostic(
                         "malformed-package-manifest",
@@ -325,23 +369,25 @@ fn read_supported_evidence(
                     ));
                 }
                 for artifact in artifacts {
-                    if let Some(kind) = artifact.get("type").and_then(Value::as_str) {
+                    if valid_commit(source_commit.as_deref().unwrap_or_default())
+                        && valid_sha256(&artifact.sha256)
+                        && safe_artifact_path(&artifact.path)
+                    {
                         evidence.packages.push(PackageEvidence {
-                            kind: kind.to_owned(),
+                            kind: artifact.kind,
                             source_commit: source_commit.clone(),
-                            artifact_path: artifact
-                                .get("path")
-                                .and_then(Value::as_str)
-                                .map(str::to_owned),
-                            checksum: artifact
-                                .get("sha256")
-                                .and_then(Value::as_str)
-                                .map(str::to_owned),
+                            artifact_path: Some(artifact.path),
+                            checksum: Some(artifact.sha256),
                             freshness: freshness(source_commit.as_deref(), current_head),
                         });
+                    } else {
+                        diagnostics.push(diagnostic("invalid-package-manifest", RepositoryStateDiagnosticSeverity::Warning, "packages", Some(manifest_path.to_owned()), "A package record has an invalid commit, checksum, or repository-relative path.".to_owned(), false, "Regenerate reviewed package evidence."));
                     }
                 }
-                if freshness(source_commit.as_deref(), current_head) == "stale" {
+                if matches!(
+                    freshness(source_commit.as_deref(), current_head),
+                    Freshness::Stale
+                ) {
                     diagnostics.push(diagnostic(
                         "stale-package-evidence",
                         RepositoryStateDiagnosticSeverity::Warning,
@@ -386,18 +432,15 @@ fn read_supported_evidence(
     }
     let validation_path = "target/validation-summary.json";
     if let Some(contents) = safe_text(root, validation_path, diagnostics) {
-        match serde_json::from_str::<Value>(&contents) {
+        match serde_json::from_str::<ValidationSummary>(&contents) {
             Ok(value) => {
-                if let (Some(id), Some(status)) = (
-                    value.get("id").and_then(Value::as_str),
-                    value.get("status").and_then(Value::as_str),
-                ) {
-                    let source_commit = value
-                        .get("sourceCommit")
-                        .and_then(Value::as_str)
-                        .map(str::to_owned);
+                if valid_commit(&value.source_commit)
+                    && !value.id.is_empty()
+                    && !value.command.is_empty()
+                {
+                    let source_commit = Some(value.source_commit);
                     let state = freshness(source_commit.as_deref(), current_head);
-                    if state == "stale" {
+                    if matches!(state, Freshness::Stale) {
                         diagnostics.push(diagnostic(
                             "stale-validation-evidence",
                             RepositoryStateDiagnosticSeverity::Warning,
@@ -409,8 +452,8 @@ fn read_supported_evidence(
                         ));
                     }
                     evidence.validations.push(ValidationEvidence {
-                        id: id.to_owned(),
-                        status: status.to_owned(),
+                        id: value.id,
+                        status: value.status,
                         source_commit,
                         evidence_path: validation_path.to_owned(),
                         freshness: state,
@@ -465,7 +508,7 @@ fn read_supported_evidence(
                 .filter(|value| value.len() == 40)
                 .map(str::to_owned);
             let state = freshness(reported_commit.as_deref(), current_head);
-            if status == "checkpoint-pushed" && state != "current" {
+            if status == "checkpoint-pushed" && !matches!(state, Freshness::Current) {
                 diagnostics.push(diagnostic(
                     "checkpoint-without-supporting-commit",
                     RepositoryStateDiagnosticSeverity::Warning,
@@ -711,6 +754,20 @@ async fn git_evidence(
             _ => None,
         });
     evidence
+}
+
+fn valid_commit(value: &str) -> bool {
+    value.len() == 40 && value.bytes().all(|byte| byte.is_ascii_hexdigit())
+}
+fn valid_sha256(value: &str) -> bool {
+    value.len() == 64 && value.bytes().all(|byte| byte.is_ascii_hexdigit())
+}
+fn safe_artifact_path(value: &str) -> bool {
+    !value.is_empty()
+        && !Path::new(value).is_absolute()
+        && !value
+            .split('/')
+            .any(|part| part.is_empty() || part == "." || part == "..")
 }
 
 fn diagnostic(
@@ -1349,21 +1406,24 @@ mod tests {
         fs::create_dir_all(&packages).unwrap();
         fs::write(
             packages.join("release-manifest.json"),
-            format!(r#"{{"sourceCommit":"{head}","artifacts":[{{"type":"deb","path":"quireforge.deb","sha256":"abc"}}]}}"#),
+            format!(r#"{{"sourceCommit":"{head}","artifacts":[{{"type":"deb","path":"quireforge.deb","sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","size":1}}]}}"#),
         )
         .unwrap();
         fs::write(packages.join("SHA256SUMS"), "abc  quireforge.deb\n").unwrap();
         fs::create_dir_all(fixture.root.join("target")).unwrap();
         fs::write(
             fixture.root.join("target/validation-summary.json"),
-            format!(r#"{{"id":"rust-tests","status":"passed","sourceCommit":"{head}"}}"#),
+            format!(r#"{{"id":"rust-tests","status":"passed","sourceCommit":"{head}","command":"cargo test"}}"#),
         )
         .unwrap();
         let mut diagnostics = Vec::new();
         let evidence = read_supported_evidence(&fixture.root, Some(&head), None, &mut diagnostics);
         assert_eq!(evidence.packages.len(), 1);
-        assert_eq!(evidence.packages[0].freshness, "current");
-        assert_eq!(evidence.validations[0].freshness, "current");
+        assert!(matches!(evidence.packages[0].freshness, Freshness::Current));
+        assert!(matches!(
+            evidence.validations[0].freshness,
+            Freshness::Current
+        ));
         assert!(!diagnostics
             .iter()
             .any(|item| item.id == "stale-package-evidence"));
