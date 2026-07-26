@@ -29,6 +29,18 @@ describe("repository-state reader bridge contract", () => {
       repositoryStateReadSnapshotSchema.parse({
         schemaVersion: 1,
         state,
+        git: {
+          upstream: null,
+          detached: false,
+          stagedCount: 0,
+          unstagedCount: 0,
+          untrackedCount: 0,
+          mergeInProgress: false,
+          rebaseInProgress: false,
+          cherryPickInProgress: false,
+          bisectInProgress: false,
+          shallow: false,
+        },
         diagnostics: [],
       }).state.repository,
     ).toMatchObject({
@@ -48,6 +60,7 @@ describe("repository-state reader bridge contract", () => {
       repositoryStateReadSnapshotSchema.parse({
         schemaVersion: 1,
         state: projectStateFixtures.minimalValid,
+        git: {},
         diagnostics: [{ id: "unexpected", severity: "fatal" }],
       }),
     ).toThrow();

@@ -21,6 +21,15 @@ compares the documented current-state branch with verified Git evidence. It
 does not rewrite documents or select a winner. Diagnostics remain separate from
 contract truth and suggest only inferred next actions.
 
+The Git evidence now distinguishes staged, unstaged, and untracked changes,
+detached HEAD, missing upstream, ahead/behind counts, shallow repositories, and
+merge, rebase, cherry-pick, or bisect markers. A controlled fixture proves that
+local-only inspection preserves HEAD, index status, worktree content, and
+untracked files. Existing-tracking inspection has the same non-mutation rule.
+The separately authorized fetch mode may update remote-tracking refs, but never
+accepts a caller-selected remote or refspec and must not modify HEAD, branch,
+index, worktree, tracked files, or untracked files.
+
 ## Deferred work
 
 Fixture repositories, package/validation/handoff readers, complete freshness

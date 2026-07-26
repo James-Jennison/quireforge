@@ -53,7 +53,33 @@ pub struct RepositoryStateDiagnostic {
 pub struct RepositoryStateReadSnapshot {
     pub schema_version: u16,
     pub state: ProjectStateContract,
+    pub git: RepositoryGitEvidence,
     pub diagnostics: Vec<RepositoryStateDiagnostic>,
+}
+
+#[derive(Clone, Debug, Default, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RepositoryGitEvidence {
+    pub upstream: Option<String>,
+    pub detached: bool,
+    pub staged_count: u32,
+    pub unstaged_count: u32,
+    pub untracked_count: u32,
+    pub merge_in_progress: bool,
+    pub rebase_in_progress: bool,
+    pub cherry_pick_in_progress: bool,
+    pub bisect_in_progress: bool,
+    pub shallow: Option<bool>,
+}
+
+#[derive(Default)]
+struct RepositoryStateParts {
+    branch: Option<String>,
+    local_head: Option<String>,
+    remote_head: Option<String>,
+    counts: Option<(u32, u32)>,
+    dirty: bool,
+    git: RepositoryGitEvidence,
 }
 
 #[derive(Default)]
@@ -99,11 +125,7 @@ impl RepositoryStateReader {
                     ));
                     return snapshot_from_parts(
                         &request.project_id,
-                        None,
-                        None,
-                        None,
-                        None,
-                        false,
+                        RepositoryStateParts::default(),
                         diagnostics,
                     );
                 }
@@ -157,13 +179,17 @@ impl RepositoryStateReader {
             branch.head.as_deref(),
             &mut diagnostics,
         );
+        let evidence = git_evidence(&branch, &changes, &root.git_dir, &root.attached_root).await;
         snapshot_from_parts(
             &request.project_id,
-            branch.head,
-            local_head,
-            remote_head,
-            counts,
-            !changes.is_empty(),
+            RepositoryStateParts {
+                branch: branch.head.clone(),
+                local_head,
+                remote_head,
+                counts,
+                dirty: !changes.is_empty(),
+                git: evidence,
+            },
             diagnostics,
         )
     }
@@ -246,11 +272,7 @@ fn read_document_branch(
 
 fn snapshot_from_parts(
     project_id: &str,
-    branch: Option<String>,
-    local_head: Option<String>,
-    remote_head: Option<String>,
-    counts: Option<(u32, u32)>,
-    dirty: bool,
+    parts: RepositoryStateParts,
     diagnostics: Vec<RepositoryStateDiagnostic>,
 ) -> RepositoryStateReadSnapshot {
     let provenance = |trust: &str,
@@ -258,26 +280,27 @@ fn snapshot_from_parts(
                       source_ref: Option<String>,
                       source_commit: Option<String>| json!({"trust":trust,"sourceType":source_type,"sourceRef":source_ref,"sourceCommit":source_commit,"observedAt":null,"verifiedAt":null,"note":null});
     let unknown = provenance("unknown", "unknown", None, None);
-    let git = provenance(
+    let git_provenance = provenance(
         "verified",
         "git",
         Some("closed-git-reader".to_owned()),
-        local_head.clone(),
+        parts.local_head.clone(),
     );
     let approval = |scope: &str| json!({"decision":"required","authority":null,"approvedAt":null,"scope":scope,"supersededAt":null,"provenance":unknown.clone()});
     let state = json!({
         "schemaVersion": 1,
-        "project": {"id":project_id,"displayName":"Attached project","repository":"unknown/unknown","localWorkspaceId":project_id,"primaryPlatform":"linux","activeUiPlatform":"tauri-react","productDirectionRef":"docs/ROADMAP.md","lifecyclePhase":"unknown","provenance":git.clone()},
+        "project": {"id":project_id,"displayName":"Attached project","repository":"unknown/unknown","localWorkspaceId":project_id,"primaryPlatform":"linux","activeUiPlatform":"tauri-react","productDirectionRef":"docs/ROADMAP.md","lifecyclePhase":"unknown","provenance":git_provenance.clone()},
         "roadmapRef":"docs/ROADMAP.md",
-        "repository":{"currentBranch":branch,"baseBranch":null,"localHead":local_head,"remoteHead":remote_head,"ahead":counts.map(|value| value.0),"behind":counts.map(|value| value.1),"worktree":if dirty {"dirty"} else {"clean"},"lastVerifiedCheckpoint":null,"mergeAuthorization":approval("merge"),"releaseAuthorization":approval("release"),"provenance":git.clone()},
+        "repository":{"currentBranch":parts.branch,"baseBranch":null,"localHead":parts.local_head,"remoteHead":parts.remote_head,"ahead":parts.counts.map(|value| value.0),"behind":parts.counts.map(|value| value.1),"worktree":if parts.dirty {"dirty"} else {"clean"},"lastVerifiedCheckpoint":null,"mergeAuthorization":approval("merge"),"releaseAuthorization":approval("release"),"provenance":git_provenance.clone()},
         "milestone":{"id":"unknown","title":"Unknown","status":"planned","objective":"Unknown","approvedScope":[],"exclusions":[],"completionRequirements":[],"predecessorId":null,"successorId":null,"ownerApproval":approval("milestone"),"provenance":unknown},
-        "workSessions":[],"checkpoints":[],"validations":[],"packages":{"required":false,"evidence":[],"provenance":unknown},"boundaries":{"approvedActions":[],"prohibitedActions":[],"confirmationRequiredActions":[],"approvals":[],"provenance":unknown},"blockers":[],"contradictions":[],"nextAction":null,"handoff":{"status":"paused","phrase":"Codex paused. Continue.","generatedAt":null,"sourceCheckpoint":null,"provenance":unknown},"provenance":git
+        "workSessions":[],"checkpoints":[],"validations":[],"packages":{"required":false,"evidence":[],"provenance":unknown},"boundaries":{"approvedActions":[],"prohibitedActions":[],"confirmationRequiredActions":[],"approvals":[],"provenance":unknown},"blockers":[],"contradictions":[],"nextAction":null,"handoff":{"status":"paused","phrase":"Codex paused. Continue.","generatedAt":null,"sourceCheckpoint":null,"provenance":unknown},"provenance":git_provenance
     });
     let state =
         serde_json::from_value(state).expect("reader scaffold must satisfy project-state v1");
     RepositoryStateReadSnapshot {
         schema_version: REPOSITORY_STATE_READER_SCHEMA_VERSION,
         state,
+        git: parts.git,
         diagnostics,
     }
 }
@@ -295,7 +318,46 @@ fn unavailable_snapshot(
         false,
         "Select or relink an attached project before reading repository state.",
     );
-    snapshot_from_parts(&project_id, None, None, None, None, false, vec![diagnostic])
+    snapshot_from_parts(
+        &project_id,
+        RepositoryStateParts::default(),
+        vec![diagnostic],
+    )
+}
+
+async fn git_evidence(
+    branch: &super::types::GitBranchSummary,
+    changes: &[super::types::GitFileChange],
+    git_dir: &Path,
+    root: &Path,
+) -> RepositoryGitEvidence {
+    let mut evidence = RepositoryGitEvidence {
+        upstream: branch.upstream.clone(),
+        detached: branch.detached,
+        ..RepositoryGitEvidence::default()
+    };
+    for change in changes {
+        evidence.staged_count += u32::from(change.staged.is_some());
+        evidence.unstaged_count += u32::from(
+            change.worktree.is_some()
+                && change.worktree != Some(super::types::GitChangeKind::Untracked),
+        );
+        evidence.untracked_count +=
+            u32::from(change.worktree == Some(super::types::GitChangeKind::Untracked));
+    }
+    evidence.merge_in_progress = git_dir.join("MERGE_HEAD").is_file();
+    evidence.rebase_in_progress =
+        git_dir.join("rebase-apply").is_dir() || git_dir.join("rebase-merge").is_dir();
+    evidence.cherry_pick_in_progress = git_dir.join("CHERRY_PICK_HEAD").is_file();
+    evidence.bisect_in_progress = git_dir.join("BISECT_LOG").is_file();
+    evidence.shallow = git_value(root, &["rev-parse", "--is-shallow-repository"])
+        .await
+        .and_then(|value| match value.as_str() {
+            "true" => Some(true),
+            "false" => Some(false),
+            _ => None,
+        });
+    evidence
 }
 
 fn diagnostic(
@@ -320,17 +382,20 @@ fn diagnostic(
 
 #[cfg(test)]
 mod tests {
+    use std::{fs, process::Command};
+
     use super::*;
+    use uuid::Uuid;
 
     #[test]
     fn local_only_snapshot_preserves_a_verified_local_head() {
         let snapshot = snapshot_from_parts(
             "018f0000-0000-7000-8000-000000000001",
-            Some("main".to_owned()),
-            Some("0123456789abcdef0123456789abcdef01234567".to_owned()),
-            None,
-            None,
-            false,
+            RepositoryStateParts {
+                branch: Some("main".to_owned()),
+                local_head: Some("0123456789abcdef0123456789abcdef01234567".to_owned()),
+                ..RepositoryStateParts::default()
+            },
             Vec::new(),
         );
 
@@ -357,5 +422,95 @@ mod tests {
             snapshot.state.repository.worktree,
             crate::project_state::WorktreeState::Clean
         );
+    }
+
+    #[tokio::test]
+    async fn local_only_read_preserves_the_inspected_repository() {
+        let root = std::env::temp_dir().join(format!("quireforge-reader-{}", Uuid::now_v7()));
+        fs::create_dir(&root).expect("fixture root must exist");
+        assert!(Command::new("git")
+            .args(["init", "--quiet"])
+            .current_dir(&root)
+            .status()
+            .expect("git init must start")
+            .success());
+        assert!(Command::new("git")
+            .args(["config", "user.email", "fixture@example.invalid"])
+            .current_dir(&root)
+            .status()
+            .expect("email config must start")
+            .success());
+        assert!(Command::new("git")
+            .args(["config", "user.name", "Fixture"])
+            .current_dir(&root)
+            .status()
+            .expect("name config must start")
+            .success());
+        fs::write(root.join("tracked.txt"), "base\n").expect("tracked file must exist");
+        assert!(Command::new("git")
+            .args(["add", "tracked.txt"])
+            .current_dir(&root)
+            .status()
+            .expect("git add must start")
+            .success());
+        assert!(Command::new("git")
+            .args(["commit", "--quiet", "-m", "fixture"])
+            .current_dir(&root)
+            .status()
+            .expect("git commit must start")
+            .success());
+        fs::write(root.join("tracked.txt"), "staged\n").expect("staged file must exist");
+        assert!(Command::new("git")
+            .args(["add", "tracked.txt"])
+            .current_dir(&root)
+            .status()
+            .expect("git add must start")
+            .success());
+        fs::write(root.join("tracked.txt"), "unstaged\n").expect("unstaged file must exist");
+        fs::write(root.join("untracked.txt"), "keep\n").expect("untracked file must exist");
+        let before_head = command_output(&root, &["rev-parse", "HEAD"]);
+        let before_status = command_output(&root, &["status", "--porcelain=v2", "-z"]);
+
+        let projects = ProjectService::in_memory();
+        projects.prepare_attachment(root.clone());
+        let project_id = projects.confirm_pending().projects[0].id.clone();
+        let snapshot = RepositoryStateReader
+            .read(
+                RepositoryStateReadRequest {
+                    project_id,
+                    remote_mode: RepositoryRemoteMode::LocalOnly,
+                },
+                &projects,
+            )
+            .await;
+
+        assert_eq!(
+            (
+                snapshot.git.staged_count,
+                snapshot.git.unstaged_count,
+                snapshot.git.untracked_count
+            ),
+            (1, 1, 1)
+        );
+        assert_eq!(before_head, command_output(&root, &["rev-parse", "HEAD"]));
+        assert_eq!(
+            before_status,
+            command_output(&root, &["status", "--porcelain=v2", "-z"])
+        );
+        assert_eq!(
+            fs::read_to_string(root.join("untracked.txt")).expect("untracked file remains"),
+            "keep\n"
+        );
+        fs::remove_dir_all(root).expect("fixture must be removed");
+    }
+
+    fn command_output(root: &Path, arguments: &[&str]) -> Vec<u8> {
+        let output = Command::new("git")
+            .args(arguments)
+            .current_dir(root)
+            .output()
+            .expect("fixture git command must start");
+        assert!(output.status.success());
+        output.stdout
     }
 }

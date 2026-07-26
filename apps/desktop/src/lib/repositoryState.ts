@@ -15,6 +15,20 @@ export const repositoryStateReadSnapshotSchema = z
   .object({
     schemaVersion: z.literal(REPOSITORY_STATE_READER_SCHEMA_VERSION),
     state: projectStateContractSchema,
+    git: z
+      .object({
+        upstream: z.string().min(1).max(4096).nullable(),
+        detached: z.boolean(),
+        stagedCount: z.number().int().nonnegative(),
+        unstagedCount: z.number().int().nonnegative(),
+        untrackedCount: z.number().int().nonnegative(),
+        mergeInProgress: z.boolean(),
+        rebaseInProgress: z.boolean(),
+        cherryPickInProgress: z.boolean(),
+        bisectInProgress: z.boolean(),
+        shallow: z.boolean().nullable(),
+      })
+      .strict(),
     diagnostics: z
       .array(
         z
