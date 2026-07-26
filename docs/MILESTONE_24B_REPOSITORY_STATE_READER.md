@@ -75,6 +75,12 @@ artifact evidence keeps the manifest version, declared size, and optional local
 presence distinct from checksum observations; absent optional package records
 remain partial evidence rather than fabricated success.
 
+Handoff phrases remain reported Markdown evidence. A pushed-checkpoint phrase
+receives current or stale freshness only after the closed Git reader confirms a
+valid local commit object and branch ancestry; otherwise it stays unknown with
+a diagnostic. A local shallow-clone fixture proves shallow detection and full
+fingerprint preservation for local-only and existing-tracking reads.
+
 Validation summaries now require version `1`, a closed check family and status,
 a full source commit, bounded operation ID, UTC-style timestamp, and safe
 repository-relative evidence path. Optional malformed validation evidence is

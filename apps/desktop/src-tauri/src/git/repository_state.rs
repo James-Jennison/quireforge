@@ -309,11 +309,13 @@ impl RepositoryStateReader {
         let git = git_evidence(&branch, &changes, &root.git_dir, &root.attached_root).await;
         let evidence = read_supported_evidence(
             &root.worktree_root,
+            &root.attached_root,
             local_head.as_deref(),
             branch.head.as_deref(),
             request.artifact_verification,
             &mut diagnostics,
-        );
+        )
+        .await;
         let mut snapshot = snapshot_from_parts(
             &request.project_id,
             RepositoryStateParts {
@@ -382,8 +384,9 @@ fn freshness(source_commit: Option<&str>, current_head: Option<&str>) -> Freshne
     }
 }
 
-fn read_supported_evidence(
+async fn read_supported_evidence(
     root: &Path,
+    git_root: &Path,
     current_head: Option<&str>,
     branch: Option<&str>,
     artifact_verification: ArtifactVerificationMode,
@@ -677,18 +680,24 @@ fn read_supported_evidence(
         {
             let reported_commit = contents
                 .lines()
-                .find_map(|line| line.split("commit:").nth(1))
+                .find_map(|line| line.strip_prefix("- **Checkpoint commit:** `"))
+                .and_then(|line| line.strip_suffix('`'))
                 .map(str::trim)
-                .filter(|value| value.len() == 40)
                 .map(str::to_owned);
-            let state = freshness(reported_commit.as_deref(), current_head);
-            if status == "checkpoint-pushed" && !matches!(state, Freshness::Current) {
+            let state = handoff_freshness(git_root, reported_commit.as_deref(), current_head).await;
+            if status == "checkpoint-pushed"
+                && !matches!(state, Freshness::Current | Freshness::Stale)
+            {
                 diagnostics.push(diagnostic(
-                    "checkpoint-without-supporting-commit",
+                    if reported_commit.as_deref().is_some_and(valid_commit) {
+                        "checkpoint-commit-unavailable"
+                    } else {
+                        "invalid-reported-checkpoint-commit"
+                    },
                     RepositoryStateDiagnosticSeverity::Warning,
                     "handoff",
                     Some("docs/CURRENT_STATE.md".to_owned()),
-                    "The checkpoint phrase is not tied to the inspected commit.".to_owned(),
+                    "The checkpoint phrase lacks supporting local Git evidence.".to_owned(),
                     false,
                     "Compare the reported checkpoint with Git evidence.",
                 ));
@@ -744,6 +753,45 @@ fn read_supported_evidence(
         }
     }
     evidence
+}
+
+async fn handoff_freshness(
+    git_root: &Path,
+    reported: Option<&str>,
+    current_head: Option<&str>,
+) -> Freshness {
+    let Some(reported) = reported else {
+        return Freshness::Unknown;
+    };
+    if !valid_commit(reported) {
+        return Freshness::Unknown;
+    }
+    let object = run_git(
+        git_root,
+        &["cat-file", "-e", &format!("{reported}^{{commit}}")],
+        1024,
+    )
+    .await;
+    let Ok(object) = object else {
+        return Freshness::Unknown;
+    };
+    if !object.success {
+        return Freshness::Unknown;
+    }
+    if Some(reported) == current_head {
+        return Freshness::Current;
+    }
+    let ancestry = run_git(
+        git_root,
+        &["merge-base", "--is-ancestor", reported, "HEAD"],
+        1024,
+    )
+    .await;
+    match ancestry {
+        Ok(output) if output.success => Freshness::Stale,
+        Ok(_) => Freshness::Conflicting,
+        Err(_) => Freshness::Unknown,
+    }
 }
 
 fn verify_artifact(
@@ -1652,6 +1700,55 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn shallow_clone_is_detected_without_reader_mutation() {
+        let fixture = FixtureRepository::new();
+        let remote = fixture.with_remote();
+        let shallow = fixture
+            .root
+            .with_file_name(format!("quireforge-reader-shallow-{}", Uuid::now_v7()));
+        assert!(Command::new("git")
+            .args([
+                "clone",
+                "--quiet",
+                "--depth=1",
+                &format!("file://{}", remote.display()),
+                shallow.to_str().unwrap()
+            ])
+            .status()
+            .unwrap()
+            .success());
+        let shallow_fixture = FixtureRepository {
+            root: shallow.clone(),
+        };
+        let (projects, project_id) = shallow_fixture.attach_project();
+        for remote_mode in [
+            RepositoryRemoteMode::LocalOnly,
+            RepositoryRemoteMode::ExistingTracking,
+        ] {
+            let before = shallow_fixture.fingerprint();
+            let snapshot = RepositoryStateReader
+                .read(
+                    RepositoryStateReadRequest {
+                        project_id: project_id.clone(),
+                        remote_mode,
+                        artifact_verification: ArtifactVerificationMode::MetadataOnly,
+                    },
+                    &projects,
+                )
+                .await;
+            assert_eq!(snapshot.git.shallow, Some(true));
+            if remote_mode == RepositoryRemoteMode::LocalOnly {
+                assert_eq!(snapshot.state.repository.ahead, None);
+                assert_eq!(snapshot.state.repository.behind, None);
+            }
+            assert_eq!(before, shallow_fixture.fingerprint());
+        }
+        std::mem::forget(shallow_fixture);
+        let _ = fs::remove_dir_all(shallow);
+        let _ = fs::remove_dir_all(remote);
+    }
+
+    #[tokio::test]
     async fn operation_markers_are_reported_without_mutating_the_fixture() {
         let fixture = FixtureRepository::new();
         let git_dir = fixture.root.join(".git");
@@ -1670,8 +1767,8 @@ mod tests {
         assert!(evidence.bisect_in_progress);
     }
 
-    #[test]
-    fn supported_evidence_is_partial_and_commit_freshness_is_deterministic() {
+    #[tokio::test]
+    async fn supported_evidence_is_partial_and_commit_freshness_is_deterministic() {
         let fixture = FixtureRepository::new();
         let head = String::from_utf8(command_output(&fixture.root, &["rev-parse", "HEAD"]))
             .unwrap()
@@ -1694,11 +1791,13 @@ mod tests {
         let mut diagnostics = Vec::new();
         let evidence = read_supported_evidence(
             &fixture.root,
+            &fixture.root,
             Some(&head),
             None,
             ArtifactVerificationMode::MetadataOnly,
             &mut diagnostics,
-        );
+        )
+        .await;
         assert_eq!(evidence.packages.len(), 1);
         assert!(matches!(evidence.packages[0].freshness, Freshness::Current));
         assert!(matches!(
@@ -1713,11 +1812,13 @@ mod tests {
         let mut malformed = Vec::new();
         let evidence = read_supported_evidence(
             &fixture.root,
+            &fixture.root,
             Some(&head),
             None,
             ArtifactVerificationMode::MetadataOnly,
             &mut malformed,
-        );
+        )
+        .await;
         assert!(evidence.packages.is_empty());
         assert!(malformed
             .iter()
