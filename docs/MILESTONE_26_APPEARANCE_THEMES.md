@@ -1,6 +1,6 @@
 # Milestone 26 — Appearance Themes
 
-Status: hotfix candidate validated; host reinstall verification pending.
+Status: complete.
 
 ## Objective
 
@@ -122,9 +122,9 @@ retain an older package with the same Debian version and stale bundled assets.
 The prior host installation was verified to have a different executable SHA-256
 than this candidate, establishing that the missing selector was a stale-package
 installation issue rather than an unreachable or conditionally hidden picker.
-The candidate's container lifecycle and visible launch passed; an interactive
-host reinstall and visible selector confirmation remain pending because this
-automation environment has no sudo credential.
+The candidate's container lifecycle and visible launch passed. Host reinstall
+verification then used the documented `apt install --reinstall` path, and the
+user confirmed that Settings → Appearance is visible in the installed app.
 
 The bounded 24B reader's producer-compatible package parsing and both closed
 metadata-only and local-artifact-verification contract paths are covered by its

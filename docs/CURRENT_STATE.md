@@ -13,9 +13,10 @@ locally.” Tauri + React + TypeScript is the current functional prototype. ADR
   `8f7b505f24a489d468f02e82d0e6197606a83abe`; it records the required
   same-version Debian `--reinstall` path after verifying that the installed
   host binary was stale. The fresh pinned Ubuntu 22.04 candidate passed its
-  container gate; visible host-selector confirmation remains pending an
-  interactive sudo reinstall. It adds eight closed, locally persisted built-in
-  appearances and settings preview behavior without changing the
+  container gate and the user confirmed Settings → Appearance after the
+  documented interactive sudo reinstall. It adds eight closed, locally
+  persisted built-in appearances and settings preview behavior without changing
+  the
   native bridge, repository-state contract, layout, typography, or automation
   boundaries.
 
@@ -71,11 +72,10 @@ the current presentation layer and calls that façade through its bridge.
 
 ## Next action
 
-Milestone 26 — **Appearance Themes** has a selector-hotfix candidate awaiting
-interactive host reinstall confirmation. It retains Forge as the default and
-adds seven closed local palettes through Settings → Appearance with local
-restoration, direct accessibility/visual coverage, and fresh Ubuntu 22.04
-Debian/AppImage evidence. See
+Milestone 26 — **Appearance Themes** is complete. It retains Forge as the
+default and adds seven closed local palettes through Settings → Appearance with
+local restoration, direct accessibility/visual coverage, fresh Ubuntu 22.04
+Debian/AppImage evidence, and installed-host selector confirmation. See
 [Milestone 26](MILESTONE_26_APPEARANCE_THEMES.md).
 
 Milestone 25 — **Desktop visual polish** is complete at implementation commit
