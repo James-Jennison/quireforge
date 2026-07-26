@@ -118,12 +118,15 @@ export const advisorDispatchProposalSchema = z
     targetProjectId: uuidV7Schema,
     promptSha256: sha256Schema,
     contextManifestSha256: sha256Schema,
+    capabilityManifestSha256: sha256Schema,
     state: advisorDispatchStateSchema,
     requiresExplicitApproval: z.literal(true),
     requestedModel: sourceRefSchema.max(128).nullable(),
     requestedReasoningEffort: sourceRefSchema.max(64).nullable(),
     createdAtMs: timestampSchema,
     updatedAtMs: timestampSchema,
+    decidedAtMs: timestampSchema.nullable(),
+    expiresAtMs: timestampSchema,
     provenance: advisorProvenanceSchema,
   })
   .strict()
@@ -132,6 +135,12 @@ export const advisorDispatchProposalSchema = z
       context.addIssue({
         code: "custom",
         message: "Dispatch timestamps are inconsistent",
+      });
+    }
+    if (value.expiresAtMs !== 0 && value.expiresAtMs < value.createdAtMs) {
+      context.addIssue({
+        code: "custom",
+        message: "Dispatch expiry is inconsistent",
       });
     }
   });

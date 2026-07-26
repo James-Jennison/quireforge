@@ -3448,6 +3448,7 @@ export default function App({
                 conversation={advisorConversation}
                 conversationBusy={advisorConversationBusy}
                 selectedProjectId={advisorProjectStateProjectId}
+                targetProjectId={currentProject?.id ?? null}
                 onConversationStart={beginAdvisorConversation}
                 onConversationPoll={pollAdvisorConversationById}
                 onConversationInterrupt={stopAdvisorConversation}

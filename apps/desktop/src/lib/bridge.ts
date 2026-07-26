@@ -114,6 +114,14 @@ import {
   type AdvisorWorkspaceSnapshot,
 } from "./advisorWorkspace";
 import {
+  advisorApprovalDecisionRequestSchema,
+  advisorApprovalSnapshotSchema,
+  advisorDraftCreateRequestSchema,
+  type AdvisorApprovalDecisionRequest,
+  type AdvisorApprovalSnapshot,
+  type AdvisorDraftCreateRequest,
+} from "./advisorApproval";
+import {
   projectPreflightSchema,
   projectWorkspaceSchema,
   type ProjectPreflightSnapshot,
@@ -192,6 +200,8 @@ export const PROJECT_WORKSPACE_STATUS_COMMAND = "project_workspace_status";
 export const ADVISOR_SNAPSHOT_READ_COMMAND = "advisor_snapshot_read";
 export const ADVISOR_PROJECT_STATE_SNAPSHOT_READ_COMMAND =
   "advisor_project_state_snapshot_read";
+export const ADVISOR_DRAFT_CREATE_COMMAND = "advisor_draft_create";
+export const ADVISOR_DRAFT_DECIDE_COMMAND = "advisor_draft_decide";
 export const PROJECT_PICK_DIRECTORY_COMMAND = "project_pick_directory";
 export const PROJECT_PICK_RELINK_COMMAND = "project_pick_relink";
 export const PROJECT_CONFIRM_ATTACHMENT_COMMAND = "project_confirm_attachment";
@@ -555,6 +565,28 @@ export async function readAdvisorProjectStateSnapshot(
   return parseAdvisorSelectedProjectStateSnapshot(
     await invokeFunction(ADVISOR_PROJECT_STATE_SNAPSHOT_READ_COMMAND, {
       request: reviewedRequest,
+    }),
+  );
+}
+
+export async function createAdvisorDraft(
+  request: AdvisorDraftCreateRequest,
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<AdvisorApprovalSnapshot> {
+  return advisorApprovalSnapshotSchema.parse(
+    await invokeFunction(ADVISOR_DRAFT_CREATE_COMMAND, {
+      request: advisorDraftCreateRequestSchema.parse(request),
+    }),
+  );
+}
+
+export async function decideAdvisorDraft(
+  request: AdvisorApprovalDecisionRequest,
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<AdvisorApprovalSnapshot> {
+  return advisorApprovalSnapshotSchema.parse(
+    await invokeFunction(ADVISOR_DRAFT_DECIDE_COMMAND, {
+      request: advisorApprovalDecisionRequestSchema.parse(request),
     }),
   );
 }

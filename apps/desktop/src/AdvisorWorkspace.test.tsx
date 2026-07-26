@@ -1,5 +1,18 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+
+const advisorDraftBridge = vi.hoisted(() => ({
+  createAdvisorDraft: vi.fn(),
+  decideAdvisorDraft: vi.fn(),
+}));
+
+vi.mock("./lib/bridge", () => advisorDraftBridge);
 
 import { AdvisorWorkspace } from "./AdvisorWorkspace";
 import { scaffoldAdvisorConversation } from "./lib/advisorConversation";
@@ -192,5 +205,89 @@ describe("AdvisorWorkspace", () => {
     expect(
       screen.queryByText("Enter a message to send."),
     ).not.toBeInTheDocument();
+  });
+
+  it("labels Phase A draft approval as non-executable", () => {
+    render(
+      <AdvisorWorkspace
+        {...props}
+        targetProjectId="018f0000-0000-7000-8000-000000000002"
+        conversation={{
+          ...scaffoldAdvisorConversation,
+          state: "completed",
+          conversationId: "018f0000-0000-7000-8000-000000000003",
+        }}
+      />,
+    );
+    expect(
+      screen.getByRole("textbox", { name: "Editable draft" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Create approval draft" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Copy draft" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /cannot start Codex, run a command, or change a project/u,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("binds the selected safe projection and invalidates approval when its target changes", async () => {
+    advisorDraftBridge.createAdvisorDraft.mockResolvedValue({
+      proposalId: "018f0000-0000-7000-8000-000000000004",
+      state: "draft",
+      expiresAtMs: 1771235467000,
+      dispatchAvailable: false,
+    });
+    const conversation = {
+      ...scaffoldAdvisorConversation,
+      state: "completed" as const,
+      conversationId: "018f0000-0000-7000-8000-000000000003",
+    };
+    const { rerender } = render(
+      <AdvisorWorkspace
+        {...props}
+        conversation={conversation}
+        targetProjectId="018f0000-0000-7000-8000-000000000002"
+        selectedProjectId="018f0000-0000-7000-8000-000000000002"
+        selectedProjectState={selectedProjectStateFixture}
+      />,
+    );
+    fireEvent.click(
+      screen.getByRole("checkbox", {
+        name: /include the selected temporary project state summary/i,
+      }),
+    );
+    fireEvent.change(screen.getByRole("textbox", { name: "Editable draft" }), {
+      target: { value: "Prepare a bounded implementation plan." },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Create approval draft" }),
+    );
+
+    await waitFor(() =>
+      expect(advisorDraftBridge.createAdvisorDraft).toHaveBeenCalledWith(
+        expect.objectContaining({
+          selectedProjectState: selectedProjectStateFixture,
+        }),
+      ),
+    );
+    expect(await screen.findByText(/Draft is draft/u)).toBeInTheDocument();
+
+    rerender(
+      <AdvisorWorkspace
+        {...props}
+        conversation={conversation}
+        targetProjectId="018f0000-0000-7000-8000-000000000005"
+        selectedProjectId="018f0000-0000-7000-8000-000000000005"
+        selectedProjectState={selectedProjectStateFixture}
+      />,
+    );
+    await waitFor(() =>
+      expect(screen.queryByText(/Draft is draft/u)).not.toBeInTheDocument(),
+    );
   });
 });

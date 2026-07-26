@@ -1,7 +1,10 @@
 # Changelog
 
-## Unreleased — 0.1.0-beta.7
+## Unreleased — 0.1.0-beta.9
 
+- Add the unnumbered Advisor Approval/Dispatch Phase A controller: transient
+  editable drafts and expiring digest-only explicit approval/rejection records.
+  It cannot dispatch, start Codex, run commands, or change a project.
 - Separate the Advisor capability notice from its action row so the disabled
   send control remains readable at desktop and narrow widths. The visible
   disabled reason now explains whether sign-in, an Advisor message, or a

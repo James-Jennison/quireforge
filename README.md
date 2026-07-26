@@ -42,9 +42,10 @@ and next approved work are maintained in [Current State](docs/CURRENT_STATE.md).
   processes or consume raw Codex protocol messages.
 - Project operations are scoped to attached directories and explicit user
   actions. Detach, archive, and remove actions are not filesystem deletion.
-- Advisor remains read-only and non-executable; optional Project State context
-  requires explicit selection and per-send confirmation. Approval and execution
-  workflows retain their separate confirmation boundaries.
+- Advisor remains non-executable. Its Phase A draft controller can record an
+  explicit, expiring digest-only approval, but cannot dispatch, start Codex,
+  or change a project; optional Project State context still requires explicit
+  selection and per-send confirmation.
 - The project does not scrape ChatGPT, reverse engineer private protocols, or
   imply OpenAI endorsement.
 

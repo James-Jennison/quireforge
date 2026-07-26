@@ -72,34 +72,25 @@ export interface AdvisorProjectStateReadRequest {
   projectId: string;
 }
 
-export interface AdvisorSelectedProjectStateSnapshot {
-  schemaVersion: 1;
-  sourceKind: "project-state";
-  selectedAtMs: number;
-  trust: z.infer<typeof trust>;
-  freshness: z.infer<typeof freshness>;
-  provenanceSource: "project-state-snapshot";
-  worktree: "clean" | "dirty" | "unknown";
-  diagnosticCount: number;
-}
+export const advisorSelectedProjectStateSnapshotSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    sourceKind: z.literal("project-state"),
+    selectedAtMs: z.number().int().nonnegative(),
+    trust,
+    freshness,
+    provenanceSource: z.literal("project-state-snapshot"),
+    worktree: z.enum(["clean", "dirty", "unknown"]),
+    diagnosticCount: z.number().int().nonnegative(),
+  })
+  .strict();
+
+export type AdvisorSelectedProjectStateSnapshot = z.infer<
+  typeof advisorSelectedProjectStateSnapshotSchema
+>;
 
 const projectIdPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
-const selectedProjectStateKeys = [
-  "schemaVersion",
-  "sourceKind",
-  "selectedAtMs",
-  "trust",
-  "freshness",
-  "provenanceSource",
-  "worktree",
-  "diagnosticCount",
-];
-const safeCount = (value: unknown) =>
-  typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
-const oneOf = (value: unknown, values: readonly string[]) =>
-  typeof value === "string" && values.includes(value);
-
 export function parseAdvisorProjectStateReadRequest(
   value: AdvisorProjectStateReadRequest,
 ): AdvisorProjectStateReadRequest {
@@ -115,29 +106,9 @@ export function parseAdvisorProjectStateReadRequest(
 export function parseAdvisorSelectedProjectStateSnapshot(
   value: unknown,
 ): AdvisorSelectedProjectStateSnapshot {
-  if (!value || typeof value !== "object") {
+  try {
+    return advisorSelectedProjectStateSnapshotSchema.parse(value);
+  } catch {
     throw new Error("Invalid Advisor snapshot");
   }
-  const record = value as Record<string, unknown>;
-  if (
-    Object.keys(record).length !== selectedProjectStateKeys.length ||
-    selectedProjectStateKeys.some((key) => !(key in record)) ||
-    record.schemaVersion !== 1 ||
-    record.sourceKind !== "project-state" ||
-    record.provenanceSource !== "project-state-snapshot" ||
-    !safeCount(record.selectedAtMs) ||
-    !oneOf(record.trust, ["verified", "reported", "inferred", "unknown"]) ||
-    !oneOf(record.freshness, [
-      "current",
-      "stale",
-      "unknown",
-      "conflicting",
-      "not-applicable",
-    ]) ||
-    !oneOf(record.worktree, ["clean", "dirty", "unknown"]) ||
-    !safeCount(record.diagnosticCount)
-  ) {
-    throw new Error("Invalid Advisor snapshot");
-  }
-  return record as unknown as AdvisorSelectedProjectStateSnapshot;
 }

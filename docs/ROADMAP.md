@@ -881,6 +881,16 @@ Codex execution remain separate future work. The clean `0.1.0-beta.6` Ubuntu
 visible-launch, and installed-host smoke gates. See the
 [Milestone 29 report](MILESTONE_29_MANAGED_ADVISOR_CONVERSATION.md).
 
+### Advisor Approval/Dispatch Phase A (unnumbered)
+
+Approved implementation scope is an editable, transient draft and explicit,
+expiring digest-only approval controller. It binds the prompt, exact temporary
+safe selected-context projection, target project, declared capability manifest,
+requested model and reasoning labels, timestamp, and decision. It has no dispatch command and no
+reference to the Codex execution service; changing any bound input requires a
+new approval. Supported dispatch and completion-report return remain separate
+proposal and approval gates.
+
 ## Forecast policy
 
 The initial whole-project estimate is several hundred active engineering hours

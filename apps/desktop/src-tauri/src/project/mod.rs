@@ -19,7 +19,10 @@ use types::{
 };
 use uuid::Uuid;
 
-use crate::advisor::{AdvisorFoundationSnapshot, AdvisorWorkspaceSnapshot};
+use crate::advisor::{
+    AdvisorApprovalSnapshot, AdvisorDispatchProposal, AdvisorDispatchState,
+    AdvisorFoundationSnapshot, AdvisorWorkspaceSnapshot,
+};
 
 use self::identity::{
     disconnected_state, display_path, inspect_directory, DirectoryIdentity,
@@ -238,6 +241,51 @@ impl ProjectService {
 
     pub fn advisor_workspace_snapshot(&self) -> Result<AdvisorWorkspaceSnapshot, ()> {
         Ok(self.advisor_snapshot()?.workspace_snapshot())
+    }
+
+    pub(crate) fn create_advisor_dispatch_proposal(
+        &self,
+        proposal: &AdvisorDispatchProposal,
+    ) -> Result<AdvisorApprovalSnapshot, ProjectExecutionError> {
+        let mut repository = self
+            .repository
+            .lock()
+            .map_err(|_| ProjectExecutionError::MetadataUnavailable)?;
+        let repository = repository
+            .as_mut()
+            .ok_or(ProjectExecutionError::MetadataUnavailable)?;
+        repository
+            .insert_advisor_dispatch_proposal(proposal)
+            .map_err(map_project_execution_storage_error)?;
+        Ok(AdvisorApprovalSnapshot {
+            proposal_id: proposal.id.clone(),
+            state: proposal.state,
+            expires_at_ms: proposal.expires_at_ms,
+            dispatch_available: false,
+        })
+    }
+
+    pub(crate) fn decide_advisor_dispatch_proposal(
+        &self,
+        proposal_id: &str,
+        decision: AdvisorDispatchState,
+    ) -> Result<AdvisorApprovalSnapshot, ProjectExecutionError> {
+        let mut repository = self
+            .repository
+            .lock()
+            .map_err(|_| ProjectExecutionError::MetadataUnavailable)?;
+        let repository = repository
+            .as_mut()
+            .ok_or(ProjectExecutionError::MetadataUnavailable)?;
+        let proposal = repository
+            .decide_advisor_dispatch_proposal(proposal_id, decision)
+            .map_err(map_project_execution_storage_error)?;
+        Ok(AdvisorApprovalSnapshot {
+            proposal_id: proposal.id,
+            state: proposal.state,
+            expires_at_ms: proposal.expires_at_ms,
+            dispatch_available: false,
+        })
     }
 
     pub fn picker_unavailable(&self) -> ProjectWorkspaceSnapshot {

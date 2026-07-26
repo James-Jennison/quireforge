@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type { CodexAuthSnapshot } from "./lib/auth";
 import type {
@@ -10,6 +10,13 @@ import type {
   AdvisorSelectedProjectStateSnapshot,
   AdvisorWorkspaceSnapshot,
 } from "./lib/advisorWorkspace";
+import { createAdvisorDraft, decideAdvisorDraft } from "./lib/bridge";
+import type { AdvisorApprovalSnapshot } from "./lib/advisorApproval";
+
+interface AdvisorApprovalState {
+  snapshot: AdvisorApprovalSnapshot;
+  bindingKey: string;
+}
 
 interface AdvisorWorkspaceProps {
   availability: "checking" | "native" | "preview" | "error";
@@ -25,6 +32,7 @@ interface AdvisorWorkspaceProps {
   conversation: AdvisorConversationSnapshot;
   conversationBusy: boolean;
   selectedProjectId: string | null;
+  targetProjectId?: string | null;
   onConversationStart: (
     request: AdvisorConversationStartRequest,
   ) => Promise<AdvisorConversationSnapshot>;
@@ -65,6 +73,7 @@ export function AdvisorWorkspace({
   conversation,
   conversationBusy,
   selectedProjectId,
+  targetProjectId = null,
   onConversationStart,
   onConversationPoll,
   onConversationInterrupt,
@@ -73,6 +82,15 @@ export function AdvisorWorkspace({
   const [includeProjectState, setIncludeProjectState] = useState(false);
   const [confirmContextSend, setConfirmContextSend] = useState(false);
   const [actionError, setActionError] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [requestedModel, setRequestedModel] = useState("default");
+  const [requestedReasoning, setRequestedReasoning] = useState("default");
+  const [declaredCapability, setDeclaredCapability] = useState<
+    "read-only" | "workspace-write" | "danger-full-access"
+  >("workspace-write");
+  const [approval, setApproval] = useState<AdvisorApprovalState | null>(null);
+  const [approvalBusy, setApprovalBusy] = useState(false);
+  const draftRef = useRef<HTMLTextAreaElement>(null);
   const empty =
     snapshot?.conversationCount === 0 &&
     snapshot.contextReferenceCount === 0 &&
@@ -83,6 +101,16 @@ export function AdvisorWorkspace({
   const canIncludeProjectState = Boolean(
     selectedProjectState && selectedProjectId,
   );
+  const approvalBindingKey = JSON.stringify({
+    advisorConversationId: conversation.conversationId,
+    targetProjectId,
+    selectedProjectState:
+      includeProjectState && canIncludeProjectState
+        ? selectedProjectState
+        : null,
+  });
+  const currentApproval =
+    approval?.bindingKey === approvalBindingKey ? approval.snapshot : null;
   const sendDisabledReason =
     authentication !== "ready"
       ? "Sign in with managed ChatGPT to send."
@@ -109,6 +137,48 @@ export function AdvisorWorkspace({
       .catch(() => setActionError(true));
   }
 
+  async function createDraft() {
+    if (!conversation.conversationId || !targetProjectId || !draft.trim())
+      return;
+    setApprovalBusy(true);
+    setActionError(false);
+    try {
+      const snapshot = await createAdvisorDraft({
+        advisorConversationId: conversation.conversationId,
+        targetProjectId,
+        prompt: draft,
+        selectedProjectState:
+          includeProjectState && canIncludeProjectState
+            ? selectedProjectState
+            : null,
+        declaredCapabilities: [declaredCapability],
+        requestedModel,
+        requestedReasoningEffort: requestedReasoning,
+      });
+      setApproval({ snapshot, bindingKey: approvalBindingKey });
+    } catch {
+      setActionError(true);
+    } finally {
+      setApprovalBusy(false);
+    }
+  }
+
+  async function decideDraft(decision: "approved" | "rejected") {
+    if (!currentApproval) return;
+    setApprovalBusy(true);
+    try {
+      const snapshot = await decideAdvisorDraft({
+        proposalId: currentApproval.proposalId,
+        decision,
+      });
+      setApproval({ snapshot, bindingKey: approvalBindingKey });
+    } catch {
+      setActionError(true);
+    } finally {
+      setApprovalBusy(false);
+    }
+  }
+
   return (
     <section
       className="project-workspace"
@@ -120,8 +190,9 @@ export function AdvisorWorkspace({
         Read-only planning, without execution.
       </h1>
       <p role="note">
-        Advisor has no shell, terminal, Git, repository-write, approval, or
-        dispatch capability. QuireForge retains no prompt or transcript text.
+        Advisor has no shell, terminal, Git, repository-write, or dispatch
+        capability. Draft approval records are digest-only and cannot execute.
+        QuireForge retains no prompt or transcript text.
       </p>
       {availability === "checking" && (
         <p role="status">Reading Advisor metadata.</p>
@@ -244,6 +315,129 @@ export function AdvisorWorkspace({
             >
               The selected snapshot could not be read; no context was retained.
             </p>
+          )}
+        </section>
+      )}
+      {availability === "native" && (
+        <section
+          className="project-card"
+          aria-labelledby="advisor-approval-title"
+        >
+          <h2 id="advisor-approval-title">Approval draft</h2>
+          <p role="note">
+            This records a digest-only approval draft. It cannot start Codex,
+            run a command, or change a project.
+          </p>
+          {!conversation.conversationId || !targetProjectId ? (
+            <p className="project-message">
+              Complete an Advisor conversation and select an attached project
+              outside Advisor before preparing a draft.
+            </p>
+          ) : (
+            <>
+              <label htmlFor="advisor-dispatch-draft">Editable draft</label>
+              <textarea
+                id="advisor-dispatch-draft"
+                ref={draftRef}
+                value={draft}
+                onChange={(event) => {
+                  setDraft(event.target.value);
+                  setApproval(null);
+                }}
+                rows={5}
+              />
+              <label htmlFor="advisor-draft-model">Requested model</label>
+              <input
+                id="advisor-draft-model"
+                value={requestedModel}
+                onChange={(event) => {
+                  setRequestedModel(event.target.value);
+                  setApproval(null);
+                }}
+              />
+              <label htmlFor="advisor-draft-reasoning">
+                Requested reasoning
+              </label>
+              <input
+                id="advisor-draft-reasoning"
+                value={requestedReasoning}
+                onChange={(event) => {
+                  setRequestedReasoning(event.target.value);
+                  setApproval(null);
+                }}
+              />
+              <label htmlFor="advisor-draft-capability">
+                Declared future capability
+              </label>
+              <select
+                id="advisor-draft-capability"
+                value={declaredCapability}
+                onChange={(event) => {
+                  setDeclaredCapability(
+                    event.target.value as typeof declaredCapability,
+                  );
+                  setApproval(null);
+                }}
+              >
+                <option value="read-only">Read-only</option>
+                <option value="workspace-write">Workspace write</option>
+                <option value="danger-full-access">Danger full access</option>
+              </select>
+              <div className="project-actions">
+                <button
+                  type="button"
+                  disabled={!currentApproval}
+                  onClick={() => {
+                    setApproval(null);
+                    draftRef.current?.focus();
+                  }}
+                >
+                  Edit draft
+                </button>
+                <button
+                  type="button"
+                  disabled={approvalBusy || !draft.trim()}
+                  onClick={() => void createDraft()}
+                >
+                  Create approval draft
+                </button>
+                <button
+                  type="button"
+                  disabled={!draft.trim()}
+                  onClick={() => void navigator.clipboard?.writeText(draft)}
+                >
+                  Copy draft
+                </button>
+              </div>
+              {currentApproval && (
+                <div className="project-confirmation" role="status">
+                  <p>
+                    Draft is {currentApproval.state}. Dispatch remains
+                    unavailable. This record expires at{" "}
+                    {new Date(currentApproval.expiresAtMs).toLocaleTimeString()}
+                    .
+                  </p>
+                  {currentApproval.state === "draft" && (
+                    <div className="project-actions">
+                      <button
+                        type="button"
+                        disabled={approvalBusy}
+                        onClick={() => void decideDraft("approved")}
+                      >
+                        Approve draft
+                      </button>
+                      <button
+                        type="button"
+                        disabled={approvalBusy}
+                        onClick={() => void decideDraft("rejected")}
+                      >
+                        Reject draft
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
           )}
         </section>
       )}

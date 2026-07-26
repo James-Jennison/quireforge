@@ -69,12 +69,16 @@ and returns an in-memory safe projection with no project identity, path, Git
 ref, document, artifact, or content field.
 
 Advisor does not inherit an attached project, terminal, Git, worktree,
-integration, approval, or native-action capability from Codex. A later
-Approval/Dispatch controller must present a user-editable prompt and target
-project, then require an explicit UI approval before it can invoke the existing
-Codex execution boundary. It must not infer consent from Advisor output or
-ordinary conversation text. Context reading, model calls, screenshot staging,
-dispatch, and all Milestone 24D consistency behavior are deferred.
+integration, approval, or native-action capability from Codex. Phase A adds a
+separate controller that holds editable draft text only in memory and persists
+only digests of the prompt, exact temporary safe-context projection, and
+capability manifest; the target-project reference; requested model/reasoning
+labels; decision; and expiry. Its explicit approval is not a dispatch and its fixed commands cannot
+invoke the execution service. Changing a bound value invalidates the draft. A
+later, separately approved phase may
+revalidate an unexpired approval immediately before it invokes the existing
+Codex execution boundary. Context reading, model calls, screenshot staging,
+dispatch, and all Milestone 24D consistency behavior remain deferred.
 
 ### Milestone 29 managed Advisor conversation boundary
 

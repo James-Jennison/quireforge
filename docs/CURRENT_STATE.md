@@ -77,9 +77,10 @@ locally.” Tauri + React + TypeScript is the current functional prototype. ADR
   local-only/metadata-only normalized Project State source; its safe projection
   excludes identity, paths, Git refs, source content, artifacts, diagnostics,
   and images, and is never retained in SQLite. It has no model call,
-  prompt/transcript retention, approval action, dispatch, Python sidecar,
-  watcher, handoff generation, contradiction resolution, or repository-write
-  capability. See
+  prompt/transcript retention, dispatch, Python sidecar, watcher, handoff
+  generation, contradiction resolution, or repository-write capability. The
+  separately approved Phase A controller adds only expiring digest-only draft
+  approval/rejection; it cannot start Codex or execute a project. See
   [Milestone 28](MILESTONE_28_ADVISOR_FOUNDATION.md). The clean
   `0.1.0-beta.5` Ubuntu 22.04 Debian/AppImage set passed the pinned container
   lifecycle, desktop/icon, visible-launch, and installed-host smoke gates.
@@ -137,9 +138,10 @@ visible-launch, and installed-host visual gate.
 Milestone 28 — **Reference-Only Advisor Foundation** is complete. It includes a
 read-only Advisor metadata route and one explicitly confirmed, temporary safe
 projection of the existing local Project State reader; arbitrary context
-reading, model calls, prompt text retention, approval/dispatch flow, and
-automation remain separately gated. The next action requires a separate
-Advisor integration and Approval/Dispatch proposal gate.
+reading, model calls, prompt text retention, dispatch flow, and automation
+remain separately gated. The approved unnumbered Phase A work is limited to a
+transient editable draft and digest-only approval controller; supported
+dispatch and completion reporting remain separate gates.
 
 Milestone 26 — **Appearance Themes** is complete. It retains Forge as the
 default and adds seven closed local palettes through Settings → Appearance with

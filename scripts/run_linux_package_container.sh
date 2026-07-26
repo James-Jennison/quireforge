@@ -50,6 +50,9 @@ docker run \
   "pnpm install --frozen-lockfile --store-dir /cache/pnpm-store \
     && pnpm package:linux \
     && python3 scripts/validate_release_artifacts.py \
-      --artifact-dir target/ubuntu-22.04/release/packages \
+      --artifact-dir target/ubuntu-22.04/release/packages/.candidate-$(node -p 'require("./package.json").version') \
       --lifecycle \
-      --smoke"
+      --smoke \
+    && python3 scripts/package_linux.py --finalize \
+    && python3 scripts/validate_release_artifacts.py \
+      --artifact-dir target/ubuntu-22.04/release/packages"

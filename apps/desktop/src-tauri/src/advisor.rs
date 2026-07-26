@@ -106,6 +106,42 @@ pub enum AdvisorDispatchState {
     Rejected,
 }
 
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum AdvisorDeclaredCapability {
+    ReadOnly,
+    WorkspaceWrite,
+    DangerFullAccess,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct AdvisorDraftCreateRequest {
+    pub advisor_conversation_id: String,
+    pub target_project_id: String,
+    pub prompt: String,
+    pub selected_project_state: Option<AdvisorSelectedProjectStateSnapshot>,
+    pub declared_capabilities: Vec<AdvisorDeclaredCapability>,
+    pub requested_model: String,
+    pub requested_reasoning_effort: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct AdvisorApprovalDecisionRequest {
+    pub proposal_id: String,
+    pub decision: AdvisorDispatchState,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AdvisorApprovalSnapshot {
+    pub proposal_id: String,
+    pub state: AdvisorDispatchState,
+    pub expires_at_ms: i64,
+    pub dispatch_available: bool,
+}
+
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct AdvisorDispatchProposal {
@@ -116,12 +152,17 @@ pub struct AdvisorDispatchProposal {
     /// prompt body is persisted in this foundation.
     pub prompt_sha256: String,
     pub context_manifest_sha256: String,
+    /// SHA-256 of the closed declared-capability list. The list itself is held
+    /// only by the controller UI and is never an execution grant.
+    pub capability_manifest_sha256: String,
     pub state: AdvisorDispatchState,
     pub requires_explicit_approval: bool,
     pub requested_model: Option<String>,
     pub requested_reasoning_effort: Option<String>,
     pub created_at_ms: i64,
     pub updated_at_ms: i64,
+    pub decided_at_ms: Option<i64>,
+    pub expires_at_ms: i64,
     pub provenance: AdvisorProvenance,
 }
 
@@ -166,8 +207,8 @@ pub struct AdvisorProposalSummary {
 /// The only project-derived data the reference-only Advisor may receive in
 /// this checkpoint. It is a deliberately small projection of the existing
 /// normalized repository-state reader, never the reader's full payload.
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct AdvisorSelectedProjectStateSnapshot {
     pub schema_version: u16,
     pub source_kind: AdvisorContextKind,
@@ -245,9 +286,14 @@ impl AdvisorFoundationSnapshot {
                 || !conversation_ids.contains(&proposal.advisor_conversation_id)
                 || !valid_sha256(&proposal.prompt_sha256)
                 || !valid_sha256(&proposal.context_manifest_sha256)
+                || !valid_sha256(&proposal.capability_manifest_sha256)
                 || !proposal.requires_explicit_approval
                 || proposal.created_at_ms < 0
                 || proposal.updated_at_ms < proposal.created_at_ms
+                || (proposal.expires_at_ms != 0 && proposal.expires_at_ms < proposal.created_at_ms)
+                || proposal.decided_at_ms.is_some_and(|value| {
+                    value < proposal.created_at_ms || value > proposal.updated_at_ms
+                })
                 || proposal
                     .requested_model
                     .as_deref()
@@ -293,6 +339,16 @@ impl AdvisorFoundationSnapshot {
 }
 
 impl AdvisorSelectedProjectStateSnapshot {
+    pub fn is_valid(&self) -> bool {
+        self.schema_version == ADVISOR_FOUNDATION_SCHEMA_VERSION
+            && matches!(self.source_kind, AdvisorContextKind::ProjectState)
+            && self.selected_at_ms >= 0
+            && matches!(
+                self.provenance_source,
+                AdvisorProvenanceSource::ProjectStateSnapshot
+            )
+    }
+
     pub fn from_repository_snapshot(
         snapshot: RepositoryStateReadSnapshot,
         selected_at_ms: i64,

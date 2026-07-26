@@ -7,6 +7,7 @@ import hashlib
 import json
 import os
 import shutil
+import sys
 import tempfile
 from pathlib import Path
 
@@ -170,6 +171,38 @@ def rebuild_appimage(
         output.chmod(0o755)
 
 
+def staging_dir(output_dir: Path, version: str) -> Path:
+    return output_dir / f".candidate-{version}"
+
+
+def finalize(output_dir: Path, version: str) -> int:
+    candidate = staging_dir(output_dir, version)
+    expected = {
+        "release-manifest.json",
+        "SHA256SUMS",
+        debian_artifact_filename(version),
+        f"{APPIMAGE_BASENAME}-{version}-x86_64.AppImage",
+    }
+    if not candidate.is_dir() or {path.name for path in candidate.iterdir()} != expected:
+        raise RuntimeError("validated candidate set is incomplete")
+    for existing in output_dir.iterdir():
+        if existing == candidate:
+            continue
+        if existing.is_file() and (
+            existing.name in {"SHA256SUMS", "release-manifest.json"}
+            or existing.suffix == ".deb"
+            or existing.name.endswith(".AppImage")
+        ):
+            existing.unlink()
+        else:
+            raise RuntimeError(f"refusing unexpected package output: {existing}")
+    for artifact in candidate.iterdir():
+        shutil.move(artifact, output_dir / artifact.name)
+    candidate.rmdir()
+    print(f"promoted validated Linux release candidates: {output_dir.relative_to(ROOT)}")
+    return 0
+
+
 def main() -> int:
     # tauri-bundler clears linuxdeploy's three-byte AppImage marker after it
     # verifies and extracts the reviewed tool. Accept only that exact mutation.
@@ -191,23 +224,19 @@ def main() -> int:
 
     output_dir = package_output_dir()
     output_dir.mkdir(parents=True, exist_ok=True)
-    for existing in output_dir.iterdir():
-        if existing.is_file() and existing.name in {
-            "SHA256SUMS",
-            "release-manifest.json",
-        }:
-            existing.unlink()
-        elif existing.is_file() and (
-            existing.suffix == ".deb" or existing.name.endswith(".AppImage")
-        ):
-            existing.unlink()
-        else:
-            raise RuntimeError(f"refusing unexpected package output: {existing}")
+    if sys.argv[1:] == ["--finalize"]:
+        return finalize(output_dir, version)
+    if len(sys.argv) != 1:
+        raise RuntimeError("expected no arguments or --finalize")
+    candidate_dir = staging_dir(output_dir, version)
+    if candidate_dir.exists():
+        shutil.rmtree(candidate_dir)
+    candidate_dir.mkdir()
 
     timestamp = source_date_epoch()
-    deb_output = output_dir / debian_artifact_filename(version, deb_arch)
+    deb_output = candidate_dir / debian_artifact_filename(version, deb_arch)
     appimage_output = (
-        output_dir / f"{APPIMAGE_BASENAME}-{version}-{release_arch}.AppImage"
+        candidate_dir / f"{APPIMAGE_BASENAME}-{version}-{release_arch}.AppImage"
     )
     rebuild_debian(raw_deb, deb_output, version, timestamp)
     rebuild_appimage(raw_appimage, appimage_output, version, timestamp)
@@ -242,12 +271,12 @@ def main() -> int:
         "builder": builder_record(),
         "artifacts": artifacts,
     }
-    (output_dir / "release-manifest.json").write_text(
+    (candidate_dir / "release-manifest.json").write_text(
         json.dumps(manifest, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
-    write_sha256sums(output_dir, [appimage_output, deb_output])
-    print(f"normalized Linux release candidates: {output_dir.relative_to(ROOT)}")
+    write_sha256sums(candidate_dir, [appimage_output, deb_output])
+    print(f"normalized Linux release candidates: {candidate_dir.relative_to(ROOT)}")
     return 0
 
 

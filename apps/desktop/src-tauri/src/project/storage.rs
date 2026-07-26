@@ -283,6 +283,18 @@ CREATE INDEX advisor_dispatch_records_conversation
     ON advisor_dispatch_records(advisor_conversation_id, updated_at_ms DESC, id);
 "#;
 
+// Phase A stores only binding digests and approval timing. Prompt bodies,
+// context content, credentials, and execution results remain absent.
+const ADVISOR_APPROVAL_CONTROLLER_MIGRATION: &str = r#"
+ALTER TABLE advisor_dispatch_records
+    ADD COLUMN capability_manifest_sha256 TEXT NOT NULL DEFAULT '0000000000000000000000000000000000000000000000000000000000000000'
+    CHECK(length(capability_manifest_sha256) = 64);
+ALTER TABLE advisor_dispatch_records
+    ADD COLUMN decided_at_ms INTEGER;
+ALTER TABLE advisor_dispatch_records
+    ADD COLUMN expires_at_ms INTEGER NOT NULL DEFAULT 0;
+"#;
+
 const MIGRATIONS: &[(i64, &str, &str)] = &[
     (1, "projects-and-directory-associations", INITIAL_MIGRATION),
     (
@@ -303,6 +315,11 @@ const MIGRATIONS: &[(i64, &str, &str)] = &[
         8,
         "advisor-reference-foundation",
         ADVISOR_REFERENCE_FOUNDATION_MIGRATION,
+    ),
+    (
+        9,
+        "advisor-approval-controller",
+        ADVISOR_APPROVAL_CONTROLLER_MIGRATION,
     ),
 ];
 
@@ -607,7 +624,8 @@ impl ProjectRepository {
                     context_manifest_sha256, state, requires_explicit_approval,
                     requested_model, requested_reasoning_effort, trust,
                     provenance_source, provenance_ref, provenance_commit,
-                    observed_at_ms, provenance_note, created_at_ms, updated_at_ms
+                    observed_at_ms, provenance_note, created_at_ms, updated_at_ms,
+                    capability_manifest_sha256, decided_at_ms, expires_at_ms
              FROM advisor_dispatch_records ORDER BY updated_at_ms DESC, id",
         )?;
         let rows = statement.query_map([], |row| {
@@ -629,6 +647,9 @@ impl ProjectRepository {
                 row.get::<_, Option<String>>(14)?,
                 row.get::<_, i64>(15)?,
                 row.get::<_, i64>(16)?,
+                row.get::<_, String>(17)?,
+                row.get::<_, Option<i64>>(18)?,
+                row.get::<_, i64>(19)?,
             ))
         })?;
         let mut proposals = Vec::new();
@@ -651,6 +672,9 @@ impl ProjectRepository {
                 note,
                 created_at_ms,
                 updated_at_ms,
+                capability_manifest_sha256,
+                decided_at_ms,
+                expires_at_ms,
             ) = row?;
             proposals.push(AdvisorDispatchProposal {
                 id,
@@ -658,12 +682,15 @@ impl ProjectRepository {
                 target_project_id,
                 prompt_sha256,
                 context_manifest_sha256,
+                capability_manifest_sha256,
                 state: parse_advisor_dispatch_state(&state)?,
                 requires_explicit_approval: requires_explicit_approval == 1,
                 requested_model,
                 requested_reasoning_effort,
                 created_at_ms,
                 updated_at_ms,
+                decided_at_ms,
+                expires_at_ms,
                 provenance: AdvisorProvenance {
                     trust: parse_advisor_trust(&trust)?,
                     source: parse_advisor_provenance_source(&provenance_source)?,
@@ -1080,6 +1107,75 @@ impl ProjectRepository {
         Ok(())
     }
 
+    pub(crate) fn insert_advisor_dispatch_proposal(
+        &mut self,
+        proposal: &AdvisorDispatchProposal,
+    ) -> Result<(), StorageError> {
+        self.connection.execute(
+            "INSERT INTO advisor_dispatch_records (
+                id, advisor_conversation_id, target_project_id, request_sha256,
+                context_manifest_sha256, capability_manifest_sha256, state,
+                requires_explicit_approval, requested_model, requested_reasoning_effort,
+                trust, provenance_source, provenance_ref, provenance_commit,
+                observed_at_ms, provenance_note, created_at_ms, updated_at_ms,
+                decided_at_ms, expires_at_ms
+             ) VALUES (
+                ?1, ?2, ?3, ?4, ?5, ?6, ?7, 1, ?8, ?9, ?10, ?11, ?12, ?13,
+                ?14, ?15, ?16, ?17, ?18, ?19
+             )",
+            params![
+                proposal.id,
+                proposal.advisor_conversation_id,
+                proposal.target_project_id,
+                proposal.prompt_sha256,
+                proposal.context_manifest_sha256,
+                proposal.capability_manifest_sha256,
+                advisor_dispatch_state_value(proposal.state),
+                proposal.requested_model,
+                proposal.requested_reasoning_effort,
+                advisor_trust_value(proposal.provenance.trust),
+                advisor_provenance_source_value(proposal.provenance.source),
+                proposal.provenance.source_ref,
+                proposal.provenance.source_commit,
+                proposal.provenance.observed_at_ms,
+                proposal.provenance.note,
+                proposal.created_at_ms,
+                proposal.updated_at_ms,
+                proposal.decided_at_ms,
+                proposal.expires_at_ms,
+            ],
+        )?;
+        Ok(())
+    }
+
+    pub(crate) fn decide_advisor_dispatch_proposal(
+        &mut self,
+        proposal_id: &str,
+        decision: AdvisorDispatchState,
+    ) -> Result<AdvisorDispatchProposal, StorageError> {
+        if matches!(decision, AdvisorDispatchState::Draft) {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let timestamp = now_millis();
+        let updated = self.connection.execute(
+            "UPDATE advisor_dispatch_records
+             SET state = ?1, decided_at_ms = ?2, updated_at_ms = ?2
+             WHERE id = ?3 AND state = 'draft' AND expires_at_ms > ?2",
+            params![
+                advisor_dispatch_state_value(decision),
+                timestamp,
+                proposal_id
+            ],
+        )?;
+        if updated != 1 {
+            return Err(StorageError::ProjectNotFound);
+        }
+        self.load_advisor_dispatch_proposals()?
+            .into_iter()
+            .find(|proposal| proposal.id == proposal_id)
+            .ok_or(StorageError::ProjectNotFound)
+    }
+
     pub(crate) fn conversation_reference(
         &self,
         conversation_id: &str,
@@ -1451,6 +1547,34 @@ fn parse_advisor_dispatch_state(value: &str) -> Result<AdvisorDispatchState, Sto
         "approved" => Ok(AdvisorDispatchState::Approved),
         "rejected" => Ok(AdvisorDispatchState::Rejected),
         _ => Err(StorageError::InvalidStoredValue),
+    }
+}
+
+fn advisor_dispatch_state_value(value: AdvisorDispatchState) -> &'static str {
+    match value {
+        AdvisorDispatchState::Draft => "draft",
+        AdvisorDispatchState::Approved => "approved",
+        AdvisorDispatchState::Rejected => "rejected",
+    }
+}
+
+fn advisor_trust_value(value: AdvisorTrust) -> &'static str {
+    match value {
+        AdvisorTrust::Verified => "verified",
+        AdvisorTrust::Reported => "reported",
+        AdvisorTrust::Inferred => "inferred",
+        AdvisorTrust::Unknown => "unknown",
+    }
+}
+
+fn advisor_provenance_source_value(value: AdvisorProvenanceSource) -> &'static str {
+    match value {
+        AdvisorProvenanceSource::GitObservation => "git-observation",
+        AdvisorProvenanceSource::ProjectStateSnapshot => "project-state-snapshot",
+        AdvisorProvenanceSource::RepositoryDocument => "repository-document",
+        AdvisorProvenanceSource::ExecutionReport => "execution-report",
+        AdvisorProvenanceSource::UserSelection => "user-selection",
+        AdvisorProvenanceSource::Unknown => "unknown",
     }
 }
 

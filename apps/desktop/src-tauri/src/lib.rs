@@ -36,7 +36,9 @@ use desktop::{
     DesktopNotificationRequest, DesktopNotificationResult, DesktopNotificationService,
     DesktopNotificationStatus,
 };
-use std::time::{SystemTime, UNIX_EPOCH};
+use sha2::{Digest, Sha256};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use uuid::Uuid;
 
 use git::{
     repository_state::{
@@ -314,6 +316,115 @@ async fn advisor_conversation_interrupt(
     service: tauri::State<'_, AdvisorConversationService>,
 ) -> Result<AdvisorConversationSnapshot, ()> {
     Ok(service.interrupt(conversation_id).await)
+}
+
+const ADVISOR_APPROVAL_TTL: Duration = Duration::from_secs(15 * 60);
+
+/// Creates a digest-only Phase A approval draft. This command intentionally
+/// has no Codex, terminal, Git, project-read, or execution-service dependency.
+#[tauri::command]
+fn advisor_draft_create(
+    request: advisor::AdvisorDraftCreateRequest,
+    projects: tauri::State<'_, ProjectService>,
+) -> Result<advisor::AdvisorApprovalSnapshot, ()> {
+    if !valid_advisor_draft_request(&request) {
+        return Err(());
+    }
+    let now: i64 = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|_| ())?
+        .as_millis()
+        .try_into()
+        .map_err(|_| ())?;
+    let expires_at_ms = now
+        .checked_add(
+            ADVISOR_APPROVAL_TTL
+                .as_millis()
+                .try_into()
+                .map_err(|_| ())?,
+        )
+        .ok_or(())?;
+    let context_manifest =
+        serde_json::to_string(&request.selected_project_state).map_err(|_| ())?;
+    let capability_manifest =
+        serde_json::to_string(&request.declared_capabilities).map_err(|_| ())?;
+    let proposal = advisor::AdvisorDispatchProposal {
+        id: Uuid::now_v7().to_string(),
+        advisor_conversation_id: request.advisor_conversation_id,
+        target_project_id: request.target_project_id,
+        prompt_sha256: sha256(&request.prompt),
+        context_manifest_sha256: sha256(&context_manifest),
+        capability_manifest_sha256: sha256(&capability_manifest),
+        state: advisor::AdvisorDispatchState::Draft,
+        requires_explicit_approval: true,
+        requested_model: Some(request.requested_model),
+        requested_reasoning_effort: Some(request.requested_reasoning_effort),
+        created_at_ms: now,
+        updated_at_ms: now,
+        decided_at_ms: None,
+        expires_at_ms,
+        provenance: advisor::AdvisorProvenance {
+            trust: advisor::AdvisorTrust::Reported,
+            source: advisor::AdvisorProvenanceSource::UserSelection,
+            source_ref: Some("advisor-phase-a-draft".to_owned()),
+            source_commit: None,
+            observed_at_ms: Some(now),
+            note: Some("Approval record only; dispatch is unavailable.".to_owned()),
+        },
+    };
+    projects
+        .create_advisor_dispatch_proposal(&proposal)
+        .map_err(|_| ())
+}
+
+/// Records an explicit Phase A decision for an unexpired digest-only draft.
+/// It cannot invoke the Codex execution boundary.
+#[tauri::command]
+fn advisor_draft_decide(
+    request: advisor::AdvisorApprovalDecisionRequest,
+    projects: tauri::State<'_, ProjectService>,
+) -> Result<advisor::AdvisorApprovalSnapshot, ()> {
+    if !valid_uuid_v7(&request.proposal_id)
+        || matches!(request.decision, advisor::AdvisorDispatchState::Draft)
+    {
+        return Err(());
+    }
+    projects
+        .decide_advisor_dispatch_proposal(&request.proposal_id, request.decision)
+        .map_err(|_| ())
+}
+
+fn valid_advisor_draft_request(request: &advisor::AdvisorDraftCreateRequest) -> bool {
+    valid_uuid_v7(&request.advisor_conversation_id)
+        && valid_uuid_v7(&request.target_project_id)
+        && request
+            .selected_project_state
+            .as_ref()
+            .map_or(true, advisor::AdvisorSelectedProjectStateSnapshot::is_valid)
+        && !request.prompt.trim().is_empty()
+        && request.prompt.len() <= 64 * 1024
+        && !request.prompt.contains('\0')
+        && !request.declared_capabilities.is_empty()
+        && request.declared_capabilities.len() <= 3
+        && !request.requested_model.trim().is_empty()
+        && request.requested_model.len() <= 128
+        && !request.requested_model.chars().any(char::is_control)
+        && !request.requested_reasoning_effort.trim().is_empty()
+        && request.requested_reasoning_effort.len() <= 64
+        && !request
+            .requested_reasoning_effort
+            .chars()
+            .any(char::is_control)
+}
+
+fn valid_uuid_v7(value: &str) -> bool {
+    value
+        .parse::<Uuid>()
+        .is_ok_and(|uuid| uuid.get_version_num() == 7)
+}
+
+fn sha256(value: &str) -> String {
+    format!("{:x}", Sha256::digest(value.as_bytes()))
 }
 
 #[tauri::command]
@@ -1196,6 +1307,8 @@ pub fn run() {
             project_workspace_status,
             advisor_snapshot_read,
             advisor_project_state_snapshot_read,
+            advisor_draft_create,
+            advisor_draft_decide,
             project_pick_directory,
             project_pick_relink,
             project_confirm_attachment,
@@ -1247,4 +1360,34 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("failed to run QuireForge");
+}
+
+#[cfg(test)]
+mod phase_a_tests {
+    use super::*;
+
+    #[test]
+    fn phase_a_drafts_require_bounded_nonempty_bindings() {
+        let request = advisor::AdvisorDraftCreateRequest {
+            advisor_conversation_id: Uuid::now_v7().to_string(),
+            target_project_id: Uuid::now_v7().to_string(),
+            prompt: "Prepare a focused plan".to_owned(),
+            selected_project_state: None,
+            declared_capabilities: vec![advisor::AdvisorDeclaredCapability::WorkspaceWrite],
+            requested_model: "default".to_owned(),
+            requested_reasoning_effort: "default".to_owned(),
+        };
+        assert!(valid_advisor_draft_request(&request));
+
+        let invalid = advisor::AdvisorDraftCreateRequest {
+            declared_capabilities: Vec::new(),
+            ..request
+        };
+        assert!(!valid_advisor_draft_request(&invalid));
+    }
+
+    #[test]
+    fn approval_digest_is_content_sensitive() {
+        assert_ne!(sha256("draft one"), sha256("draft two"));
+    }
 }
