@@ -1896,12 +1896,22 @@ mod tests {
             .to_owned();
         let packages = fixture.root.join("target/ubuntu-22.04/release/packages");
         fs::create_dir_all(&packages).unwrap();
+        let deb_bytes = b"fixture deb artifact";
+        let appimage_bytes = b"fixture appimage artifact";
+        let deb_hash = format!("{:x}", Sha256::digest(deb_bytes));
+        let appimage_hash = format!("{:x}", Sha256::digest(appimage_bytes));
+        fs::write(packages.join("quireforge.deb"), deb_bytes).unwrap();
+        fs::write(packages.join("quireforge.AppImage"), appimage_bytes).unwrap();
         fs::write(
             packages.join("release-manifest.json"),
-            format!(r#"{{"schemaVersion":1,"state":"release-candidate","version":"0.1.0","source":{{"commit":"{head}","treeState":"clean"}},"builder":{{"distribution":"ubuntu","version":"22.04","architecture":"x86_64","image":"pinned"}},"artifacts":[{{"format":"deb","filename":"quireforge.deb","architecture":"x86_64","sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","size":1}},{{"format":"appimage","filename":"quireforge.AppImage","architecture":"x86_64","sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","size":2}}]}}"#),
+            format!(r#"{{"schemaVersion":1,"state":"release-candidate","version":"0.1.0","source":{{"commit":"{head}","treeState":"clean"}},"builder":{{"distribution":"ubuntu","version":"22.04","architecture":"x86_64","image":"pinned"}},"artifacts":[{{"format":"deb","filename":"quireforge.deb","architecture":"x86_64","sha256":"{deb_hash}","size":{deb_size}}},{{"format":"appimage","filename":"quireforge.AppImage","architecture":"x86_64","sha256":"{appimage_hash}","size":{appimage_size}}}]}}"#, deb_size = deb_bytes.len(), appimage_size = appimage_bytes.len()),
         )
         .unwrap();
-        fs::write(packages.join("SHA256SUMS"), "abc  quireforge.deb\n").unwrap();
+        fs::write(
+            packages.join("SHA256SUMS"),
+            format!("{appimage_hash}  quireforge.AppImage\n{deb_hash}  quireforge.deb\n"),
+        )
+        .unwrap();
         fs::create_dir_all(fixture.root.join("target")).unwrap();
         fs::write(
             fixture.root.join("target/validation-summary.json"),
@@ -1933,6 +1943,28 @@ mod tests {
         assert!(!diagnostics
             .iter()
             .any(|item| item.id == "stale-package-evidence"));
+
+        let mut verified_diagnostics = Vec::new();
+        let verified = read_supported_evidence(
+            &fixture.root,
+            &fixture.root,
+            Some(&head),
+            None,
+            ArtifactVerificationMode::VerifyLocalArtifacts,
+            &mut verified_diagnostics,
+        )
+        .await;
+        assert!(verified.packages.iter().all(|item| {
+            item.local_verified && item.local_present == Some(true) && item.checksum_file.is_some()
+        }));
+        assert!(verified_diagnostics.iter().all(|item| {
+            !matches!(
+                item.id.as_str(),
+                "missing-package-artifact"
+                    | "artifact-size-mismatch"
+                    | "artifact-checksum-mismatch"
+            )
+        }));
 
         fs::write(packages.join("release-manifest.json"), "not-json").unwrap();
         let mut malformed = Vec::new();
