@@ -8,8 +8,8 @@ locally.” Tauri + React + TypeScript is the current functional prototype. ADR
 
 - **Branch:** `feat/milestone-24b-repository-state-reader`
 - **Checkpoint:** Milestones 22, 22B, 23, and 24A are complete; 24B has an
-attached-project-only repository-reader checkpoint. No 24C workspace or 24D
-handoff/consistency behavior has begun.
+  attached-project-only repository-reader checkpoint. No 24C workspace or 24D
+  handoff/consistency behavior has begun.
 - **Milestone 22B:** the routed desktop architecture was refined without
   changing route, native-bridge, authentication, or account-data ownership.
 - **Host readiness:** Qt 6.10.2/QML tooling is installed on this host only.

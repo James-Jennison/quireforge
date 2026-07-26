@@ -230,6 +230,15 @@ fn read_document_branch(
 ) {
     let path = root.join("docs/CURRENT_STATE.md");
     let Ok(metadata) = fs::symlink_metadata(&path) else {
+        diagnostics.push(diagnostic(
+            "current-state-missing",
+            RepositoryStateDiagnosticSeverity::Info,
+            "repository.currentBranch",
+            Some("docs/CURRENT_STATE.md".to_owned()),
+            "The supported current-state document is absent.".to_owned(),
+            false,
+            "Add supported project-state documentation only after review.",
+        ));
         return;
     };
     if metadata.file_type().is_symlink()
@@ -249,6 +258,15 @@ fn read_document_branch(
         return;
     }
     let Ok(contents) = fs::read_to_string(&path) else {
+        diagnostics.push(diagnostic(
+            "current-state-malformed",
+            RepositoryStateDiagnosticSeverity::Warning,
+            "repository.currentBranch",
+            Some("docs/CURRENT_STATE.md".to_owned()),
+            "The supported current-state document is not valid UTF-8.".to_owned(),
+            false,
+            "Inspect the committed document manually.",
+        ));
         return;
     };
     let reported = contents

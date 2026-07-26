@@ -21,6 +21,9 @@ compares the documented current-state branch with verified Git evidence. It
 does not rewrite documents or select a winner. Diagnostics remain separate from
 contract truth and suggest only inferred next actions.
 
+Missing, unsafe, oversized, and malformed current-state evidence produces a
+stable diagnostic rather than an invented branch value.
+
 The Git evidence now distinguishes staged, unstaged, and untracked changes,
 detached HEAD, missing upstream, ahead/behind counts, shallow repositories, and
 merge, rebase, cherry-pick, or bisect markers. A controlled fixture proves that
