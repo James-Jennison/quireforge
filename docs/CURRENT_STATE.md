@@ -10,6 +10,12 @@ locally.” Tauri + React + TypeScript is the current functional prototype. ADR
 - **Checkpoint:** Milestones 22, 22B, 23, and 24A are complete; 24B has an
   attached-project-only repository-reader checkpoint. No 24C workspace or 24D
   handoff/consistency behavior has begun.
+
+  The current 24B fixture checkpoint proves local-only and existing-tracking
+  reads preserve an inspected repository, while the explicitly authorized
+  fetch mode can advance only its `origin` tracking ref with no `FETCH_HEAD`,
+  HEAD, index, worktree, or configuration mutation. Package, validation, and
+  handoff evidence readers remain deferred within 24B.
 - **Milestone 22B:** the routed desktop architecture was refined without
   changing route, native-bridge, authentication, or account-data ownership.
 - **Host readiness:** Qt 6.10.2/QML tooling is installed on this host only.

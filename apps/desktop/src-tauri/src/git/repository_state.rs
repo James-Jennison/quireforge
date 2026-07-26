@@ -415,6 +415,8 @@ mod tests {
         index: Vec<u8>,
         fetch_head: Option<Vec<u8>>,
         files: BTreeMap<String, Vec<u8>>,
+        config: Vec<u8>,
+        markers: BTreeMap<String, bool>,
     }
 
     struct FixtureRepository {
@@ -463,6 +465,105 @@ mod tests {
             fs::write(self.root.join("tracked.txt"), "unstaged\n").unwrap();
             fs::write(self.root.join("untracked.txt"), "keep\n").unwrap();
         }
+        fn branch(&self) -> String {
+            String::from_utf8(command_output(&self.root, &["branch", "--show-current"]))
+                .expect("branch is utf-8")
+                .trim()
+                .to_owned()
+        }
+        fn with_remote(&self) -> std::path::PathBuf {
+            let remote = self
+                .root
+                .with_file_name(format!("quireforge-reader-remote-{}", Uuid::now_v7()));
+            assert!(Command::new("git")
+                .args(["init", "--bare", "--quiet", remote.to_str().unwrap()])
+                .status()
+                .unwrap()
+                .success());
+            assert!(Command::new("git")
+                .args(["remote", "add", "origin", remote.to_str().unwrap()])
+                .current_dir(&self.root)
+                .status()
+                .unwrap()
+                .success());
+            let branch = self.branch();
+            assert!(Command::new("git")
+                .args(["push", "--quiet", "-u", "origin", &branch])
+                .current_dir(&self.root)
+                .status()
+                .unwrap()
+                .success());
+            remote
+        }
+        fn advance_remote(&self, remote: &Path) -> String {
+            let writer = self
+                .root
+                .with_file_name(format!("quireforge-reader-writer-{}", Uuid::now_v7()));
+            assert!(Command::new("git")
+                .args([
+                    "clone",
+                    "--quiet",
+                    remote.to_str().unwrap(),
+                    writer.to_str().unwrap()
+                ])
+                .status()
+                .unwrap()
+                .success());
+            for arguments in [
+                &["config", "user.email", "fixture@example.invalid"][..],
+                &["config", "user.name", "Fixture"][..],
+            ] {
+                assert!(Command::new("git")
+                    .args(arguments)
+                    .current_dir(&writer)
+                    .status()
+                    .unwrap()
+                    .success());
+            }
+            fs::write(writer.join("remote.txt"), "remote advance\n").unwrap();
+            assert!(Command::new("git")
+                .args(["add", "remote.txt"])
+                .current_dir(&writer)
+                .status()
+                .unwrap()
+                .success());
+            assert!(Command::new("git")
+                .args(["commit", "--quiet", "-m", "remote advance"])
+                .current_dir(&writer)
+                .status()
+                .unwrap()
+                .success());
+            assert!(Command::new("git")
+                .args(["tag", "remote-only-tag"])
+                .current_dir(&writer)
+                .status()
+                .unwrap()
+                .success());
+            assert!(Command::new("git")
+                .args(["push", "--quiet", "origin", "HEAD"])
+                .current_dir(&writer)
+                .status()
+                .unwrap()
+                .success());
+            assert!(Command::new("git")
+                .args(["push", "--quiet", "--tags", "origin"])
+                .current_dir(&writer)
+                .status()
+                .unwrap()
+                .success());
+            let head = String::from_utf8(command_output(&writer, &["rev-parse", "HEAD"]))
+                .unwrap()
+                .trim()
+                .to_owned();
+            let _ = fs::remove_dir_all(writer);
+            head
+        }
+        fn attach_project(&self) -> (ProjectService, String) {
+            let projects = ProjectService::in_memory();
+            projects.prepare_attachment(self.root.clone());
+            let project_id = projects.confirm_pending().projects[0].id.clone();
+            (projects, project_id)
+        }
         fn fingerprint(&self) -> RepositoryFingerprint {
             RepositoryFingerprint {
                 symbolic_head: command_output(&self.root, &["symbolic-ref", "-q", "HEAD"]),
@@ -480,6 +581,22 @@ mod tests {
                             .map(|bytes| (name.to_owned(), bytes))
                     })
                     .collect(),
+                config: command_output(&self.root, &["config", "--local", "--list"]),
+                markers: [
+                    "MERGE_HEAD",
+                    "CHERRY_PICK_HEAD",
+                    "BISECT_LOG",
+                    "rebase-merge",
+                    "rebase-apply",
+                ]
+                .into_iter()
+                .map(|marker| {
+                    (
+                        marker.to_owned(),
+                        self.root.join(".git").join(marker).exists(),
+                    )
+                })
+                .collect(),
             }
         }
     }
@@ -488,6 +605,21 @@ mod tests {
         fn drop(&mut self) {
             let _ = fs::remove_dir_all(&self.root);
         }
+    }
+
+    fn assert_only_tracking_refs_changed(
+        before: &RepositoryFingerprint,
+        after: &RepositoryFingerprint,
+    ) {
+        assert_eq!(before.symbolic_head, after.symbolic_head);
+        assert_eq!(before.head, after.head);
+        assert_eq!(before.refs, after.refs);
+        assert_eq!(before.status, after.status);
+        assert_eq!(before.index, after.index);
+        assert_eq!(before.fetch_head, after.fetch_head);
+        assert_eq!(before.files, after.files);
+        assert_eq!(before.config, after.config);
+        assert_eq!(before.markers, after.markers);
     }
 
     #[test]
@@ -638,6 +770,237 @@ mod tests {
             );
             assert_eq!(before, fixture.fingerprint());
         }
+    }
+
+    #[tokio::test]
+    async fn fetch_authorized_updates_only_the_tracking_ref_without_fetch_head() {
+        let fixture = FixtureRepository::new();
+        fixture.dirty();
+        let remote = fixture.with_remote();
+        let branch = fixture.branch();
+        let remote_commit = fixture.advance_remote(&remote);
+        let (projects, project_id) = fixture.attach_project();
+        let before = fixture.fingerprint();
+
+        let snapshot = RepositoryStateReader
+            .read(
+                RepositoryStateReadRequest {
+                    project_id,
+                    remote_mode: RepositoryRemoteMode::FetchAuthorized,
+                },
+                &projects,
+            )
+            .await;
+        let after = fixture.fingerprint();
+
+        assert_only_tracking_refs_changed(&before, &after);
+        assert_ne!(before.remotes, after.remotes);
+        assert_eq!(
+            String::from_utf8(command_output(
+                &fixture.root,
+                &["rev-parse", &format!("refs/remotes/origin/{branch}")]
+            ))
+            .unwrap()
+            .trim(),
+            remote_commit
+        );
+        assert_eq!(
+            snapshot.state.repository.remote_head.as_deref(),
+            Some(remote_commit.as_str())
+        );
+        assert!(
+            command_output(&fixture.root, &["tag", "--list"]).is_empty(),
+            "--no-tags prevents the remote-only tag from being created"
+        );
+        let _ = fs::remove_dir_all(remote);
+    }
+
+    #[tokio::test]
+    async fn tracking_mode_reads_existing_refs_without_contacting_a_missing_remote() {
+        let fixture = FixtureRepository::new();
+        let remote = fixture.with_remote();
+        assert!(Command::new("git")
+            .args([
+                "remote",
+                "set-url",
+                "origin",
+                fixture.root.join("unavailable-remote").to_str().unwrap()
+            ])
+            .current_dir(&fixture.root)
+            .status()
+            .unwrap()
+            .success());
+        let (projects, project_id) = fixture.attach_project();
+        let before = fixture.fingerprint();
+        let snapshot = RepositoryStateReader
+            .read(
+                RepositoryStateReadRequest {
+                    project_id,
+                    remote_mode: RepositoryRemoteMode::ExistingTracking,
+                },
+                &projects,
+            )
+            .await;
+        assert!(snapshot.state.repository.remote_head.is_some());
+        assert_eq!(before, fixture.fingerprint());
+        let _ = fs::remove_dir_all(remote);
+    }
+
+    #[tokio::test]
+    async fn reader_represents_ahead_detached_and_missing_upstream_states() {
+        let fixture = FixtureRepository::new();
+        let remote = fixture.with_remote();
+        let branch = fixture.branch();
+        fs::write(fixture.root.join("ahead.txt"), "ahead\n").unwrap();
+        assert!(Command::new("git")
+            .args(["add", "ahead.txt"])
+            .current_dir(&fixture.root)
+            .status()
+            .unwrap()
+            .success());
+        assert!(Command::new("git")
+            .args(["commit", "--quiet", "-m", "ahead"])
+            .current_dir(&fixture.root)
+            .status()
+            .unwrap()
+            .success());
+        let (projects, project_id) = fixture.attach_project();
+        let ahead = RepositoryStateReader
+            .read(
+                RepositoryStateReadRequest {
+                    project_id: project_id.clone(),
+                    remote_mode: RepositoryRemoteMode::ExistingTracking,
+                },
+                &projects,
+            )
+            .await;
+        assert!(ahead.state.repository.ahead.unwrap_or_default() > 0);
+        assert_eq!(ahead.state.repository.behind, Some(0));
+
+        assert!(Command::new("git")
+            .args(["checkout", "--quiet", "--detach"])
+            .current_dir(&fixture.root)
+            .status()
+            .unwrap()
+            .success());
+        let detached = RepositoryStateReader
+            .read(
+                RepositoryStateReadRequest {
+                    project_id: project_id.clone(),
+                    remote_mode: RepositoryRemoteMode::LocalOnly,
+                },
+                &projects,
+            )
+            .await;
+        assert!(detached.git.detached);
+        assert!(detached.state.repository.current_branch.is_none());
+
+        assert!(Command::new("git")
+            .args(["checkout", "--quiet", &branch])
+            .current_dir(&fixture.root)
+            .status()
+            .unwrap()
+            .success());
+        assert!(Command::new("git")
+            .args(["branch", "--unset-upstream"])
+            .current_dir(&fixture.root)
+            .status()
+            .unwrap()
+            .success());
+        let no_upstream = RepositoryStateReader
+            .read(
+                RepositoryStateReadRequest {
+                    project_id,
+                    remote_mode: RepositoryRemoteMode::ExistingTracking,
+                },
+                &projects,
+            )
+            .await;
+        assert!(no_upstream.git.upstream.is_none());
+        assert!(no_upstream
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.id == "upstream-unavailable"));
+        let _ = fs::remove_dir_all(remote);
+    }
+
+    #[tokio::test]
+    async fn reader_reports_behind_and_diverged_tracking_refs() {
+        let behind_fixture = FixtureRepository::new();
+        let behind_remote = behind_fixture.with_remote();
+        behind_fixture.advance_remote(&behind_remote);
+        let (behind_projects, behind_id) = behind_fixture.attach_project();
+        let before_fetch = RepositoryStateReader
+            .read(
+                RepositoryStateReadRequest {
+                    project_id: behind_id.clone(),
+                    remote_mode: RepositoryRemoteMode::ExistingTracking,
+                },
+                &behind_projects,
+            )
+            .await;
+        assert_eq!(before_fetch.state.repository.behind, Some(0));
+        let behind = RepositoryStateReader
+            .read(
+                RepositoryStateReadRequest {
+                    project_id: behind_id,
+                    remote_mode: RepositoryRemoteMode::FetchAuthorized,
+                },
+                &behind_projects,
+            )
+            .await;
+        assert_eq!(behind.state.repository.ahead, Some(0));
+        assert!(behind.state.repository.behind.unwrap_or_default() > 0);
+        let _ = fs::remove_dir_all(behind_remote);
+
+        let fixture = FixtureRepository::new();
+        let remote = fixture.with_remote();
+        fs::write(fixture.root.join("local.txt"), "local\n").unwrap();
+        assert!(Command::new("git")
+            .args(["add", "local.txt"])
+            .current_dir(&fixture.root)
+            .status()
+            .unwrap()
+            .success());
+        assert!(Command::new("git")
+            .args(["commit", "--quiet", "-m", "local advance"])
+            .current_dir(&fixture.root)
+            .status()
+            .unwrap()
+            .success());
+        fixture.advance_remote(&remote);
+        let (projects, project_id) = fixture.attach_project();
+        let diverged = RepositoryStateReader
+            .read(
+                RepositoryStateReadRequest {
+                    project_id,
+                    remote_mode: RepositoryRemoteMode::FetchAuthorized,
+                },
+                &projects,
+            )
+            .await;
+        assert!(diverged.state.repository.ahead.unwrap_or_default() > 0);
+        assert!(diverged.state.repository.behind.unwrap_or_default() > 0);
+        let _ = fs::remove_dir_all(remote);
+    }
+
+    #[tokio::test]
+    async fn operation_markers_are_reported_without_mutating_the_fixture() {
+        let fixture = FixtureRepository::new();
+        let git_dir = fixture.root.join(".git");
+        for marker in ["MERGE_HEAD", "CHERRY_PICK_HEAD", "BISECT_LOG"] {
+            fs::write(git_dir.join(marker), "fixture\n").unwrap();
+        }
+        fs::create_dir_all(git_dir.join("rebase-merge")).unwrap();
+        let branch = inspect_status(&fixture.root, &fixture.root)
+            .await
+            .unwrap()
+            .0;
+        let evidence = git_evidence(&branch, &[], &git_dir, &fixture.root).await;
+        assert!(evidence.merge_in_progress);
+        assert!(evidence.rebase_in_progress);
+        assert!(evidence.cherry_pick_in_progress);
+        assert!(evidence.bisect_in_progress);
     }
 
     fn command_output(root: &Path, arguments: &[&str]) -> Vec<u8> {
