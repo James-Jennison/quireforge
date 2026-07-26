@@ -120,6 +120,15 @@ the local installation command is `sudo apt install
 ./target/ubuntu-22.04/release/packages/quireforge_0.1.0.beta.2_amd64.deb` and
 the AppImage launch command is `./target/ubuntu-22.04/release/packages/QuireForge-0.1.0-beta.2-x86_64.AppImage`.
 
+The pinned gate ran `./scripts/run_linux_package_container.sh`. Its disposable
+Debian lifecycle used `dpkg --root="$root" --force-not-root --force-depends
+--force-script-chrootless --install "$previous"`, then the same command with
+the final Debian package to verify upgrade, followed by `dpkg --root="$root"
+--force-not-root --force-depends --force-script-chrootless --remove
+quireforge`. Visible launch smoke used `xvfb-run --auto-servernum python3
+scripts/smoke_linux_package.py` for the extracted Debian binary and the
+AppImage with `--appimage-extract-and-run`.
+
 `target/validation-summary.json` records the successful package operation in
 the reader's strict version-1 validation format. The reader's metadata-only
 and local-artifact-verification paths accept the producer-compatible manifest,
