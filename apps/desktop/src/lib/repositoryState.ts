@@ -1,6 +1,9 @@
 import { z } from "zod";
 
-import { projectStateContractSchema } from "./projectState";
+import {
+  projectStateContractSchema,
+  scaffoldProjectState,
+} from "./projectState";
 
 export const REPOSITORY_STATE_READER_SCHEMA_VERSION = 1 as const;
 
@@ -153,3 +156,27 @@ export type RepositoryStateReadRequest = z.infer<
 export type RepositoryStateReadSnapshot = z.infer<
   typeof repositoryStateReadSnapshotSchema
 >;
+
+export const scaffoldRepositoryStateSnapshot =
+  repositoryStateReadSnapshotSchema.parse({
+    schemaVersion: REPOSITORY_STATE_READER_SCHEMA_VERSION,
+    state: scaffoldProjectState,
+    git: {
+      upstream: null,
+      detached: false,
+      stagedCount: 0,
+      unstagedCount: 0,
+      untrackedCount: 0,
+      mergeInProgress: false,
+      rebaseInProgress: false,
+      cherryPickInProgress: false,
+      bisectInProgress: false,
+      shallow: null,
+    },
+    evidence: {
+      packages: [],
+      validations: [],
+      handoff: null,
+    },
+    diagnostics: [],
+  });

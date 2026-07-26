@@ -1753,3 +1753,13 @@ prototype is a separate approval-gated milestone.
 | Scope                | Read-only attached-project Git/evidence normalization, diagnostics, fixtures, and tests                |
 | Main uncertainty     | Safe deterministic coverage for all supported evidence formats and authorized remote refresh semantics |
 | Outcome              | Complete; the reader and package gate closed without a new UI, watcher, or autonomous behavior         |
+
+## Milestone 24C — Project state workspace
+
+| Field                | Record                                                                                                               |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Forecast date        | 2026-07-26                                                                                                           |
+| Preliminary forecast | 6–10 active hours; medium confidence                                                                                 |
+| Scope                | One read-only routed workspace over the existing normalized repository-state snapshot, tests, docs, and package gate |
+| Main uncertainty     | Responsive evidence density and installed-app validation without expanding into 24D policy behavior                  |
+| Exclusions           | Reader changes, fetch UI, background scans, watchers, writes, handoff generation, contradiction resolution, repair   |

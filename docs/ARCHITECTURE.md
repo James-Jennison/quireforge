@@ -214,6 +214,21 @@ contract state plus diagnostics through one explicit Tauri read command. It
 does not accept paths or Git arguments, add a UI, watch repositories, rewrite
 evidence, or resolve conflicts.
 
+### Milestone 24C project-state workspace boundary
+
+The React Project state route consumes the existing strict TypeScript mirror of
+the Milestone 24B snapshot. Opening or explicitly refreshing that route issues
+one fixed `local-only`, `metadata-only` read for the selected attached project.
+Rust still owns identity, repository access, evidence parsing, trust,
+provenance, freshness, and diagnostics; React only presents the normalized
+result.
+
+The route has no fetch control, arbitrary path, mutation request, approval
+action, diagnostic resolution, background scan, watcher, generated handoff, or
+persistence change. Browser preview does not substitute fixture state for a
+native repository. Milestone 24D remains the separate approval gate for any
+operational consistency or handoff behavior.
+
 ### Milestone 6 implementation boundary
 
 The native `ProjectService` owns migrated QuireForge SQLite metadata and native

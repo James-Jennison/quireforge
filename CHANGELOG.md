@@ -20,6 +20,10 @@ released a usable application.
 
 ### Added
 
+- Milestone 24C Project state workspace: a demand-driven, read-only route over
+  the existing normalized repository-state snapshot, with explicit
+  local-only/metadata-only access and no fetch, mutation, approval, handoff
+  generation, contradiction resolution, or background scanning.
 - Milestone 24B repository-state reader checkpoint: attached-project-only,
   typed local/tracking/explicit-fetch reads with contract diagnostics and no UI
   or repository mutation except the separately authorized fetch mode.

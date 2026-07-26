@@ -2,6 +2,7 @@ export type PrimaryWorkspaceRoute =
   | "home"
   | "conversation"
   | "projects"
+  | "project-state"
   | "sessions"
   | "scheduled"
   | "integrations"
@@ -47,6 +48,13 @@ export const workspaceNavigation: readonly WorkspaceNavigationItem[] = [
     icon: "folder",
     group: "main",
     description: "Select and manage local projects",
+  },
+  {
+    route: "project-state",
+    label: "Project state",
+    icon: "git",
+    group: "workspace",
+    description: "Inspect normalized repository evidence",
   },
   {
     route: "sessions",

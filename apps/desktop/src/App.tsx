@@ -18,6 +18,7 @@ import { GitWorkspace } from "./GitWorkspace";
 import { HomeDashboard } from "./HomeDashboard";
 import { IntegrationCenter } from "./IntegrationCenter";
 import { ProjectWorkspace } from "./ProjectWorkspace";
+import { ProjectStateWorkspace } from "./ProjectStateWorkspace";
 import { ScheduledWorkspace } from "./ScheduledWorkspace";
 import { SessionWorkspace } from "./SessionWorkspace";
 import { SettingsWorkspace } from "./SettingsWorkspace";
@@ -54,6 +55,7 @@ import {
   openFilePreview,
   openIntegrationControlBrowser,
   loadProjectWorkspace,
+  readRepositoryState,
   logoutCodexAuth,
   openGitFile,
   pickConversationAttachments,
@@ -138,6 +140,10 @@ import {
   type ProjectPreflightSnapshot,
   type ProjectWorkspaceSnapshot,
 } from "./lib/project";
+import type {
+  RepositoryStateReadRequest,
+  RepositoryStateReadSnapshot,
+} from "./lib/repositoryState";
 import {
   scaffoldIntegrationCatalog,
   type IntegrationCatalogSnapshot,
@@ -208,6 +214,8 @@ type RuntimeState =
   "checking" | "ready" | "degraded" | "unavailable" | "preview";
 type AuthViewState = CodexAuthSnapshot["state"] | "checking" | "preview";
 type ProjectViewState = "checking" | "native" | "preview";
+type ProjectStateViewState =
+  "idle" | "checking" | "native" | "preview" | "error";
 type GitViewState = "checking" | "native" | "preview";
 type WorktreeViewState = "checking" | "native" | "preview";
 type ConversationViewState = "checking" | "native" | "preview";
@@ -234,6 +242,9 @@ interface AppProps {
   loadUsage?: () => Promise<CodexUsageSnapshot>;
   refreshUsage?: () => Promise<CodexUsageSnapshot>;
   loadProjects?: () => Promise<ProjectWorkspaceSnapshot>;
+  loadRepositoryStateTask?: (
+    request: RepositoryStateReadRequest,
+  ) => Promise<RepositoryStateReadSnapshot>;
   pickProject?: () => Promise<ProjectWorkspaceSnapshot>;
   pickRelink?: (projectId: string) => Promise<ProjectWorkspaceSnapshot>;
   confirmProject?: () => Promise<ProjectWorkspaceSnapshot>;
@@ -548,6 +559,7 @@ export default function App({
   loadUsage = loadCodexUsage,
   refreshUsage = refreshCodexUsage,
   loadProjects = loadProjectWorkspace,
+  loadRepositoryStateTask = readRepositoryState,
   pickProject = pickProjectDirectory,
   pickRelink = pickProjectRelink,
   confirmProject = confirmProjectAttachment,
@@ -626,6 +638,11 @@ export default function App({
   const [projectPreflights, setProjectPreflights] = useState<
     Record<string, ProjectPreflightSnapshot>
   >({});
+  const [repositoryStateSnapshot, setRepositoryStateSnapshot] =
+    useState<RepositoryStateReadSnapshot | null>(null);
+  const [repositoryStateViewState, setRepositoryStateViewState] =
+    useState<ProjectStateViewState>("idle");
+  const [repositoryStateRefresh, setRepositoryStateRefresh] = useState(0);
   const [filePreview, setFilePreview] =
     useState<FilePreviewSnapshot>(scaffoldFilePreview);
   const [filePreviewBusy, setFilePreviewBusy] = useState(false);
@@ -726,6 +743,12 @@ export default function App({
   const focusWorkspaceAfterNavigation = useRef(false);
   const accessGranted =
     authState === "authenticated" || authState === "not-required";
+  const currentProject =
+    projects.projects.find(
+      (project) => project.id === selectedProjectId && !project.archived,
+    ) ??
+    projects.projects.find((project) => !project.archived) ??
+    projects.projects[0];
 
   useEffect(() => {
     let active = true;
@@ -932,6 +955,64 @@ export default function App({
     projectState,
     projects,
     selectedProjectId,
+  ]);
+
+  useEffect(() => {
+    if (!accessGranted || workspaceLocation.route !== "project-state") return;
+    let active = true;
+    const resetRepositoryState = (
+      state: ProjectStateViewState,
+      snapshot: RepositoryStateReadSnapshot | null = null,
+    ) => {
+      void Promise.resolve().then(() => {
+        if (!active) return;
+        setRepositoryStateSnapshot(snapshot);
+        setRepositoryStateViewState(state);
+      });
+    };
+    if (projectState === "checking") {
+      resetRepositoryState("checking");
+      return () => {
+        active = false;
+      };
+    }
+    if (projectState === "preview") {
+      resetRepositoryState("preview");
+      return () => {
+        active = false;
+      };
+    }
+    if (!currentProject) {
+      resetRepositoryState("idle");
+      return () => {
+        active = false;
+      };
+    }
+
+    resetRepositoryState("checking");
+    void loadRepositoryStateTask({
+      projectId: currentProject.id,
+      remoteMode: "local-only",
+      artifactVerification: "metadata-only",
+    })
+      .then((result) => {
+        if (!active) return;
+        resetRepositoryState("native", result);
+      })
+      .catch(() => {
+        if (!active) return;
+        resetRepositoryState("error");
+      });
+    return () => {
+      active = false;
+    };
+  }, [
+    accessGranted,
+    currentProject,
+    loadRepositoryStateTask,
+    projectState,
+    repositoryStateRefresh,
+    workspaceLocation.route,
   ]);
 
   useEffect(() => {
@@ -2327,13 +2408,6 @@ export default function App({
     );
   }
 
-  const currentProject =
-    projects.projects.find(
-      (project) => project.id === selectedProjectId && !project.archived,
-    ) ??
-    projects.projects.find((project) => !project.archived) ??
-    projects.projects[0];
-
   const conversationActive = [
     "running",
     "waiting-for-approval",
@@ -2630,6 +2704,32 @@ export default function App({
                 </div>
               )}
             </dl>
+          </section>
+        );
+      case "project-state":
+        if (!repositoryStateSnapshot) return null;
+        return (
+          <section className="context-section">
+            <p className="eyebrow">Snapshot provenance</p>
+            <h2>{repositoryStateSnapshot.state.project.displayName}</h2>
+            <dl className="context-facts">
+              <div>
+                <dt>Trust</dt>
+                <dd>{repositoryStateSnapshot.state.provenance.trust}</dd>
+              </div>
+              <div>
+                <dt>Source</dt>
+                <dd>{repositoryStateSnapshot.state.provenance.sourceType}</dd>
+              </div>
+              <div>
+                <dt>Diagnostics</dt>
+                <dd>{repositoryStateSnapshot.diagnostics.length}</dd>
+              </div>
+            </dl>
+            <p className="context-note">
+              This view displays normalized evidence and cannot approve or
+              change project state.
+            </p>
           </section>
         );
       case "worktrees":
@@ -3031,6 +3131,21 @@ export default function App({
                   applyProjectAction(() => archiveProjectMetadata(projectId))
                 }
                 onPreflight={verifyProject}
+              />
+            </WorkspaceView>
+
+            <WorkspaceView
+              route="project-state"
+              active={workspaceLocation.route === "project-state"}
+            >
+              <ProjectStateWorkspace
+                availability={repositoryStateViewState}
+                projectName={currentProject?.displayName ?? null}
+                snapshot={repositoryStateSnapshot}
+                busy={repositoryStateViewState === "checking"}
+                onRefresh={() =>
+                  setRepositoryStateRefresh((current) => current + 1)
+                }
               />
             </WorkspaceView>
 

@@ -13,6 +13,7 @@ describe("workspace navigation", () => {
       "home",
       "conversation",
       "projects",
+      "project-state",
       "sessions",
       "scheduled",
       "integrations",

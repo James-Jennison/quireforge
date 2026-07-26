@@ -1243,3 +1243,20 @@ greater precision than the underlying ranges.
   visible-launch smoke evidence.
 - **Status:** Complete; no 24C workspace or 24D handoff/consistency behavior
   was added.
+
+## Milestone 24C — Project state workspace
+
+- **Objective:** Present the existing normalized repository-state snapshot in
+  one accessible, responsive, read-only workspace.
+- **Start:** `2026-07-26`.
+- **Forecast:** 6–10 active hours; medium confidence.
+- **Boundary:** demand-driven `local-only`, `metadata-only` presentation only.
+  No reader extension, fetch control, background scan, watcher, state write,
+  approval, generated handoff, contradiction resolution, or autonomous repair.
+- **Package implication:** The routed workspace changes the installed desktop
+  application, so final closure requires fresh pinned Ubuntu 22.04 Debian and
+  AppImage lifecycle, launch, and smoke evidence from the clean implementation
+  commit.
+- **Status:** Implementation validation complete; fresh pinned Ubuntu package
+  evidence remains. Precise active and automated time was not instrumented and
+  is not reconstructed.

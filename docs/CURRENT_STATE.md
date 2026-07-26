@@ -6,11 +6,13 @@ QuireForge is an unofficial Linux workspace for Codex: “Build boldly. Work
 locally.” Tauri + React + TypeScript is the current functional prototype. ADR
 0028 accepts retaining Tauri conditionally; no Qt migration has been selected.
 
-- **Branch:** `feat/milestone-24b-repository-state-reader`
+- **Branch:** `feat/milestone-24c-project-state-workspace`
 - **Checkpoint:** Milestones 22, 22B, 23, 24A, and 24B are complete. Milestone
   24B implementation is `ecc556f9a7025e9e5da3ab63dc34eb1c9f6c3d47`; its final
   Ubuntu 22.04 package evidence is recorded by this documentation checkpoint.
-  No 24C workspace or 24D handoff/consistency behavior has begun.
+  Milestone 24C has a validated read-only Project state route over the completed
+  reader; its fresh pinned Ubuntu package gate remains. No 24D
+  handoff/consistency behavior has begun.
 
   The completed 24B fixture suite proves local-only and existing-tracking
   reads preserve an inspected repository, while the explicitly authorized
@@ -26,6 +28,7 @@ locally.” Tauri + React + TypeScript is the current functional prototype. ADR
   local-verification observations; conflicting accepted records remain visible.
   The release-manifest producer's version-1 `appimage`/`x86_64` wire values are
   normalized by the strict Rust/TypeScript reader contract.
+
 - **Milestone 22B:** the routed desktop architecture was refined without
   changing route, native-bridge, authentication, or account-data ownership.
 - **Host readiness:** Qt 6.10.2/QML tooling is installed on this host only.
@@ -43,11 +46,18 @@ the current presentation layer and calls that façade through its bridge.
 
 ## Next action
 
-Milestone 24B — **Repository State Reader** is complete. It provides explicit,
-attached-project-only local/tracking/fetch-authorized read modes and a
-validated contract plus diagnostics, with no UI, watcher, document rewrite, or
-contradiction resolution. The next proposed work is 24C, which requires a new
-approval before any project-state workspace is implemented. See
+Milestone 24C — **Project State Workspace** is active. Its approved boundary is
+one demand-driven route that requests the existing reader in `local-only`,
+`metadata-only` mode and presents normalized evidence without mutation,
+approval, resolution, automation, or persistence changes. The frontend,
+responsive/accessibility, repository, Rust, bundle, and Tauri implementation
+gates pass; fresh pinned Ubuntu package evidence remains before completion. See
+[Milestone 24C](MILESTONE_24C_PROJECT_STATE_WORKSPACE.md).
+
+Milestone 24B — **Repository State Reader** remains complete. It provides
+explicit, attached-project-only local/tracking/fetch-authorized read modes and
+a validated contract plus diagnostics, with no watcher, document rewrite, or
+contradiction resolution. See
 [Milestone 24B](MILESTONE_24B_REPOSITORY_STATE_READER.md).
 
 Milestone 24A — **Project State Contract** is complete at implementation commit

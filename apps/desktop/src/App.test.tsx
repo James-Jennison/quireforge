@@ -25,6 +25,7 @@ import {
   projectWorkspaceSchema,
   scaffoldProjectWorkspace,
 } from "./lib/project";
+import { scaffoldRepositoryStateSnapshot } from "./lib/repositoryState";
 import {
   integrationCatalogSchema,
   integrationControlResultSchema,
@@ -224,6 +225,9 @@ describe("QuireForge desktop shell", () => {
         loadRuntime={() => Promise.resolve(scaffoldCodexRuntime)}
         loadAuth={() => Promise.resolve(authenticatedAuth)}
         loadProjects={() => Promise.resolve(attachedProject)}
+        loadRepositoryStateTask={() =>
+          Promise.resolve(scaffoldRepositoryStateSnapshot)
+        }
       />,
     );
 
@@ -231,6 +235,7 @@ describe("QuireForge desktop shell", () => {
       ["Home", "home"],
       ["New task", "conversation"],
       ["Projects", "projects"],
+      ["Project state", "project-state"],
       ["Threads", "sessions"],
       ["Scheduled", "scheduled"],
       ["Integrations", "integrations"],
@@ -266,6 +271,42 @@ describe("QuireForge desktop shell", () => {
     );
   });
 
+  it("loads project state only through the local metadata-only reader mode", async () => {
+    window.history.replaceState(null, "", "#project-state");
+    const loadRepositoryStateTask = vi
+      .fn()
+      .mockResolvedValue(scaffoldRepositoryStateSnapshot);
+    render(
+      <App
+        loadBootstrap={() => Promise.resolve(scaffoldBootstrap)}
+        loadRuntime={() => Promise.resolve(scaffoldCodexRuntime)}
+        loadAuth={() => Promise.resolve(authenticatedAuth)}
+        loadProjects={() => Promise.resolve(attachedProject)}
+        loadRepositoryStateTask={loadRepositoryStateTask}
+      />,
+    );
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "Project state, without automation.",
+      }),
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(loadRepositoryStateTask).toHaveBeenCalledWith({
+        projectId,
+        remoteMode: "local-only",
+        artifactVerification: "metadata-only",
+      }),
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Refresh local evidence" }),
+    );
+    await waitFor(() =>
+      expect(loadRepositoryStateTask).toHaveBeenCalledTimes(2),
+    );
+  });
+
   it("restores a validated deep link and rejects unknown workspace hashes", async () => {
     window.history.replaceState(null, "", "#terminal");
     const { unmount } = render(
@@ -274,6 +315,9 @@ describe("QuireForge desktop shell", () => {
         loadRuntime={() => Promise.resolve(scaffoldCodexRuntime)}
         loadAuth={() => Promise.resolve(authenticatedAuth)}
         loadProjects={() => Promise.resolve(attachedProject)}
+        loadRepositoryStateTask={() =>
+          Promise.resolve(scaffoldRepositoryStateSnapshot)
+        }
       />,
     );
     expect(

@@ -7,6 +7,7 @@ import integrationMutationFixture from "../fixtures/integration-mutation.json" w
 import filePreviewFixture from "../fixtures/file-preview.json" with { type: "json" };
 import conversationAttachmentFixture from "../fixtures/conversation-attachments.json" with { type: "json" };
 import usageFixture from "../fixtures/codex-usage.json" with { type: "json" };
+import projectStateFixtures from "../fixtures/project-state.json" with { type: "json" };
 
 const nativeIntegrationCatalog = {
   ...integrationCatalogFixture,
@@ -63,6 +64,51 @@ const recommendationSelectionFixture = {
     ...modelSelectionFixture.policy,
     ownership: "recommend",
   },
+} as const;
+
+const repositoryStateFixture = {
+  schemaVersion: 1,
+  state: projectStateFixtures.activeMilestone,
+  git: {
+    upstream: "origin/feat/milestone-24c-project-state-workspace",
+    detached: false,
+    stagedCount: 0,
+    unstagedCount: 0,
+    untrackedCount: 0,
+    mergeInProgress: false,
+    rebaseInProgress: false,
+    cherryPickInProgress: false,
+    bisectInProgress: false,
+    shallow: false,
+  },
+  evidence: {
+    packages: [],
+    validations: [
+      {
+        version: 1,
+        id: "frontend-tests",
+        family: "frontend-tests",
+        status: "passed",
+        sourceCommit: "0123456789abcdef0123456789abcdef01234567",
+        evidencePath: "target/validation-summary.json",
+        operation: "pnpm-test",
+        timestamp: "2026-07-26T00:00:00Z",
+        freshness: "current",
+      },
+    ],
+    handoff: null,
+  },
+  diagnostics: [
+    {
+      id: "tracking-freshness-unknown",
+      severity: "info",
+      affectedField: "repository.remoteHead",
+      sourceRef: null,
+      explanation: "Remote tracking freshness was not requested.",
+      approvalRequired: false,
+      recommendedAction: "Inspect existing tracking evidence if needed.",
+    },
+  ],
 } as const;
 
 const nativeResponses = {
@@ -262,6 +308,7 @@ const nativeResponses = {
     pendingAttachment: null,
     diagnosticCode: null,
   },
+  repository_state_read: repositoryStateFixture,
   worktree_status: {
     schemaVersion: 2,
     state: "ready",
@@ -710,6 +757,7 @@ test("every sidebar destination replaces the active workspace without page scrol
     ["Home", "home"],
     ["New task", "conversation"],
     ["Projects", "projects"],
+    ["Project state", "project-state"],
     ["Threads", "sessions"],
     ["Scheduled", "scheduled"],
     ["Integrations", "integrations"],
@@ -734,6 +782,33 @@ test("every sidebar destination replaces the active workspace without page scrol
       ),
     ).toBe(0);
   }
+});
+
+test("project state workspace presents read-only normalized evidence accessibly", async ({
+  page,
+}) => {
+  await installNativeFixture(page);
+  await page.goto("/");
+
+  await openWorkspace(page, "Project state");
+  await expect(
+    page.getByRole("heading", {
+      name: "Project state, without automation.",
+    }),
+  ).toBeVisible();
+  await expect(page.getByText("Validation and packages")).toBeVisible();
+  await expect(
+    page.getByText("Remote tracking freshness was not requested."),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /approve|resolve|fetch/iu }),
+  ).toHaveCount(0);
+  const accessibility = await new AxeBuilder({ page }).analyze();
+  expect(accessibility.violations).toEqual([]);
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - window.innerWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(1);
 });
 
 test("native session fixture renders grouping, tabs, and bounded controls", async ({
@@ -1286,7 +1361,12 @@ test("captures routed desktop workspace evidence", async ({
     await expect(
       page.getByRole("button", { name: "Open navigation" }),
     ).toBeVisible();
-    for (const label of ["Scheduled", "Integrations", "Files"] as const) {
+    for (const label of [
+      "Scheduled",
+      "Integrations",
+      "Files",
+      "Project state",
+    ] as const) {
       await openWorkspace(page, label);
       await page.screenshot({
         path: testInfo.outputPath(
@@ -1317,6 +1397,7 @@ test("captures routed desktop workspace evidence", async ({
   for (const label of [
     "New task",
     "Projects",
+    "Project state",
     "Threads",
     "Scheduled",
     "Integrations",

@@ -158,10 +158,11 @@ Milestone 23's documentation-only feasibility decision retains Tauri
 conditionally: reusable Rust services may later sit behind a UI-neutral
 boundary, but a Qt 6 migration is not authorized unless defined measurable
 triggers are met and separately approved.
-Milestone 24A established the machine-readable project-state contract; the
-project-state workspace and automated handoffs remain future work.
-Milestone 24B completed the attached-project-only repository reader; it has no
-project-state UI or automatic handoff behavior.
+Milestone 24A established the machine-readable project-state contract, and
+Milestone 24B completed its attached-project-only repository reader.
+Milestone 24C is adding a demand-driven, read-only Project state workspace over
+that normalized evidence. Fetch controls, background scans, state writes,
+automatic handoffs, and contradiction resolution remain unavailable.
 Webuzo is the selected static origin host, with Cloudflare retained as the DNS,
 TLS, and cache edge. The reviewed static site is publicly deployed at
 `https://quireforge.jamesjennison.net` through the approved proxied Cloudflare
