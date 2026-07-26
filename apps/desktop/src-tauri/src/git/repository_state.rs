@@ -41,7 +41,10 @@ pub enum ArtifactVerificationMode {
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct PackageManifest {
+    version: u8,
     source_commit: String,
+    #[allow(dead_code)]
+    clean_source: bool,
     artifacts: Vec<PackageManifestArtifact>,
 }
 #[derive(Clone, Debug, Deserialize)]
@@ -134,6 +137,7 @@ pub struct RepositoryEvidence {
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PackageEvidence {
+    pub manifest_version: u8,
     pub kind: ArtifactKind,
     pub source_commit: Option<String>,
     pub artifact_path: Option<String>,
@@ -141,6 +145,8 @@ pub struct PackageEvidence {
     pub checksum_file: Option<String>,
     pub freshness: Freshness,
     pub local_verified: bool,
+    pub local_present: Option<bool>,
+    pub declared_size: u64,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -389,6 +395,18 @@ fn read_supported_evidence(
     match safe_text(root, manifest_path, diagnostics) {
         Some(contents) => match serde_json::from_str::<PackageManifest>(&contents) {
             Ok(manifest) => {
+                if manifest.version != 1 {
+                    diagnostics.push(diagnostic(
+                        "unsupported-manifest-version",
+                        RepositoryStateDiagnosticSeverity::Warning,
+                        "packages",
+                        Some(manifest_path.to_owned()),
+                        "The package manifest version is unsupported.".to_owned(),
+                        false,
+                        "Use a supported package evidence format.",
+                    ));
+                    return evidence;
+                }
                 let source_commit = Some(manifest.source_commit);
                 let artifacts = manifest.artifacts;
                 if artifacts.is_empty() {
@@ -416,13 +434,22 @@ fn read_supported_evidence(
                             diagnostics,
                         );
                         evidence.packages.push(PackageEvidence {
+                            manifest_version: manifest.version,
                             kind: artifact.kind,
                             source_commit: source_commit.clone(),
-                            artifact_path: Some(artifact.path),
+                            artifact_path: Some(artifact.path.clone()),
                             checksum: Some(artifact.sha256),
                             checksum_file: None,
                             freshness: freshness(source_commit.as_deref(), current_head),
                             local_verified,
+                            local_present: if artifact_verification
+                                == ArtifactVerificationMode::VerifyLocalArtifacts
+                            {
+                                Some(root.join(&artifact.path).is_file())
+                            } else {
+                                None
+                            },
+                            declared_size: artifact.size,
                         });
                     } else {
                         diagnostics.push(diagnostic("invalid-package-manifest", RepositoryStateDiagnosticSeverity::Warning, "packages", Some(manifest_path.to_owned()), "A package record has an invalid commit, checksum, or repository-relative path.".to_owned(), false, "Regenerate reviewed package evidence."));
@@ -1654,7 +1681,7 @@ mod tests {
         fs::create_dir_all(&packages).unwrap();
         fs::write(
             packages.join("release-manifest.json"),
-            format!(r#"{{"sourceCommit":"{head}","artifacts":[{{"type":"deb","path":"quireforge.deb","sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","size":1}}]}}"#),
+            format!(r#"{{"version":1,"sourceCommit":"{head}","cleanSource":true,"artifacts":[{{"type":"deb","path":"quireforge.deb","sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","size":1}}]}}"#),
         )
         .unwrap();
         fs::write(packages.join("SHA256SUMS"), "abc  quireforge.deb\n").unwrap();

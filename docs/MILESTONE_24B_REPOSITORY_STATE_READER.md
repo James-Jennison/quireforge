@@ -70,6 +70,11 @@ duplicate, orphaned, missing, and disagreeing records receive diagnostics, and
 an accepted manifest/checksum disagreement is represented as conflicting
 freshness.
 
+Package manifests now require version `1` and clean-source metadata. Returned
+artifact evidence keeps the manifest version, declared size, and optional local
+presence distinct from checksum observations; absent optional package records
+remain partial evidence rather than fabricated success.
+
 Validation summaries now require version `1`, a closed check family and status,
 a full source commit, bounded operation ID, UTC-style timestamp, and safe
 repository-relative evidence path. Optional malformed validation evidence is

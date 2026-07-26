@@ -37,12 +37,15 @@ export const repositoryStateReadSnapshotSchema = z
         packages: z.array(
           z
             .object({
+              manifestVersion: z.literal(1),
               kind: z.enum(["deb", "app-image"]),
               sourceCommit: z.string().nullable(),
               artifactPath: z.string().nullable(),
               checksum: z.string().nullable(),
               checksumFile: z.string().nullable(),
               localVerified: z.boolean(),
+              localPresent: z.boolean().nullable(),
+              declaredSize: z.number().int().nonnegative(),
               freshness: z.enum([
                 "current",
                 "stale",
