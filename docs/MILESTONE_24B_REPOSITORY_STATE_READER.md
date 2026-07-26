@@ -75,6 +75,11 @@ artifact evidence keeps the manifest version, declared size, and optional local
 presence distinct from checksum observations; absent optional package records
 remain partial evidence rather than fabricated success.
 
+The strict package envelope also carries optional closed Ubuntu 22.04 platform,
+architecture, GLIBC, desktop/icon, lifecycle, launch, and smoke observations.
+Those values are evidence only: absent fields remain absent until the final
+package gate produces fresh validated artifacts.
+
 Handoff phrases remain reported Markdown evidence. A pushed-checkpoint phrase
 receives current or stale freshness only after the closed Git reader confirms a
 valid local commit object and branch ancestry; otherwise it stays unknown with

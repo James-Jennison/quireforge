@@ -56,6 +56,44 @@ struct PackageManifestArtifact {
     sha256: String,
     #[allow(dead_code)]
     size: u64,
+    #[serde(default)]
+    target_os: Option<TargetOs>,
+    #[serde(default)]
+    architecture: Option<Architecture>,
+    #[serde(default)]
+    max_glibc: Option<String>,
+    #[serde(default)]
+    desktop_entry: Option<PackageCheck>,
+    #[serde(default)]
+    icon: Option<PackageCheck>,
+    #[serde(default)]
+    install: Option<PackageCheck>,
+    #[serde(default)]
+    upgrade: Option<PackageCheck>,
+    #[serde(default)]
+    removal: Option<PackageCheck>,
+    #[serde(default)]
+    launch: Option<PackageCheck>,
+    #[serde(default)]
+    smoke: Option<PackageCheck>,
+}
+#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum TargetOs {
+    Ubuntu2204,
+}
+#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum Architecture {
+    X8664,
+}
+#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum PackageCheck {
+    Passed,
+    Failed,
+    Skipped,
+    Unavailable,
 }
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -147,6 +185,16 @@ pub struct PackageEvidence {
     pub local_verified: bool,
     pub local_present: Option<bool>,
     pub declared_size: u64,
+    pub target_os: Option<TargetOs>,
+    pub architecture: Option<Architecture>,
+    pub max_glibc: Option<String>,
+    pub desktop_entry: Option<PackageCheck>,
+    pub icon: Option<PackageCheck>,
+    pub install: Option<PackageCheck>,
+    pub upgrade: Option<PackageCheck>,
+    pub removal: Option<PackageCheck>,
+    pub launch: Option<PackageCheck>,
+    pub smoke: Option<PackageCheck>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -453,6 +501,16 @@ async fn read_supported_evidence(
                                 None
                             },
                             declared_size: artifact.size,
+                            target_os: artifact.target_os,
+                            architecture: artifact.architecture,
+                            max_glibc: artifact.max_glibc,
+                            desktop_entry: artifact.desktop_entry,
+                            icon: artifact.icon,
+                            install: artifact.install,
+                            upgrade: artifact.upgrade,
+                            removal: artifact.removal,
+                            launch: artifact.launch,
+                            smoke: artifact.smoke,
                         });
                     } else {
                         diagnostics.push(diagnostic("invalid-package-manifest", RepositoryStateDiagnosticSeverity::Warning, "packages", Some(manifest_path.to_owned()), "A package record has an invalid commit, checksum, or repository-relative path.".to_owned(), false, "Regenerate reviewed package evidence."));

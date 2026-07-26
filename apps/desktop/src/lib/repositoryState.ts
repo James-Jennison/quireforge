@@ -46,6 +46,30 @@ export const repositoryStateReadSnapshotSchema = z
               localVerified: z.boolean(),
               localPresent: z.boolean().nullable(),
               declaredSize: z.number().int().nonnegative(),
+              targetOs: z.enum(["ubuntu-2204"]).nullable(),
+              architecture: z.enum(["x8664"]).nullable(),
+              maxGlibc: z.string().nullable(),
+              desktopEntry: z
+                .enum(["passed", "failed", "skipped", "unavailable"])
+                .nullable(),
+              icon: z
+                .enum(["passed", "failed", "skipped", "unavailable"])
+                .nullable(),
+              install: z
+                .enum(["passed", "failed", "skipped", "unavailable"])
+                .nullable(),
+              upgrade: z
+                .enum(["passed", "failed", "skipped", "unavailable"])
+                .nullable(),
+              removal: z
+                .enum(["passed", "failed", "skipped", "unavailable"])
+                .nullable(),
+              launch: z
+                .enum(["passed", "failed", "skipped", "unavailable"])
+                .nullable(),
+              smoke: z
+                .enum(["passed", "failed", "skipped", "unavailable"])
+                .nullable(),
               freshness: z.enum([
                 "current",
                 "stale",
