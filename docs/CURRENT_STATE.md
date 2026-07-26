@@ -6,9 +6,9 @@ QuireForge is an unofficial Linux workspace for Codex: “Build boldly. Work
 locally.” Tauri + React + TypeScript is the current functional prototype. ADR
 0028 accepts retaining Tauri conditionally; no Qt migration has been selected.
 
-- **Branch:** `docs/milestone-23-ui-platform-feasibility`
+- **Branch:** `feat/milestone-24a-project-state-contract`
 - **Checkpoint:** Milestones 22 and 22B are complete; Milestone 23 records the
-  UI-platform decision.
+  UI-platform decision; Milestone 24A project-state contract is active.
 - **Milestone 22B:** the routed desktop architecture was refined without
   changing route, native-bridge, authentication, or account-data ownership.
 - **Host readiness:** Qt 6.10.2/QML tooling is installed on this host only.
@@ -25,6 +25,13 @@ notifications, and one native drop-capture path. React/TypeScript/Vite remains
 the current presentation layer and calls that façade through its bridge.
 
 ## Next action
+
+Milestone 24A — **Project State Contract** defines a strict versioned Rust/Zod
+project-state contract with provenance, approvals, checkpoints, validation and
+package evidence, blockers, contradictions, next actions, and stable handoff
+states. It creates no reader, UI, generated handoff, contradiction engine, or
+canonical persistence location; those remain 24B–24D. See
+[Milestone 24A](MILESTONE_24A_PROJECT_STATE_CONTRACT.md).
 
 Milestone 23 — **UI Platform Feasibility Decision** is complete as a
 documentation-only decision on `docs/milestone-23-ui-platform-feasibility`.

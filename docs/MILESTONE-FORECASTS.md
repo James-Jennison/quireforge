@@ -1732,3 +1732,14 @@ tag/release and website-deployment operations for their terminal approval.
 The deliberately broad forecast reflects neutral comparison and source
 attribution, not implementation. Any core extraction, benchmark, or Qt
 prototype is a separate approval-gated milestone.
+
+## Milestone 24A — Project state contract
+
+| Field                | Record                                                                                                                                                        |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Forecast date        | 2026-07-25                                                                                                                                                    |
+| Preliminary forecast | 6–12 active hours; medium confidence                                                                                                                          |
+| Scope                | Strict Rust/TypeScript contract, provenance, fixtures, tests, and documentation only                                                                          |
+| Exclusions           | Repository ingestion, Markdown parsing, UI, handoff generation, contradiction detection, autonomous correction, package inspection, and persistence mutation  |
+| Persistence decision | Define ownership boundaries only; canonical user-policy storage remains intentionally deferred                                                                |
+| Package implication  | Contract code is compiled into the desktop library; no package is built at this checkpoint, and final closure requires fresh package evidence from its commit |

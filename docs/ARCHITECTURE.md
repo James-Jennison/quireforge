@@ -197,6 +197,15 @@ workflow remain active; no Qt source, bridge, dependency, prototype, or
 migration has begun. See the
 [Milestone 23 feasibility decision](MILESTONE_23_UI_PLATFORM_FEASIBILITY.md).
 
+### Milestone 24A project-state contract boundary
+
+The reusable `project_state` Rust library defines strict, versioned project
+state with provenance and no Tauri command, reader, persistence mutation, or
+UI. Its Zod mirror and shared fixtures fail closed for future versions, unknown
+fields, invalid checkpoints, and approvals without an authority. Source
+ingestion, display, handoff generation, and contradiction detection remain
+Milestones 24B–24D.
+
 ### Milestone 6 implementation boundary
 
 The native `ProjectService` owns migrated QuireForge SQLite metadata and native

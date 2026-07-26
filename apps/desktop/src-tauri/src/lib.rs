@@ -5,6 +5,7 @@ mod desktop;
 mod git;
 mod preview;
 mod project;
+pub mod project_state;
 mod terminal;
 mod worktree;
 

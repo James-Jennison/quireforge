@@ -1208,3 +1208,16 @@ greater precision than the underlying ranges.
   release, or merge is authorized by this record.
 - **Status:** Complete documentation decision evidence. Actual time remains
   unmeasured rather than fabricated.
+
+## Milestone 24A — Project state contract
+
+- **Objective:** Define the smallest strict machine-readable project-state
+  contract and its trust, provenance, ownership, and persistence boundaries.
+- **Start / checkpoint:** `2026-07-25`; active implementation checkpoint.
+- **Forecast:** 6–12 active hours; medium confidence.
+- **Boundary:** Rust/TypeScript contracts, fixtures, tests, and documentation
+  only. Repository ingestion, UI, handoff generation, contradiction detection,
+  autonomous correction, and persistence mutation remain deferred to 24B–24D.
+- **Ownership:** user-approved policy remains separate from repository-derived
+  evidence, QuireForge-managed local metadata, and transient agent reports.
+  The canonical persistent policy location is intentionally not selected here.
