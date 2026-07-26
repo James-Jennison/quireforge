@@ -41,6 +41,7 @@ export const repositoryStateReadSnapshotSchema = z
               sourceCommit: z.string().nullable(),
               artifactPath: z.string().nullable(),
               checksum: z.string().nullable(),
+              checksumFile: z.string().nullable(),
               localVerified: z.boolean(),
               freshness: z.enum([
                 "current",

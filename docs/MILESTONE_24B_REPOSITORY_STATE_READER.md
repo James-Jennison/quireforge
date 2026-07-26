@@ -64,6 +64,12 @@ hashes or rebuilds package artifacts. The closed `verify-local-artifacts` mode
 uses SHA-256 only for accepted manifest paths, rejects symlinks and non-files,
 and reports missing, size, and checksum mismatches without repository mutation.
 
+`SHA256SUMS` is parsed only in its closed double-space SHA-256 format. Accepted
+records are reconciled with manifest paths without choosing a winner: malformed,
+duplicate, orphaned, missing, and disagreeing records receive diagnostics, and
+an accepted manifest/checksum disagreement is represented as conflicting
+freshness.
+
 ## Deferred work
 
 Artifact checksum verification, broader validation-report formats, shallow

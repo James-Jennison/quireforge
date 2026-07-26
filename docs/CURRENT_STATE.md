@@ -20,6 +20,9 @@ locally.” Tauri + React + TypeScript is the current functional prototype. ADR
   The reader now returns bounded package, validation, and reported-handoff
   evidence with commit-based freshness and diagnostics; it does not execute
   validation, rebuild packages, or generate a handoff.
+
+  Package evidence now retains distinct manifest, checksum-file, and optional
+  local-verification observations; conflicting accepted records remain visible.
 - **Milestone 22B:** the routed desktop architecture was refined without
   changing route, native-bridge, authentication, or account-data ownership.
 - **Host readiness:** Qt 6.10.2/QML tooling is installed on this host only.

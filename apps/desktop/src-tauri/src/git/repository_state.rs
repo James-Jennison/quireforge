@@ -122,6 +122,7 @@ pub struct PackageEvidence {
     pub source_commit: Option<String>,
     pub artifact_path: Option<String>,
     pub checksum: Option<String>,
+    pub checksum_file: Option<String>,
     pub freshness: Freshness,
     pub local_verified: bool,
 }
@@ -399,6 +400,7 @@ fn read_supported_evidence(
                             source_commit: source_commit.clone(),
                             artifact_path: Some(artifact.path),
                             checksum: Some(artifact.sha256),
+                            checksum_file: None,
                             freshness: freshness(source_commit.as_deref(), current_head),
                             local_verified,
                         });
@@ -441,7 +443,103 @@ fn read_supported_evidence(
             "Package evidence remains optional until the package gate.",
         )),
     }
-    if safe_text(root, checksum_path, diagnostics).is_none() {
+    if let Some(contents) = safe_text(root, checksum_path, diagnostics) {
+        let mut records = std::collections::BTreeMap::new();
+        for line in contents.lines() {
+            let Some((hash, path)) = line.split_once("  ") else {
+                diagnostics.push(diagnostic(
+                    "malformed-checksum-line",
+                    RepositoryStateDiagnosticSeverity::Warning,
+                    "packages",
+                    Some(checksum_path.to_owned()),
+                    "A checksum record does not use the supported SHA-256 format.".to_owned(),
+                    false,
+                    "Regenerate the checksum file.",
+                ));
+                continue;
+            };
+            if !valid_sha256(hash) {
+                diagnostics.push(diagnostic(
+                    "invalid-checksum",
+                    RepositoryStateDiagnosticSeverity::Warning,
+                    "packages",
+                    Some(checksum_path.to_owned()),
+                    "A checksum record is not a SHA-256 value.".to_owned(),
+                    false,
+                    "Regenerate the checksum file.",
+                ));
+                continue;
+            }
+            if !safe_artifact_path(path) {
+                diagnostics.push(diagnostic(
+                    "invalid-checksum-path",
+                    RepositoryStateDiagnosticSeverity::Warning,
+                    "packages",
+                    Some(checksum_path.to_owned()),
+                    "A checksum record has an unsafe path.".to_owned(),
+                    false,
+                    "Regenerate the checksum file.",
+                ));
+                continue;
+            }
+            if records
+                .insert(path.to_owned(), hash.to_ascii_lowercase())
+                .is_some()
+            {
+                diagnostics.push(diagnostic(
+                    "duplicate-checksum",
+                    RepositoryStateDiagnosticSeverity::Warning,
+                    "packages",
+                    Some(checksum_path.to_owned()),
+                    "A checksum record is duplicated.".to_owned(),
+                    false,
+                    "Regenerate the checksum file.",
+                ));
+            }
+        }
+        for package in &mut evidence.packages {
+            let Some(path) = package.artifact_path.as_deref() else {
+                continue;
+            };
+            match records.remove(path) {
+                Some(hash) => {
+                    if package.checksum.as_deref() != Some(hash.as_str()) {
+                        package.freshness = Freshness::Conflicting;
+                        diagnostics.push(diagnostic(
+                            "manifest-checksum-disagreement",
+                            RepositoryStateDiagnosticSeverity::Warning,
+                            "packages",
+                            Some(checksum_path.to_owned()),
+                            "Manifest and checksum-file values disagree.".to_owned(),
+                            false,
+                            "Review package evidence.",
+                        ));
+                    }
+                    package.checksum_file = Some(hash);
+                }
+                None => diagnostics.push(diagnostic(
+                    "manifest-artifact-without-checksum",
+                    RepositoryStateDiagnosticSeverity::Warning,
+                    "packages",
+                    Some(checksum_path.to_owned()),
+                    "A manifest artifact has no checksum record.".to_owned(),
+                    false,
+                    "Regenerate the checksum file.",
+                )),
+            }
+        }
+        for path in records.keys() {
+            diagnostics.push(diagnostic(
+                "checksum-without-manifest-artifact",
+                RepositoryStateDiagnosticSeverity::Warning,
+                "packages",
+                Some(path.clone()),
+                "A checksum record has no manifest artifact.".to_owned(),
+                false,
+                "Review package evidence.",
+            ));
+        }
+    } else {
         diagnostics.push(diagnostic(
             "checksum-file-missing",
             RepositoryStateDiagnosticSeverity::Info,
