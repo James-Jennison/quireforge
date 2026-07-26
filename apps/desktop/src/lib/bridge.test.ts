@@ -369,8 +369,12 @@ describe("desktop bridge", () => {
     await expect(
       startChatConversation({ prompt: "Explain the failing test." }, invoke),
     ).resolves.toEqual(active);
-    await expect(pollChatConversation(active.conversationId, invoke)).resolves.toEqual(active);
-    await expect(interruptChatConversation(active.conversationId, invoke)).resolves.toEqual({
+    await expect(
+      pollChatConversation(active.conversationId, invoke),
+    ).resolves.toEqual(active);
+    await expect(
+      interruptChatConversation(active.conversationId, invoke),
+    ).resolves.toEqual({
       ...active,
       state: "interrupted",
     });
@@ -382,9 +386,13 @@ describe("desktop bridge", () => {
     expect(invoke).toHaveBeenNthCalledWith(3, CHAT_CONVERSATION_POLL_COMMAND, {
       conversationId: active.conversationId,
     });
-    expect(invoke).toHaveBeenNthCalledWith(4, CHAT_CONVERSATION_INTERRUPT_COMMAND, {
-      conversationId: active.conversationId,
-    });
+    expect(invoke).toHaveBeenNthCalledWith(
+      4,
+      CHAT_CONVERSATION_INTERRUPT_COMMAND,
+      {
+        conversationId: active.conversationId,
+      },
+    );
   });
 
   it("uses fixed read-only usage commands", async () => {

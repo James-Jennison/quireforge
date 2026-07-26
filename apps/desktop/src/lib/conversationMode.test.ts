@@ -10,7 +10,9 @@ import {
 
 describe("conversation mode capability policy", () => {
   it("keeps Chat distinct from attached-project Codex capabilities", () => {
-    expect(conversationModeCapabilitySchema.parse(conversationModeCapabilities.chat)).toEqual({
+    expect(
+      conversationModeCapabilitySchema.parse(conversationModeCapabilities.chat),
+    ).toEqual({
       mode: "chat",
       requiresAttachedProject: false,
       allowsNativeActions: false,

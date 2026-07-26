@@ -47,10 +47,13 @@ project-bound capability profile and existing records.
    that its fixed app-server request cannot obtain project/native-action
    authority. **Implemented with a direct Chat workspace and bridge.**
 3. Route the existing Codex conversation service through the native engine and
-   implement explicit confirmed mode transitions with no automatic context
-   transfer. **The initial confirmed selector is implemented; unified history
-   and continuation remain deferred.**
-5. Close full Rust/TypeScript/desktop/browser validation and the pinned Ubuntu
+implement explicit confirmed mode transitions with no automatic context
+transfer. **The initial confirmed selector is implemented. The confirmed mode
+choice persists locally as the closed `chat` or `codex` preference and restores
+safely to Codex if absent or invalid; no project context, attachment,
+integration, approval, or transcript is persisted or transferred. Unified
+history and continuation remain deferred.**
+4. Close full Rust/TypeScript/desktop/browser validation and the pinned Ubuntu
    22.04 Debian/AppImage package gate.
 
 ## Settings foundation
@@ -76,7 +79,9 @@ its local `quireforge-theme` preference remain unchanged.
 
 ## Remaining work
 
-Unified history/continuation presentation, migration/backfill coverage for an
-already populated production database, desktop/browser accessibility coverage,
-the complete regression suite, and the final pinned Ubuntu 22.04
-package/evidence gate remain.
+Unified history/continuation presentation and migration/backfill coverage for
+an already populated production database remain deferred. The remaining M27
+completion work is the full validation and final pinned Ubuntu 22.04
+package/evidence gate. The desktop distribution gate retains complete-chunk
+accounting with measured ceilings of 865 KiB JavaScript and 105 KiB CSS; it
+does not exclude the Chat/Codex contract or any appearance palette.

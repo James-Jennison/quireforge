@@ -22,15 +22,21 @@ const diagnosticMessage: Record<
   NonNullable<ChatConversationSnapshot["diagnosticCode"]>,
   string
 > = {
-  "authentication-required": "Sign in with the managed ChatGPT browser flow before starting Chat.",
-  "authentication-unavailable": "Chat requires a managed ChatGPT account. API-key and external-token accounts cannot enable it.",
+  "authentication-required":
+    "Sign in with the managed ChatGPT browser flow before starting Chat.",
+  "authentication-unavailable":
+    "Chat requires a managed ChatGPT account. API-key and external-token accounts cannot enable it.",
   "conversation-not-found": "This Chat conversation is no longer available.",
-  "conversation-active": "Finish or stop the active Chat conversation before starting another.",
+  "conversation-active":
+    "Finish or stop the active Chat conversation before starting another.",
   "invalid-request": "Enter a non-empty message and try again.",
   "runtime-unavailable": "The native Codex runtime is unavailable.",
-  "protocol-invalid": "The native Chat bridge returned a response QuireForge could not safely use.",
-  "capability-blocked": "Chat blocked an attempted native tool or permission request.",
-  "metadata-unavailable": "QuireForge could not record bounded local Chat metadata.",
+  "protocol-invalid":
+    "The native Chat bridge returned a response QuireForge could not safely use.",
+  "capability-blocked":
+    "Chat blocked an attempted native tool or permission request.",
+  "metadata-unavailable":
+    "QuireForge could not record bounded local Chat metadata.",
 };
 
 export function ChatWorkspace({
@@ -44,7 +50,8 @@ export function ChatWorkspace({
   const [prompt, setPrompt] = useState("");
   const [actionError, setActionError] = useState(false);
   const authentication = managedChatAuthenticationState(auth);
-  const active = snapshot.state === "running" && snapshot.conversationId !== null;
+  const active =
+    snapshot.state === "running" && snapshot.conversationId !== null;
 
   useEffect(() => {
     if (!active || !snapshot.conversationId) return undefined;
@@ -73,8 +80,8 @@ export function ChatWorkspace({
           <p className="eyebrow">Chat</p>
           <h1 id="chat-title">A no-project conversation.</h1>
           <p>
-            Chat has no attached directory, terminal, Git, worktree, integration,
-            native-action, or approval capability.
+            Chat has no attached directory, terminal, Git, worktree,
+            integration, native-action, or approval capability.
           </p>
         </div>
       </header>
@@ -112,7 +119,10 @@ export function ChatWorkspace({
               {event.delta}
             </p>
           ) : event.type === "reasoning-summary-delta" ? (
-            <details className="conversation-event__reasoning" key={event.sequence}>
+            <details
+              className="conversation-event__reasoning"
+              key={event.sequence}
+            >
               <summary>Reasoning summary</summary>
               <p>{event.delta}</p>
             </details>
@@ -142,7 +152,8 @@ export function ChatWorkspace({
               type="button"
               disabled={busy}
               onClick={() => {
-                if (snapshot.conversationId) void onInterrupt(snapshot.conversationId);
+                if (snapshot.conversationId)
+                  void onInterrupt(snapshot.conversationId);
               }}
             >
               Stop

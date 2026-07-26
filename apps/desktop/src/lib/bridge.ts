@@ -213,7 +213,8 @@ export const CHAT_AUTHENTICATION_STATUS_COMMAND = "chat_authentication_status";
 export const CHAT_CONVERSATION_STATUS_COMMAND = "chat_conversation_status";
 export const CHAT_CONVERSATION_START_COMMAND = "chat_conversation_start";
 export const CHAT_CONVERSATION_POLL_COMMAND = "chat_conversation_poll";
-export const CHAT_CONVERSATION_INTERRUPT_COMMAND = "chat_conversation_interrupt";
+export const CHAT_CONVERSATION_INTERRUPT_COMMAND =
+  "chat_conversation_interrupt";
 export const CONVERSATION_ACTIVE_COMMAND = "conversation_active";
 export const CONVERSATION_NOTIFY_COMMAND = "conversation_notify";
 export const CONVERSATION_START_COMMAND = "conversation_start";
@@ -367,7 +368,10 @@ export async function startChatConversation(
   invokeFunction: InvokeFunction = invokeTauri,
 ): Promise<ChatConversationSnapshot> {
   return chatConversationSnapshotSchema.parse(
-    await invokeFunction(CHAT_CONVERSATION_START_COMMAND, chatConversationStartRequestSchema.parse(request)),
+    await invokeFunction(
+      CHAT_CONVERSATION_START_COMMAND,
+      chatConversationStartRequestSchema.parse(request),
+    ),
   );
 }
 

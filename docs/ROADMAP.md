@@ -835,8 +835,11 @@ managed-ChatGPT-account feasibility gate and native capability-separated Chat
 and Codex conversation modes. Chat must use only the documented Codex
 app-server browser-login path; API keys, external tokens, cookies, consumer
 ChatGPT APIs, background behavior, and automatic context transfer are out of
-scope. Completion requires strict migration/contract coverage, full desktop
-validation, and fresh pinned Ubuntu 22.04 package evidence.
+scope. The explicit Chat/Codex choice persists only after confirmation and
+falls back safely to Codex if its local preference is absent or invalid;
+project context and other capability-bearing state never transfer. Completion
+requires strict migration/contract coverage, full desktop validation, and fresh
+pinned Ubuntu 22.04 package evidence.
 
 ## Forecast policy
 

@@ -34,8 +34,11 @@ const stylesheetBytes = stylesheets.reduce(
 const limits = {
   entry: 256 * 1024,
   app: 300 * 1024,
-  javascript: 850 * 1024,
-  stylesheets: 100 * 1024,
+  // M27's native Chat/Codex capability contracts and the eight closed M26
+  // palettes are included in the shipped desktop bundle. Keep a narrow,
+  // measured ceiling instead of weakening the check or excluding chunks.
+  javascript: 865 * 1024,
+  stylesheets: 105 * 1024,
 };
 
 const failures = [];

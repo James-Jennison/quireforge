@@ -1,11 +1,14 @@
 # Changelog
 
-## Unreleased — 0.1.0-beta.3
+## Unreleased — 0.1.0-beta.4
 
 - Begin Milestone 27’s managed-ChatGPT-only conversation foundation: closed
   Chat/Codex capability contracts, bounded no-project Chat metadata, and a
   fixed native Chat bridge that rejects project, tool, approval, and API-key
   authority.
+- Persist only the explicitly confirmed Chat/Codex workspace preference, with
+  a safe Codex fallback for missing or invalid local values and no transfer of
+  project context or conversation content.
 
 All notable project changes will be documented here. The project has not
 released a usable application.

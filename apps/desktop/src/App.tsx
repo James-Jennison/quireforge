@@ -247,6 +247,7 @@ type UsageViewState = "checking" | "native" | "preview" | "unavailable";
 const workspaceStorageKey = "quireforge-workspace-location";
 const inspectorWidthStorageKey = "quireforge-inspector-width";
 const sidebarCompactStorageKey = "quireforge-sidebar-compact";
+const conversationModeStorageKey = "quireforge-conversation-mode";
 const inspectorWidthMinimum = 280;
 const inspectorWidthMaximum = 520;
 
@@ -439,6 +440,11 @@ function initialInspectorWidth(): number {
 
 function initialSidebarCompact(): boolean {
   return window.localStorage.getItem(sidebarCompactStorageKey) === "true";
+}
+
+function initialConversationMode(): ConversationMode {
+  const stored = window.localStorage.getItem(conversationModeStorageKey);
+  return stored === "chat" || stored === "codex" ? stored : "codex";
 }
 
 function initialInspectorOpen(): boolean {
@@ -724,7 +730,9 @@ export default function App({
   const [conversationBusy, setConversationBusy] = useState(false);
   const [conversationActionError, setConversationActionError] =
     useState<ConversationActionFailureCode | null>(null);
-  const [conversationMode, setConversationMode] = useState<ConversationMode>("codex");
+  const [conversationMode, setConversationMode] = useState<ConversationMode>(
+    initialConversationMode,
+  );
   const [pendingConversationMode, setPendingConversationMode] =
     useState<ConversationMode | null>(null);
   const [chatConversation, setChatConversation] =
@@ -1395,6 +1403,10 @@ export default function App({
   useEffect(() => {
     window.localStorage.setItem(appearanceThemeStorageKey, theme);
   }, [theme]);
+
+  useEffect(() => {
+    window.localStorage.setItem(conversationModeStorageKey, conversationMode);
+  }, [conversationMode]);
 
   useEffect(() => {
     const synchronizeLocation = () => {
@@ -3431,7 +3443,11 @@ export default function App({
               active={workspaceLocation.route === "conversation"}
             >
               <section className="conversation-mode-workspace">
-                <div className="conversation-mode-switcher" role="group" aria-label="Conversation mode">
+                <div
+                  className="conversation-mode-switcher"
+                  role="group"
+                  aria-label="Conversation mode"
+                >
                   <button
                     type="button"
                     aria-pressed={conversationMode === "chat"}
@@ -3456,13 +3472,19 @@ export default function App({
                   </button>
                 </div>
                 {pendingConversationMode && (
-                  <div className="conversation-boundary-note" role="dialog" aria-modal="true" aria-label="Confirm conversation mode change">
+                  <div
+                    className="conversation-boundary-note"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="Confirm conversation mode change"
+                  >
                     <strong>Confirm mode change</strong>
                     <p>
                       {pendingConversationMode === "chat"
                         ? "Chat has no project, terminal, Git, worktree, integration, native-action, or approval capability."
                         : "Codex requires an attached project and restores its visible execution and approval boundaries."}
-                      No project, attachment, integration, approval, or hidden transcript transfers automatically.
+                      No project, attachment, integration, approval, or hidden
+                      transcript transfers automatically.
                     </p>
                     <button
                       type="button"
@@ -3471,9 +3493,13 @@ export default function App({
                         setPendingConversationMode(null);
                       }}
                     >
-                      Confirm {pendingConversationMode === "chat" ? "Chat" : "Codex"}
+                      Confirm{" "}
+                      {pendingConversationMode === "chat" ? "Chat" : "Codex"}
                     </button>
-                    <button type="button" onClick={() => setPendingConversationMode(null)}>
+                    <button
+                      type="button"
+                      onClick={() => setPendingConversationMode(null)}
+                    >
                       Cancel
                     </button>
                   </div>

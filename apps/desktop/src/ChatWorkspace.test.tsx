@@ -10,7 +10,11 @@ describe("ChatWorkspace", () => {
     const onStart = vi.fn().mockResolvedValue(scaffoldChatConversation);
     render(
       <ChatWorkspace
-        auth={{ ...scaffoldCodexAuth, state: "authenticated", accountKind: "chatgpt" }}
+        auth={{
+          ...scaffoldCodexAuth,
+          state: "authenticated",
+          accountKind: "chatgpt",
+        }}
         snapshot={scaffoldChatConversation}
         busy={false}
         onStart={onStart}
@@ -31,7 +35,11 @@ describe("ChatWorkspace", () => {
   it("does not offer an API-key fallback", () => {
     render(
       <ChatWorkspace
-        auth={{ ...scaffoldCodexAuth, state: "authenticated", accountKind: "api-key" }}
+        auth={{
+          ...scaffoldCodexAuth,
+          state: "authenticated",
+          accountKind: "api-key",
+        }}
         snapshot={scaffoldChatConversation}
         busy={false}
         onStart={vi.fn()}

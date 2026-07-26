@@ -64,14 +64,16 @@ export const chatAuthenticationSnapshotSchema = z
     if (chat.mode !== "chat") {
       context.addIssue({
         code: "custom",
-        message: "Chat authentication must expose the Chat capability profile first",
+        message:
+          "Chat authentication must expose the Chat capability profile first",
         path: ["capabilities", 0, "mode"],
       });
     }
     if (codex.mode !== "codex") {
       context.addIssue({
         code: "custom",
-        message: "Chat authentication must expose the Codex capability profile second",
+        message:
+          "Chat authentication must expose the Codex capability profile second",
         path: ["capabilities", 1, "mode"],
       });
     }

@@ -93,7 +93,9 @@ const sections: readonly {
 ];
 
 const foundationSections: Readonly<
-  Partial<Record<SettingsSection, { eyebrow: string; title: string; detail: string }>>
+  Partial<
+    Record<SettingsSection, { eyebrow: string; title: string; detail: string }>
+  >
 > = {
   chat: {
     eyebrow: "Chat",

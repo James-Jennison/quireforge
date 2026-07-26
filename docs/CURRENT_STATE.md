@@ -81,8 +81,12 @@ external-token, browser-session, or consumer-ChatGPT paths. Its fixed native
 profile has no project root, dynamic tools, integrations, approvals, terminal,
 Git, or worktree authority; its explicit confirmed Chat/Codex transition does
 not transfer project context or hidden conversation state.
-The release contract now targets the next incremental candidate,
-`0.1.0-beta.3`. See [Milestone 27](MILESTONE_27_UNIFIED_CONVERSATION_ENGINE.md).
+The confirmed Chat/Codex workspace selection is a closed local preference; it
+restores only `chat` or `codex` and falls back safely to Codex for absent or
+invalid saved values. It never persists or transfers project context,
+attachments, approvals, integrations, transcripts, or credentials. The release
+contract now targets the next incremental candidate, `0.1.0-beta.4`. See
+[Milestone 27](MILESTONE_27_UNIFIED_CONVERSATION_ENGINE.md).
 
 Milestone 26 — **Appearance Themes** is complete. It retains Forge as the
 default and adds seven closed local palettes through Settings → Appearance with
