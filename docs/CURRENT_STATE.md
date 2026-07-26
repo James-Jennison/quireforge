@@ -79,7 +79,8 @@ a fixed no-project native Chat bridge. Chat requires only the documented
 Codex-managed browser ChatGPT sign-in and remains unavailable for API-key,
 external-token, browser-session, or consumer-ChatGPT paths. Its fixed native
 profile has no project root, dynamic tools, integrations, approvals, terminal,
-Git, or worktree authority; the user-visible mode transition remains pending.
+Git, or worktree authority; its explicit confirmed Chat/Codex transition does
+not transfer project context or hidden conversation state.
 The release contract now targets the next incremental candidate,
 `0.1.0-beta.3`. See [Milestone 27](MILESTONE_27_UNIFIED_CONVERSATION_ENGINE.md).
 

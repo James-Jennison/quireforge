@@ -20,6 +20,7 @@ import {
   type ThemeId,
 } from "./appearanceThemes";
 import { AuthGate } from "./AuthGate";
+import { ChatWorkspace } from "./ChatWorkspace";
 import { ConversationWorkspace } from "./ConversationWorkspace";
 import { FilePreviewWorkspace } from "./FilePreviewWorkspace";
 import { GitWorkspace } from "./GitWorkspace";
@@ -49,6 +50,8 @@ import {
   decideConversationApproval,
   detachProject,
   interruptConversation,
+  interruptChatConversation,
+  loadChatConversation,
   loadActiveConversations,
   loadCodexAuth,
   loadConversationStatus,
@@ -78,6 +81,7 @@ import {
   pollIntegrationControl,
   refreshIntegrationCatalog as refreshIntegrationCatalogNative,
   pollConversation,
+  pollChatConversation,
   refreshCodexAuth,
   refreshCodexUsage,
   recoverGitMutation,
@@ -85,6 +89,7 @@ import {
   resumeConversation,
   forkConversation,
   startConversation,
+  startChatConversation,
   startCodexAuth,
   stageDroppedConversationAttachments,
   updateModelSelection,
@@ -132,6 +137,12 @@ import {
   type ConversationSnapshot,
   type ConversationStartRequest,
 } from "./lib/conversation";
+import {
+  scaffoldChatConversation,
+  type ChatConversationSnapshot,
+  type ChatConversationStartRequest,
+} from "./lib/chat";
+import { type ConversationMode } from "./lib/conversationMode";
 import { mergeConversationEvents } from "./lib/conversationView";
 import {
   scaffoldGitWorkspace,
@@ -326,6 +337,16 @@ interface AppProps {
   interruptConversationTask?: (
     conversationId: string,
   ) => Promise<ConversationSnapshot>;
+  loadChatConversationTask?: () => Promise<ChatConversationSnapshot>;
+  startChatConversationTask?: (
+    request: ChatConversationStartRequest,
+  ) => Promise<ChatConversationSnapshot>;
+  pollChatConversationTask?: (
+    conversationId: string,
+  ) => Promise<ChatConversationSnapshot>;
+  interruptChatConversationTask?: (
+    conversationId: string,
+  ) => Promise<ChatConversationSnapshot>;
   decideConversationApprovalTask?: (
     request: ConversationApprovalDecisionRequest,
   ) => Promise<ConversationSnapshot>;
@@ -597,6 +618,10 @@ export default function App({
   pollConversationTask = pollConversation,
   notifyConversationTask = notifyConversation,
   interruptConversationTask = interruptConversation,
+  loadChatConversationTask = loadChatConversation,
+  startChatConversationTask = startChatConversation,
+  pollChatConversationTask = pollChatConversation,
+  interruptChatConversationTask = interruptChatConversation,
   decideConversationApprovalTask = decideConversationApproval,
   updateModelSelectionTask = updateModelSelection,
   loadSessions = loadConversationSessions,
@@ -699,6 +724,12 @@ export default function App({
   const [conversationBusy, setConversationBusy] = useState(false);
   const [conversationActionError, setConversationActionError] =
     useState<ConversationActionFailureCode | null>(null);
+  const [conversationMode, setConversationMode] = useState<ConversationMode>("codex");
+  const [pendingConversationMode, setPendingConversationMode] =
+    useState<ConversationMode | null>(null);
+  const [chatConversation, setChatConversation] =
+    useState<ChatConversationSnapshot>(scaffoldChatConversation);
+  const [chatConversationBusy, setChatConversationBusy] = useState(false);
   const conversationActionGenerations = useRef<Record<string, number>>({});
   const observedConversationStates = useRef<
     Record<string, ConversationSnapshot["state"]>
@@ -807,6 +838,21 @@ export default function App({
       active = false;
     };
   }, [loadAuth]);
+
+  useEffect(() => {
+    if (!accessGranted) return;
+    let active = true;
+    void loadChatConversationTask()
+      .then((result) => {
+        if (active) setChatConversation(result);
+      })
+      .catch(() => {
+        if (active) setChatConversation(scaffoldChatConversation);
+      });
+    return () => {
+      active = false;
+    };
+  }, [accessGranted, loadChatConversationTask]);
 
   useEffect(() => {
     if (!accessGranted) return;
@@ -2022,6 +2068,40 @@ export default function App({
       throw error;
     } finally {
       setConversationBusy(false);
+    }
+  }
+
+  async function beginChatConversation(
+    request: ChatConversationStartRequest,
+  ): Promise<ChatConversationSnapshot> {
+    setChatConversationBusy(true);
+    try {
+      const result = await startChatConversationTask(request);
+      setChatConversation(result);
+      return result;
+    } finally {
+      setChatConversationBusy(false);
+    }
+  }
+
+  async function pollChatConversationById(
+    conversationId: string,
+  ): Promise<ChatConversationSnapshot> {
+    const result = await pollChatConversationTask(conversationId);
+    setChatConversation(result);
+    return result;
+  }
+
+  async function stopChatConversation(
+    conversationId: string,
+  ): Promise<ChatConversationSnapshot> {
+    setChatConversationBusy(true);
+    try {
+      const result = await interruptChatConversationTask(conversationId);
+      setChatConversation(result);
+      return result;
+    } finally {
+      setChatConversationBusy(false);
     }
   }
 
@@ -3350,26 +3430,86 @@ export default function App({
               route="conversation"
               active={workspaceLocation.route === "conversation"}
             >
-              <ConversationWorkspace
-                availability={conversationState}
-                snapshot={conversation}
-                events={conversationEvents}
-                runtime={runtime}
-                project={currentProject}
-                integrations={integrationCatalog}
-                attachments={conversationAttachments}
-                busy={conversationBusy}
-                attachmentBusy={conversationAttachmentBusy}
-                actionError={conversationActionError}
-                attachmentActionError={conversationAttachmentActionError}
-                onStart={beginConversation}
-                onInterrupt={stopConversation}
-                onDecideApproval={applyConversationApproval}
-                onUpdateModelSelection={applyModelSelection}
-                onAttachmentPick={chooseConversationAttachments}
-                onAttachmentDrop={stageConversationAttachmentDrop}
-                onAttachmentCancel={removeConversationAttachment}
-              />
+              <section className="conversation-mode-workspace">
+                <div className="conversation-mode-switcher" role="group" aria-label="Conversation mode">
+                  <button
+                    type="button"
+                    aria-pressed={conversationMode === "chat"}
+                    onClick={() =>
+                      conversationMode === "chat"
+                        ? undefined
+                        : setPendingConversationMode("chat")
+                    }
+                  >
+                    Chat
+                  </button>
+                  <button
+                    type="button"
+                    aria-pressed={conversationMode === "codex"}
+                    onClick={() =>
+                      conversationMode === "codex"
+                        ? undefined
+                        : setPendingConversationMode("codex")
+                    }
+                  >
+                    Codex
+                  </button>
+                </div>
+                {pendingConversationMode && (
+                  <div className="conversation-boundary-note" role="dialog" aria-modal="true" aria-label="Confirm conversation mode change">
+                    <strong>Confirm mode change</strong>
+                    <p>
+                      {pendingConversationMode === "chat"
+                        ? "Chat has no project, terminal, Git, worktree, integration, native-action, or approval capability."
+                        : "Codex requires an attached project and restores its visible execution and approval boundaries."}
+                      No project, attachment, integration, approval, or hidden transcript transfers automatically.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setConversationMode(pendingConversationMode);
+                        setPendingConversationMode(null);
+                      }}
+                    >
+                      Confirm {pendingConversationMode === "chat" ? "Chat" : "Codex"}
+                    </button>
+                    <button type="button" onClick={() => setPendingConversationMode(null)}>
+                      Cancel
+                    </button>
+                  </div>
+                )}
+                {conversationMode === "chat" ? (
+                  <ChatWorkspace
+                    auth={auth}
+                    snapshot={chatConversation}
+                    busy={chatConversationBusy}
+                    onStart={beginChatConversation}
+                    onPoll={pollChatConversationById}
+                    onInterrupt={stopChatConversation}
+                  />
+                ) : (
+                  <ConversationWorkspace
+                    availability={conversationState}
+                    snapshot={conversation}
+                    events={conversationEvents}
+                    runtime={runtime}
+                    project={currentProject}
+                    integrations={integrationCatalog}
+                    attachments={conversationAttachments}
+                    busy={conversationBusy}
+                    attachmentBusy={conversationAttachmentBusy}
+                    actionError={conversationActionError}
+                    attachmentActionError={conversationAttachmentActionError}
+                    onStart={beginConversation}
+                    onInterrupt={stopConversation}
+                    onDecideApproval={applyConversationApproval}
+                    onUpdateModelSelection={applyModelSelection}
+                    onAttachmentPick={chooseConversationAttachments}
+                    onAttachmentDrop={stageConversationAttachmentDrop}
+                    onAttachmentCancel={removeConversationAttachment}
+                  />
+                )}
+              </section>
             </WorkspaceView>
 
             <WorkspaceView

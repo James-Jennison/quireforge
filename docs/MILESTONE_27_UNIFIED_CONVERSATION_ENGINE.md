@@ -45,10 +45,11 @@ project-bound capability profile and existing records.
    foundation, and bounded mode-aware metadata. **Implemented.**
 2. Add the no-project Chat profile only after native capability tests prove
    that its fixed app-server request cannot obtain project/native-action
-   authority. **Native bridge implemented; user workspace wiring remains.**
+   authority. **Implemented with a direct Chat workspace and bridge.**
 3. Route the existing Codex conversation service through the native engine and
    implement explicit confirmed mode transitions with no automatic context
-   transfer.
+   transfer. **The initial confirmed selector is implemented; unified history
+   and continuation remain deferred.**
 5. Close full Rust/TypeScript/desktop/browser validation and the pinned Ubuntu
    22.04 Debian/AppImage package gate.
 
@@ -75,7 +76,7 @@ its local `quireforge-theme` preference remain unchanged.
 
 ## Remaining work
 
-The user-visible Chat/Codex selector with a confirmed transition, unified
-workspace event presentation, migration/backfill coverage, desktop/browser
-accessibility coverage, complete regression suite, and final pinned Ubuntu
-22.04 package/evidence gate remain.
+Unified history/continuation presentation, migration/backfill coverage for an
+already populated production database, desktop/browser accessibility coverage,
+the complete regression suite, and the final pinned Ubuntu 22.04
+package/evidence gate remain.
