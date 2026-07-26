@@ -693,6 +693,78 @@ describe("desktop bridge", () => {
     ]);
   });
 
+  it("preserves a multiline task as one native conversation request", async () => {
+    const prompt =
+      "Inspect the native action.\n\n- Preserve this list.\n- Run one task.";
+    const request = {
+      projectId: "018f0000-0000-7000-8000-000000000001",
+      prompt,
+      attachmentIds: [],
+      modelId: "gpt-5.6-sol",
+      reasoningEffort: "high",
+      selectionPolicy: {
+        ownership: "manual" as const,
+        userLocked: false,
+        allowedModelIds: [],
+        reasoningCeiling: null,
+      },
+      sandboxMode: "read-only" as const,
+      approvalPolicy: "untrusted" as const,
+      integrationEntryIds: [],
+    };
+    const invoke = vi.fn().mockResolvedValue(scaffoldConversation);
+
+    await startConversation(request, invoke);
+
+    expect(invoke).toHaveBeenCalledTimes(1);
+    expect(invoke).toHaveBeenCalledWith(CONVERSATION_START_COMMAND, {
+      request,
+    });
+  });
+
+  it("classifies rejected conversation requests, IPC, and native responses", async () => {
+    const request = {
+      projectId: "018f0000-0000-7000-8000-000000000001",
+      prompt: "Review the attached project.",
+      attachmentIds: [],
+      modelId: "gpt-5.6-sol",
+      reasoningEffort: "high",
+      selectionPolicy: {
+        ownership: "manual" as const,
+        userLocked: false,
+        allowedModelIds: [],
+        reasoningCeiling: null,
+      },
+      sandboxMode: "read-only" as const,
+      approvalPolicy: "untrusted" as const,
+      integrationEntryIds: [],
+    };
+    const invalidRequestInvoke = vi.fn();
+    const rejectedInvoke = vi.fn().mockRejectedValue(new Error("private"));
+    const malformedResponseInvoke = vi
+      .fn()
+      .mockResolvedValue({ schemaVersion: 3 });
+
+    await expect(
+      startConversation({ ...request, prompt: "\u0000" }, invalidRequestInvoke),
+    ).rejects.toMatchObject({
+      code: "request-invalid",
+    });
+    expect(invalidRequestInvoke).not.toHaveBeenCalled();
+
+    await expect(
+      startConversation(request, rejectedInvoke),
+    ).rejects.toMatchObject({
+      code: "native-command-failed",
+    });
+
+    await expect(
+      startConversation(request, malformedResponseInvoke),
+    ).rejects.toMatchObject({
+      code: "native-response-invalid",
+    });
+  });
+
   it("updates only the closed app-owned next-turn selector contract", async () => {
     const request = {
       conversationId: "018f0000-0000-7000-8000-000000000010",

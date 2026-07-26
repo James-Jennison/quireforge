@@ -790,7 +790,7 @@ async fn continue_on_process(
         }
     };
 
-    let mut input = vec![json!({"type": "text", "text": request.prompt})];
+    let mut input = vec![super::conversation_text_input(&request.prompt)];
     input.extend(
         inputs
             .attachments

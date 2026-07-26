@@ -115,7 +115,9 @@ import {
 } from "./lib/filePreview";
 import type { DesktopNotificationResult } from "./lib/desktopIntegration";
 import {
+  conversationActionFailureCode,
   scaffoldConversation,
+  type ConversationActionFailureCode,
   type ConversationApprovalDecisionRequest,
   type ConversationEvent,
   type ConversationRegistrySnapshot,
@@ -692,7 +694,8 @@ export default function App({
   const [conversationState, setConversationState] =
     useState<ConversationViewState>("checking");
   const [conversationBusy, setConversationBusy] = useState(false);
-  const [conversationActionError, setConversationActionError] = useState(false);
+  const [conversationActionError, setConversationActionError] =
+    useState<ConversationActionFailureCode | null>(null);
   const conversationActionGenerations = useRef<Record<string, number>>({});
   const observedConversationStates = useRef<
     Record<string, ConversationSnapshot["state"]>
@@ -1205,7 +1208,7 @@ export default function App({
           : [],
       );
       if (settled.some((result) => result.status === "rejected"))
-        setConversationActionError(true);
+        setConversationActionError("native-command-failed");
 
       for (const result of results) {
         if (!result.conversationId) continue;
@@ -1862,7 +1865,7 @@ export default function App({
     const tracked = trackedConversations[projectId];
     setConversation(tracked?.snapshot ?? scaffoldConversation);
     setConversationEvents(tracked?.events ?? []);
-    setConversationActionError(false);
+    setConversationActionError(null);
   }
 
   async function chooseFilePreview(projectId: string) {
@@ -1975,7 +1978,7 @@ export default function App({
     request: ConversationStartRequest,
   ): Promise<ConversationSnapshot> {
     setConversationBusy(true);
-    setConversationActionError(false);
+    setConversationActionError(null);
     try {
       const result = await startConversationTask(request);
       setConversationAttachments(scaffoldConversationAttachments);
@@ -1985,7 +1988,7 @@ export default function App({
       trackConversation(result, true);
       return result;
     } catch (error) {
-      setConversationActionError(true);
+      setConversationActionError(conversationActionFailureCode(error));
       throw error;
     } finally {
       setConversationBusy(false);
@@ -1998,7 +2001,7 @@ export default function App({
     conversationActionGenerations.current[conversationId] =
       (conversationActionGenerations.current[conversationId] ?? 0) + 1;
     setConversationBusy(true);
-    setConversationActionError(false);
+    setConversationActionError(null);
     try {
       const result = await interruptConversationTask(conversationId);
       setConversation(result);
@@ -2008,7 +2011,7 @@ export default function App({
       trackConversation(result, false);
       return result;
     } catch (error) {
-      setConversationActionError(true);
+      setConversationActionError(conversationActionFailureCode(error));
       throw error;
     } finally {
       setConversationBusy(false);
@@ -2021,7 +2024,7 @@ export default function App({
     conversationActionGenerations.current[request.conversationId] =
       (conversationActionGenerations.current[request.conversationId] ?? 0) + 1;
     setConversationBusy(true);
-    setConversationActionError(false);
+    setConversationActionError(null);
     try {
       const result = await decideConversationApprovalTask(request);
       setConversation(result);
@@ -2031,7 +2034,7 @@ export default function App({
       trackConversation(result, false);
       return result;
     } catch (error) {
-      setConversationActionError(true);
+      setConversationActionError(conversationActionFailureCode(error));
       throw error;
     } finally {
       setConversationBusy(false);
@@ -2043,7 +2046,7 @@ export default function App({
   ): Promise<ModelSelectionSnapshot> {
     setConversationBusy(true);
     setSessionBusy(true);
-    setConversationActionError(false);
+    setConversationActionError(null);
     setSessionActionError(false);
     try {
       const result = await updateModelSelectionTask(request);
@@ -2072,7 +2075,7 @@ export default function App({
       }));
       return result;
     } catch (error) {
-      setConversationActionError(true);
+      setConversationActionError(conversationActionFailureCode(error));
       setSessionActionError(true);
       throw error;
     } finally {
@@ -2110,7 +2113,7 @@ export default function App({
   ): Promise<ConversationSnapshot> {
     setConversationBusy(true);
     setSessionBusy(true);
-    setConversationActionError(false);
+    setConversationActionError(null);
     setSessionActionError(false);
     try {
       const source = sessions.sessions.find(
@@ -2126,7 +2129,7 @@ export default function App({
       if (result.state === "unavailable") setSessionActionError(true);
       return result;
     } catch (error) {
-      setConversationActionError(true);
+      setConversationActionError(conversationActionFailureCode(error));
       setSessionActionError(true);
       throw error;
     } finally {
