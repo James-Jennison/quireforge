@@ -16,6 +16,10 @@ locally.” Tauri + React + TypeScript is the current functional prototype. ADR
   fetch mode can advance only its `origin` tracking ref with no `FETCH_HEAD`,
   HEAD, index, worktree, or configuration mutation. Package, validation, and
   handoff evidence readers remain deferred within 24B.
+
+  The reader now returns bounded package, validation, and reported-handoff
+  evidence with commit-based freshness and diagnostics; it does not execute
+  validation, rebuild packages, or generate a handoff.
 - **Milestone 22B:** the routed desktop architecture was refined without
   changing route, native-bridge, authentication, or account-data ownership.
 - **Host readiness:** Qt 6.10.2/QML tooling is installed on this host only.

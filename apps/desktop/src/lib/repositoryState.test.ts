@@ -41,6 +41,11 @@ describe("repository-state reader bridge contract", () => {
           bisectInProgress: false,
           shallow: false,
         },
+        evidence: {
+          packages: [],
+          validations: [],
+          handoff: null,
+        },
         diagnostics: [],
       }).state.repository,
     ).toMatchObject({

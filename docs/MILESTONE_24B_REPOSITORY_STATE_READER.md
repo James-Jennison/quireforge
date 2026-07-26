@@ -42,8 +42,23 @@ index, worktree, configuration, operation markers, files, and `FETCH_HEAD`
 remain unchanged. This is limited authorized mutation, not a mutation-free
 mode; callers cannot select a remote or refspec.
 
+## Supported evidence and freshness
+
+The reader uses a closed registry for the Ubuntu package manifest and
+`SHA256SUMS`, `target/validation-summary.json`, and approved handoff phrases in
+`docs/CURRENT_STATE.md`. These are bounded, non-symlink, UTF-8 files only; the
+reader neither scans arbitrary documents nor runs validation or package work.
+Missing optional evidence returns a partial snapshot with diagnostics.
+
+Package and validation claims receive commit-based `current`, `stale`, or
+`unknown` freshness independently from trust. Git observations are verified,
+machine-readable files are verified as file contents, Markdown claims remain
+reported, and suggested actions remain inferred. Malformed or absent evidence
+is never silently repaired or treated as completion.
+
 ## Deferred work
 
-Shallow fixture coverage, complete evidence readers, freshness coverage, and
-the package/validation/handoff readers remain 24B work. No 24C UI, 24D handoff
-generation, contradiction resolution, watcher, or autonomous repair exists.
+Artifact checksum verification, broader validation-report formats, shallow
+fixture coverage, and final package validation remain 24B work. No 24C UI, 24D
+handoff generation, contradiction resolution, watcher, or autonomous repair
+exists.

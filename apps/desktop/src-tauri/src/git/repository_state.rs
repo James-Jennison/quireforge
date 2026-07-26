@@ -1,7 +1,7 @@
 use std::{fs, path::Path};
 
 use serde::{Deserialize, Serialize};
-use serde_json::json;
+use serde_json::{json, Value};
 
 use crate::{
     project::{ProjectExecutionError, ProjectService},
@@ -54,7 +54,45 @@ pub struct RepositoryStateReadSnapshot {
     pub schema_version: u16,
     pub state: ProjectStateContract,
     pub git: RepositoryGitEvidence,
+    pub evidence: RepositoryEvidence,
     pub diagnostics: Vec<RepositoryStateDiagnostic>,
+}
+
+#[derive(Clone, Debug, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RepositoryEvidence {
+    pub packages: Vec<PackageEvidence>,
+    pub validations: Vec<ValidationEvidence>,
+    pub handoff: Option<HandoffEvidence>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PackageEvidence {
+    pub kind: String,
+    pub source_commit: Option<String>,
+    pub artifact_path: Option<String>,
+    pub checksum: Option<String>,
+    pub freshness: String,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ValidationEvidence {
+    pub id: String,
+    pub status: String,
+    pub source_commit: Option<String>,
+    pub evidence_path: String,
+    pub freshness: String,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HandoffEvidence {
+    pub status: String,
+    pub phrase: String,
+    pub source_commit: Option<String>,
+    pub freshness: String,
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize)]
@@ -179,8 +217,14 @@ impl RepositoryStateReader {
             branch.head.as_deref(),
             &mut diagnostics,
         );
-        let evidence = git_evidence(&branch, &changes, &root.git_dir, &root.attached_root).await;
-        snapshot_from_parts(
+        let git = git_evidence(&branch, &changes, &root.git_dir, &root.attached_root).await;
+        let evidence = read_supported_evidence(
+            &root.worktree_root,
+            local_head.as_deref(),
+            branch.head.as_deref(),
+            &mut diagnostics,
+        );
+        let mut snapshot = snapshot_from_parts(
             &request.project_id,
             RepositoryStateParts {
                 branch: branch.head.clone(),
@@ -188,11 +232,301 @@ impl RepositoryStateReader {
                 remote_head,
                 counts,
                 dirty: !changes.is_empty(),
-                git: evidence,
+                git,
             },
             diagnostics,
-        )
+        );
+        snapshot.evidence = evidence;
+        snapshot
     }
+}
+
+fn safe_text(
+    root: &Path,
+    relative: &str,
+    diagnostics: &mut Vec<RepositoryStateDiagnostic>,
+) -> Option<String> {
+    let path = root.join(relative);
+    let metadata = match fs::symlink_metadata(&path) {
+        Ok(value) => value,
+        Err(_) => return None,
+    };
+    if metadata.file_type().is_symlink()
+        || !metadata.is_file()
+        || metadata.len() > MAX_EVIDENCE_BYTES
+    {
+        diagnostics.push(diagnostic(
+            "unsafe-evidence-path",
+            RepositoryStateDiagnosticSeverity::Warning,
+            "evidence",
+            Some(relative.to_owned()),
+            "A supported evidence file is unsafe or oversized.".to_owned(),
+            false,
+            "Inspect the committed evidence file manually.",
+        ));
+        return None;
+    }
+    match fs::read_to_string(path) {
+        Ok(value) => Some(value),
+        Err(_) => {
+            diagnostics.push(diagnostic(
+                "malformed-evidence-utf8",
+                RepositoryStateDiagnosticSeverity::Warning,
+                "evidence",
+                Some(relative.to_owned()),
+                "A supported text evidence file is not valid UTF-8.".to_owned(),
+                false,
+                "Inspect the committed evidence file manually.",
+            ));
+            None
+        }
+    }
+}
+
+fn freshness(source_commit: Option<&str>, current_head: Option<&str>) -> String {
+    match (source_commit, current_head) {
+        (Some(source), Some(current)) if source == current => "current".to_owned(),
+        (Some(_), Some(_)) => "stale".to_owned(),
+        (None, _) => "unknown".to_owned(),
+        _ => "unknown".to_owned(),
+    }
+}
+
+fn read_supported_evidence(
+    root: &Path,
+    current_head: Option<&str>,
+    branch: Option<&str>,
+    diagnostics: &mut Vec<RepositoryStateDiagnostic>,
+) -> RepositoryEvidence {
+    let mut evidence = RepositoryEvidence::default();
+    let manifest_path = "target/ubuntu-22.04/release/packages/release-manifest.json";
+    let checksum_path = "target/ubuntu-22.04/release/packages/SHA256SUMS";
+    match safe_text(root, manifest_path, diagnostics) {
+        Some(contents) => match serde_json::from_str::<Value>(&contents) {
+            Ok(manifest) => {
+                let source_commit = manifest
+                    .get("sourceCommit")
+                    .and_then(Value::as_str)
+                    .map(str::to_owned);
+                let artifacts = manifest
+                    .get("artifacts")
+                    .and_then(Value::as_array)
+                    .cloned()
+                    .unwrap_or_default();
+                if artifacts.is_empty() {
+                    diagnostics.push(diagnostic(
+                        "malformed-package-manifest",
+                        RepositoryStateDiagnosticSeverity::Warning,
+                        "packages",
+                        Some(manifest_path.to_owned()),
+                        "The package manifest has no artifact records.".to_owned(),
+                        false,
+                        "Regenerate reviewed package evidence.",
+                    ));
+                }
+                for artifact in artifacts {
+                    if let Some(kind) = artifact.get("type").and_then(Value::as_str) {
+                        evidence.packages.push(PackageEvidence {
+                            kind: kind.to_owned(),
+                            source_commit: source_commit.clone(),
+                            artifact_path: artifact
+                                .get("path")
+                                .and_then(Value::as_str)
+                                .map(str::to_owned),
+                            checksum: artifact
+                                .get("sha256")
+                                .and_then(Value::as_str)
+                                .map(str::to_owned),
+                            freshness: freshness(source_commit.as_deref(), current_head),
+                        });
+                    }
+                }
+                if freshness(source_commit.as_deref(), current_head) == "stale" {
+                    diagnostics.push(diagnostic(
+                        "stale-package-evidence",
+                        RepositoryStateDiagnosticSeverity::Warning,
+                        "packages",
+                        Some(manifest_path.to_owned()),
+                        "Package evidence is tied to a different source commit.".to_owned(),
+                        false,
+                        "Build or review packages for the current implementation commit.",
+                    ));
+                }
+            }
+            Err(_) => diagnostics.push(diagnostic(
+                "malformed-package-manifest",
+                RepositoryStateDiagnosticSeverity::Warning,
+                "packages",
+                Some(manifest_path.to_owned()),
+                "The supported package manifest is malformed.".to_owned(),
+                false,
+                "Regenerate reviewed package evidence.",
+            )),
+        },
+        None => diagnostics.push(diagnostic(
+            "package-manifest-missing",
+            RepositoryStateDiagnosticSeverity::Info,
+            "packages",
+            Some(manifest_path.to_owned()),
+            "No supported package manifest is present.".to_owned(),
+            false,
+            "Package evidence remains optional until the package gate.",
+        )),
+    }
+    if safe_text(root, checksum_path, diagnostics).is_none() {
+        diagnostics.push(diagnostic(
+            "checksum-file-missing",
+            RepositoryStateDiagnosticSeverity::Info,
+            "packages",
+            Some(checksum_path.to_owned()),
+            "No supported package checksum file is present.".to_owned(),
+            false,
+            "Provide checksum evidence only after package validation.",
+        ));
+    }
+    let validation_path = "target/validation-summary.json";
+    if let Some(contents) = safe_text(root, validation_path, diagnostics) {
+        match serde_json::from_str::<Value>(&contents) {
+            Ok(value) => {
+                if let (Some(id), Some(status)) = (
+                    value.get("id").and_then(Value::as_str),
+                    value.get("status").and_then(Value::as_str),
+                ) {
+                    let source_commit = value
+                        .get("sourceCommit")
+                        .and_then(Value::as_str)
+                        .map(str::to_owned);
+                    let state = freshness(source_commit.as_deref(), current_head);
+                    if state == "stale" {
+                        diagnostics.push(diagnostic(
+                            "stale-validation-evidence",
+                            RepositoryStateDiagnosticSeverity::Warning,
+                            "validations",
+                            Some(validation_path.to_owned()),
+                            "Validation evidence is tied to a different source commit.".to_owned(),
+                            false,
+                            "Run or record validation for the current implementation commit.",
+                        ));
+                    }
+                    evidence.validations.push(ValidationEvidence {
+                        id: id.to_owned(),
+                        status: status.to_owned(),
+                        source_commit,
+                        evidence_path: validation_path.to_owned(),
+                        freshness: state,
+                    });
+                } else {
+                    diagnostics.push(diagnostic(
+                        "malformed-validation-evidence",
+                        RepositoryStateDiagnosticSeverity::Warning,
+                        "validations",
+                        Some(validation_path.to_owned()),
+                        "The supported validation summary lacks an id or status.".to_owned(),
+                        false,
+                        "Regenerate the supported validation summary.",
+                    ));
+                }
+            }
+            Err(_) => diagnostics.push(diagnostic(
+                "malformed-validation-evidence",
+                RepositoryStateDiagnosticSeverity::Warning,
+                "validations",
+                Some(validation_path.to_owned()),
+                "The supported validation summary is malformed.".to_owned(),
+                false,
+                "Regenerate the supported validation summary.",
+            )),
+        }
+    } else {
+        diagnostics.push(diagnostic(
+            "validation-evidence-missing",
+            RepositoryStateDiagnosticSeverity::Info,
+            "validations",
+            Some(validation_path.to_owned()),
+            "No supported machine-readable validation evidence is present.".to_owned(),
+            false,
+            "Validation evidence remains optional until it is recorded.",
+        ));
+    }
+    if let Some(contents) = safe_text(root, "docs/CURRENT_STATE.md", diagnostics) {
+        let phrases = [
+            ("Codex checkpoint pushed. Continue.", "checkpoint-pushed"),
+            ("Codex paused. Continue.", "paused"),
+            ("Codex finished. Continue.", "finished"),
+        ];
+        if let Some((phrase, status)) = phrases
+            .into_iter()
+            .find(|(phrase, _)| contents.contains(phrase))
+        {
+            let reported_commit = contents
+                .lines()
+                .find_map(|line| line.split("commit:").nth(1))
+                .map(str::trim)
+                .filter(|value| value.len() == 40)
+                .map(str::to_owned);
+            let state = freshness(reported_commit.as_deref(), current_head);
+            if status == "checkpoint-pushed" && state != "current" {
+                diagnostics.push(diagnostic(
+                    "checkpoint-without-supporting-commit",
+                    RepositoryStateDiagnosticSeverity::Warning,
+                    "handoff",
+                    Some("docs/CURRENT_STATE.md".to_owned()),
+                    "The checkpoint phrase is not tied to the inspected commit.".to_owned(),
+                    false,
+                    "Compare the reported checkpoint with Git evidence.",
+                ));
+            }
+            if status == "finished"
+                && (evidence.packages.is_empty() || evidence.validations.is_empty())
+            {
+                diagnostics.push(diagnostic(
+                    "incomplete-finished-handoff",
+                    RepositoryStateDiagnosticSeverity::Warning,
+                    "handoff",
+                    Some("docs/CURRENT_STATE.md".to_owned()),
+                    "The finished phrase lacks complete package or validation evidence.".to_owned(),
+                    false,
+                    "Review completion evidence before accepting the handoff.",
+                ));
+            }
+            evidence.handoff = Some(HandoffEvidence {
+                status: status.to_owned(),
+                phrase: phrase.to_owned(),
+                source_commit: reported_commit,
+                freshness: state,
+            });
+        } else if contents.contains("Codex ") {
+            diagnostics.push(diagnostic(
+                "unsupported-handoff-phrase",
+                RepositoryStateDiagnosticSeverity::Warning,
+                "handoff",
+                Some("docs/CURRENT_STATE.md".to_owned()),
+                "A Codex handoff phrase is unsupported.".to_owned(),
+                false,
+                "Use an approved handoff phrase after review.",
+            ));
+        }
+        if let (Some(actual), Some(reported)) = (
+            branch,
+            contents
+                .lines()
+                .find_map(|line| line.strip_prefix("- **Branch:** `"))
+                .and_then(|line| line.strip_suffix('`')),
+        ) {
+            if actual != reported {
+                diagnostics.push(diagnostic(
+                    "document-branch-mismatch",
+                    RepositoryStateDiagnosticSeverity::Warning,
+                    "repository.currentBranch",
+                    Some("docs/CURRENT_STATE.md".to_owned()),
+                    "The documented branch conflicts with Git evidence.".to_owned(),
+                    false,
+                    "Review the branch claim.",
+                ));
+            }
+        }
+    }
+    evidence
 }
 
 async fn fetch_tracking_refs(root: &Path) -> Result<(), GitRunError> {
@@ -319,6 +653,7 @@ fn snapshot_from_parts(
         schema_version: REPOSITORY_STATE_READER_SCHEMA_VERSION,
         state,
         git: parts.git,
+        evidence: RepositoryEvidence::default(),
         diagnostics,
     }
 }
@@ -1001,6 +1336,45 @@ mod tests {
         assert!(evidence.rebase_in_progress);
         assert!(evidence.cherry_pick_in_progress);
         assert!(evidence.bisect_in_progress);
+    }
+
+    #[test]
+    fn supported_evidence_is_partial_and_commit_freshness_is_deterministic() {
+        let fixture = FixtureRepository::new();
+        let head = String::from_utf8(command_output(&fixture.root, &["rev-parse", "HEAD"]))
+            .unwrap()
+            .trim()
+            .to_owned();
+        let packages = fixture.root.join("target/ubuntu-22.04/release/packages");
+        fs::create_dir_all(&packages).unwrap();
+        fs::write(
+            packages.join("release-manifest.json"),
+            format!(r#"{{"sourceCommit":"{head}","artifacts":[{{"type":"deb","path":"quireforge.deb","sha256":"abc"}}]}}"#),
+        )
+        .unwrap();
+        fs::write(packages.join("SHA256SUMS"), "abc  quireforge.deb\n").unwrap();
+        fs::create_dir_all(fixture.root.join("target")).unwrap();
+        fs::write(
+            fixture.root.join("target/validation-summary.json"),
+            format!(r#"{{"id":"rust-tests","status":"passed","sourceCommit":"{head}"}}"#),
+        )
+        .unwrap();
+        let mut diagnostics = Vec::new();
+        let evidence = read_supported_evidence(&fixture.root, Some(&head), None, &mut diagnostics);
+        assert_eq!(evidence.packages.len(), 1);
+        assert_eq!(evidence.packages[0].freshness, "current");
+        assert_eq!(evidence.validations[0].freshness, "current");
+        assert!(!diagnostics
+            .iter()
+            .any(|item| item.id == "stale-package-evidence"));
+
+        fs::write(packages.join("release-manifest.json"), "not-json").unwrap();
+        let mut malformed = Vec::new();
+        let evidence = read_supported_evidence(&fixture.root, Some(&head), None, &mut malformed);
+        assert!(evidence.packages.is_empty());
+        assert!(malformed
+            .iter()
+            .any(|item| item.id == "malformed-package-manifest"));
     }
 
     fn command_output(root: &Path, arguments: &[&str]) -> Vec<u8> {

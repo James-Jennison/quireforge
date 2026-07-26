@@ -29,6 +29,59 @@ export const repositoryStateReadSnapshotSchema = z
         shallow: z.boolean().nullable(),
       })
       .strict(),
+    evidence: z
+      .object({
+        packages: z.array(
+          z
+            .object({
+              kind: z.string(),
+              sourceCommit: z.string().nullable(),
+              artifactPath: z.string().nullable(),
+              checksum: z.string().nullable(),
+              freshness: z.enum([
+                "current",
+                "stale",
+                "unknown",
+                "conflicting",
+                "not-applicable",
+              ]),
+            })
+            .strict(),
+        ),
+        validations: z.array(
+          z
+            .object({
+              id: z.string(),
+              status: z.string(),
+              sourceCommit: z.string().nullable(),
+              evidencePath: z.string(),
+              freshness: z.enum([
+                "current",
+                "stale",
+                "unknown",
+                "conflicting",
+                "not-applicable",
+              ]),
+            })
+            .strict(),
+        ),
+        handoff: z
+          .object({
+            status: z.string(),
+            phrase: z.string(),
+            sourceCommit: z.string().nullable(),
+            freshness: z.enum([
+              "current",
+              "stale",
+              "unknown",
+              "conflicting",
+              "not-applicable",
+            ]),
+          })
+          .strict()
+          .nullable(),
+      })
+      .strict(),
     diagnostics: z
       .array(
         z
