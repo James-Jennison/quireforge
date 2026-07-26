@@ -1,6 +1,6 @@
 # Milestone 26 — Appearance Themes
 
-Status: complete.
+Status: hotfix candidate validated; host reinstall verification pending.
 
 ## Objective
 
@@ -54,7 +54,12 @@ captures visual evidence.
 
 ## Verification and package gate
 
-The implementation commit is `0ae0de7995f10128728116b148d49f2cb5b2cf79`.
+The original implementation commit is
+`0ae0de7995f10128728116b148d49f2cb5b2cf79`. The selector-hotfix commit is
+`8f7b505f24a489d468f02e82d0e6197606a83abe`: it adds direct Settings →
+Appearance, restart persistence, and invalid-preference fallback regression
+coverage, while documenting forced replacement of candidates that share the
+same Debian version.
 The full repository gate passed repository validation, package-contract tests,
 TypeScript/Astro checking, ESLint, Prettier and Rust formatting checks, 192
 desktop and 7 website unit tests, production builds and distribution budgets,
@@ -64,8 +69,8 @@ desktop and website suites; the focused appearance scenario covers desktop and
 mobile axe, keyboard, overflow, visual screenshots, and computed semantic
 contrast checks across all eight palettes.
 
-Fresh ignored release candidates were built from that clean implementation
-commit with `./scripts/run_linux_package_container.sh`. The digest-pinned
+Fresh ignored release candidates were built from the clean hotfix commit with
+`./scripts/run_linux_package_container.sh`. The digest-pinned
 Ubuntu 22.04 builder contains `/usr/bin/xvfb-run`, and its manifest/checksum,
 desktop-entry, PNG icon, disposable Debian lifecycle, visible Debian/AppImage
 launches, and representative smoke checks passed with:
@@ -80,8 +85,8 @@ docker run --rm --init --user "$(id -u):$(id -g)" \
 
 | Artifact | Path                                                                           |             Size | SHA-256                                                            |
 | -------- | ------------------------------------------------------------------------------ | ---------------: | ------------------------------------------------------------------ |
-| Debian   | `target/ubuntu-22.04/release/packages/quireforge_0.1.0.beta.2_amd64.deb`       |  4,637,704 bytes | `cf8505a7ad199083906c0fe5bf36f2385c7db57a62a3d8eeebf71727084d4b65` |
-| AppImage | `target/ubuntu-22.04/release/packages/QuireForge-0.1.0-beta.2-x86_64.AppImage` | 83,859,960 bytes | `68f783be8e03b304a88a2da29f2c96461c3c88faf737256a792c06e49ad45572` |
+| Debian   | `target/ubuntu-22.04/release/packages/quireforge_0.1.0.beta.2_amd64.deb`       |  4,638,180 bytes | `772ce4bf25345ad70d11e30f31593ad0034e25be84e4389ed23fdf276df8ed7a` |
+| AppImage | `target/ubuntu-22.04/release/packages/QuireForge-0.1.0-beta.2-x86_64.AppImage` | 83,859,960 bytes | `d1b7cd4df1145d01e7c3b7cf50ac3cb87a07dfde5f703b2b0e96ddc5828ad380` |
 
 The version-1 `release-manifest.json` and `SHA256SUMS` records under
 `target/ubuntu-22.04/release/packages/` agree with both locally measured sizes
@@ -114,6 +119,12 @@ sudo apt install --reinstall ./target/ubuntu-22.04/release/packages/quireforge_0
 Candidate rebuilds deliberately retain the same prerelease package version.
 Use `--reinstall` when replacing an already installed candidate so APT does not
 retain an older package with the same Debian version and stale bundled assets.
+The prior host installation was verified to have a different executable SHA-256
+than this candidate, establishing that the missing selector was a stale-package
+installation issue rather than an unreachable or conditionally hidden picker.
+The candidate's container lifecycle and visible launch passed; an interactive
+host reinstall and visible selector confirmation remain pending because this
+automation environment has no sudo credential.
 
 The bounded 24B reader's producer-compatible package parsing and both closed
 metadata-only and local-artifact-verification contract paths are covered by its

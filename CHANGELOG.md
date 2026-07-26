@@ -8,7 +8,7 @@ released a usable application.
 ### Fixed
 
 - Documented same-version Debian candidate replacement with `apt install
-  --reinstall` so a locally rebuilt candidate cannot leave an older installed
+--reinstall` so a locally rebuilt candidate cannot leave an older installed
   frontend bundle in place.
 - Kept multiline native conversation tasks in one guarded start action and one
   app-server text input. Re-entrant submissions are ignored while the first
