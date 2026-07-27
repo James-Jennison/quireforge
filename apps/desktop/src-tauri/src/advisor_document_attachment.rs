@@ -285,12 +285,7 @@ fn prepare(
     let opened = file
         .metadata()
         .map_err(|_| AdvisorDocumentAttachmentDiagnosticCode::ReadFailed)?;
-    if !opened.is_file()
-        || opened.len() != selected.len()
-        || opened.dev() != selected.dev()
-        || opened.ino() != selected.ino()
-        || descriptor_path(&file)? != resolved
-    {
+    if !source_identity_matches(&selected, &opened, &descriptor_path(&file)?, &resolved) {
         return Err(AdvisorDocumentAttachmentDiagnosticCode::ReadFailed);
     }
     let mut bytes = Vec::with_capacity(opened.len() as usize);
@@ -316,6 +311,18 @@ fn prepare(
         },
         projection_text,
     ))
+}
+fn source_identity_matches(
+    selected: &std::fs::Metadata,
+    opened: &std::fs::Metadata,
+    descriptor: &Path,
+    resolved: &Path,
+) -> bool {
+    opened.is_file()
+        && opened.len() == selected.len()
+        && opened.dev() == selected.dev()
+        && opened.ino() == selected.ino()
+        && descriptor == resolved
 }
 fn project_pdf(
     bytes: &[u8],
@@ -595,6 +602,33 @@ mod tests {
         std::fs::remove_dir_all(dir).unwrap();
     }
     #[test]
+    fn source_identity_rejects_replacement_and_descriptor_mismatch() {
+        let dir = std::env::temp_dir().join(Uuid::now_v7().to_string());
+        std::fs::create_dir_all(&dir).unwrap();
+        let original = dir.join("original.pdf");
+        let replacement = dir.join("replacement.pdf");
+        std::fs::write(&original, b"original").unwrap();
+        std::fs::write(&replacement, b"replacement bytes").unwrap();
+        let selected = std::fs::metadata(&original).unwrap();
+        let opened = std::fs::metadata(&replacement).unwrap();
+        assert!(!source_identity_matches(
+            &selected,
+            &opened,
+            &replacement,
+            &replacement
+        ));
+        assert!(!source_identity_matches(
+            &selected,
+            &selected,
+            &replacement,
+            &original
+        ));
+        assert!(source_identity_matches(
+            &selected, &selected, &original, &original
+        ));
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+    #[test]
     fn active_content_dictionary_is_rejected() {
         let mut dictionary = lopdf::Dictionary::new();
         dictionary.set("JavaScript", Object::Null);
@@ -798,6 +832,25 @@ mod tests {
         };
         let claimed = service.claim(&request).unwrap();
         assert_eq!(claimed.projection_text, "safe");
+        assert!(matches!(
+            service.claim(&request),
+            Err(AdvisorDocumentAttachmentDiagnosticCode::AttachmentNotFound)
+        ));
+
+        *service.pending.lock().unwrap() = Some(pending_document());
+        let unconfirmed = AdvisorDocumentAttachmentClaimRequest {
+            confirmation: AdvisorContentConfirmationState::ConfirmationRequired,
+            ..request.clone()
+        };
+        assert!(matches!(
+            service.claim(&unconfirmed),
+            Err(AdvisorDocumentAttachmentDiagnosticCode::InvalidRequest)
+        ));
+        assert_eq!(
+            service.snapshot().state,
+            AdvisorDocumentAttachmentState::Ready
+        );
+        assert_eq!(service.clear().state, AdvisorDocumentAttachmentState::Empty);
         assert!(matches!(
             service.claim(&request),
             Err(AdvisorDocumentAttachmentDiagnosticCode::AttachmentNotFound)

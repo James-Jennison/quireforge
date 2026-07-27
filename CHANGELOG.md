@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — 0.1.0-beta.25
+## Unreleased — 0.1.0-beta.26
 
 ### Added
 
@@ -16,6 +16,8 @@
   lifecycle, and path-free diagnostics. Beta.24 supersedes beta.23 locally.
 - Add direct QuireForge-owned PDF source-boundary and path-free diagnostic
   coverage. Beta.25 supersedes beta.24 locally.
+- Add direct reset and bounded Advisor transport assertions; beta.26 supersedes
+  beta.25 locally.
 
 - Add Milestone 32’s bounded, transient Advisor conversation viewport and
   confirmed Advisor/Codex mode picker. Mode changes clear temporary Advisor

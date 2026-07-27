@@ -108,19 +108,24 @@ describe("AdvisorWorkspace", () => {
     ["active-content", /active content is not supported/i],
     ["embedded-content", /embedded content is not supported/i],
     ["external-action", /external actions are not supported/i],
-  ])("announces the path-free PDF %s diagnostic", async (diagnosticCode, text) => {
-    advisorDraftBridge.loadAdvisorDocumentAttachment.mockResolvedValueOnce({
-      schemaVersion: 1,
-      state: "unavailable",
-      attachment: null,
-      confirmationState: null,
-      diagnosticCode,
-    });
-    render(<AdvisorWorkspace {...props} />);
-    expect(await screen.findByRole("alert")).toHaveTextContent(text);
-    expect(screen.getByRole("alert")).not.toHaveTextContent("/mnt/");
-    expect(screen.getByRole("button", { name: "Attach PDF document" })).toBeEnabled();
-  });
+  ])(
+    "announces the path-free PDF %s diagnostic",
+    async (diagnosticCode, text) => {
+      advisorDraftBridge.loadAdvisorDocumentAttachment.mockResolvedValueOnce({
+        schemaVersion: 1,
+        state: "unavailable",
+        attachment: null,
+        confirmationState: null,
+        diagnosticCode,
+      });
+      render(<AdvisorWorkspace {...props} />);
+      expect(await screen.findByRole("alert")).toHaveTextContent(text);
+      expect(screen.getByRole("alert")).not.toHaveTextContent("/mnt/");
+      expect(
+        screen.getByRole("button", { name: "Attach PDF document" }),
+      ).toBeEnabled();
+    },
+  );
 
   it("renders a managed read-only composer without executable controls", () => {
     render(
@@ -338,6 +343,9 @@ describe("AdvisorWorkspace", () => {
     await waitFor(() => expect(prompt).toHaveValue(""));
     expect(advisorDraftBridge.cancelAdvisorTextAttachment).toHaveBeenCalled();
     expect(advisorDraftBridge.cancelAdvisorImageAttachment).toHaveBeenCalled();
+    expect(
+      advisorDraftBridge.cancelAdvisorDocumentAttachment,
+    ).toHaveBeenCalled();
   });
 
   it("keeps the capability notice separate when a sendable message is entered", () => {

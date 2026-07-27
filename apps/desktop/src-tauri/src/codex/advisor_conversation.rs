@@ -835,12 +835,53 @@ mod tests {
         assert!(!input.contains("main"));
     }
 
+    #[test]
+    fn document_transport_is_bounded_text_only_and_path_free() {
+        use crate::advisor_attachment::{AdvisorContentCategory, AdvisorContentDisposal};
+        use crate::advisor_document_attachment::{
+            AdvisorDocumentAttachmentManifest, AdvisorDocumentMediaType, AdvisorDocumentProjection,
+            AdvisorDocumentProjectionKind,
+        };
+        let document = ClaimedAdvisorDocumentAttachment {
+            manifest: AdvisorDocumentAttachmentManifest {
+                attachment_id: "018f0000-0000-7000-8000-000000000099".to_owned(),
+                display_name: "brief.pdf".to_owned(),
+                content_category: AdvisorContentCategory::Document,
+                media_type: AdvisorDocumentMediaType::Pdf,
+                byte_size: 12,
+                sha256: "a".repeat(64),
+                projection: AdvisorDocumentProjection {
+                    kind: AdvisorDocumentProjectionKind::PdfPlainTextV1,
+                    schema_version: 1,
+                    page_count: 1,
+                    processed_page_count: 1,
+                    included_page_count: 1,
+                    omitted_page_count: 0,
+                    partial_page_count: 0,
+                    projected_byte_size: 11,
+                    outline_entry_count: 0,
+                    truncated: false,
+                    warnings: Vec::new(),
+                },
+                disposal: AdvisorContentDisposal::TransientMemoryOneSend,
+            },
+            projection_text: "safe summary".to_owned(),
+        };
+        let input = advisor_input("Plan safely", None, None, Some(&document));
+        assert!(input.contains("Plan safely"));
+        assert!(input.contains("safe summary"));
+        assert!(!input.contains("/mnt/"));
+        assert!(!input.contains("localImage"));
+        assert!(!input.contains("data:application/pdf"));
+        assert!(!input.contains("%PDF-"));
+    }
+
     #[tokio::test]
     async fn managed_advisor_starts_without_project_or_tool_capabilities() {
         let script = r#"
 read -r initialize
 case "$initialize" in
-  *'"method":"initialize"'*'"clientInfo":{"name":"quireforge","title":"QuireForge","version":"0.1.0-beta.25"}'*) ;;
+  *'"method":"initialize"'*'"clientInfo":{"name":"quireforge","title":"QuireForge","version":"0.1.0-beta.26"}'*) ;;
   *) exit 70 ;;
 esac
 printf '%s\n' '{"id":1,"result":{}}'
@@ -894,7 +935,7 @@ printf '%s\n' '{"method":"turn/completed","params":{"threadId":"018f0000-0000-70
         let script = r#"
 read -r initialize
 case "$initialize" in
-  *'"method":"initialize"'*'"clientInfo":{"name":"quireforge","title":"QuireForge","version":"0.1.0-beta.25"}'*) ;;
+  *'"method":"initialize"'*'"clientInfo":{"name":"quireforge","title":"QuireForge","version":"0.1.0-beta.26"}'*) ;;
   *) exit 70 ;;
 esac
 printf '%s\n' '{"id":1,"result":{}}'
