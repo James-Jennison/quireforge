@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — 0.1.0-beta.26
+## Unreleased — 0.1.0-beta.27
 
 ### Added
 
@@ -18,6 +18,10 @@
   coverage. Beta.25 supersedes beta.24 locally.
 - Add direct reset and bounded Advisor transport assertions; beta.26 supersedes
   beta.25 locally.
+- Refine Advisor into a transient chat-first workspace with a compact header,
+  centered scrollable conversation, sticky composer, and optional closed details
+  drawer. This changes no Advisor authority, transcript retention, or execution
+  boundary; beta.27 supersedes beta.26 locally.
 
 - Add Milestone 32’s bounded, transient Advisor conversation viewport and
   confirmed Advisor/Codex mode picker. Mode changes clear temporary Advisor

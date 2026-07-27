@@ -4348,6 +4348,110 @@ button:disabled {
   object-fit: contain;
 }
 
+/* Advisor remains a QuireForge workspace, but its active transient turn is
+ * deliberately chat-first rather than a metrics dashboard. */
+#advisor.project-workspace {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  max-width: 58rem;
+  margin-inline: auto;
+  padding-bottom: 9rem;
+}
+
+.advisor-chat-header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.advisor-chat-header h1 {
+  margin: 0;
+  font-size: 1.55rem;
+}
+.advisor-chat-header p {
+  margin: 0.2rem 0 0;
+  color: var(--tm);
+}
+.advisor-details {
+  order: 1;
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--sr);
+}
+
+@media (min-width: 1200px) {
+  #advisor .advisor-details {
+    position: absolute;
+    top: 0;
+    left: calc(100% + 1rem);
+    width: min(19rem, 22vw);
+    margin: 0;
+  }
+}
+
+#advisor .advisor-chat-panel {
+  order: 2;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding-inline: 0;
+}
+
+#advisor .advisor-context-panel,
+#advisor .advisor-approval-panel {
+  order: 3;
+}
+
+#advisor .conversation-events--advisor {
+  min-height: 12rem;
+  max-height: min(58vh, 46rem);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+#advisor .conversation-composer {
+  position: sticky;
+  bottom: 1rem;
+  z-index: 2;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--surface) 94%, var(--bg));
+  box-shadow: 0 0.75rem 2rem color-mix(in srgb, black 18%, transparent);
+}
+
+.advisor-composer-context {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 0.7rem;
+  color: var(--tm);
+  font-size: 0.875rem;
+}
+
+@media (max-width: 700px) {
+  #advisor.project-workspace {
+    padding-inline: 0.75rem;
+    padding-bottom: 8rem;
+  }
+  .advisor-chat-header {
+    align-items: center;
+  }
+  #advisor .conversation-composer {
+    bottom: 0.5rem;
+  }
+}
+
 .file-preview-pdf p,
 .file-preview-empty p {
   max-width: 46rem;

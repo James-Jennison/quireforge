@@ -23,7 +23,7 @@ from scripts.release_contract import (
 
 class PackageContractTests(unittest.TestCase):
     def test_all_source_versions_match_the_beta_candidate(self) -> None:
-        self.assertEqual(source_version(), "0.1.0-beta.26")
+        self.assertEqual(source_version(), "0.1.0-beta.27")
 
     def test_debian_metadata_and_artifact_versions_are_deliberately_distinct(
         self,

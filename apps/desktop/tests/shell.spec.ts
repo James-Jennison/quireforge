@@ -849,7 +849,7 @@ test("every sidebar destination replaces the active workspace without page scrol
   }
 });
 
-test("Advisor presents a bounded managed conversation with safe summaries", async ({
+test("Advisor presents a bounded chat-first conversation with safe summaries", async ({
   page,
 }, testInfo) => {
   await installNativeFixture(page);
@@ -859,9 +859,23 @@ test("Advisor presents a bounded managed conversation with safe summaries", asyn
   const advisor = page.locator('[data-workspace-view="advisor"]');
   await expect(
     advisor.getByRole("heading", {
-      name: "Read-only planning, without execution.",
+      name: "Advisor",
+      exact: true,
     }),
   ).toBeVisible();
+  await expect(
+    advisor.getByText("Create, Learn, Explore · Read-only"),
+  ).toBeVisible();
+  const details = advisor.getByRole("button", { name: "Details" });
+  await expect(details).toHaveAttribute("aria-expanded", "false");
+  await expect(
+    advisor.getByRole("complementary", { name: "Advisor details" }),
+  ).toHaveCount(0);
+  await details.click();
+  await expect(
+    advisor.getByRole("complementary", { name: "Advisor details" }),
+  ).toContainText("no shell, terminal, Git");
+  await details.click();
   const modePicker = advisor.getByRole("combobox", {
     name: "Conversation mode",
   });
@@ -886,7 +900,7 @@ test("Advisor presents a bounded managed conversation with safe summaries", asyn
   await expect(transcript).toHaveAttribute("tabindex", "0");
   await expect(
     advisor.getByText("project-state: verified, current"),
-  ).toBeVisible();
+  ).toHaveCount(0);
   await expect(
     advisor.getByRole("textbox", { name: "Advisor message" }),
   ).toBeVisible();
@@ -898,6 +912,10 @@ test("Advisor presents a bounded managed conversation with safe summaries", asyn
     "Enter a message to send.",
   );
   const sendButton = advisor.getByRole("button", { name: "Send to Advisor" });
+  await expect(advisor.locator(".conversation-composer")).toHaveCSS(
+    "position",
+    "sticky",
+  );
   await expect(sendButton).toBeDisabled();
   await advisor
     .getByRole("textbox", { name: "Advisor message" })

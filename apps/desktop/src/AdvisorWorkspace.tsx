@@ -128,7 +128,6 @@ const diagnosticMessage: Partial<
 export function AdvisorWorkspace({
   resetToken = 0,
   availability,
-  snapshot,
   selectedProjectState,
   selectionState,
   canSelectProjectState,
@@ -177,16 +176,14 @@ export function AdvisorWorkspace({
   const draftRef = useRef<HTMLTextAreaElement>(null);
   const [completionReport, setCompletionReport] =
     useState<AdvisorCompletionReportSnapshot | null>(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const lastResetToken = useRef(resetToken);
   const conversationViewportRef = useRef<HTMLDivElement>(null);
   const [followLatest, setFollowLatest] = useState(true);
-  const empty =
-    snapshot?.conversationCount === 0 &&
-    snapshot.contextReferenceCount === 0 &&
-    snapshot.proposalCount === 0;
   const authentication = managedChatAuthenticationState(auth);
   const active =
     conversation.state === "running" && conversation.conversationId !== null;
+  const hasConversation = conversation.events.length > 0;
   const canIncludeProjectState = Boolean(
     selectedProjectState && selectedProjectId,
   );
@@ -531,15 +528,36 @@ export function AdvisorWorkspace({
       id="advisor"
       aria-labelledby="advisor-title"
     >
-      <p className="eyebrow">Advisor</p>
-      <h1 id="advisor-title" data-workspace-heading tabIndex={-1}>
-        Read-only planning, without execution.
-      </h1>
-      <p role="note">
-        Advisor has no shell, terminal, Git, repository-write, or dispatch
-        capability. Draft approval records are digest-only and cannot execute.
-        QuireForge retains no prompt or transcript text.
-      </p>
+      <header className="advisor-chat-header">
+        <div>
+          <p className="eyebrow">Advisor</p>
+          <h1 id="advisor-title" data-workspace-heading tabIndex={-1}>
+            Advisor
+          </h1>
+          <p>Create, Learn, Explore · Read-only</p>
+        </div>
+        <button
+          type="button"
+          aria-expanded={detailsOpen}
+          aria-controls="advisor-details"
+          onClick={() => setDetailsOpen((open) => !open)}
+        >
+          Details
+        </button>
+      </header>
+      {detailsOpen && (
+        <aside
+          id="advisor-details"
+          className="advisor-details"
+          aria-label="Advisor details"
+        >
+          <p role="note">
+            Advisor has no shell, terminal, Git, repository-write, or dispatch
+            capability. Context and attachments are transient and require
+            confirmation.
+          </p>
+        </aside>
+      )}
       {availability === "checking" && (
         <p role="status">Reading Advisor metadata.</p>
       )}
@@ -551,48 +569,9 @@ export function AdvisorWorkspace({
           Advisor metadata could not be read; no state changed.
         </p>
       )}
-      {availability === "native" && snapshot && (
-        <div className="project-list">
-          <dl className="context-facts">
-            <div>
-              <dt>Conversations</dt>
-              <dd>{snapshot.conversationCount}</dd>
-            </div>
-            <div>
-              <dt>Contexts</dt>
-              <dd>{snapshot.contextReferenceCount}</dd>
-            </div>
-            <div>
-              <dt>Proposals</dt>
-              <dd>{snapshot.proposalCount}</dd>
-            </div>
-          </dl>
-          {empty ? (
-            <p className="project-message">No Advisor metadata yet.</p>
-          ) : (
-            <ul
-              className="project-list"
-              aria-label="Advisor metadata summaries"
-            >
-              {snapshot.contextSummaries.map(
-                ({ kind, freshness, trust }, index) => (
-                  <li className="project-message" key={`${kind}-${index}`}>
-                    {kind}: {trust}, {freshness}
-                  </li>
-                ),
-              )}
-              {snapshot.proposalSummaries.map(({ state }, index) => (
-                <li className="project-message" key={`${state}-${index}`}>
-                  Proposal digest: {state}, explicit approval required.
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
       {availability === "native" && (
         <section
-          className="project-card"
+          className="project-card advisor-context-panel"
           aria-labelledby="advisor-source-title"
         >
           <h2 id="advisor-source-title">Selected Project State</h2>
@@ -666,7 +645,7 @@ export function AdvisorWorkspace({
       )}
       {availability === "native" && (
         <section
-          className="project-card"
+          className="project-card advisor-approval-panel"
           aria-labelledby="advisor-approval-title"
         >
           <h2 id="advisor-approval-title">Approval draft</h2>
@@ -872,9 +851,17 @@ export function AdvisorWorkspace({
         </section>
       )}
       {availability === "native" && (
-        <section className="project-card" aria-labelledby="advisor-chat-title">
-          <h2 id="advisor-chat-title">Advisor conversation</h2>
-          <p>
+        <section
+          className="project-card advisor-chat-panel"
+          aria-labelledby="advisor-chat-title"
+        >
+          <h2
+            id="advisor-chat-title"
+            className={hasConversation ? "sr-only" : undefined}
+          >
+            Advisor conversation
+          </h2>
+          <p className={hasConversation ? "sr-only" : undefined}>
             Uses the managed ChatGPT browser sign-in through Codex. No project
             browsing, tools, or execution permissions are available. You may
             explicitly include one bounded text or data file with one message.
@@ -964,6 +951,17 @@ export function AdvisorWorkspace({
             </div>
           )}
           <div className="conversation-composer">
+            {selectedProjectState && (
+              <div className="advisor-composer-context" role="status">
+                <span>
+                  Project State: {selectedProjectState.freshness},{" "}
+                  {selectedProjectState.worktree}
+                </span>
+                <button type="button" onClick={onRemoveProjectState}>
+                  Remove
+                </button>
+              </div>
+            )}
             <label className="sr-only" htmlFor="advisor-prompt">
               Advisor message
             </label>

@@ -332,7 +332,7 @@ describe("QuireForge desktop shell", () => {
     fireEvent.click(screen.getByRole("button", { name: "Confirm Advisor" }));
     expect(
       await screen.findByRole("heading", {
-        name: "Read-only planning, without execution.",
+        name: "Advisor",
       }),
     ).toBeInTheDocument();
     expect(window.localStorage.getItem("quireforge-conversation-mode")).toBe(
@@ -351,7 +351,7 @@ describe("QuireForge desktop shell", () => {
     await navigateTo("Advisor");
     expect(
       await screen.findByRole("heading", {
-        name: "Read-only planning, without execution.",
+        name: "Advisor",
       }),
     ).toBeInTheDocument();
   });
@@ -429,7 +429,7 @@ describe("QuireForge desktop shell", () => {
 
     expect(
       await screen.findByRole("heading", {
-        name: "Read-only planning, without execution.",
+        name: "Advisor",
       }),
     ).toBeInTheDocument();
     expect(loadAdvisorSnapshotTask).toHaveBeenCalledWith();

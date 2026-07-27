@@ -1,10 +1,4 @@
-import {
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-  within,
-} from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 const advisorDraftBridge = vi.hoisted(() => ({
@@ -143,11 +137,15 @@ describe("AdvisorWorkspace", () => {
     );
 
     expect(
-      screen.getByRole("heading", {
-        name: "Read-only planning, without execution.",
-      }),
+      screen.getByRole("heading", { name: "Advisor" }),
     ).toBeInTheDocument();
-    expect(screen.getByText("No Advisor metadata yet.")).toBeInTheDocument();
+    expect(
+      screen.getByText("Create, Learn, Explore · Read-only"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Details" })).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
     expect(
       screen.getByRole("textbox", { name: "Advisor message" }),
     ).toBeInTheDocument();
@@ -165,19 +163,15 @@ describe("AdvisorWorkspace", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("shows only safe reference summaries for valid metadata", () => {
+  it("keeps safe reference details out of the primary chat flow", () => {
     render(<AdvisorWorkspace {...props} />);
-    const summaries = within(
-      screen.getByRole("list", { name: "Advisor metadata summaries" }),
-    );
-    const [contextSummary, proposalSummary] =
-      summaries.getAllByRole("listitem");
-    expect(contextSummary).toHaveTextContent(
-      "project-state: verified, current",
-    );
-    expect(proposalSummary).toHaveTextContent(
-      "Proposal digest: draft, explicit approval required.",
-    );
+    expect(
+      screen.queryByRole("list", { name: "Advisor metadata summaries" }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Details" }));
+    expect(
+      screen.getByRole("complementary", { name: "Advisor details" }),
+    ).toHaveTextContent(/no shell, terminal, Git/u);
     expect(
       screen.queryByText("advisor-thread-fixture-01"),
     ).not.toBeInTheDocument();
