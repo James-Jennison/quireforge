@@ -1,5 +1,6 @@
 pub mod advisor;
 mod advisor_attachment;
+mod advisor_document_attachment;
 mod advisor_image_attachment;
 mod attachment;
 mod codex;
@@ -17,6 +18,10 @@ pub use codex::integration;
 use advisor_attachment::{
     AdvisorTextAttachmentClaimRequest, AdvisorTextAttachmentService, AdvisorTextAttachmentSnapshot,
     AdvisorTextExportRequest,
+};
+use advisor_document_attachment::{
+    AdvisorDocumentAttachmentClaimRequest, AdvisorDocumentAttachmentService,
+    AdvisorDocumentAttachmentSnapshot,
 };
 use advisor_image_attachment::{
     AdvisorImageAttachmentClaimRequest, AdvisorImageAttachmentService,
@@ -256,6 +261,9 @@ async fn advisor_conversation_status(
 }
 
 #[tauri::command]
+// Tauri injects each narrowly typed service state separately; combining them
+// would obscure the text/image/document one-use authority boundaries.
+#[allow(clippy::too_many_arguments)]
 async fn advisor_conversation_start(
     request: AdvisorConversationStartRequest,
     service: tauri::State<'_, AdvisorConversationService>,
@@ -264,6 +272,7 @@ async fn advisor_conversation_start(
     reader: tauri::State<'_, RepositoryStateReader>,
     attachments: tauri::State<'_, AdvisorTextAttachmentService>,
     image_attachments: tauri::State<'_, AdvisorImageAttachmentService>,
+    document_attachments: tauri::State<'_, AdvisorDocumentAttachmentService>,
 ) -> Result<AdvisorConversationSnapshot, ()> {
     if !request.is_valid() {
         return Ok(AdvisorConversationSnapshot::unavailable(
@@ -356,6 +365,32 @@ async fn advisor_conversation_start(
             ))
         }
     };
+    let document_attachment = match (
+        &request.document_attachment_id,
+        &request.document_attachment_manifest_sha256,
+        request.document_attachment_confirmation,
+    ) {
+        (None, None, None) => None,
+        (Some(attachment_id), Some(manifest_sha256), Some(confirmation)) => {
+            match document_attachments.claim(&AdvisorDocumentAttachmentClaimRequest {
+                attachment_id: attachment_id.clone(),
+                manifest_sha256: manifest_sha256.clone(),
+                confirmation,
+            }) {
+                Ok(attachment) => Some(attachment),
+                Err(_) => {
+                    return Ok(AdvisorConversationSnapshot::unavailable(
+                        AdvisorConversationDiagnosticCode::AttachmentUnavailable,
+                    ))
+                }
+            }
+        }
+        _ => {
+            return Ok(AdvisorConversationSnapshot::unavailable(
+                AdvisorConversationDiagnosticCode::InvalidRequest,
+            ))
+        }
+    };
     Ok(service
         .start(
             request,
@@ -364,6 +399,7 @@ async fn advisor_conversation_start(
             selected_project_state,
             attachment,
             image_attachment,
+            document_attachment,
         )
         .await)
 }
@@ -433,6 +469,38 @@ async fn advisor_image_attachment_pick(
 fn advisor_image_attachment_cancel(
     service: tauri::State<'_, AdvisorImageAttachmentService>,
 ) -> AdvisorImageAttachmentSnapshot {
+    service.clear()
+}
+
+#[tauri::command]
+fn advisor_document_attachment_status(
+    service: tauri::State<'_, AdvisorDocumentAttachmentService>,
+) -> AdvisorDocumentAttachmentSnapshot {
+    service.snapshot()
+}
+#[tauri::command]
+async fn advisor_document_attachment_pick(
+    app: tauri::AppHandle,
+    service: tauri::State<'_, AdvisorDocumentAttachmentService>,
+) -> Result<AdvisorDocumentAttachmentSnapshot, ()> {
+    let selection = app
+        .dialog()
+        .file()
+        .set_title("Attach one PDF document to the next Advisor message")
+        .add_filter("PDF document", &["pdf"])
+        .blocking_pick_file();
+    Ok(match selection {
+        Some(file) => match file.into_path() {
+            Ok(path) => service.stage_path(path),
+            Err(_) => AdvisorDocumentAttachmentSnapshot::empty(),
+        },
+        None => service.snapshot(),
+    })
+}
+#[tauri::command]
+fn advisor_document_attachment_cancel(
+    service: tauri::State<'_, AdvisorDocumentAttachmentService>,
+) -> AdvisorDocumentAttachmentSnapshot {
     service.clear()
 }
 
@@ -1553,6 +1621,7 @@ pub fn run() {
         .manage(AdvisorConversationService::default())
         .manage(AdvisorTextAttachmentService::default())
         .manage(AdvisorImageAttachmentService::default())
+        .manage(AdvisorDocumentAttachmentService::default())
         .manage(DesktopNotificationService::default())
         .manage(GitService::default())
         .manage(RepositoryStateReader)
@@ -1627,6 +1696,9 @@ pub fn run() {
             advisor_image_attachment_status,
             advisor_image_attachment_pick,
             advisor_image_attachment_cancel,
+            advisor_document_attachment_status,
+            advisor_document_attachment_pick,
+            advisor_document_attachment_cancel,
             advisor_text_export_save,
             codex_auth_start,
             codex_auth_cancel,

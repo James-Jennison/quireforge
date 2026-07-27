@@ -1,6 +1,12 @@
 # Changelog
 
-## Unreleased — 0.1.0-beta.20
+## Unreleased — 0.1.0-beta.21
+
+### Added
+
+- Added one transient, bounded PDF projection for Advisor. Selected PDF bytes
+  and source paths stay native-only; Advisor receives only a confirmed,
+  path-free plain-text projection for one send.
 
 - Add Milestone 32’s bounded, transient Advisor conversation viewport and
   confirmed Advisor/Codex mode picker. Mode changes clear temporary Advisor

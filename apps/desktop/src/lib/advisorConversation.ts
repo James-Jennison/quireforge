@@ -86,6 +86,16 @@ export const advisorConversationStartRequestSchema = z
       .literal("confirmed-for-single-send")
       .nullable()
       .default(null),
+    documentAttachmentId: z.string().uuid().nullable().default(null),
+    documentAttachmentManifestSha256: z
+      .string()
+      .regex(/^[a-f0-9]{64}$/iu)
+      .nullable()
+      .default(null),
+    documentAttachmentConfirmation: z
+      .literal("confirmed-for-single-send")
+      .nullable()
+      .default(null),
   })
   .strict()
   .refine(
@@ -108,7 +118,19 @@ export const advisorConversationStartRequestSchema = z
       (value.imageAttachmentConfirmation === null),
   )
   .refine(
-    (value) => value.attachmentId === null || value.imageAttachmentId === null,
+    (value) =>
+      (value.documentAttachmentId === null) ===
+        (value.documentAttachmentManifestSha256 === null) &&
+      (value.documentAttachmentId === null) ===
+        (value.documentAttachmentConfirmation === null),
+  )
+  .refine(
+    (value) =>
+      [
+        value.attachmentId,
+        value.imageAttachmentId,
+        value.documentAttachmentId,
+      ].filter((value) => value !== null).length <= 1,
     "Advisor accepts one content attachment per send",
   );
 

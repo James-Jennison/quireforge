@@ -114,12 +114,17 @@ confirmed, transient, natively validated image sent only through the documented
 `localImage` path.
 
 Milestone 32 — **Advisor Conversation History Viewport and Mode Picker** is
-the active approved implementation scope. It adds only a bounded transient
-Advisor viewport and a confirmed Advisor/Codex mode choice; it does not add
-transcript storage, cross-mode context transfer, provider changes, or new
-execution authority. Document, archive, static-binary, and dynamic sandbox
-analysis remain later separately scoped milestones; no generic upload
-system is approved.
+complete in the integrated `0.1.0-beta.20` candidate. It adds only a bounded
+transient Advisor viewport and a confirmed Advisor/Codex mode choice; it does
+not add transcript storage, cross-mode context transfer, provider changes, or
+new execution authority.
+
+Milestone 33 — **Advisor Bounded PDF/Office Document Analysis** is complete in
+the `0.1.0-beta.21` candidate, initially limited to one explicitly confirmed
+PDF. Native code keeps the source and path transient, and supplies Advisor only
+with a bounded, path-free text projection. Office support, generic uploads,
+macros, embedded-object execution, editing, export, and project browsing remain
+out of scope.
 
 Milestone 27 — **Unified Conversation Engine** is complete. It adds strict
 Rust/Zod Chat/Codex capability profiles, a Settings navigation foundation,

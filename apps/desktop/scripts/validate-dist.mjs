@@ -37,11 +37,11 @@ const limits = {
   // M27's native Chat/Codex capability contracts, the eight closed M26
   // palettes, M28's explicitly confirmed safe snapshot boundary, and M29's
   // bounded managed Advisor conversation, its digest-bound approval controller,
-  // one-time B2 handoff, bounded B3 status return, and the managed-initializer
-  // compatibility hotfix and F1's bounded content-ingestion registry are
+  // one-time B2 handoff, bounded B3 status return, the managed-initializer
+  // compatibility hotfix, and M33's bounded PDF projection contract are
   // included in the shipped desktop bundle. Keep a
   // narrow, measured ceiling instead of weakening the check or excluding chunks.
-  javascript: 890 * 1024,
+  javascript: 895 * 1024,
   stylesheets: 105 * 1024,
 };
 

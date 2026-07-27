@@ -24,6 +24,9 @@ import {
   cancelAdvisorImageAttachment,
   loadAdvisorImageAttachment,
   pickAdvisorImageAttachment,
+  cancelAdvisorDocumentAttachment,
+  loadAdvisorDocumentAttachment,
+  pickAdvisorDocumentAttachment,
 } from "./lib/bridge";
 import {
   scaffoldAdvisorTextAttachment,
@@ -34,6 +37,10 @@ import {
   scaffoldAdvisorImageAttachment,
   type AdvisorImageAttachmentSnapshot,
 } from "./lib/advisorImageAttachment";
+import {
+  scaffoldAdvisorDocumentAttachment,
+  type AdvisorDocumentAttachmentSnapshot,
+} from "./lib/advisorDocumentAttachment";
 import type {
   AdvisorApprovalSnapshot,
   AdvisorDispatchSnapshot,
@@ -150,6 +157,10 @@ export function AdvisorWorkspace({
   const [attachmentBusy, setAttachmentBusy] = useState(false);
   const [imageAttachment, setImageAttachment] =
     useState<AdvisorImageAttachmentSnapshot>(scaffoldAdvisorImageAttachment);
+  const [documentAttachment, setDocumentAttachment] =
+    useState<AdvisorDocumentAttachmentSnapshot>(
+      scaffoldAdvisorDocumentAttachment,
+    );
   const [exportCandidateIndex, setExportCandidateIndex] = useState(0);
   const [actionError, setActionError] = useState(false);
   const [draft, setDraft] = useState("");
@@ -237,9 +248,11 @@ export function AdvisorWorkspace({
     setExportCandidateIndex(0);
     setTextAttachment(scaffoldAdvisorTextAttachment);
     setImageAttachment(scaffoldAdvisorImageAttachment);
+    setDocumentAttachment(scaffoldAdvisorDocumentAttachment);
     void Promise.all([
       cancelAdvisorTextAttachment(),
       cancelAdvisorImageAttachment(),
+      cancelAdvisorDocumentAttachment(),
     ]).catch(() => setActionError(true));
   }, [resetToken]);
 
@@ -267,6 +280,17 @@ export function AdvisorWorkspace({
         }),
       );
   }, []);
+  useEffect(() => {
+    void loadAdvisorDocumentAttachment()
+      .then(setDocumentAttachment)
+      .catch(() =>
+        setDocumentAttachment({
+          ...scaffoldAdvisorDocumentAttachment,
+          state: "unavailable",
+          diagnosticCode: "read-failed",
+        }),
+      );
+  }, []);
 
   useEffect(() => {
     if (!active || !conversation.conversationId) return undefined;
@@ -284,6 +308,10 @@ export function AdvisorWorkspace({
       textAttachment.state === "ready" ? textAttachment.attachment : null;
     const image =
       imageAttachment.state === "ready" ? imageAttachment.attachment : null;
+    const document =
+      documentAttachment.state === "ready"
+        ? documentAttachment.attachment
+        : null;
     void onConversationStart({
       prompt,
       projectId,
@@ -293,10 +321,16 @@ export function AdvisorWorkspace({
       imageAttachmentId: image?.attachmentId ?? null,
       imageAttachmentManifestSha256: image?.sha256 ?? null,
       imageAttachmentConfirmation: image ? "confirmed-for-single-send" : null,
+      documentAttachmentId: document?.attachmentId ?? null,
+      documentAttachmentManifestSha256: document?.sha256 ?? null,
+      documentAttachmentConfirmation: document
+        ? "confirmed-for-single-send"
+        : null,
     })
       .then(() => setPrompt(""))
       .then(() => setTextAttachment(scaffoldAdvisorTextAttachment))
       .then(() => setImageAttachment(scaffoldAdvisorImageAttachment))
+      .then(() => setDocumentAttachment(scaffoldAdvisorDocumentAttachment))
       .catch(() => setActionError(true));
   }
 
@@ -337,6 +371,27 @@ export function AdvisorWorkspace({
     setAttachmentBusy(true);
     try {
       setImageAttachment(await cancelAdvisorImageAttachment());
+    } catch {
+      setActionError(true);
+    } finally {
+      setAttachmentBusy(false);
+    }
+  }
+  async function pickDocumentAttachment() {
+    setAttachmentBusy(true);
+    setActionError(false);
+    try {
+      setDocumentAttachment(await pickAdvisorDocumentAttachment());
+    } catch {
+      setActionError(true);
+    } finally {
+      setAttachmentBusy(false);
+    }
+  }
+  async function clearDocumentAttachment() {
+    setAttachmentBusy(true);
+    try {
+      setDocumentAttachment(await cancelAdvisorDocumentAttachment());
     } catch {
       setActionError(true);
     } finally {
@@ -973,7 +1028,8 @@ export function AdvisorWorkspace({
                     active ||
                     conversationBusy ||
                     authentication !== "ready" ||
-                    imageAttachment.state === "ready"
+                    imageAttachment.state === "ready" ||
+                    documentAttachment.state === "ready"
                   }
                 >
                   Attach text or data file
@@ -1029,7 +1085,8 @@ export function AdvisorWorkspace({
                     active ||
                     conversationBusy ||
                     authentication !== "ready" ||
-                    textAttachment.state === "ready"
+                    textAttachment.state === "ready" ||
+                    documentAttachment.state === "ready"
                   }
                   onClick={() => void pickImageAttachment()}
                 >
@@ -1045,10 +1102,61 @@ export function AdvisorWorkspace({
                 </p>
               )}
             </div>
+            <div
+              className="advisor-text-attachment"
+              aria-label="Optional PDF document attachment"
+            >
+              <p className="project-message" role="note">
+                Optional: choose one PDF up to 8 MiB. Advisor receives only a
+                temporary bounded text projection, never document bytes or a
+                source path.
+              </p>
+              {documentAttachment.state === "ready" &&
+              documentAttachment.attachment ? (
+                <div>
+                  <p role="status">
+                    Ready: {documentAttachment.attachment.displayName} (PDF,{" "}
+                    {documentAttachment.attachment.byteSize} bytes,{" "}
+                    {documentAttachment.attachment.projection.pageCount} pages,
+                    SHA-256 verified).
+                  </p>
+                  <button
+                    type="button"
+                    disabled={attachmentBusy || active || conversationBusy}
+                    onClick={() => void clearDocumentAttachment()}
+                  >
+                    Remove attached PDF
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  disabled={
+                    attachmentBusy ||
+                    active ||
+                    conversationBusy ||
+                    authentication !== "ready" ||
+                    textAttachment.state === "ready" ||
+                    imageAttachment.state === "ready"
+                  }
+                  onClick={() => void pickDocumentAttachment()}
+                >
+                  Attach PDF document
+                </button>
+              )}
+              {documentAttachment.state === "unavailable" && (
+                <p
+                  className="project-message project-message--warning"
+                  role="alert"
+                >
+                  The PDF was not available and was not included.
+                </p>
+              )}
+            </div>
             <p className="project-message" role="note">
               Advisor is read-only: no commands, project changes, or dispatch.
-              Project State and one text/data file or one image are optional and
-              require confirmation.
+              Project State and one text/data file, one image, or one PDF
+              projection are optional and require confirmation.
             </p>
             {sendDisabledReason && !active && (
               <p className="project-message" role="status">
@@ -1078,7 +1186,8 @@ export function AdvisorWorkspace({
                   onClick={() => {
                     if (
                       textAttachment.state === "ready" ||
-                      imageAttachment.state === "ready"
+                      imageAttachment.state === "ready" ||
+                      documentAttachment.state === "ready"
                     )
                       setConfirmAttachmentSend(true);
                     else if (includeProjectState && canIncludeProjectState)
@@ -1123,7 +1232,9 @@ export function AdvisorWorkspace({
             </div>
           )}
           {confirmAttachmentSend &&
-            (textAttachment.attachment || imageAttachment.attachment) && (
+            (textAttachment.attachment ||
+              imageAttachment.attachment ||
+              documentAttachment.attachment) && (
               <div
                 className="project-confirmation"
                 role="dialog"
@@ -1133,13 +1244,18 @@ export function AdvisorWorkspace({
                 <p>
                   Include{" "}
                   {
-                    (textAttachment.attachment ?? imageAttachment.attachment)
-                      ?.displayName
+                    (
+                      textAttachment.attachment ??
+                      imageAttachment.attachment ??
+                      documentAttachment.attachment
+                    )?.displayName
                   }{" "}
                   as transient
                   {imageAttachment.attachment
                     ? " PNG/JPEG image data"
-                    : " normalized text"}{" "}
+                    : documentAttachment.attachment
+                      ? " bounded PDF text projection"
+                      : " normalized text"}{" "}
                   in this one Advisor message? Its path is not shared, it is
                   consumed after this send, and it grants no project or
                   execution authority.

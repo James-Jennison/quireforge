@@ -27,7 +27,8 @@ static project site is [quireforge.jamesjennison.net](https://quireforge.jamesje
 - User-selected project attachment, reviewed Git and worktree workflows, and a
   native integrated terminal with explicit controls.
 - Read-only normalized Project State evidence and a managed, transient Advisor
-  workspace with explicitly confirmed temporary context.
+  workspace with explicitly confirmed temporary context and bounded native
+  text, image, or PDF projections.
 - Accessible routed workspaces, local appearance preferences, and reproducible
   Ubuntu 22.04 Debian/AppImage candidate validation.
 
