@@ -14,6 +14,7 @@ from pathlib import Path
 from release_contract import (
     CANONICAL_DESKTOP,
     DEBIAN_PACKAGE,
+    SANDBOXD_DEBIAN_PACKAGE,
     EXPECTED_IMAGE,
     GLIBC_BASELINE,
     LEGACY_DESKTOP,
@@ -28,6 +29,7 @@ from release_contract import (
     replace_control_field,
     run,
     sha256,
+    sandboxd_artifact_filename,
     source_version,
 )
 
@@ -106,7 +108,7 @@ def validate_manifest(
     manifest_path = artifact_dir / "release-manifest.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     version = source_version()
-    if manifest.get("schemaVersion") != 2 or manifest.get("version") != version:
+    if manifest.get("schemaVersion") != 3 or manifest.get("version") != version:
         raise RuntimeError("release manifest schema or version mismatch")
 
     source = manifest.get("source")
@@ -142,15 +144,15 @@ def validate_manifest(
             )
 
     artifacts = manifest.get("artifacts")
-    if not isinstance(artifacts, list) or len(artifacts) != 2:
-        raise RuntimeError("release manifest must contain exactly two artifacts")
+    if not isinstance(artifacts, list) or len(artifacts) != 3:
+        raise RuntimeError("release manifest must contain exactly three artifacts")
     by_format: dict[str, Path] = {}
     for entry in artifacts:
         if not isinstance(entry, dict):
             raise RuntimeError("release artifact entry is malformed")
         artifact_format = entry.get("format")
         filename = entry.get("filename")
-        if artifact_format not in {"appimage", "deb"} or not isinstance(filename, str):
+        if artifact_format not in {"deb", "sandboxd-deb"} or not isinstance(filename, str):
             raise RuntimeError("release artifact format or filename is invalid")
         path = artifact_dir / filename
         if path.parent != artifact_dir or not path.is_file():
@@ -163,7 +165,7 @@ def validate_manifest(
             raise RuntimeError("release artifact architecture mismatch")
         by_format[artifact_format] = path
 
-    if set(by_format) != {"appimage", "deb"}:
+    if set(by_format) != {"deb", "sandboxd-deb"}:
         raise RuntimeError("release manifest artifact formats are incomplete")
     expected_names = EXPECTED_FILES | {path.name for path in by_format.values()}
     actual_names = {path.name for path in artifact_dir.iterdir() if path.is_file()}
@@ -253,64 +255,62 @@ def validate_debian(package: Path, version: str) -> tuple[int, int]:
         return glibc
 
 
-def validate_appimage(package: Path, version: str) -> tuple[int, int]:
-    expected_name = f"QuireForge-{version}-x86_64.AppImage"
-    if package.name != expected_name:
-        raise RuntimeError(f"AppImage filename mismatch: {package.name}")
-    if not os.access(package, os.X_OK):
-        raise RuntimeError("AppImage is not executable")
-
-    with tempfile.TemporaryDirectory(
-        prefix="quireforge-validate-appimage-"
-    ) as temporary:
+def validate_sandboxd(package: Path, version: str) -> tuple[int, int]:
+    if package.name != sandboxd_artifact_filename(version):
+        raise RuntimeError(f"sandbox worker Debian filename mismatch: {package.name}")
+    expected_fields = {
+        "Package": SANDBOXD_DEBIAN_PACKAGE,
+        "Version": debian_version(version),
+        "Architecture": "amd64",
+    }
+    for field, expected in expected_fields.items():
+        if deb_field(package, field) != expected:
+            raise RuntimeError(f"sandbox worker Debian {field} mismatch")
+    with tempfile.TemporaryDirectory(prefix="quireforge-validate-sandboxd-") as temporary:
         root = Path(temporary)
-        run([str(package), "--appimage-extract"], cwd=root)
-        appdir = root / "squashfs-root"
-        canonical = appdir / "usr/share/applications" / CANONICAL_DESKTOP
-        legacy = appdir / "usr/share/applications" / LEGACY_DESKTOP
-        root_link = appdir / CANONICAL_DESKTOP
-        if legacy.exists() or not canonical.is_file():
-            raise RuntimeError("AppImage desktop filename does not match canonical ID")
-        if not root_link.is_symlink() or root_link.resolve() != canonical.resolve():
-            raise RuntimeError("AppImage root desktop symlink is invalid")
-        if (appdir / LEGACY_DESKTOP).exists():
-            raise RuntimeError("AppImage retains the legacy root desktop entry")
-        validate_desktop(canonical)
-        binary = appdir / "usr/bin/quireforge"
-        if not binary.is_file() or not os.access(binary, os.X_OK):
-            raise RuntimeError("AppImage executable is missing or not executable")
-        glibc = validate_glibc_baseline(binary)
-        metainfo = (
-            appdir
-            / "usr/share/metainfo/io.github.codeframe78.QuireForge.metainfo.xml"
-        )
-        appdata = metainfo.with_name(
-            "io.github.codeframe78.QuireForge.appdata.xml"
-        )
-        if metainfo.exists() or not appdata.is_file():
-            raise RuntimeError("AppImage AppStream metadata layout is invalid")
-        validate_metainfo(appdata)
-        return glibc
+        run(["dpkg-deb", "--raw-extract", str(package), str(root)])
+        worker = root / "usr/sbin/quireforge-sandboxd"
+        assets = root / "usr/lib/quireforge-sandboxd"
+        service = root / "lib/systemd/system/quireforge-sandboxd.service"
+        expected_assets = {"firecracker", "jailer", "vmlinux", "initramfs.cpio.gz", "SHA256SUMS"}
+        if not worker.is_file() or not os.access(worker, os.X_OK):
+            raise RuntimeError("sandbox worker executable is missing or not executable")
+        if not service.is_file() or "PrivateNetwork=true" not in service.read_text(encoding="utf-8"):
+            raise RuntimeError("sandbox worker must retain its zero-network systemd policy")
+        if {path.name for path in assets.iterdir() if path.is_file()} != expected_assets:
+            raise RuntimeError("sandbox worker assets are incomplete")
+        sums = {
+            fields[1]: fields[0]
+            for fields in (
+                line.split(maxsplit=1)
+                for line in (assets / "SHA256SUMS").read_text(encoding="utf-8").splitlines()
+            )
+            if len(fields) == 2
+        }
+        for name in expected_assets - {"SHA256SUMS"}:
+            if sums.get(name) != sha256(assets / name):
+                raise RuntimeError("sandbox worker asset checksum mismatch")
+        return validate_glibc_baseline(worker)
 
 
 def validate_abi_evidence(
     manifest: dict[str, object],
     debian_glibc: tuple[int, int],
-    appimage_glibc: tuple[int, int],
+    sandboxd_glibc: tuple[int, int],
 ) -> None:
     expected = {
         "baseline": glibc_version_text(GLIBC_BASELINE),
-        "highestRequired": glibc_version_text(max(debian_glibc, appimage_glibc)),
+        "highestRequired": glibc_version_text(max(debian_glibc, sandboxd_glibc)),
         "binaries": [
-            {"format": "appimage", "highestRequired": glibc_version_text(appimage_glibc)},
             {"format": "deb", "highestRequired": glibc_version_text(debian_glibc)},
+            {"format": "sandboxd-deb", "highestRequired": glibc_version_text(sandboxd_glibc)},
         ],
     }
     if manifest.get("abi") != expected:
         raise RuntimeError("release ABI evidence is absent, malformed, or inconsistent")
 
 
-def smoke_packages(debian: Path, appimage: Path) -> None:
+def smoke_packages(debian: Path) -> None:
     helper = ROOT / "scripts/smoke_linux_package.py"
     with tempfile.TemporaryDirectory(prefix="quireforge-smoke-deb-") as temporary:
         root = Path(temporary)
@@ -327,18 +327,6 @@ def smoke_packages(debian: Path, appimage: Path) -> None:
                 str(debian_binary),
             ]
         )
-    run(
-        [
-            "xvfb-run",
-            "--auto-servernum",
-            "python3",
-            str(helper),
-            "--label",
-            "AppImage",
-            str(appimage),
-            "--appimage-extract-and-run",
-        ]
-    )
 
 
 def build_previous_package(current: Path, output: Path) -> None:
@@ -417,12 +405,26 @@ def main() -> int:
     )
     version = str(manifest["version"])
     debian_glibc = validate_debian(artifacts["deb"], version)
-    appimage_glibc = validate_appimage(artifacts["appimage"], version)
-    validate_abi_evidence(manifest, debian_glibc, appimage_glibc)
+    sandboxd_glibc = validate_sandboxd(artifacts["sandboxd-deb"], version)
+    sandboxd = manifest.get("sandboxd")
+    if not isinstance(sandboxd, dict):
+        raise RuntimeError("sandbox worker provenance is absent")
+    source = manifest.get("source")
+    artifact = sandboxd.get("artifact")
+    if (
+        sandboxd.get("version") != version
+        or sandboxd.get("source") != source
+        or not isinstance(artifact, dict)
+        or artifact.get("filename") != artifacts["sandboxd-deb"].name
+        or artifact.get("sha256") != sha256(artifacts["sandboxd-deb"])
+        or artifact.get("size") != artifacts["sandboxd-deb"].stat().st_size
+    ):
+        raise RuntimeError("sandbox worker provenance is malformed or inconsistent")
+    validate_abi_evidence(manifest, debian_glibc, sandboxd_glibc)
     if arguments.lifecycle:
         lifecycle(artifacts["deb"], debian_version(version))
     if arguments.smoke:
-        smoke_packages(artifacts["deb"], artifacts["appimage"])
+        smoke_packages(artifacts["deb"])
     print(f"validated Linux release artifacts: {artifact_dir.relative_to(ROOT)}")
     return 0
 

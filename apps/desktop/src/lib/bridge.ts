@@ -128,6 +128,11 @@ import {
   type AdvisorBinaryAttachmentSnapshot,
 } from "./advisorBinaryAttachment";
 import {
+  dynamicAnalysisSnapshotSchema,
+  type DynamicAnalysisRunRequest,
+  type DynamicAnalysisSnapshot,
+} from "./dynamicAnalysis";
+import {
   advisorWorkspaceSnapshotSchema,
   parseAdvisorProjectStateReadRequest,
   parseAdvisorSelectedProjectStateSnapshot,
@@ -312,6 +317,10 @@ export const ADVISOR_BINARY_ATTACHMENT_PICK_COMMAND =
   "advisor_binary_attachment_pick";
 export const ADVISOR_BINARY_ATTACHMENT_CANCEL_COMMAND =
   "advisor_binary_attachment_cancel";
+export const DYNAMIC_ANALYSIS_STATUS_COMMAND = "dynamic_analysis_status";
+export const DYNAMIC_ANALYSIS_PICK_COMMAND = "dynamic_analysis_pick";
+export const DYNAMIC_ANALYSIS_CLEAR_COMMAND = "dynamic_analysis_clear";
+export const DYNAMIC_ANALYSIS_RUN_COMMAND = "dynamic_analysis_run";
 export const CONVERSATION_ACTIVE_COMMAND = "conversation_active";
 export const CONVERSATION_NOTIFY_COMMAND = "conversation_notify";
 export const CONVERSATION_START_COMMAND = "conversation_start";
@@ -652,6 +661,39 @@ export async function cancelAdvisorBinaryAttachment(
 ): Promise<AdvisorBinaryAttachmentSnapshot> {
   return advisorBinaryAttachmentSnapshotSchema.parse(
     await invokeFunction(ADVISOR_BINARY_ATTACHMENT_CANCEL_COMMAND),
+  );
+}
+
+export async function loadDynamicAnalysis(
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<DynamicAnalysisSnapshot> {
+  return dynamicAnalysisSnapshotSchema.parse(
+    await invokeFunction(DYNAMIC_ANALYSIS_STATUS_COMMAND),
+  );
+}
+
+export async function pickDynamicAnalysis(
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<DynamicAnalysisSnapshot> {
+  return dynamicAnalysisSnapshotSchema.parse(
+    await invokeFunction(DYNAMIC_ANALYSIS_PICK_COMMAND),
+  );
+}
+
+export async function clearDynamicAnalysis(
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<DynamicAnalysisSnapshot> {
+  return dynamicAnalysisSnapshotSchema.parse(
+    await invokeFunction(DYNAMIC_ANALYSIS_CLEAR_COMMAND),
+  );
+}
+
+export async function runDynamicAnalysis(
+  request: DynamicAnalysisRunRequest,
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<DynamicAnalysisSnapshot> {
+  return dynamicAnalysisSnapshotSchema.parse(
+    await invokeFunction(DYNAMIC_ANALYSIS_RUN_COMMAND, { request }),
   );
 }
 

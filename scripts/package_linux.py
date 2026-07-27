@@ -11,15 +11,15 @@ import sys
 import tempfile
 from pathlib import Path
 
+from package_sandboxd import build as build_sandboxd
+
 from release_contract import (
-    APPIMAGE_BASENAME,
     CANONICAL_DESKTOP,
     DEBIAN_PACKAGE,
     LEGACY_DESKTOP,
     RELEASE_WORKFLOW_COMMAND,
     ROOT,
     assert_authoritative_release_builder,
-    appimagetool_command,
     architectures,
     builder_record,
     cargo_target_dir,
@@ -35,8 +35,7 @@ from release_contract import (
     source_date_epoch,
     source_record,
     source_version,
-    tauri_cache_root,
-    verify_tauri_tools,
+    sandboxd_artifact_filename,
     write_sha256sums,
 )
 
@@ -104,82 +103,11 @@ def rebuild_debian(
         )
 
 
-def rebuild_appimage(
-    raw_appimage: Path,
-    output: Path,
-    version: str,
-    timestamp: int,
-) -> None:
-    with tempfile.TemporaryDirectory(prefix="quireforge-appimage-") as temporary:
-        temporary_root = Path(temporary)
-        raw_copy = temporary_root / raw_appimage.name
-        shutil.copy2(raw_appimage, raw_copy)
-        raw_copy.chmod(0o755)
-        run([str(raw_copy), "--appimage-extract"], cwd=temporary_root)
-
-        appdir = temporary_root / "squashfs-root"
-        applications = appdir / "usr/share/applications"
-        generated_desktop = applications / LEGACY_DESKTOP
-        canonical_desktop = applications / CANONICAL_DESKTOP
-        if not generated_desktop.is_file() or canonical_desktop.exists():
-            raise RuntimeError("unexpected AppImage desktop-entry layout")
-        generated_desktop.rename(canonical_desktop)
-
-        legacy_link = appdir / LEGACY_DESKTOP
-        if not legacy_link.is_symlink():
-            raise RuntimeError("AppImage root desktop entry is not the expected symlink")
-        legacy_link.unlink()
-        (appdir / CANONICAL_DESKTOP).symlink_to(
-            f"usr/share/applications/{CANONICAL_DESKTOP}"
-        )
-
-        if not (appdir / "quireforge.png").is_file():
-            raise RuntimeError("AppImage root icon is missing")
-        metainfo = (
-            appdir
-            / "usr/share/metainfo/io.github.codeframe78.QuireForge.metainfo.xml"
-        )
-        appdata = metainfo.with_name(
-            "io.github.codeframe78.QuireForge.appdata.xml"
-        )
-        if not metainfo.is_file() or appdata.exists():
-            raise RuntimeError("unexpected AppImage AppStream metadata layout")
-        metainfo.rename(appdata)
-
-        set_tree_timestamp(appdir, timestamp)
-        cache_root = tauri_cache_root()
-        plugin = cache_root / "linuxdeploy-plugin-appimage.AppImage"
-        plugin_root = temporary_root / "plugin"
-        plugin_root.mkdir()
-        run([str(plugin), "--appimage-extract"], cwd=plugin_root)
-        appimagetool = plugin_root / "squashfs-root/appimagetool-prefix/AppRun"
-        runtime = cache_root / "runtime-x86_64"
-        if not appimagetool.is_file() or not runtime.is_file():
-            raise RuntimeError("pinned AppImage repacking tools are incomplete")
-        environment = os.environ.copy()
-        environment.update(
-            {
-                "ARCH": "x86_64",
-                "SOURCE_DATE_EPOCH": str(timestamp),
-            }
-        )
-        generated = temporary_root / output.name
-        run(
-            appimagetool_command(appimagetool, runtime, appdir, generated),
-            cwd=temporary_root,
-            env=environment,
-        )
-        if not generated.is_file():
-            raise RuntimeError("normalized AppImage was not created")
-        shutil.move(generated, output)
-        output.chmod(0o755)
-
-
 def staging_dir(output_dir: Path, version: str) -> Path:
     return output_dir / f".candidate-{version}"
 
 
-def abi_evidence(debian: Path, appimage: Path) -> dict[str, object]:
+def abi_evidence(debian: Path, sandboxd: Path) -> dict[str, object]:
     """Inspect the shipped executable in each installable artifact."""
     observed = []
     with tempfile.TemporaryDirectory(prefix="quireforge-release-abi-") as temporary:
@@ -191,14 +119,12 @@ def abi_evidence(debian: Path, appimage: Path) -> dict[str, object]:
             raise RuntimeError("Debian package is missing its shipped executable")
         observed.append(("deb", glibc_requirement(deb_binary)))
 
-        appimage_copy = root / appimage.name
-        shutil.copy2(appimage, appimage_copy)
-        appimage_copy.chmod(0o755)
-        run([str(appimage_copy), "--appimage-extract"], cwd=root)
-        appimage_binary = root / "squashfs-root/usr/bin/quireforge"
-        if not appimage_binary.is_file():
-            raise RuntimeError("AppImage is missing its shipped executable")
-        observed.append(("appimage", glibc_requirement(appimage_binary)))
+        sandbox_root = root / "sandboxd"
+        run(["dpkg-deb", "--extract", str(sandboxd), str(sandbox_root)])
+        sandbox_binary = sandbox_root / "usr/sbin/quireforge-sandboxd"
+        if not sandbox_binary.is_file():
+            raise RuntimeError("sandbox worker package is missing its shipped executable")
+        observed.append(("sandboxd-deb", glibc_requirement(sandbox_binary)))
 
     by_format = [
         {"format": artifact_format, "highestRequired": glibc_version_text(version)}
@@ -217,7 +143,7 @@ def finalize(output_dir: Path, version: str) -> int:
         "release-manifest.json",
         "SHA256SUMS",
         debian_artifact_filename(version),
-        f"{APPIMAGE_BASENAME}-{version}-x86_64.AppImage",
+        sandboxd_artifact_filename(version),
     }
     if not candidate.is_dir() or {path.name for path in candidate.iterdir()} != expected:
         raise RuntimeError("validated candidate set is incomplete")
@@ -227,7 +153,6 @@ def finalize(output_dir: Path, version: str) -> int:
         if existing.is_file() and (
             existing.name in {"SHA256SUMS", "release-manifest.json"}
             or existing.suffix == ".deb"
-            or existing.name.endswith(".AppImage")
         ):
             existing.unlink()
         else:
@@ -241,9 +166,6 @@ def finalize(output_dir: Path, version: str) -> int:
 
 def main() -> int:
     assert_authoritative_release_builder()
-    # tauri-bundler clears linuxdeploy's three-byte AppImage marker after it
-    # verifies and extracts the reviewed tool. Accept only that exact mutation.
-    verify_tauri_tools(allow_linuxdeploy_marker_cleared=True)
     version = source_version()
     commit, tree_state, diff_digest = source_record()
     if tree_state != "clean" or diff_digest:
@@ -261,13 +183,8 @@ def main() -> int:
     bundle_root = target / "release/bundle"
     raw_deb = one_match(
         bundle_root / "deb",
-        f"{APPIMAGE_BASENAME}_{version}_{tauri_arch}.deb",
+        f"{TAURI_BUNDLE_BASENAME}_{version}_{tauri_arch}.deb",
         "raw Debian package",
-    )
-    raw_appimage = one_match(
-        bundle_root / "appimage",
-        f"{APPIMAGE_BASENAME}_{version}_{tauri_arch}.AppImage",
-        "raw AppImage",
     )
 
     candidate_dir = staging_dir(output_dir, version)
@@ -277,18 +194,15 @@ def main() -> int:
 
     timestamp = source_date_epoch()
     deb_output = candidate_dir / debian_artifact_filename(version, deb_arch)
-    appimage_output = (
-        candidate_dir / f"{APPIMAGE_BASENAME}-{version}-{release_arch}.AppImage"
-    )
     rebuild_debian(raw_deb, deb_output, version, timestamp)
-    rebuild_appimage(raw_appimage, appimage_output, version, timestamp)
-    abi = abi_evidence(deb_output, appimage_output)
+    sandboxd_output, sandboxd_evidence = build_sandboxd(candidate_dir)
+    abi = abi_evidence(deb_output, sandboxd_output)
     builder = builder_record()
 
     artifacts = []
     for artifact_format, path, package_version in (
-        ("appimage", appimage_output, version),
         ("deb", deb_output, debian_version(version)),
+        ("sandboxd-deb", sandboxd_output, debian_version(version)),
     ):
         artifacts.append(
             {
@@ -302,7 +216,7 @@ def main() -> int:
         )
 
     manifest = {
-        "schemaVersion": 2,
+        "schemaVersion": 3,
         "state": "release-candidate",
         "version": version,
         "source": {"commit": commit, "treeState": "clean"},
@@ -313,13 +227,14 @@ def main() -> int:
             "kind": "pinned-ubuntu-22.04-container",
         },
         "abi": abi,
+        "sandboxd": sandboxd_evidence,
         "artifacts": artifacts,
     }
     (candidate_dir / "release-manifest.json").write_text(
         json.dumps(manifest, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
-    write_sha256sums(candidate_dir, [appimage_output, deb_output])
+    write_sha256sums(candidate_dir, [deb_output, sandboxd_output])
     print(f"normalized Linux release candidates: {candidate_dir.relative_to(ROOT)}")
     return 0
 

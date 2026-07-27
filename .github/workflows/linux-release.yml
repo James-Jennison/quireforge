@@ -67,9 +67,6 @@ jobs:
           name: quireforge-linux-${{ github.sha }}
           path: target/ubuntu-22.04/release/packages/
 
-      - name: Restore AppImage execution mode
-        run: chmod 0755 target/ubuntu-22.04/release/packages/*.AppImage
-
       - name: Revalidate publication boundary
         run: >-
           python3 scripts/validate_release_artifacts.py

@@ -1,0 +1,5 @@
+# M39 trusted guest/runtime inputs. Every download is checksum-verified before use.
+FIRECRACKER_VERSION=1.15.1
+FIRECRACKER_X86_64_SHA256=d4a32ab2322d887ca1bc4a4e7afa9cc35393e6362dfc2b3becb389d362e4275a
+LINUX_VERSION=6.1.178
+LINUX_TAR_XZ_SHA256=7d83fa67ca75032b1ac6ef49973722073963c0cb9bc3aa7ef3efa749cf6c720f

@@ -1,8 +1,16 @@
 # Changelog
 
-## Unreleased — 0.1.0-beta.32
+## Unreleased — 0.1.0-beta.33
 
 ### Added
+
+- Add Milestone 39's separately installed, root-owned Linux x86_64 KVM worker
+  for one confirmed static ELF64 x86_64 sample. The worker uses pinned
+  Firecracker 1.15.1 and matching jailer with a zero-network, no-host-mount
+  disposable guest and returns only bounded `dynamic-analysis-result-v1`
+  metadata. Distribution is Debian-only. Dynamically linked
+  samples, generic uploads, Advisor execution, terminal output, guest-file
+  export, and automatic execution remain unavailable.
 
 - Complete Milestone 38 as a decision-only dynamic-sandbox discovery gate. It
   records a no-go for dynamic or malware analysis in the present desktop

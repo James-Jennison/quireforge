@@ -173,8 +173,11 @@ Milestone 38 — **Dynamic Sandbox / Malware-Analysis Discovery Gate** is
 complete as a decision-only checkpoint with no product or package change. It
 finds no safe dynamic-analysis capability in the current desktop architecture:
 containers, bubblewrap, and an ad-hoc QEMU process are not accepted as a
-hostile-binary boundary. M39 remains undefined pending a separately approved
-microVM, lifecycle, network, legal, and operational design. See
+hostile-binary boundary. Its separately approved M39 successor is limited to a
+root-owned Firecracker 1.15.1/jailer worker for one explicitly confirmed static
+ELF64 x86_64 sample with no `PT_INTERP`, zero guest network, no host/project
+mounts, immutable guest assets, and bounded metadata-only results. Dynamic
+loader/library support remains deferred. See
 [Milestone 38](MILESTONE_38_DYNAMIC_SANDBOX_DISCOVERY.md).
 
 Milestone 27 — **Unified Conversation Engine** is complete. It adds strict

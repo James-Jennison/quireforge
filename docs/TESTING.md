@@ -27,7 +27,7 @@ Milestone 19 adds Node/Rust dependency audits, immutable-action and
 active-content repository checks, Tauri policy assertions, desktop asset
 budgets, crash-boundary privacy tests, and keyboard/reduced-motion/forced-color
 coverage for desktop and website.
-Milestone 20 adds package-contract unit tests, canonical Debian/AppImage
+Milestone 20 adds package-contract unit tests and canonical Debian
 inspection, checksum and release-manifest validation, a GLIBC 2.35 ceiling,
 disposable install/upgrade/uninstall preservation checks, isolated visible X11
 launch probes, inactive website-download assertions, and a guarded manual
@@ -104,7 +104,10 @@ The authoritative candidate gate is:
 ```
 
 It builds in the pinned Ubuntu 22.04 container and runs structural, checksum,
-AppStream, GLIBC, lifecycle, and visible X11 checks for both package formats.
+AppStream, GLIBC, lifecycle, and visible X11 checks for the Debian package.
+When M39's separately installed worker is present, the same gate also checks
+the worker package, immutable guest-asset hashes, and zero-network service
+policy.
 It uses isolated ignored caches, no personal Codex home or credentials, no live
 model call, no host package installation, and no local Vite server.
 
@@ -137,16 +140,16 @@ tagged, pinned-builder publication boundary and also requires
 - Independently verify `SHA256SUMS`, then rerun normalization from the same raw
   bundles/source epoch into a separate output directory and require identical
   hashes for all four files.
-- Launch the AppImage and extracted Debian executable with isolated home/XDG
-  roots. Require a stable signed-out gate, no black frame, and no localhost or
+- Launch the extracted Debian executable with isolated home/XDG roots. Require
+  a stable signed-out gate, no black frame, and no localhost or
   connection-refused evidence.
 - Review the proposed x86_64 Ubuntu 22.04-or-newer GNOME Wayland/X11 statement
   against the baseline package gate and separately recorded display-session
   evidence. Do not generalize it to arm64, other distributions, or other
   desktop environments.
 - Confirm the public installation copy verifies checksums before execution,
-  uses `apt` for the Debian dependency path, documents the FUSE-less AppImage
-  fallback, and keeps uninstall separate from project/Codex/metadata deletion.
+  uses `apt` for the Debian dependency path, and keeps uninstall separate from
+  project/Codex/metadata deletion.
 - Keep `apps/website/src/data/downloads.ts` unavailable until the exact public
   files can be retrieved without repository credentials. Exercise the
   published validator with fixtures and reject off-origin GitHub, cross-origin,

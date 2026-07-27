@@ -8,6 +8,7 @@ mod attachment;
 mod codex;
 mod contract;
 mod desktop;
+mod dynamic_analysis;
 mod git;
 mod preview;
 mod project;
@@ -62,6 +63,9 @@ use desktop::{
     DesktopNotificationRequest, DesktopNotificationResult, DesktopNotificationService,
     DesktopNotificationStatus,
 };
+use dynamic_analysis::{
+    DynamicAnalysisRunRequest, DynamicAnalysisService, DynamicAnalysisSnapshot,
+};
 use sha2::{Digest, Sha256};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use uuid::Uuid;
@@ -109,6 +113,56 @@ use worktree::{
 #[tauri::command]
 fn desktop_bootstrap() -> DesktopBootstrap {
     DesktopBootstrap::current()
+}
+
+/// M39 is deliberately separate from Advisor, Approval/Dispatch, project
+/// execution, and terminals. This command only reports the transient client
+/// state; it never starts a VM or reaches the worker.
+#[tauri::command]
+fn dynamic_analysis_status(
+    service: tauri::State<'_, DynamicAnalysisService>,
+) -> DynamicAnalysisSnapshot {
+    service.snapshot()
+}
+
+#[tauri::command]
+async fn dynamic_analysis_pick(
+    app: tauri::AppHandle,
+    service: tauri::State<'_, DynamicAnalysisService>,
+) -> Result<DynamicAnalysisSnapshot, ()> {
+    let selection = app
+        .dialog()
+        .file()
+        .set_title("Select one static ELF64 sample for isolated analysis")
+        .blocking_pick_file();
+    Ok(match selection {
+        Some(file) => match file.into_path() {
+            Ok(path) => service.stage_path(path),
+            Err(_) => DynamicAnalysisSnapshot {
+                schema_version: 1,
+                state: dynamic_analysis::DynamicAnalysisState::Empty,
+                manifest: None,
+                result: None,
+                diagnostic_code: None,
+            },
+        },
+        None => service.snapshot(),
+    })
+}
+
+#[tauri::command]
+fn dynamic_analysis_clear(
+    service: tauri::State<'_, DynamicAnalysisService>,
+) -> DynamicAnalysisSnapshot {
+    service.clear()
+}
+
+#[tauri::command]
+fn dynamic_analysis_run(
+    request: DynamicAnalysisRunRequest,
+    service: tauri::State<'_, DynamicAnalysisService>,
+) -> DynamicAnalysisSnapshot {
+    service.run(request)
 }
 
 #[tauri::command]
@@ -1753,6 +1807,7 @@ pub fn run() {
         .manage(AdvisorDocumentAttachmentService::default())
         .manage(AdvisorArchiveAttachmentService::default())
         .manage(AdvisorBinaryAttachmentService::default())
+        .manage(DynamicAnalysisService::default())
         .manage(DesktopNotificationService::default())
         .manage(GitService::default())
         .manage(RepositoryStateReader)
@@ -1801,6 +1856,10 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             desktop_bootstrap,
+            dynamic_analysis_status,
+            dynamic_analysis_pick,
+            dynamic_analysis_clear,
+            dynamic_analysis_run,
             codex_runtime_probe,
             integration_catalog_read,
             integration_catalog_refresh,

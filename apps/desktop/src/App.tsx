@@ -24,6 +24,7 @@ import { AuthGate } from "./AuthGate";
 import { AdvisorWorkspace } from "./AdvisorWorkspace";
 import { ConversationWorkspace } from "./ConversationWorkspace";
 import { FilePreviewWorkspace } from "./FilePreviewWorkspace";
+import { DynamicAnalysisWorkspace } from "./DynamicAnalysisWorkspace";
 import { GitWorkspace } from "./GitWorkspace";
 import { HomeDashboard } from "./HomeDashboard";
 import { IntegrationCenter } from "./IntegrationCenter";
@@ -3287,36 +3288,57 @@ export default function App({
           <p className="nav-label nav-label--secondary">Workspace</p>
           {workspaceNavigation
             .filter((item) => item.group === "workspace")
-            .map((item) => (
-              <a
-                className={
-                  workspaceLocation.route === item.route
-                    ? "nav-item nav-item--active"
-                    : "nav-item"
-                }
-                href={workspaceLocationHash(workspaceLocationFor(item.route))}
-                key={item.route}
-                aria-current={
-                  workspaceLocation.route === item.route ? "page" : undefined
-                }
-                aria-label={item.label}
-                title={item.description}
-                onClick={(event) => {
-                  event.preventDefault();
-                  if (
-                    item.route === "advisor" ||
-                    item.route === "conversation"
-                  ) {
-                    requestConversationWorkspace(item.route);
-                  } else {
-                    navigateWorkspace(item.route);
+            .map((item) =>
+              item.route === "dynamic-analysis" ? (
+                <button
+                  className={
+                    workspaceLocation.route === item.route
+                      ? "nav-item nav-item--active"
+                      : "nav-item"
                   }
-                }}
-              >
-                <Glyph name={item.icon} />
-                <span>{item.label}</span>
-              </a>
-            ))}
+                  type="button"
+                  key={item.route}
+                  aria-current={
+                    workspaceLocation.route === item.route ? "page" : undefined
+                  }
+                  aria-label={item.label}
+                  title={item.description}
+                  onClick={() => navigateWorkspace(item.route)}
+                >
+                  <Glyph name={item.icon} />
+                  <span>{item.label}</span>
+                </button>
+              ) : (
+                <a
+                  className={
+                    workspaceLocation.route === item.route
+                      ? "nav-item nav-item--active"
+                      : "nav-item"
+                  }
+                  href={workspaceLocationHash(workspaceLocationFor(item.route))}
+                  key={item.route}
+                  aria-current={
+                    workspaceLocation.route === item.route ? "page" : undefined
+                  }
+                  aria-label={item.label}
+                  title={item.description}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    if (
+                      item.route === "advisor" ||
+                      item.route === "conversation"
+                    ) {
+                      requestConversationWorkspace(item.route);
+                    } else {
+                      navigateWorkspace(item.route);
+                    }
+                  }}
+                >
+                  <Glyph name={item.icon} />
+                  <span>{item.label}</span>
+                </a>
+              ),
+            )}
         </nav>
 
         <button
@@ -3615,6 +3637,13 @@ export default function App({
                 onDispatch={dispatchApprovedAdvisorRequest}
                 onOpenExecution={() => navigateWorkspace("conversation")}
               />
+            </WorkspaceView>
+
+            <WorkspaceView
+              route="dynamic-analysis"
+              active={workspaceLocation.route === "dynamic-analysis"}
+            >
+              <DynamicAnalysisWorkspace />
             </WorkspaceView>
 
             <WorkspaceView

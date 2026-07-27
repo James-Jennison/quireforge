@@ -1016,14 +1016,30 @@ dynamic analysis in the current desktop architecture. Docker, bubblewrap, and
 an ad-hoc QEMU process are not accepted as a hostile-binary boundary. Any future
 proposal requires a separately approved KVM microVM architecture, zero-network
 and no-host-mount policy, disposable lifecycle, typed bounded results, image
-provenance, supported-host matrix, and legal/operational ownership. M39 remains
-intentionally undefined. See [Milestone 38 discovery record](MILESTONE_38_DYNAMIC_SANDBOX_DISCOVERY.md).
+provenance, supported-host matrix, and legal/operational ownership. See
+[Milestone 38 discovery record](MILESTONE_38_DYNAMIC_SANDBOX_DISCOVERY.md).
 
 ### 39 — Dynamic Sandbox Analysis Implementation
 
-This milestone is intentionally undefined until Milestone 38 has closed and a
-separate implementation proposal is approved. It cannot begin merely because
-static binary inspection exists.
+Add a separately installed, root-owned `quireforge-sandboxd` component for one
+explicitly selected and confirmed static ELF64 x86_64 `ET_EXEC` or static-PIE
+`ET_DYN` sample per run. It uses pinned Firecracker 1.15.1 and the matching
+jailer only on supported Linux x86_64 KVM hosts; it has no guest network and no
+host or project mounts. The immutable guest contains only a fixed,
+non-interactive analysis agent and returns a bounded
+`dynamic-analysis-result-v1` metadata result. Distribution remains Debian-only;
+the panel shows unavailable state when the separately administered worker is
+absent.
+
+Only signature-validated ELF64 x86_64 `ET_EXEC` and `ET_DYN` samples with no
+`PT_INTERP` are accepted. Dynamically linked samples fail closed with the broad
+`unsupported-runtime` diagnostic. The worker never accepts generic uploads,
+terminal output, guest-file export, Advisor input, project attachment, or
+automatic execution. It excludes dynamic-loader/library support, other binary
+formats, runtime interaction, network, release, and deployment. The package
+gate requires fresh `0.1.0-beta.33` desktop and worker Debian evidence, an
+Debian-only release contract, immutable guest asset provenance, ABI evidence,
+benign-probe-only worker tests, and installed/visible desktop lifecycle gates.
 
 ### Advisor Approval/Dispatch Phases A–B3 (completed capability history)
 

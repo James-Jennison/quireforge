@@ -1,6 +1,6 @@
 {
   "name": "quireforge",
-  "version": "0.1.0-beta.32",
+  "version": "0.1.0-beta.33",
   "private": true,
   "description": "QuireForge — an unofficial native Linux workspace for Codex.",
   "license": "Apache-2.0",
@@ -21,8 +21,8 @@
     "format": "pnpm -r --if-present format && cargo fmt --all",
     "format:check": "pnpm -r --if-present format:check && cargo fmt --all --check",
     "lint": "pnpm -r --if-present lint",
-    "package:linux": "CARGO_TARGET_DIR=target/host-development python3 scripts/fetch_tauri_linux_tools.py && CARGO_TARGET_DIR=target/host-development pnpm --filter @quireforge/desktop tauri build --bundles deb,appimage",
-    "package:linux:release": "python3 scripts/fetch_tauri_linux_tools.py && pnpm --filter @quireforge/desktop tauri build --bundles deb,appimage && python3 scripts/package_linux.py",
+    "package:linux": "CARGO_TARGET_DIR=target/host-development pnpm --filter @quireforge/desktop tauri build --bundles deb",
+    "package:linux:release": "pnpm --filter @quireforge/desktop tauri build --bundles deb && python3 scripts/package_linux.py",
     "package:test": "python3 -m unittest discover -s scripts/tests -p 'test_package_*.py'",
     "package:validate": "python3 scripts/validate_release_artifacts.py",
     "preview": "pnpm --filter @quireforge/website preview",

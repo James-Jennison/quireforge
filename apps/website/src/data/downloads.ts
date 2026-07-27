@@ -1,4 +1,4 @@
-export type DownloadFormat = "appimage" | "deb";
+export type DownloadFormat = "deb";
 
 export type PublishedDownload = {
   format: DownloadFormat;
@@ -38,7 +38,7 @@ const VERSION_PATTERN =
   /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?$/;
 const UTC_TIMESTAMP_PATTERN =
   /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/;
-const APPROVED_FORMATS: readonly DownloadFormat[] = ["appimage", "deb"];
+const APPROVED_FORMATS: readonly DownloadFormat[] = ["deb"];
 
 function parseApprovedUrl(value: string, approvedOrigin: string): URL | null {
   try {
@@ -96,7 +96,6 @@ export function validateDownloadAvailability(
   }
 
   const expectedFilenames: Record<DownloadFormat, string> = {
-    appimage: `QuireForge-${release.version}-x86_64.AppImage`,
     deb: `quireforge_${release.version.replace("-", ".")}_amd64.deb`,
   };
   const seen = new Set<DownloadFormat>();
@@ -154,5 +153,5 @@ export const downloadAvailability: DownloadAvailability = {
   state: "unavailable",
   statusLabel: "No downloads available",
   release: null,
-  plannedFormats: ["appimage", "deb"],
+  plannedFormats: ["deb"],
 };

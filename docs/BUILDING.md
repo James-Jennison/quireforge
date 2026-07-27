@@ -97,7 +97,7 @@ pnpm desktop:build
 `desktop:dev` starts Vite and launches the Tauri window. `desktop:build` checks
 the frontend and produces the unbundled executable `target/release/quireforge`.
 The output is ignored by Git and is a local verification artifact, not a Debian
-package, AppImage, release, or supported installation.
+package, release, or supported installation.
 
 Use `pnpm desktop:build` before treating that executable as a production
 artifact. A direct `cargo build --release` does not run Tauri's frontend build
@@ -134,8 +134,8 @@ Successful candidates are written to:
 
 ```text
 target/ubuntu-22.04/release/packages/
-├── QuireForge-0.1.0-beta.2-x86_64.AppImage
 ├── quireforge_0.1.0.beta.2_amd64.deb
+├── quireforge-sandboxd_0.1.0.beta.2_amd64.deb
 ├── release-manifest.json
 └── SHA256SUMS
 ```
@@ -145,10 +145,13 @@ normalizes tildes in asset names. The package's internal Debian version remains
 `0.1.0~beta.2`, preserving correct prerelease ordering before `0.1.0`.
 
 The directory is ignored by Git and is produced only by the pinned container
-workflow. Each future release manifest records clean source provenance and ABI
-evidence for both shipped executables; missing or inconsistent evidence fails
-validation. Building candidates does not authorize a GitHub release, website
-edit, deployment, package installation, or signing action.
+workflow. From Milestone 39, the separately installed `quireforge-sandboxd`
+Debian component is a third review artifact only for supported Linux x86_64 KVM
+hosts. Each future release manifest records clean source provenance and ABI
+evidence for every shipped executable,
+plus immutable worker-asset checksums when present; missing or inconsistent
+evidence fails validation. Building candidates does not authorize a GitHub
+release, website edit, deployment, package installation, or signing action.
 See [Releasing](RELEASING.md) for the guarded handoff.
 
 ### Native-only notification probe

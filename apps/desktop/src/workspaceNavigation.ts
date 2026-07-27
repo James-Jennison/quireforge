@@ -10,7 +10,8 @@ export type PrimaryWorkspaceRoute =
   | "files"
   | "changes"
   | "worktrees"
-  | "terminal";
+  | "terminal"
+  | "dynamic-analysis";
 
 export type SettingsSection =
   | "general"
@@ -122,6 +123,13 @@ export const workspaceNavigation: readonly WorkspaceNavigationItem[] = [
     icon: "terminal",
     group: "workspace",
     description: "Use the integrated project terminal",
+  },
+  {
+    route: "dynamic-analysis",
+    label: "Isolated analysis",
+    icon: "shield",
+    group: "workspace",
+    description: "Run one static ELF in the separately installed worker",
   },
 ] as const;
 

@@ -12,11 +12,12 @@
     "builder",
     "provenance",
     "abi",
+    "sandboxd",
     "artifacts"
   ],
   "properties": {
     "schemaVersion": {
-      "const": 2
+      "const": 3
     },
     "state": {
       "const": "release-candidate"
@@ -118,8 +119,8 @@
             "properties": {
               "format": {
                 "enum": [
-                  "appimage",
-                  "deb"
+                  "deb",
+                  "sandboxd-deb"
                 ]
               },
               "highestRequired": {
@@ -149,8 +150,8 @@
         "properties": {
           "format": {
             "enum": [
-              "appimage",
-              "deb"
+              "deb",
+              "sandboxd-deb"
             ]
           },
           "filename": {
@@ -170,6 +171,58 @@
             "type": "integer",
             "minimum": 1
           }
+        }
+      }
+    },
+    "sandboxd": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "version",
+        "source",
+        "worker",
+        "artifact",
+        "assets"
+      ],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "version": { "type": "string" },
+        "source": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["commit", "treeState"],
+          "properties": {
+            "commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+            "treeState": { "const": "clean" }
+          }
+        },
+        "worker": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["firecracker", "jailer", "guestKernel", "network", "guestMounts", "runtime"],
+          "properties": {
+            "firecracker": { "const": "1.15.1" },
+            "jailer": { "const": "1.15.1" },
+            "guestKernel": { "const": "6.1.178" },
+            "network": { "const": "disabled" },
+            "guestMounts": { "const": "none" },
+            "runtime": { "const": "static-elf64-x86_64-only" }
+          }
+        },
+        "artifact": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["filename", "sha256", "size"],
+          "properties": {
+            "filename": { "type": "string" },
+            "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+            "size": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "assets": {
+          "type": "object",
+          "additionalProperties": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
         }
       }
     }

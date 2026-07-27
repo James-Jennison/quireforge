@@ -9,15 +9,20 @@ ENV RUSTUP_HOME=/usr/local/rustup
 RUN apt-get update \
     && apt-get install --yes --no-install-recommends \
       build-essential \
+      bc \
+      bison \
       ca-certificates \
+      cpio \
       curl \
       dbus-x11 \
       desktop-file-utils \
       dpkg-dev \
       file \
+      flex \
       git \
       jq \
       libayatana-appindicator3-dev \
+      libelf-dev \
       libfuse2 \
       librsvg2-dev \
       libssl-dev \

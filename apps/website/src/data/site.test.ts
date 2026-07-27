@@ -76,7 +76,7 @@ describe("site information architecture", () => {
       state: "unavailable",
       statusLabel: "No downloads available",
       release: null,
-      plannedFormats: ["appimage", "deb"],
+      plannedFormats: ["deb"],
     });
     expect(JSON.stringify(downloadAvailability)).not.toContain("https://");
     expect(JSON.stringify(downloadAvailability)).not.toMatch(/[0-9a-f]{64}/);
@@ -87,7 +87,7 @@ describe("site information architecture", () => {
       schemaVersion: 1,
       state: "published",
       statusLabel: "Beta 0.1.0-beta.2",
-      plannedFormats: ["appimage", "deb"],
+      plannedFormats: ["deb"],
       release: {
         version: "0.1.0-beta.2",
         publishedAt: "2026-07-23T20:00:00Z",
@@ -96,15 +96,6 @@ describe("site information architecture", () => {
         checksumUrl:
           "https://quireforge.jamesjennison.net/downloads/v0.1.0-beta.2/SHA256SUMS",
         downloads: [
-          {
-            format: "appimage",
-            filename: "QuireForge-0.1.0-beta.2-x86_64.AppImage",
-            architecture: "x86_64",
-            byteSize: 83_634_680,
-            sha256:
-              "0a0e793815faee2c16036610afeef1c1e3912be4b40aa0f2209f3cd57bc3f56f",
-            url: "https://quireforge.jamesjennison.net/downloads/v0.1.0-beta.2/QuireForge-0.1.0-beta.2-x86_64.AppImage",
-          },
           {
             format: "deb",
             filename: "quireforge_0.1.0.beta.2_amd64.deb",
@@ -122,18 +113,11 @@ describe("site information architecture", () => {
 
     const wrongOrigin = structuredClone(published);
     if (wrongOrigin.state === "published") {
-      const appimage = wrongOrigin.release.downloads.find(
-        (download) => download.format === "appimage",
-      );
-      expect(appimage).toBeDefined();
-      if (!appimage) {
-        throw new Error("published fixture is missing its AppImage");
-      }
-      appimage.url =
-        "https://github.com/James-Jennison/quireforge/releases/download/v0.1.0-beta.2/QuireForge-0.1.0-beta.2-x86_64.AppImage";
+      wrongOrigin.release.downloads[0]!.url =
+        "https://github.com/James-Jennison/quireforge/releases/download/v0.1.0-beta.2/quireforge_0.1.0.beta.2_amd64.deb";
     }
     expect(validateDownloadAvailability(wrongOrigin, site.origin)).toContain(
-      "appimage URL is outside the approved release path",
+      "deb URL is outside the approved release path",
     );
 
     const invalidHash = structuredClone(published);
@@ -141,7 +125,7 @@ describe("site information architecture", () => {
       invalidHash.release.downloads[0]!.sha256 = "A".repeat(64);
     }
     expect(validateDownloadAvailability(invalidHash, site.origin)).toContain(
-      "appimage SHA-256 is invalid",
+      "deb SHA-256 is invalid",
     );
 
     const invalidManifest = structuredClone(published);
@@ -166,17 +150,6 @@ describe("site information architecture", () => {
       ]),
     );
 
-    const duplicate = structuredClone(published);
-    if (duplicate.state === "published") {
-      duplicate.release.downloads[1]!.format = "appimage";
-    }
-    expect(validateDownloadAvailability(duplicate, site.origin)).toEqual(
-      expect.arrayContaining([
-        "duplicate appimage download",
-        "missing deb download",
-      ]),
-    );
-
     const incoherentVersion = structuredClone(published);
     if (incoherentVersion.state === "published") {
       incoherentVersion.release.version = "0.1.0-beta.3";
@@ -186,7 +159,6 @@ describe("site information architecture", () => {
     ).toEqual(
       expect.arrayContaining([
         "manifest URL is outside the approved HTTPS origin",
-        "appimage filename does not match the release",
         "deb filename does not match the release",
       ]),
     );

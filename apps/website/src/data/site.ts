@@ -194,7 +194,7 @@ export const sitePages: SitePage[] = [
       : "Packages will arrive after the application earns them.",
     description: publishedRelease
       ? "Choose the approved x86_64 package for your Ubuntu system, then verify its published SHA-256 checksum before running it."
-      : "QuireForge has no public or supported download. AppImage and Debian packages remain planned for a later, separately approved release milestone.",
+      : "QuireForge has no public or supported download. Debian packages remain planned for a later, separately approved release milestone.",
     status: downloadAvailability.statusLabel,
     sections: publishedRelease
       ? [
@@ -217,7 +217,6 @@ export const sitePages: SitePage[] = [
           {
             heading: "Planned formats",
             items: [
-              "AppImage for a portable Linux installation",
               "Debian package for supported Ubuntu systems",
               "Published checksums and release notes for every approved artifact",
               "Documented upgrade and uninstall behavior that preserves user projects",
@@ -233,10 +232,7 @@ export const sitePages: SitePage[] = [
     links: publishedRelease
       ? [
           ...publishedRelease.downloads.map((download) => ({
-            label:
-              download.format === "appimage"
-                ? "Download AppImage"
-                : "Download Debian package",
+            label: "Download Debian package",
             href: download.url,
           })),
           { label: "Download SHA256SUMS", href: publishedRelease.checksumUrl },
@@ -271,14 +267,6 @@ export const sitePages: SitePage[] = [
               "Confirm the package and SHA256SUMS came from this website.",
               "Verify the selected package and require an OK result before continuing.",
               "Install compatible Codex and Git separately; QuireForge does not bundle or own their credentials or data.",
-            ],
-          },
-          {
-            heading: "AppImage",
-            items: [
-              "Mark the downloaded AppImage executable with chmod 0755, then launch it directly.",
-              "If FUSE is unavailable, use the AppImage runtime's --appimage-extract-and-run mode.",
-              "The AppImage is not registered with a distribution package manager and must be replaced manually for upgrades.",
             ],
           },
           {
@@ -358,7 +346,7 @@ export const sitePages: SitePage[] = [
         items: publishedRelease
           ? [
               "The initial beta target is x86_64 Ubuntu 22.04 or newer on GNOME Wayland and X11.",
-              "AppImage and Debian packages are available only through the approved Downloads page.",
+              "Debian packages are available only through the approved Downloads page.",
               "Codex and Git are external prerequisites; Codex capability is checked at runtime.",
               "Arm64, non-Ubuntu distributions, and non-GNOME desktops are not part of the initial support statement.",
               "The project website and approved packages are served from the owner-hosted QuireForge origin behind Cloudflare DNS and proxying.",
@@ -367,7 +355,7 @@ export const sitePages: SitePage[] = [
               "Ubuntu LTS is the initial target; supported versions are not yet declared.",
               "Codex capabilities may vary by installed version and should be checked at runtime.",
               "Wayland and X11 behavior require separate evidence.",
-              "AppImage and Debian packaging remain unavailable.",
+              "Debian packaging remains unavailable.",
               "The static project website is public from a Webuzo-managed origin behind Cloudflare DNS and proxying.",
             ],
       },
@@ -413,7 +401,7 @@ export const sitePages: SitePage[] = [
         ? {
             heading: "Public beta",
             items: [
-              "Verified AppImage and Debian packages with published checksums and manifest",
+              "Verified Debian packages with published checksums and manifest",
               "Initial x86_64 Ubuntu support statement and installation guidance",
               "Authenticated product home, bounded usage visibility, and established local-workspace flows",
               "Ongoing compatibility, security, accessibility, and upgrade validation before a stable release",
@@ -462,7 +450,7 @@ export const sitePages: SitePage[] = [
             items: [
               "The initial beta targets x86_64 Ubuntu 22.04 or newer on GNOME Wayland or X11.",
               "Codex and Git are external prerequisites, and integration availability remains environment-dependent.",
-              "The AppImage has no automatic updater; the Debian package is not an APT-repository release.",
+              "The Debian package is not an APT-repository release.",
               "Scheduled-task discovery is read-only and several advanced operations remain deliberately unavailable.",
             ],
           },
@@ -474,7 +462,7 @@ export const sitePages: SitePage[] = [
               "Install, upgrade, and uninstall tests on declared Linux targets",
               "Verified local-project and Codex working-directory behavior",
               "Security, accessibility, and integration supply-chain review",
-              "Reproducible AppImage and Debian artifacts with checksums",
+              "Reproducible Debian artifacts with checksums",
               "Separately approved publication and website download links",
             ],
           },
@@ -587,8 +575,8 @@ export const sitePages: SitePage[] = [
         heading: "Can I install it today?",
         paragraphs: [
           publishedRelease
-            ? `Yes. QuireForge ${publishedRelease.version} is available as a verified x86_64 AppImage and Debian package for the declared Ubuntu beta target. Use only the Downloads page and verify SHA256SUMS before installation.`
-            : "No. There is no approved AppImage, Debian package, beta, or supported installation. The downloads page will remain explicit until verified packages exist.",
+            ? `Yes. QuireForge ${publishedRelease.version} is available as a verified x86_64 Debian package for the declared Ubuntu beta target. Use only the Downloads page and verify SHA256SUMS before installation.`
+            : "No. There is no approved Debian package, beta, or supported installation. The downloads page will remain explicit until verified packages exist.",
         ],
       },
       {
@@ -635,7 +623,6 @@ export const sitePages: SitePage[] = [
               "Recheck the package against the published SHA256SUMS before debugging it.",
               "If the account gate remains visible, verify the compatible Codex runtime and use only the Codex-owned sign-in flow.",
               "If a project is unavailable, review its current path, mount, permissions, Git state, and project instructions without relocating it.",
-              "For AppImage FUSE errors, use the documented --appimage-extract-and-run fallback.",
               "Never include credentials, tokens, private source, or personal Codex data in an ordinary support request.",
             ],
           }

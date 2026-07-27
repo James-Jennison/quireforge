@@ -30,7 +30,7 @@ static project site is [quireforge.jamesjennison.net](https://quireforge.jamesje
   workspace with explicitly confirmed temporary context and bounded native
   text, image, PDF, or ZIP-manifest projections.
 - Accessible routed workspaces, local appearance preferences, and reproducible
-  Ubuntu 22.04 Debian/AppImage candidate validation.
+  Ubuntu 22.04 Debian candidate validation.
 
 The current implementation status, completed milestones, known limitations,
 and next approved work are maintained in [Current State](docs/CURRENT_STATE.md).

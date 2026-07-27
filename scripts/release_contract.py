@@ -14,12 +14,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 TAURI_CONFIG = ROOT / "apps/desktop/src-tauri/tauri.conf.json"
 TAURI_CARGO = ROOT / "apps/desktop/src-tauri/Cargo.toml"
-TOOL_MANIFEST = ROOT / "packaging/linux/tauri-tools.json"
+SANDBOXD_CARGO = ROOT / "apps/sandboxd/Cargo.toml"
 SCHEMA_PATH = ROOT / "packaging/release-manifest.schema.json"
 CANONICAL_DESKTOP = "io.github.codeframe78.QuireForge.desktop"
 LEGACY_DESKTOP = "QuireForge.desktop"
-APPIMAGE_BASENAME = "QuireForge"
+TAURI_BUNDLE_BASENAME = "QuireForge"
 DEBIAN_PACKAGE = "quireforge"
+SANDBOXD_DEBIAN_PACKAGE = "quireforge-sandboxd"
 EXPECTED_IMAGE = (
     "ubuntu:22.04@sha256:"
     "0e0a0fc6d18feda9db1590da249ac93e8d5abfea8f4c3c0c849ce512b5ef8982"
@@ -52,22 +53,6 @@ def run(
         stdout=subprocess.PIPE if capture else None,
         stderr=subprocess.PIPE if capture else None,
     )
-
-
-def appimagetool_command(
-    appimagetool: Path,
-    runtime: Path,
-    appdir: Path,
-    output: Path,
-) -> list[str]:
-    return [
-        str(appimagetool),
-        "--no-appstream",
-        "--runtime-file",
-        str(runtime),
-        str(appdir),
-        str(output),
-    ]
 
 
 def appstream_validation_command(validator: str, metadata: Path) -> list[str]:
@@ -123,6 +108,14 @@ def source_version() -> str:
     if not cargo_match:
         raise RuntimeError("Cargo package version is missing")
     versions["Cargo package"] = cargo_match.group(1)
+    sandboxd_text = SANDBOXD_CARGO.read_text(encoding="utf-8")
+    sandboxd_match = re.search(
+        r"(?ms)^\[package\]\s.*?^version\s*=\s*\"([^\"]+)\"",
+        sandboxd_text,
+    )
+    if not sandboxd_match:
+        raise RuntimeError("sandbox worker Cargo package version is missing")
+    versions["sandbox worker Cargo package"] = sandboxd_match.group(1)
 
     distinct = set(versions.values())
     if len(distinct) != 1:
@@ -152,6 +145,12 @@ def debian_artifact_filename(version: str, architecture: str = "amd64") -> str:
     """
     artifact_version = debian_version(version).replace("~", ".")
     return f"{DEBIAN_PACKAGE}_{artifact_version}_{architecture}.deb"
+
+
+def sandboxd_artifact_filename(version: str, architecture: str = "amd64") -> str:
+    """Return the review-artifact name for the separately installed worker."""
+    artifact_version = debian_version(version).replace("~", ".")
+    return f"{SANDBOXD_DEBIAN_PACKAGE}_{artifact_version}_{architecture}.deb"
 
 
 def architectures() -> tuple[str, str, str]:
@@ -257,53 +256,6 @@ def builder_record() -> dict[str, str]:
         "architecture": "x86_64",
         "image": image,
     }
-
-
-def tauri_cache_root() -> Path:
-    override = os.environ.get("QUIRE_FORGE_TAURI_CACHE_DIR")
-    if override:
-        return Path(override).expanduser().resolve()
-    return Path.home() / ".cache/tauri"
-
-
-def matches_cleared_appimage_marker(path: Path, expected: str) -> bool:
-    """Recognize the exact three-byte marker change made by tauri-bundler."""
-    digest = hashlib.sha256()
-    first_chunk = True
-    with path.open("rb") as source:
-        for raw_chunk in iter(lambda: source.read(1024 * 1024), b""):
-            chunk = bytearray(raw_chunk)
-            if first_chunk:
-                if len(chunk) < 11 or chunk[:4] != b"\x7fELF":
-                    return False
-                if chunk[8:11] != b"\0\0\0":
-                    return False
-                chunk[8:11] = b"AI\x02"
-                first_chunk = False
-            digest.update(chunk)
-    return not first_chunk and digest.hexdigest() == expected
-
-
-def verify_tauri_tools(*, allow_linuxdeploy_marker_cleared: bool = False) -> None:
-    manifest = json.loads(TOOL_MANIFEST.read_text(encoding="utf-8"))
-    if manifest.get("schemaVersion") != 1:
-        raise RuntimeError("unsupported Tauri tool manifest schema")
-    root = tauri_cache_root()
-    for entry in manifest.get("tools", []):
-        path = root / entry["filename"]
-        if not path.is_file():
-            raise RuntimeError(f"pinned Tauri tool is missing: {path}")
-        actual = sha256(path)
-        if actual != entry["sha256"]:
-            if (
-                allow_linuxdeploy_marker_cleared
-                and entry["filename"] == "linuxdeploy-x86_64.AppImage"
-                and matches_cleared_appimage_marker(path, entry["sha256"])
-            ):
-                continue
-            raise RuntimeError(
-                f"pinned Tauri tool checksum mismatch: {entry['filename']}"
-            )
 
 
 def replace_control_field(text: str, field: str, value: str) -> str:

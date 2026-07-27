@@ -22,6 +22,7 @@ describe("workspace navigation", () => {
       "changes",
       "worktrees",
       "terminal",
+      "dynamic-analysis",
     ]);
     expect(new Set(workspaceNavigation.map(({ route }) => route)).size).toBe(
       workspaceNavigation.length,

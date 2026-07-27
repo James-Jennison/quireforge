@@ -215,7 +215,6 @@ REQUIRED_PATHS = (
     "docs/MILESTONE_16C_PRODUCTION_ACTIVATION.md",
     "docs/MILESTONE_16D_AUTOMATIC_SSL.md",
     "scripts/generate_codex_schema_fixtures.py",
-    "scripts/fetch_tauri_linux_tools.py",
     "scripts/package_linux.py",
     "scripts/release_contract.py",
     "scripts/run_linux_package_container.sh",
@@ -226,7 +225,6 @@ REQUIRED_PATHS = (
     "security/node-audit-exceptions.json",
     "docs/SECURITY_AUDIT_EXCEPTIONS.md",
     "packaging/linux/Dockerfile",
-    "packaging/linux/tauri-tools.json",
     "packaging/release-manifest.schema.json",
 )
 
@@ -654,8 +652,8 @@ def validate() -> list[str]:
         bundle = tauri_config.get("bundle", {})
         if bundle.get("active") is not True:
             errors.append("desktop packaging must remain active after Milestone 20")
-        if bundle.get("targets") != ["appimage", "deb"]:
-            errors.append("desktop package targets must remain AppImage and Debian")
+        if bundle.get("targets") != ["deb"]:
+            errors.append("desktop package targets must remain Debian-only")
         expected_bundle_metadata = {
             "publisher": "QuireForge contributors",
             "homepage": "https://quireforge.jamesjennison.net",
@@ -672,22 +670,19 @@ def validate() -> list[str]:
             "desktop-template.desktop"
         ):
             errors.append("Debian bundles must use the reviewed desktop template")
-        if linux_bundle.get("appimage", {}).get("files", {}).get(
-            "/quireforge.png"
-        ) != "icons/icon.png":
-            errors.append("AppImage bundles must retain the canonical root icon")
 
     version_paths = (
         ROOT / "package.json",
         ROOT / "apps/desktop/package.json",
         ROOT / "apps/website/package.json",
+        ROOT / "apps/sandboxd/Cargo.toml",
     )
     if all(path.is_file() for path in version_paths) and TAURI_VERSION_RE.search(
         (ROOT / "apps/desktop/src-tauri/Cargo.toml").read_text(encoding="utf-8")
     ):
         versions = {
             json.loads(path.read_text(encoding="utf-8")).get("version")
-            for path in version_paths
+            for path in version_paths[:3]
         }
         cargo_version = TAURI_VERSION_RE.search(
             (ROOT / "apps/desktop/src-tauri/Cargo.toml").read_text(
@@ -695,6 +690,10 @@ def validate() -> list[str]:
             )
         ).group(1)
         versions.add(cargo_version)
+        sandboxd_version = TAURI_VERSION_RE.search(
+            (ROOT / "apps/sandboxd/Cargo.toml").read_text(encoding="utf-8")
+        ).group(1)
+        versions.add(sandboxd_version)
         if len(versions) != 1:
             errors.append("root, desktop, website, and Cargo versions must match")
 
@@ -707,23 +706,6 @@ def validate() -> list[str]:
             for line in from_lines
         ):
             errors.append("packaging container images must use immutable digests")
-
-    tool_manifest_path = ROOT / "packaging/linux/tauri-tools.json"
-    if tool_manifest_path.is_file():
-        tool_manifest = json.loads(tool_manifest_path.read_text(encoding="utf-8"))
-        tools = tool_manifest.get("tools", [])
-        if tool_manifest.get("schemaVersion") != 1 or len(tools) != 6:
-            errors.append("Tauri Linux tool manifest must contain the reviewed set")
-        for tool in tools:
-            url = tool.get("url", "")
-            digest = tool.get("sha256", "")
-            if (
-                not isinstance(url, str)
-                or not url.startswith("https://")
-                or re.search(r"https://[^/]*@", url)
-                or not re.fullmatch(r"[0-9a-f]{64}", str(digest))
-            ):
-                errors.append("Tauri Linux tool source or checksum is invalid")
 
     release_workflow_path = ROOT / ".github/workflows/linux-release.yml"
     if release_workflow_path.is_file():
@@ -762,7 +744,7 @@ def validate() -> list[str]:
         required_inactive_downloads = (
             'state: "unavailable"',
             "release: null",
-            'plannedFormats: ["appimage", "deb"]',
+            'plannedFormats: ["deb"]',
         )
         for marker in required_inactive_downloads:
             if marker not in downloads:

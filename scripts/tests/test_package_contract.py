@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import json
 import re
 import tempfile
@@ -16,12 +15,10 @@ from scripts.release_contract import (
     RELEASE_OUTPUT_DIR,
     ROOT,
     assert_authoritative_release_builder,
-    appimagetool_command,
     appstream_validation_command,
     architectures,
     debian_artifact_filename,
     debian_version,
-    matches_cleared_appimage_marker,
     package_output_dir,
     replace_control_field,
     source_version,
@@ -30,7 +27,7 @@ from scripts.release_contract import (
 
 class PackageContractTests(unittest.TestCase):
     def test_all_source_versions_match_the_beta_candidate(self) -> None:
-        self.assertEqual(source_version(), "0.1.0-beta.32")
+        self.assertEqual(source_version(), "0.1.0-beta.33")
 
     def test_debian_metadata_and_artifact_versions_are_deliberately_distinct(
         self,
@@ -57,18 +54,6 @@ class PackageContractTests(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             replace_control_field(control, "Architecture", "amd64")
 
-    def test_only_tauris_exact_linuxdeploy_marker_mutation_is_accepted(self) -> None:
-        reviewed = b"\x7fELF\0\0\0\0AI\x02reviewed-linuxdeploy"
-        expected = hashlib.sha256(reviewed).hexdigest()
-        cleared = reviewed[:8] + b"\0\0\0" + reviewed[11:]
-        tampered = cleared[:-1] + b"!"
-        with tempfile.TemporaryDirectory() as temporary:
-            candidate = Path(temporary) / "linuxdeploy-x86_64.AppImage"
-            candidate.write_bytes(cleared)
-            self.assertTrue(matches_cleared_appimage_marker(candidate, expected))
-            candidate.write_bytes(tampered)
-            self.assertFalse(matches_cleared_appimage_marker(candidate, expected))
-
     def test_appstream_validation_is_offline_and_not_skipped(self) -> None:
         metadata = Path("/app/usr/share/metainfo/quireforge.appdata.xml")
         self.assertEqual(
@@ -78,23 +63,6 @@ class PackageContractTests(unittest.TestCase):
                 "validate",
                 "--no-net",
                 str(metadata),
-            ],
-        )
-        command = appimagetool_command(
-            Path("/tools/appimagetool"),
-            Path("/tools/runtime"),
-            Path("/app"),
-            Path("/out/QuireForge.AppImage"),
-        )
-        self.assertEqual(
-            command,
-            [
-                "/tools/appimagetool",
-                "--no-appstream",
-                "--runtime-file",
-                "/tools/runtime",
-                "/app",
-                "/out/QuireForge.AppImage",
             ],
         )
 
@@ -115,21 +83,6 @@ class PackageContractTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
         self.assertIn('rust-version = "1.95"', cargo_manifest)
 
-        manifest = json.loads(
-            (ROOT / "packaging/linux/tauri-tools.json").read_text(encoding="utf-8")
-        )
-        self.assertEqual(manifest["schemaVersion"], 1)
-        self.assertEqual(len(manifest["tools"]), 6)
-        for tool in manifest["tools"]:
-            self.assertTrue(tool["url"].startswith("https://"))
-            self.assertIsNone(re.search(r"https://[^/]*@", tool["url"]))
-            self.assertRegex(tool["sha256"], r"^[0-9a-f]{64}$")
-        raw_urls = [
-            tool["url"]
-            for tool in manifest["tools"]
-            if "raw.githubusercontent.com" in tool["url"]
-        ]
-        self.assertTrue(all(re.search(r"/[0-9a-f]{40}/", url) for url in raw_urls))
 
     def test_tauri_bundle_contract_is_active_and_canonical(self) -> None:
         config = json.loads(
@@ -139,7 +92,7 @@ class PackageContractTests(unittest.TestCase):
         )
         bundle = config["bundle"]
         self.assertTrue(bundle["active"])
-        self.assertEqual(bundle["targets"], ["appimage", "deb"])
+        self.assertEqual(bundle["targets"], ["deb"])
         self.assertEqual(bundle["category"], "DeveloperTool")
         self.assertEqual(bundle["license"], "Apache-2.0")
         self.assertEqual(
@@ -148,10 +101,6 @@ class PackageContractTests(unittest.TestCase):
         self.assertEqual(
             bundle["linux"]["deb"]["desktopTemplate"],
             "desktop-template.desktop",
-        )
-        self.assertEqual(
-            bundle["linux"]["appimage"]["files"]["/quireforge.png"],
-            "icons/icon.png",
         )
         metainfo = (
             ROOT
@@ -188,7 +137,7 @@ class PackageContractTests(unittest.TestCase):
                 encoding="utf-8"
             )
         )
-        self.assertEqual(schema["properties"]["schemaVersion"], {"const": 2})
+        self.assertEqual(schema["properties"]["schemaVersion"], {"const": 3})
         self.assertEqual(schema["properties"]["state"], {"const": "release-candidate"})
         self.assertEqual(
             schema["properties"]["source"]["properties"]["treeState"],
@@ -196,6 +145,7 @@ class PackageContractTests(unittest.TestCase):
         )
         self.assertIn("provenance", schema["required"])
         self.assertIn("abi", schema["required"])
+        self.assertIn("sandboxd", schema["required"])
         self.assertEqual(
             schema["properties"]["provenance"]["properties"]["command"],
             {"const": "scripts/run_linux_package_container.sh"},
@@ -203,6 +153,10 @@ class PackageContractTests(unittest.TestCase):
         self.assertIn(
             "for artifact_format, version in sorted(observed)",
             (ROOT / "scripts/package_linux.py").read_text(encoding="utf-8"),
+        )
+        self.assertIn(
+            "sandboxd-deb",
+            (ROOT / "scripts/validate_release_artifacts.py").read_text(encoding="utf-8"),
         )
 
     def test_release_ci_uses_the_authoritative_container_entrypoint(self) -> None:

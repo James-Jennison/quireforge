@@ -48,7 +48,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["appimage", "deb"],
+    "targets": ["deb"],
     "publisher": "QuireForge contributors",
     "homepage": "https://quireforge.jamesjennison.net",
     "copyright": "Copyright 2026 QuireForge contributors",
@@ -64,13 +64,6 @@
       "icons/icon.png"
     ],
     "linux": {
-      "appimage": {
-        "bundleMediaFramework": false,
-        "files": {
-          "/quireforge.png": "icons/icon.png",
-          "/usr/share/metainfo/io.github.codeframe78.QuireForge.metainfo.xml": "metainfo/io.github.codeframe78.QuireForge.metainfo.xml"
-        }
-      },
       "deb": {
         "section": "devel",
         "priority": "optional",

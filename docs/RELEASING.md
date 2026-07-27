@@ -11,18 +11,19 @@ The Linux beta contract is:
 
 - application version `0.1.0-beta.2`;
 - x86_64 architecture only;
-- `QuireForge-0.1.0-beta.2-x86_64.AppImage`;
 - `quireforge_0.1.0.beta.2_amd64.deb`, using a GitHub-safe dot in the outer
   filename while the package control version remains `0.1.0~beta.2` for
   Debian prerelease ordering;
-- `SHA256SUMS` covering exactly both installable artifacts; and
+- for Milestone 39 and later supported Linux x86_64 KVM builds only, a separate
+  administrator-installed `quireforge-sandboxd_0.1.0.beta.2_amd64.deb`;
+- `SHA256SUMS` covering exactly all installable artifacts; and
 - `release-manifest.json` recording version, clean source commit, pinned
   container identity and command provenance, artifact names, formats,
-  architecture, sizes, hashes, and independently recomputed GLIBC ABI evidence
-  from both shipped executables.
+  architecture, sizes, hashes, immutable worker assets where present, and
+  independently recomputed GLIBC ABI evidence from every shipped executable.
 
 The package payload uses `quireforge` for the executable and Debian package,
-`QuireForge` for display and AppImage naming, and
+`QuireForge` for display, and
 `io.github.codeframe78.QuireForge.desktop` for the desktop entry. Neither
 format owns or removes attached project directories, Codex state, credentials,
 or QuireForge's user metadata.
@@ -50,12 +51,11 @@ then validates:
 - offline AppStream validation with `appstreamcli validate --no-net`, without
   making release reproducibility depend on homepage reachability;
 - a maximum GLIBC requirement of 2.35 for each executable extracted from the
-  Debian and AppImage artifacts, recorded in the manifest and recomputed by
-  validation;
-- AppImage extraction and canonical desktop/AppStream layout;
+  desktop Debian and separately installed worker artifacts, recorded
+  in the manifest and recomputed by validation;
 - disposable Debian install, upgrade from a synthetic prior version, removal,
   and preservation of project/application data;
-- stable visible Debian and AppImage windows under isolated X11 without Codex
+- a stable visible Debian window under isolated X11 without Codex
   credentials or a local development server; and
 - absence of a refused `127.0.0.1` launch path.
 
@@ -182,8 +182,9 @@ credentials, sessions, QuireForge metadata, or unrelated hosting state.
   repository signing.
 - GitHub provenance is created only by an approved publish job; local
   candidates have checksums and manifest evidence but no external attestation.
-- AppImage and Debian public promotion, website activation, and public
-  rollback verification remain separately approved Milestone 21B operations.
+- Debian public promotion, website activation, and public rollback verification
+  remain separately approved Milestone 21B operations. AppImage distribution
+  is no longer part of the active release policy.
 
 ## Superseded beta 1
 
@@ -197,6 +198,5 @@ identical. Never replace beta 1 assets in place.
 References:
 
 - [Tauri distribution overview](https://v2.tauri.app/distribute/)
-- [Tauri AppImage guidance](https://v2.tauri.app/distribute/appimage/)
 - [Tauri Debian guidance](https://v2.tauri.app/distribute/debian/)
 - [GitHub artifact attestations](https://docs.github.com/en/actions/security-for-github-actions/using-artifact-attestations)
