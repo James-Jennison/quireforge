@@ -4,6 +4,12 @@
 
 ### Added
 
+- Complete Milestone 37 as an evidence-only human-in-the-loop acceptance gate.
+  Existing digest-bound approval, one-time dispatch, bounded completion,
+  mode-reset, and recovery contracts passed alongside user-authorized managed
+  Codex Advisor and read-only execution-profile checks. This adds no product
+  behavior, authority, persistence, package version, release, or deployment.
+
 - Add Milestone 36's closed ELF-only Advisor static-binary entry. One confirmed
   transient ELF32/ELF64 relocatable, executable, or shared-object source is
   reduced to a bounded `static-binary-manifest-v1` text projection. QuireForge

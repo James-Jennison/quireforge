@@ -996,6 +996,14 @@ retention, and destructive project actions. A package version changes only if
 implementation corrections are separately approved; otherwise this is a
 release-acceptance gate with bounded evidence and cleanup.
 
+**Complete (evidence-only):** deterministic approval, invalidation, one-time
+dispatch, completion-report, mode-reset, and recovery contracts passed. The
+user-authorized managed-Codex checks completed strict no-project Advisor turns,
+an interruption followed by recovery, and one read-only/untrusted execution
+profile turn in a disposable directory, with no authority request or project
+modification. No implementation or package version changed. See
+[Milestone 37 acceptance evidence](MILESTONE_37_END_TO_END_ACCEPTANCE.md).
+
 ### 38 — Dynamic Sandbox / Malware-Analysis Discovery Gate
 
 Produce a decision-ready threat model and feasibility proposal for any future
