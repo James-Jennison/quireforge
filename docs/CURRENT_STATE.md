@@ -120,11 +120,13 @@ not add transcript storage, cross-mode context transfer, provider changes, or
 new execution authority.
 
 Milestone 33 — **Advisor Bounded PDF/Office Document Analysis** is complete in
-the `0.1.0-beta.21` candidate, initially limited to one explicitly confirmed
-PDF. Native code keeps the source and path transient, and supplies Advisor only
-with a bounded, path-free text projection. Office support, generic uploads,
-macros, embedded-object execution, editing, export, and project browsing remain
-out of scope.
+the corrected `0.1.0-beta.22` candidate, initially limited to one explicitly
+confirmed PDF. The unintegrated `0.1.0-beta.21` candidate was superseded before
+integration. Native code keeps the source and path transient, rejects active or
+embedded content, and supplies Advisor only with a bounded, path-free text
+projection whose page accounting reports included, omitted, and partial pages.
+Office support, generic uploads, macros, embedded-object execution, editing,
+export, and project browsing remain out of scope.
 
 Milestone 27 — **Unified Conversation Engine** is complete. It adds strict
 Rust/Zod Chat/Codex capability profiles, a Settings navigation foundation,

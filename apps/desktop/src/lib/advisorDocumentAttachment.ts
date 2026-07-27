@@ -26,6 +26,9 @@ export const advisorDocumentAttachmentSnapshotSchema = z
             schemaVersion: z.literal(1),
             pageCount: z.number().int().nonnegative().max(200),
             processedPageCount: z.number().int().nonnegative().max(200),
+            includedPageCount: z.number().int().nonnegative().max(200),
+            omittedPageCount: z.number().int().nonnegative().max(200),
+            partialPageCount: z.number().int().nonnegative().max(1),
             projectedByteSize: z
               .number()
               .int()
@@ -80,6 +83,20 @@ export const advisorDocumentAttachmentSnapshotSchema = z
       context.addIssue({
         code: "custom",
         message: "Inconsistent Advisor document attachment state",
+      });
+    if (
+      value.attachment &&
+      (value.attachment.projection.includedPageCount >
+        value.attachment.projection.processedPageCount ||
+        value.attachment.projection.processedPageCount >
+          value.attachment.projection.pageCount ||
+        value.attachment.projection.omittedPageCount !==
+          value.attachment.projection.pageCount -
+            value.attachment.projection.processedPageCount)
+    )
+      context.addIssue({
+        code: "custom",
+        message: "Inconsistent Advisor document page accounting",
       });
   });
 export type AdvisorDocumentAttachmentSnapshot = z.infer<

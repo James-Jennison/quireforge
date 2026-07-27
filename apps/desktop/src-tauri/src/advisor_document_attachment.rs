@@ -15,9 +15,10 @@ use std::{
     time::{Duration, Instant},
 };
 
-use lopdf::{Document, Object};
+use lopdf::{Document, Object, ObjectId};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use std::collections::HashSet;
 use uuid::Uuid;
 
 use crate::advisor_attachment::{
@@ -26,6 +27,8 @@ use crate::advisor_attachment::{
 
 pub const MAX_ADVISOR_DOCUMENT_BYTES: usize = 8 * 1024 * 1024;
 const MAX_PAGES: usize = 200;
+const MAX_PDF_OBJECTS: usize = 10_000;
+const MAX_PDF_NESTING: usize = 64;
 const MAX_PROJECTION_BYTES: usize = 256 * 1024;
 const MAX_PROJECTION_CHARS: usize = 200_000;
 const PARSE_BUDGET: Duration = Duration::from_secs(5);
@@ -61,6 +64,8 @@ pub enum AdvisorDocumentAttachmentDiagnosticCode {
     ActiveContent,
     PageLimitExceeded,
     ParseBudgetExceeded,
+    ObjectLimitExceeded,
+    NestingLimitExceeded,
     AttachmentNotFound,
     AttachmentExpired,
     ManifestMismatch,
@@ -72,6 +77,9 @@ pub struct AdvisorDocumentProjection {
     pub schema_version: u16,
     pub page_count: u32,
     pub processed_page_count: u32,
+    pub included_page_count: u32,
+    pub omitted_page_count: u32,
+    pub partial_page_count: u32,
     pub projected_byte_size: u32,
     pub outline_entry_count: u16,
     pub truncated: bool,
@@ -311,15 +319,16 @@ fn project_pdf(
     if document.is_encrypted() {
         return Err(AdvisorDocumentAttachmentDiagnosticCode::Encrypted);
     }
-    if document.objects.values().any(has_unsafe_pdf_object) {
-        return Err(AdvisorDocumentAttachmentDiagnosticCode::ActiveContent);
-    }
+    inspect_pdf_object_graph(&document)?;
     let pages: Vec<u32> = document.get_pages().into_keys().collect();
     if pages.len() > MAX_PAGES {
         return Err(AdvisorDocumentAttachmentDiagnosticCode::PageLimitExceeded);
     }
     let mut text = String::new();
     let mut truncated = false;
+    let mut inspected = 0u32;
+    let mut included = 0u32;
+    let mut partial = 0u32;
     for page in &pages {
         if started.elapsed() > PARSE_BUDGET {
             return Err(AdvisorDocumentAttachmentDiagnosticCode::ParseBudgetExceeded);
@@ -327,8 +336,14 @@ fn project_pdf(
         let page_text = document
             .extract_text(&[*page])
             .map_err(|_| AdvisorDocumentAttachmentDiagnosticCode::InvalidContent)?;
+        let before = text.len();
         append_bounded(&mut text, &page_text, &mut truncated);
+        inspected += 1;
+        if text.len() > before {
+            included += 1;
+        }
         if truncated {
+            partial = 1;
             break;
         }
     }
@@ -340,7 +355,10 @@ fn project_pdf(
         kind: AdvisorDocumentProjectionKind::PdfPlainTextV1,
         schema_version: 1,
         page_count: pages.len() as u32,
-        processed_page_count: pages.len() as u32,
+        processed_page_count: inspected,
+        included_page_count: included,
+        omitted_page_count: pages.len().saturating_sub(inspected as usize) as u32,
+        partial_page_count: partial,
         projected_byte_size: text.len() as u32,
         outline_entry_count: 0,
         truncated,
@@ -348,22 +366,98 @@ fn project_pdf(
     };
     Ok((projection, text))
 }
-fn has_unsafe_pdf_object(object: &Object) -> bool {
-    let Object::Dictionary(dict) = object else {
-        return false;
-    };
-    [
-        b"JavaScript".as_slice(),
+fn inspect_pdf_object_graph(
+    document: &Document,
+) -> Result<(), AdvisorDocumentAttachmentDiagnosticCode> {
+    if document.objects.len() > MAX_PDF_OBJECTS {
+        return Err(AdvisorDocumentAttachmentDiagnosticCode::ObjectLimitExceeded);
+    }
+    let mut visited = HashSet::new();
+    for (id, object) in &document.objects {
+        inspect_pdf_object(document, object, Some(*id), 0, &mut visited)?;
+    }
+    Ok(())
+}
+fn inspect_pdf_object(
+    document: &Document,
+    object: &Object,
+    object_id: Option<ObjectId>,
+    depth: usize,
+    visited: &mut HashSet<ObjectId>,
+) -> Result<(), AdvisorDocumentAttachmentDiagnosticCode> {
+    if depth > MAX_PDF_NESTING {
+        return Err(AdvisorDocumentAttachmentDiagnosticCode::NestingLimitExceeded);
+    }
+    if let Some(id) = object_id {
+        if !visited.insert(id) {
+            return Ok(());
+        }
+        if visited.len() > MAX_PDF_OBJECTS {
+            return Err(AdvisorDocumentAttachmentDiagnosticCode::ObjectLimitExceeded);
+        }
+    }
+    match object {
+        Object::Reference(id) => {
+            let target = document
+                .objects
+                .get(id)
+                .ok_or(AdvisorDocumentAttachmentDiagnosticCode::InvalidContent)?;
+            inspect_pdf_object(document, target, Some(*id), depth + 1, visited)?;
+        }
+        Object::Array(items) => {
+            for item in items {
+                inspect_pdf_object(document, item, None, depth + 1, visited)?;
+            }
+        }
+        Object::Dictionary(dictionary) => {
+            inspect_pdf_dictionary(document, dictionary, depth, visited)?
+        }
+        Object::Stream(stream) => inspect_pdf_dictionary(document, &stream.dict, depth, visited)?,
+        _ => {}
+    }
+    Ok(())
+}
+fn inspect_pdf_dictionary(
+    document: &Document,
+    dictionary: &lopdf::Dictionary,
+    depth: usize,
+    visited: &mut HashSet<ObjectId>,
+) -> Result<(), AdvisorDocumentAttachmentDiagnosticCode> {
+    const PROHIBITED: &[&[u8]] = &[
+        b"JavaScript",
         b"JS",
+        b"AA",
+        b"OpenAction",
+        b"Launch",
+        b"URI",
+        b"GoToR",
+        b"SubmitForm",
+        b"ImportData",
         b"EmbeddedFiles",
         b"Filespec",
-        b"Launch",
-        b"GoToR",
-        b"RichMedia",
+        b"AcroForm",
         b"XFA",
-    ]
-    .iter()
-    .any(|key| dict.has(key))
+        b"RichMedia",
+        b"Movie",
+        b"Sound",
+        b"Collection",
+        b"Portfolio",
+    ];
+    for (key, value) in dictionary.iter() {
+        if PROHIBITED
+            .iter()
+            .any(|prohibited| key.as_slice() == *prohibited)
+        {
+            return Err(AdvisorDocumentAttachmentDiagnosticCode::ActiveContent);
+        }
+        if matches!(key.as_slice(), b"S" | b"Type")
+            && matches!(value, Object::Name(name) if PROHIBITED.iter().any(|prohibited| name.as_slice() == *prohibited))
+        {
+            return Err(AdvisorDocumentAttachmentDiagnosticCode::ActiveContent);
+        }
+        inspect_pdf_object(document, value, None, depth + 1, visited)?;
+    }
+    Ok(())
 }
 fn append_bounded(output: &mut String, addition: &str, truncated: &mut bool) {
     for character in addition.chars() {
@@ -441,6 +535,27 @@ mod tests {
     fn active_content_dictionary_is_rejected() {
         let mut dictionary = lopdf::Dictionary::new();
         dictionary.set("JavaScript", Object::Null);
-        assert!(has_unsafe_pdf_object(&Object::Dictionary(dictionary)));
+        let mut document = Document::with_version("1.5");
+        document
+            .objects
+            .insert((1, 0), Object::Dictionary(dictionary));
+        assert_eq!(
+            inspect_pdf_object_graph(&document),
+            Err(AdvisorDocumentAttachmentDiagnosticCode::ActiveContent)
+        );
+    }
+    #[test]
+    fn nested_indirect_active_content_is_rejected() {
+        let mut document = Document::with_version("1.5");
+        let mut nested = lopdf::Dictionary::new();
+        nested.set("S", Object::Name(b"URI".to_vec()));
+        let mut root = lopdf::Dictionary::new();
+        root.set("Next", Object::Reference((2, 0)));
+        document.objects.insert((1, 0), Object::Dictionary(root));
+        document.objects.insert((2, 0), Object::Dictionary(nested));
+        assert_eq!(
+            inspect_pdf_object_graph(&document),
+            Err(AdvisorDocumentAttachmentDiagnosticCode::ActiveContent)
+        );
     }
 }

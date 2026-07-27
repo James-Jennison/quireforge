@@ -1117,8 +1117,14 @@ export function AdvisorWorkspace({
                   <p role="status">
                     Ready: {documentAttachment.attachment.displayName} (PDF,{" "}
                     {documentAttachment.attachment.byteSize} bytes,{" "}
-                    {documentAttachment.attachment.projection.pageCount} pages,
-                    SHA-256 verified).
+                    {documentAttachment.attachment.projection.includedPageCount}{" "}
+                    of {documentAttachment.attachment.projection.pageCount}{" "}
+                    pages projected
+                    {documentAttachment.attachment.projection.partialPageCount >
+                    0
+                      ? "; final page truncated"
+                      : ""}
+                    , SHA-256 verified).
                   </p>
                   <button
                     type="button"

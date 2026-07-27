@@ -18,6 +18,9 @@ describe("Advisor document attachment contract", () => {
         schemaVersion: 1 as const,
         pageCount: 1,
         processedPageCount: 1,
+        includedPageCount: 1,
+        omittedPageCount: 0,
+        partialPageCount: 0,
         projectedByteSize: 12,
         outlineEntryCount: 0,
         truncated: false,
@@ -44,6 +47,20 @@ describe("Advisor document attachment contract", () => {
         state: "unavailable",
         confirmationState: null,
         diagnosticCode: "invalid-content",
+      }),
+    ).toThrow();
+  });
+  it("rejects incoherent page accounting", () => {
+    expect(() =>
+      advisorDocumentAttachmentSnapshotSchema.parse({
+        ...ready,
+        attachment: {
+          ...ready.attachment,
+          projection: {
+            ...ready.attachment.projection,
+            includedPageCount: 2,
+          },
+        },
       }),
     ).toThrow();
   });
