@@ -63,6 +63,28 @@ export const advisorDispatchSnapshotSchema = z
   })
   .strict();
 
+export const advisorCompletionReportRequestSchema = z
+  .object({ proposalId: uuidV7 })
+  .strict();
+
+export const advisorCompletionReportSnapshotSchema = z
+  .object({
+    proposalId: uuidV7,
+    status: z.enum([
+      "accepted",
+      "started",
+      "completed",
+      "failed",
+      "cancelled",
+      "blocked",
+      "unavailable",
+    ]),
+    observedAtMs: z.number().int().nonnegative(),
+    executionConversationId: uuidV7.nullable(),
+    diagnosticCode: z.literal("report-unavailable").nullable(),
+  })
+  .strict();
+
 export type AdvisorDraftCreateRequest = z.infer<
   typeof advisorDraftCreateRequestSchema
 >;
@@ -77,4 +99,10 @@ export type AdvisorDispatchRequest = z.infer<
 >;
 export type AdvisorDispatchSnapshot = z.infer<
   typeof advisorDispatchSnapshotSchema
+>;
+export type AdvisorCompletionReportRequest = z.infer<
+  typeof advisorCompletionReportRequestSchema
+>;
+export type AdvisorCompletionReportSnapshot = z.infer<
+  typeof advisorCompletionReportSnapshotSchema
 >;

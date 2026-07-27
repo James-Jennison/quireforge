@@ -69,6 +69,7 @@ const props = {
   onConversationPoll: vi.fn(),
   onConversationInterrupt: vi.fn(),
   onDispatch: vi.fn(),
+  onOpenExecution: vi.fn(),
 };
 
 describe("AdvisorWorkspace", () => {

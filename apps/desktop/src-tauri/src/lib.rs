@@ -491,8 +491,9 @@ async fn advisor_dispatch_once(
         )
         .await;
     let conversation_id = snapshot.conversation_id.clone();
-    let _ =
-        projects.finish_advisor_dispatch_proposal(&request.proposal_id, conversation_id.as_deref());
+    projects
+        .finish_advisor_dispatch_proposal(&request.proposal_id, conversation_id.as_deref())
+        .map_err(|_| ())?;
     Ok(advisor::AdvisorDispatchSnapshot {
         proposal_id: request.proposal_id,
         state: if conversation_id.is_some() {
@@ -501,6 +502,57 @@ async fn advisor_dispatch_once(
             advisor::AdvisorExecutionDispatchState::FailedToStart
         },
         execution_conversation_id: conversation_id,
+    })
+}
+
+#[tauri::command]
+fn advisor_completion_report(
+    request: advisor::AdvisorCompletionReportRequest,
+    projects: tauri::State<'_, ProjectService>,
+) -> Result<advisor::AdvisorCompletionReportSnapshot, ()> {
+    let observed_at_ms: i64 = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|_| ())?
+        .as_millis()
+        .try_into()
+        .map_err(|_| ())?;
+    if !valid_uuid_v7(&request.proposal_id) {
+        return Err(());
+    }
+    let proposal = projects
+        .advisor_dispatch_proposal(&request.proposal_id)
+        .map_err(|_| ())?;
+    let unavailable = || advisor::AdvisorCompletionReportSnapshot {
+        proposal_id: request.proposal_id.clone(),
+        status: advisor::AdvisorCompletionStatus::Unavailable,
+        observed_at_ms,
+        execution_conversation_id: None,
+        diagnostic_code: Some("report-unavailable"),
+    };
+    let Some(conversation_id) = proposal.execution_conversation_id.clone() else {
+        return Ok(unavailable());
+    };
+    let reference = match projects.conversation_reference(&conversation_id) {
+        Ok(value) => value,
+        Err(_) => return Ok(unavailable()),
+    };
+    if reference.project_id != proposal.target_project_id {
+        return Ok(unavailable());
+    }
+    let status = match reference.status.as_str() {
+        "running" | "stopping" => advisor::AdvisorCompletionStatus::Started,
+        "completed" => advisor::AdvisorCompletionStatus::Completed,
+        "failed" => advisor::AdvisorCompletionStatus::Failed,
+        "interrupted" => advisor::AdvisorCompletionStatus::Cancelled,
+        "blocked" => advisor::AdvisorCompletionStatus::Blocked,
+        _ => advisor::AdvisorCompletionStatus::Unavailable,
+    };
+    Ok(advisor::AdvisorCompletionReportSnapshot {
+        proposal_id: request.proposal_id,
+        status,
+        observed_at_ms,
+        execution_conversation_id: Some(conversation_id),
+        diagnostic_code: None,
     })
 }
 
@@ -1420,6 +1472,7 @@ pub fn run() {
             advisor_draft_create,
             advisor_draft_decide,
             advisor_dispatch_once,
+            advisor_completion_report,
             project_pick_directory,
             project_pick_relink,
             project_confirm_attachment,

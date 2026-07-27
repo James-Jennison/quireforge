@@ -166,6 +166,34 @@ pub struct AdvisorDispatchSnapshot {
     pub execution_conversation_id: Option<String>,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum AdvisorCompletionStatus {
+    Accepted,
+    Started,
+    Completed,
+    Failed,
+    Cancelled,
+    Blocked,
+    Unavailable,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct AdvisorCompletionReportRequest {
+    pub proposal_id: String,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AdvisorCompletionReportSnapshot {
+    pub proposal_id: String,
+    pub status: AdvisorCompletionStatus,
+    pub observed_at_ms: i64,
+    pub execution_conversation_id: Option<String>,
+    pub diagnostic_code: Option<&'static str>,
+}
+
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct AdvisorDispatchProposal {

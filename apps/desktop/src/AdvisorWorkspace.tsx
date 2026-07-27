@@ -14,10 +14,12 @@ import {
   createAdvisorDraft,
   decideAdvisorDraft,
   dispatchAdvisorOnce,
+  loadAdvisorCompletionReport,
 } from "./lib/bridge";
 import type {
   AdvisorApprovalSnapshot,
   AdvisorDispatchSnapshot,
+  AdvisorCompletionReportSnapshot,
 } from "./lib/advisorApproval";
 import type { CodexRuntimeSnapshot } from "./lib/codex";
 
@@ -54,6 +56,7 @@ interface AdvisorWorkspaceProps {
   onDispatch: (
     request: Parameters<typeof dispatchAdvisorOnce>[0],
   ) => Promise<AdvisorDispatchSnapshot>;
+  onOpenExecution: () => void;
 }
 
 const diagnosticMessage: Partial<
@@ -91,6 +94,7 @@ export function AdvisorWorkspace({
   onConversationPoll,
   onConversationInterrupt,
   onDispatch,
+  onOpenExecution,
 }: AdvisorWorkspaceProps) {
   const [prompt, setPrompt] = useState("");
   const [includeProjectState, setIncludeProjectState] = useState(false);
@@ -108,6 +112,8 @@ export function AdvisorWorkspace({
   const [dispatchResult, setDispatchResult] =
     useState<AdvisorDispatchSnapshot | null>(null);
   const draftRef = useRef<HTMLTextAreaElement>(null);
+  const [completionReport, setCompletionReport] =
+    useState<AdvisorCompletionReportSnapshot | null>(null);
   const empty =
     snapshot?.conversationCount === 0 &&
     snapshot.contextReferenceCount === 0 &&
@@ -246,6 +252,22 @@ export function AdvisorWorkspace({
             requestedModel: effectiveModel,
             requestedReasoningEffort: effectiveReasoning,
           },
+        }),
+      );
+    } catch {
+      setActionError(true);
+    } finally {
+      setApprovalBusy(false);
+    }
+  }
+
+  async function readCompletionReport() {
+    if (!dispatchResult) return;
+    setApprovalBusy(true);
+    try {
+      setCompletionReport(
+        await loadAdvisorCompletionReport({
+          proposalId: dispatchResult.proposalId,
         }),
       );
     } catch {
@@ -567,11 +589,35 @@ export function AdvisorWorkspace({
                 </p>
               )}
               {dispatchResult && (
-                <p className="project-confirmation" role="status">
-                  {dispatchResult.state === "started"
-                    ? "The approved request started in the execution workspace."
-                    : "The dispatch did not start. Create a new approval before trying again."}
-                </p>
+                <div className="project-confirmation" role="status">
+                  <p>
+                    {dispatchResult.state === "started"
+                      ? "The approved request started in the execution workspace."
+                      : "The dispatch did not start. Create a new approval before trying again."}
+                  </p>
+                  <button
+                    type="button"
+                    disabled={approvalBusy}
+                    onClick={() => void readCompletionReport()}
+                  >
+                    Read bounded execution report
+                  </button>
+                </div>
+              )}
+              {completionReport && (
+                <div className="project-message" role="status">
+                  <p>
+                    Execution report: {completionReport.status}
+                    {completionReport.status === "unavailable"
+                      ? ". Completion evidence is unavailable; this does not mean execution succeeded."
+                      : "."}
+                  </p>
+                  {completionReport.status !== "unavailable" && (
+                    <button type="button" onClick={onOpenExecution}>
+                      Open in Execution Workspace
+                    </button>
+                  )}
+                </div>
               )}
             </>
           )}

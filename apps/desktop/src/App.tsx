@@ -3471,6 +3471,7 @@ export default function App({
                 onConversationPoll={pollAdvisorConversationById}
                 onConversationInterrupt={stopAdvisorConversation}
                 onDispatch={dispatchApprovedAdvisorRequest}
+                onOpenExecution={() => navigateWorkspace("conversation")}
               />
             </WorkspaceView>
 
