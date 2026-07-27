@@ -202,7 +202,7 @@ def abi_evidence(debian: Path, appimage: Path) -> dict[str, object]:
 
     by_format = [
         {"format": artifact_format, "highestRequired": glibc_version_text(version)}
-        for artifact_format, version in observed
+        for artifact_format, version in sorted(observed)
     ]
     return {
         "baseline": "GLIBC_2.35",

@@ -200,6 +200,10 @@ class PackageContractTests(unittest.TestCase):
             schema["properties"]["provenance"]["properties"]["command"],
             {"const": "scripts/run_linux_package_container.sh"},
         )
+        self.assertIn(
+            "for artifact_format, version in sorted(observed)",
+            (ROOT / "scripts/package_linux.py").read_text(encoding="utf-8"),
+        )
 
     def test_release_ci_uses_the_authoritative_container_entrypoint(self) -> None:
         workflow = (ROOT / ".github/workflows/linux-release.yml").read_text(
