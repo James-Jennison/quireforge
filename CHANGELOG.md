@@ -2,7 +2,7 @@
 
 ## Unreleased — 0.1.0-beta.18
 
-- Add F1’s first closed Advisor Content Ingestion Registry entry: one bounded,
+- Add Milestone 30’s first closed Advisor Content Ingestion Registry entry: one bounded,
   user-confirmed normalized UTF-8 text/data file held only in native memory for
   one send. Image, document, archive, and static-binary registry categories are
   reserved without handlers, parsers, transport, or UI.
@@ -10,7 +10,8 @@
   text, Python, CSV, JSON, or Markdown output through the native Save dialog.
   Exports do not overwrite existing files or grant Advisor project authority.
 - Raise only the measured desktop total-JavaScript regression ceiling from 884
-  KiB to 890 KiB for F1; entry, application-shell, and CSS ceilings are
+  KiB to 890 KiB for the bounded Advisor text/data entry; entry,
+  application-shell, and CSS ceilings are
   unchanged.
 
 - Fix managed Advisor startup to send the reviewed QuireForge `clientInfo`

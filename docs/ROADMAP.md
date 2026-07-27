@@ -881,6 +881,32 @@ Codex execution remain separate future work. The clean `0.1.0-beta.6` Ubuntu
 visible-launch, and installed-host smoke gates. See the
 [Milestone 29 report](MILESTONE_29_MANAGED_ADVISOR_CONVERSATION.md).
 
+### 30 — Advisor Bounded Text/Data Content Ingestion and Reviewed Single-File Export
+
+Implement one closed `text-data` Advisor Content Ingestion Registry entry for
+one user-selected `.txt`, `.md`, `.csv`, `.json`, or `.py` file. The native
+boundary accepts at most 512 KiB of normalized UTF-8, exposes only a typed
+display manifest, hash, bounded projection, explicit per-send confirmation,
+and one-send in-memory disposal behavior. The source path and raw content do
+not enter React, SQLite, logs, project metadata, or later sessions.
+
+Advisor may send the confirmed bounded text only as its existing no-project,
+read-only app-server text input. It may offer a user-selected preview and one
+new-file native Save-dialog export of visible text, Markdown, JSON, CSV, or
+Python output. Exports may not overwrite files, create directories, write to a
+project, execute content, or grant any Advisor capability.
+
+The registry reserves distinct future `image`, `document`, `archive`, and
+`static-binary` categories without a parser, picker, transport, UI, or
+persistence implementation. Dynamic sandbox analysis is explicitly deferred.
+This milestone excludes generic uploads, image/document/archive/binary
+handling, API/provider alternatives, credential access, project browsing,
+terminal/Git/repository authority, dispatch changes, and transcript retention.
+The versioned package gate requires a fresh unique candidate, strict
+Rust/TypeScript contract parity, accessibility/responsive coverage, production
+bundle/Tauri/package contracts, and fresh Debian/AppImage lifecycle and visible
+launch evidence.
+
 ### Advisor Approval/Dispatch Phase A (unnumbered)
 
 The approved Phase A/B1 controller is an editable, transient draft and explicit,

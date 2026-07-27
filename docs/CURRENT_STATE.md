@@ -102,6 +102,14 @@ the current presentation layer and calls that façade through its bridge.
 
 ## Next action
 
+Milestone 30 — **Advisor Bounded Text/Data Content Ingestion and Reviewed
+Single-File Export** is the active approved scope. It is limited to one
+explicitly confirmed, transient, normalized UTF-8 text/data file and one
+reviewed single-file native export. Advisor remains no-project, read-only, and
+non-executable. Image, document, archive, static-binary, and dynamic sandbox
+analysis remain separate future milestones; no generic upload system is
+approved.
+
 Milestone 27 — **Unified Conversation Engine** is complete. It adds strict
 Rust/Zod Chat/Codex capability profiles, a Settings navigation foundation,
 bounded mode-aware metadata, a fixed no-project native Chat bridge, and an
@@ -140,10 +148,11 @@ read-only Advisor metadata route and one explicitly confirmed, temporary safe
 projection of the existing local Project State reader; arbitrary context
 reading, model calls, prompt text retention, and automation remain separately
 gated. The approved unnumbered Phase A/B1 controller provides transient,
-digest-bound approvals. Its approved B2 extension may dispatch one immediately
+digest-bound approvals. Its approved B2 extension dispatches one immediately
 revalidated request into the separate managed Codex execution workspace using
-only the existing project-bound app-server boundary; completion reporting
-remains a separate gate.
+only the existing project-bound app-server boundary. B3 returns only a bounded,
+correlated completion report to Advisor; it never supplies a transcript,
+terminal stream, repository data, credentials, or new authority.
 
 Milestone 26 — **Appearance Themes** is complete. It retains Forge as the
 default and adds seven closed local palettes through Settings → Appearance with
