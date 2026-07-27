@@ -43,6 +43,15 @@ const advisorDraftBridge = vi.hoisted(() => ({
   }),
   pickAdvisorArchiveAttachment: vi.fn(),
   cancelAdvisorArchiveAttachment: vi.fn(),
+  loadAdvisorBinaryAttachment: vi.fn().mockResolvedValue({
+    schemaVersion: 1,
+    state: "empty",
+    attachment: null,
+    confirmationState: null,
+    diagnosticCode: null,
+  }),
+  pickAdvisorBinaryAttachment: vi.fn(),
+  cancelAdvisorBinaryAttachment: vi.fn(),
   saveAdvisorTextExport: vi.fn(),
 }));
 
@@ -245,6 +254,9 @@ describe("AdvisorWorkspace", () => {
       archiveAttachmentId: null,
       archiveAttachmentManifestSha256: null,
       archiveAttachmentConfirmation: null,
+      binaryAttachmentId: null,
+      binaryAttachmentManifestSha256: null,
+      binaryAttachmentConfirmation: null,
     });
   });
 
@@ -353,6 +365,7 @@ describe("AdvisorWorkspace", () => {
     expect(
       advisorDraftBridge.cancelAdvisorDocumentAttachment,
     ).toHaveBeenCalled();
+    expect(advisorDraftBridge.cancelAdvisorBinaryAttachment).toHaveBeenCalled();
   });
 
   it("keeps the capability notice separate when a sendable message is entered", () => {
@@ -366,7 +379,7 @@ describe("AdvisorWorkspace", () => {
     ).toBeEnabled();
     expect(
       screen.getByText(
-        /Project State and one text\/data file, one image, one PDF projection, or one ZIP manifest are optional and require confirmation/u,
+        /Project State and one text\/data file, one image, one PDF projection, one ZIP manifest, or one ELF static metadata manifest are optional and require confirmation/u,
       ),
     ).toBeInTheDocument();
     expect(
@@ -430,6 +443,9 @@ describe("AdvisorWorkspace", () => {
       archiveAttachmentId: null,
       archiveAttachmentManifestSha256: null,
       archiveAttachmentConfirmation: null,
+      binaryAttachmentId: null,
+      binaryAttachmentManifestSha256: null,
+      binaryAttachmentConfirmation: null,
     });
   });
 

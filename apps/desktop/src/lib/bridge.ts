@@ -124,6 +124,10 @@ import {
   type AdvisorArchiveAttachmentSnapshot,
 } from "./advisorArchiveAttachment";
 import {
+  advisorBinaryAttachmentSnapshotSchema,
+  type AdvisorBinaryAttachmentSnapshot,
+} from "./advisorBinaryAttachment";
+import {
   advisorWorkspaceSnapshotSchema,
   parseAdvisorProjectStateReadRequest,
   parseAdvisorSelectedProjectStateSnapshot,
@@ -302,6 +306,12 @@ export const ADVISOR_ARCHIVE_ATTACHMENT_PICK_COMMAND =
   "advisor_archive_attachment_pick";
 export const ADVISOR_ARCHIVE_ATTACHMENT_CANCEL_COMMAND =
   "advisor_archive_attachment_cancel";
+export const ADVISOR_BINARY_ATTACHMENT_STATUS_COMMAND =
+  "advisor_binary_attachment_status";
+export const ADVISOR_BINARY_ATTACHMENT_PICK_COMMAND =
+  "advisor_binary_attachment_pick";
+export const ADVISOR_BINARY_ATTACHMENT_CANCEL_COMMAND =
+  "advisor_binary_attachment_cancel";
 export const CONVERSATION_ACTIVE_COMMAND = "conversation_active";
 export const CONVERSATION_NOTIFY_COMMAND = "conversation_notify";
 export const CONVERSATION_START_COMMAND = "conversation_start";
@@ -621,6 +631,27 @@ export async function cancelAdvisorArchiveAttachment(
 ): Promise<AdvisorArchiveAttachmentSnapshot> {
   return advisorArchiveAttachmentSnapshotSchema.parse(
     await invokeFunction(ADVISOR_ARCHIVE_ATTACHMENT_CANCEL_COMMAND),
+  );
+}
+export async function loadAdvisorBinaryAttachment(
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<AdvisorBinaryAttachmentSnapshot> {
+  return advisorBinaryAttachmentSnapshotSchema.parse(
+    await invokeFunction(ADVISOR_BINARY_ATTACHMENT_STATUS_COMMAND),
+  );
+}
+export async function pickAdvisorBinaryAttachment(
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<AdvisorBinaryAttachmentSnapshot> {
+  return advisorBinaryAttachmentSnapshotSchema.parse(
+    await invokeFunction(ADVISOR_BINARY_ATTACHMENT_PICK_COMMAND),
+  );
+}
+export async function cancelAdvisorBinaryAttachment(
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<AdvisorBinaryAttachmentSnapshot> {
+  return advisorBinaryAttachmentSnapshotSchema.parse(
+    await invokeFunction(ADVISOR_BINARY_ATTACHMENT_CANCEL_COMMAND),
   );
 }
 

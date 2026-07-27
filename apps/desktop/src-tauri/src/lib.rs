@@ -1,6 +1,7 @@
 pub mod advisor;
 mod advisor_archive_attachment;
 mod advisor_attachment;
+mod advisor_binary_attachment;
 mod advisor_document_attachment;
 mod advisor_image_attachment;
 mod attachment;
@@ -23,6 +24,10 @@ use advisor_archive_attachment::{
 use advisor_attachment::{
     AdvisorTextAttachmentClaimRequest, AdvisorTextAttachmentService, AdvisorTextAttachmentSnapshot,
     AdvisorTextExportRequest,
+};
+use advisor_binary_attachment::{
+    AdvisorBinaryAttachmentClaimRequest, AdvisorBinaryAttachmentService,
+    AdvisorBinaryAttachmentSnapshot,
 };
 use advisor_document_attachment::{
     AdvisorDocumentAttachmentClaimRequest, AdvisorDocumentAttachmentService,
@@ -279,6 +284,7 @@ async fn advisor_conversation_start(
     image_attachments: tauri::State<'_, AdvisorImageAttachmentService>,
     document_attachments: tauri::State<'_, AdvisorDocumentAttachmentService>,
     archive_attachments: tauri::State<'_, AdvisorArchiveAttachmentService>,
+    binary_attachments: tauri::State<'_, AdvisorBinaryAttachmentService>,
 ) -> Result<AdvisorConversationSnapshot, ()> {
     if !request.is_valid() {
         return Ok(AdvisorConversationSnapshot::unavailable(
@@ -423,6 +429,32 @@ async fn advisor_conversation_start(
             ))
         }
     };
+    let binary_attachment = match (
+        &request.binary_attachment_id,
+        &request.binary_attachment_manifest_sha256,
+        request.binary_attachment_confirmation,
+    ) {
+        (None, None, None) => None,
+        (Some(attachment_id), Some(manifest_sha256), Some(confirmation)) => {
+            match binary_attachments.claim(&AdvisorBinaryAttachmentClaimRequest {
+                attachment_id: attachment_id.clone(),
+                manifest_sha256: manifest_sha256.clone(),
+                confirmation,
+            }) {
+                Ok(attachment) => Some(attachment),
+                Err(_) => {
+                    return Ok(AdvisorConversationSnapshot::unavailable(
+                        AdvisorConversationDiagnosticCode::AttachmentUnavailable,
+                    ))
+                }
+            }
+        }
+        _ => {
+            return Ok(AdvisorConversationSnapshot::unavailable(
+                AdvisorConversationDiagnosticCode::InvalidRequest,
+            ))
+        }
+    };
     Ok(service
         .start(
             request,
@@ -433,6 +465,7 @@ async fn advisor_conversation_start(
             image_attachment,
             document_attachment,
             archive_attachment,
+            binary_attachment,
         )
         .await)
 }
@@ -566,6 +599,37 @@ async fn advisor_archive_attachment_pick(
 fn advisor_archive_attachment_cancel(
     service: tauri::State<'_, AdvisorArchiveAttachmentService>,
 ) -> AdvisorArchiveAttachmentSnapshot {
+    service.clear()
+}
+
+#[tauri::command]
+fn advisor_binary_attachment_status(
+    service: tauri::State<'_, AdvisorBinaryAttachmentService>,
+) -> AdvisorBinaryAttachmentSnapshot {
+    service.snapshot()
+}
+#[tauri::command]
+async fn advisor_binary_attachment_pick(
+    app: tauri::AppHandle,
+    service: tauri::State<'_, AdvisorBinaryAttachmentService>,
+) -> Result<AdvisorBinaryAttachmentSnapshot, ()> {
+    let selection = app
+        .dialog()
+        .file()
+        .set_title("Attach one ELF file to the next Advisor message")
+        .blocking_pick_file();
+    Ok(match selection {
+        Some(file) => match file.into_path() {
+            Ok(path) => service.stage_path(path),
+            Err(_) => AdvisorBinaryAttachmentSnapshot::empty(),
+        },
+        None => service.snapshot(),
+    })
+}
+#[tauri::command]
+fn advisor_binary_attachment_cancel(
+    service: tauri::State<'_, AdvisorBinaryAttachmentService>,
+) -> AdvisorBinaryAttachmentSnapshot {
     service.clear()
 }
 
@@ -1688,6 +1752,7 @@ pub fn run() {
         .manage(AdvisorImageAttachmentService::default())
         .manage(AdvisorDocumentAttachmentService::default())
         .manage(AdvisorArchiveAttachmentService::default())
+        .manage(AdvisorBinaryAttachmentService::default())
         .manage(DesktopNotificationService::default())
         .manage(GitService::default())
         .manage(RepositoryStateReader)
@@ -1768,6 +1833,9 @@ pub fn run() {
             advisor_archive_attachment_status,
             advisor_archive_attachment_pick,
             advisor_archive_attachment_cancel,
+            advisor_binary_attachment_status,
+            advisor_binary_attachment_pick,
+            advisor_binary_attachment_cancel,
             advisor_text_export_save,
             codex_auth_start,
             codex_auth_cancel,

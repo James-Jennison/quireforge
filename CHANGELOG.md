@@ -1,8 +1,15 @@
 # Changelog
 
-## Unreleased — 0.1.0-beta.31
+## Unreleased — 0.1.0-beta.32
 
 ### Added
+
+- Add Milestone 36's closed ELF-only Advisor static-binary entry. One confirmed
+  transient ELF32/ELF64 relocatable, executable, or shared-object source is
+  reduced to a bounded `static-binary-manifest-v1` text projection. QuireForge
+  never loads, executes, debugs, emulates, transports, or retains binary bytes,
+  paths, symbol names, section names, interpreter/RPATH/DT_NEEDED values, notes,
+  debug data, raw headers, or addresses.
 
 - Harden Linux packaging so host development bundles are isolated and
   non-distributable, while only the pinned Ubuntu 22.04 workflow can generate

@@ -1,6 +1,6 @@
 [package]
 name = "quireforge"
-version = "0.1.0-beta.31"
+version = "0.1.0-beta.32"
 description = "An unofficial native Linux workspace for Codex"
 authors = ["QuireForge contributors"]
 edition = "2021"
@@ -22,6 +22,7 @@ tauri-build = { version = "2.5.6", features = [] }
 
 [dependencies]
 base64 = "0.22.1"
+elf = "=0.8.0"
 libc = "0.2"
 lopdf = { version = "=0.44.0", default-features = false }
 portable-pty = "0.9.0"

@@ -30,6 +30,9 @@ import {
   cancelAdvisorArchiveAttachment,
   loadAdvisorArchiveAttachment,
   pickAdvisorArchiveAttachment,
+  cancelAdvisorBinaryAttachment,
+  loadAdvisorBinaryAttachment,
+  pickAdvisorBinaryAttachment,
 } from "./lib/bridge";
 import {
   scaffoldAdvisorTextAttachment,
@@ -48,6 +51,10 @@ import {
   scaffoldAdvisorArchiveAttachment,
   type AdvisorArchiveAttachmentSnapshot,
 } from "./lib/advisorArchiveAttachment";
+import {
+  scaffoldAdvisorBinaryAttachment,
+  type AdvisorBinaryAttachmentSnapshot,
+} from "./lib/advisorBinaryAttachment";
 import type {
   AdvisorApprovalSnapshot,
   AdvisorDispatchSnapshot,
@@ -171,6 +178,8 @@ export function AdvisorWorkspace({
     useState<AdvisorArchiveAttachmentSnapshot>(
       scaffoldAdvisorArchiveAttachment,
     );
+  const [binaryAttachment, setBinaryAttachment] =
+    useState<AdvisorBinaryAttachmentSnapshot>(scaffoldAdvisorBinaryAttachment);
   const [exportCandidateIndex, setExportCandidateIndex] = useState(0);
   const [actionError, setActionError] = useState(false);
   const [draft, setDraft] = useState("");
@@ -258,11 +267,13 @@ export function AdvisorWorkspace({
     setImageAttachment(scaffoldAdvisorImageAttachment);
     setDocumentAttachment(scaffoldAdvisorDocumentAttachment);
     setArchiveAttachment(scaffoldAdvisorArchiveAttachment);
+    setBinaryAttachment(scaffoldAdvisorBinaryAttachment);
     void Promise.all([
       cancelAdvisorTextAttachment(),
       cancelAdvisorImageAttachment(),
       cancelAdvisorDocumentAttachment(),
       cancelAdvisorArchiveAttachment(),
+      cancelAdvisorBinaryAttachment(),
     ]).catch(() => setActionError(true));
   }, [resetToken]);
 
@@ -285,6 +296,17 @@ export function AdvisorWorkspace({
       .catch(() =>
         setImageAttachment({
           ...scaffoldAdvisorImageAttachment,
+          state: "unavailable",
+          diagnosticCode: "read-failed",
+        }),
+      );
+  }, []);
+  useEffect(() => {
+    void loadAdvisorBinaryAttachment()
+      .then(setBinaryAttachment)
+      .catch(() =>
+        setBinaryAttachment({
+          ...scaffoldAdvisorBinaryAttachment,
           state: "unavailable",
           diagnosticCode: "read-failed",
         }),
@@ -335,6 +357,8 @@ export function AdvisorWorkspace({
         : null;
     const archive =
       archiveAttachment.state === "ready" ? archiveAttachment.attachment : null;
+    const binary =
+      binaryAttachment.state === "ready" ? binaryAttachment.attachment : null;
     void onConversationStart({
       prompt,
       projectId,
@@ -354,12 +378,16 @@ export function AdvisorWorkspace({
       archiveAttachmentConfirmation: archive
         ? "confirmed-for-single-send"
         : null,
+      binaryAttachmentId: binary?.attachmentId ?? null,
+      binaryAttachmentManifestSha256: binary?.sha256 ?? null,
+      binaryAttachmentConfirmation: binary ? "confirmed-for-single-send" : null,
     })
       .then(() => setPrompt(""))
       .then(() => setTextAttachment(scaffoldAdvisorTextAttachment))
       .then(() => setImageAttachment(scaffoldAdvisorImageAttachment))
       .then(() => setDocumentAttachment(scaffoldAdvisorDocumentAttachment))
       .then(() => setArchiveAttachment(scaffoldAdvisorArchiveAttachment))
+      .then(() => setBinaryAttachment(scaffoldAdvisorBinaryAttachment))
       .catch(() => setActionError(true));
   }
 
@@ -442,6 +470,27 @@ export function AdvisorWorkspace({
     setAttachmentBusy(true);
     try {
       setArchiveAttachment(await cancelAdvisorArchiveAttachment());
+    } catch {
+      setActionError(true);
+    } finally {
+      setAttachmentBusy(false);
+    }
+  }
+  async function pickBinaryAttachment() {
+    setAttachmentBusy(true);
+    setActionError(false);
+    try {
+      setBinaryAttachment(await pickAdvisorBinaryAttachment());
+    } catch {
+      setActionError(true);
+    } finally {
+      setAttachmentBusy(false);
+    }
+  }
+  async function clearBinaryAttachment() {
+    setAttachmentBusy(true);
+    try {
+      setBinaryAttachment(await cancelAdvisorBinaryAttachment());
     } catch {
       setActionError(true);
     } finally {
@@ -1081,7 +1130,8 @@ export function AdvisorWorkspace({
                     authentication !== "ready" ||
                     imageAttachment.state === "ready" ||
                     documentAttachment.state === "ready" ||
-                    archiveAttachment.state === "ready"
+                    archiveAttachment.state === "ready" ||
+                    binaryAttachment.state === "ready"
                   }
                 >
                   Attach text or data file
@@ -1139,7 +1189,8 @@ export function AdvisorWorkspace({
                     authentication !== "ready" ||
                     textAttachment.state === "ready" ||
                     documentAttachment.state === "ready" ||
-                    archiveAttachment.state === "ready"
+                    archiveAttachment.state === "ready" ||
+                    binaryAttachment.state === "ready"
                   }
                   onClick={() => void pickImageAttachment()}
                 >
@@ -1197,7 +1248,8 @@ export function AdvisorWorkspace({
                     authentication !== "ready" ||
                     textAttachment.state === "ready" ||
                     imageAttachment.state === "ready" ||
-                    archiveAttachment.state === "ready"
+                    archiveAttachment.state === "ready" ||
+                    binaryAttachment.state === "ready"
                   }
                   onClick={() => void pickDocumentAttachment()}
                 >
@@ -1271,7 +1323,8 @@ export function AdvisorWorkspace({
                     authentication !== "ready" ||
                     textAttachment.state === "ready" ||
                     imageAttachment.state === "ready" ||
-                    documentAttachment.state === "ready"
+                    documentAttachment.state === "ready" ||
+                    binaryAttachment.state === "ready"
                   }
                   onClick={() => void pickArchiveAttachment()}
                 >
@@ -1293,11 +1346,69 @@ export function AdvisorWorkspace({
                 </p>
               )}
             </div>
+            <div
+              className="advisor-text-attachment"
+              aria-label="Optional ELF static-binary attachment"
+            >
+              <p className="project-message" role="note">
+                Optional: choose one ELF32 or ELF64 file up to 32 MiB. Advisor
+                receives only temporary bounded static metadata, never binary
+                bytes, paths, symbols, or executable content.
+              </p>
+              {binaryAttachment.state === "ready" &&
+              binaryAttachment.attachment ? (
+                <div>
+                  <p role="status">
+                    Ready: {binaryAttachment.attachment.displayName} (ELF,{" "}
+                    {binaryAttachment.attachment.byteSize} bytes,{" "}
+                    {binaryAttachment.attachment.projection.fileType}, SHA-256
+                    verified).
+                  </p>
+                  <button
+                    type="button"
+                    disabled={attachmentBusy || active || conversationBusy}
+                    onClick={() => void clearBinaryAttachment()}
+                  >
+                    Remove attached ELF file
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  disabled={
+                    attachmentBusy ||
+                    active ||
+                    conversationBusy ||
+                    authentication !== "ready" ||
+                    textAttachment.state === "ready" ||
+                    imageAttachment.state === "ready" ||
+                    documentAttachment.state === "ready" ||
+                    archiveAttachment.state === "ready"
+                  }
+                  onClick={() => void pickBinaryAttachment()}
+                >
+                  Attach ELF file
+                </button>
+              )}
+              {binaryAttachment.state === "unavailable" && (
+                <p
+                  className="project-message project-message--warning"
+                  role="alert"
+                >
+                  {binaryAttachment.diagnosticCode === "invalid-signature"
+                    ? "This file is not a supported ELF file and was not included."
+                    : binaryAttachment.diagnosticCode ===
+                        "metadata-limit-exceeded"
+                      ? "This ELF exceeds the static metadata inspection limit and was not included."
+                      : "The ELF file was not available and was not included."}
+                </p>
+              )}
+            </div>
             <p className="project-message" role="note">
               Advisor is read-only: no commands, project changes, or dispatch.
               Project State and one text/data file, one image, one PDF
-              projection, or one ZIP manifest are optional and require
-              confirmation.
+              projection, one ZIP manifest, or one ELF static metadata manifest
+              are optional and require confirmation.
             </p>
             {sendDisabledReason && !active && (
               <p className="project-message" role="status">
@@ -1329,7 +1440,8 @@ export function AdvisorWorkspace({
                       textAttachment.state === "ready" ||
                       imageAttachment.state === "ready" ||
                       documentAttachment.state === "ready" ||
-                      archiveAttachment.state === "ready"
+                      archiveAttachment.state === "ready" ||
+                      binaryAttachment.state === "ready"
                     )
                       setConfirmAttachmentSend(true);
                     else if (includeProjectState && canIncludeProjectState)
@@ -1377,7 +1489,8 @@ export function AdvisorWorkspace({
             (textAttachment.attachment ||
               imageAttachment.attachment ||
               documentAttachment.attachment ||
-              archiveAttachment.attachment) && (
+              archiveAttachment.attachment ||
+              binaryAttachment.attachment) && (
               <div
                 className="project-confirmation"
                 role="dialog"
@@ -1391,7 +1504,8 @@ export function AdvisorWorkspace({
                       textAttachment.attachment ??
                       imageAttachment.attachment ??
                       documentAttachment.attachment ??
-                      archiveAttachment.attachment
+                      archiveAttachment.attachment ??
+                      binaryAttachment.attachment
                     )?.displayName
                   }{" "}
                   as transient
@@ -1401,7 +1515,9 @@ export function AdvisorWorkspace({
                       ? " bounded PDF text projection"
                       : archiveAttachment.attachment
                         ? " bounded ZIP entry-name manifest"
-                        : " normalized text"}{" "}
+                        : binaryAttachment.attachment
+                          ? " bounded ELF static metadata"
+                          : " normalized text"}{" "}
                   in this one Advisor message? Its path is not shared, it is
                   consumed after this send, and it grants no project or
                   execution authority.

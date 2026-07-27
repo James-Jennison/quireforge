@@ -149,6 +149,17 @@ protocol terminology or authority boundaries. Milestone 35 is integrated at
 checkpoint uses the fresh `0.1.0-beta.31` candidate; it changes release
 provenance and ABI validation only, not M35 archive behavior.
 
+Milestone 36 — **Advisor Static Binary/Executable Inspection** is the active
+closed ELF-only candidate. It accepts one signature-validated ELF32/ELF64
+relocatable, executable, or shared-object file for one confirmed send and
+provides only bounded `static-binary-manifest-v1` metadata through the existing
+text input. It never loads, executes, debugs, emulates, detonates, or transports
+the binary; raw bytes, paths, names from ELF tables, notes, debug data, headers,
+and addresses remain excluded. The pinned `elf 0.8.0` parser handles low-level
+ELF table parsing after QuireForge-enforced source and table limits. In-process
+parser CPU and memory hard limits remain deferred. Its fresh candidate is
+`0.1.0-beta.32`.
+
 Milestone 27 — **Unified Conversation Engine** is complete. It adds strict
 Rust/Zod Chat/Codex capability profiles, a Settings navigation foundation,
 bounded mode-aware metadata, a fixed no-project native Chat bridge, and an

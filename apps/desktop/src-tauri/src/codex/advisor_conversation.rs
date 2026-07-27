@@ -15,6 +15,7 @@ use uuid::Uuid;
 
 use crate::advisor_archive_attachment::ClaimedAdvisorArchiveAttachment;
 use crate::advisor_attachment::ClaimedAdvisorTextAttachment;
+use crate::advisor_binary_attachment::ClaimedAdvisorBinaryAttachment;
 use crate::advisor_document_attachment::ClaimedAdvisorDocumentAttachment;
 use crate::advisor_image_attachment::ClaimedAdvisorImageAttachment;
 
@@ -72,6 +73,13 @@ pub struct AdvisorConversationStartRequest {
     pub archive_attachment_manifest_sha256: Option<String>,
     pub archive_attachment_confirmation:
         Option<crate::advisor_attachment::AdvisorContentConfirmationState>,
+    #[serde(default)]
+    pub binary_attachment_id: Option<String>,
+    #[serde(default)]
+    pub binary_attachment_manifest_sha256: Option<String>,
+    #[serde(default)]
+    pub binary_attachment_confirmation:
+        Option<crate::advisor_attachment::AdvisorContentConfirmationState>,
 }
 
 impl AdvisorConversationStartRequest {
@@ -94,11 +102,16 @@ impl AdvisorConversationStartRequest {
                 == self.archive_attachment_manifest_sha256.is_some())
             && (self.archive_attachment_id.is_some()
                 == self.archive_attachment_confirmation.is_some())
+            && (self.binary_attachment_id.is_some()
+                == self.binary_attachment_manifest_sha256.is_some())
+            && (self.binary_attachment_id.is_some()
+                == self.binary_attachment_confirmation.is_some())
             && [
                 self.attachment_id.is_some(),
                 self.image_attachment_id.is_some(),
                 self.document_attachment_id.is_some(),
                 self.archive_attachment_id.is_some(),
+                self.binary_attachment_id.is_some(),
             ]
             .into_iter()
             .filter(|value| *value)
@@ -267,6 +280,7 @@ impl AdvisorConversationService {
         image_attachment: Option<ClaimedAdvisorImageAttachment>,
         document_attachment: Option<ClaimedAdvisorDocumentAttachment>,
         archive_attachment: Option<ClaimedAdvisorArchiveAttachment>,
+        binary_attachment: Option<ClaimedAdvisorBinaryAttachment>,
     ) -> AdvisorConversationSnapshot {
         match managed_chat_authentication_state(authentication) {
             ChatAuthenticationState::SignInRequired | ChatAuthenticationState::SignInPending => {
@@ -311,6 +325,7 @@ impl AdvisorConversationService {
             image_attachment.as_ref(),
             document_attachment.as_ref(),
             archive_attachment.as_ref(),
+            binary_attachment.as_ref(),
             projects,
         )
         .await;
@@ -488,6 +503,7 @@ async fn start_advisor_process(
     image_attachment: Option<&ClaimedAdvisorImageAttachment>,
     document_attachment: Option<&ClaimedAdvisorDocumentAttachment>,
     archive_attachment: Option<&ClaimedAdvisorArchiveAttachment>,
+    binary_attachment: Option<&ClaimedAdvisorBinaryAttachment>,
     projects: &ProjectService,
 ) -> Result<ActiveAdvisorConversation, AdvisorConversationDiagnosticCode> {
     let mut process = AppServerProcess::spawn(command.clone())
@@ -514,6 +530,7 @@ async fn start_advisor_process(
                         attachment,
                         document_attachment,
                         archive_attachment,
+                        binary_attachment,
                     ),
                     image_attachment,
                 ),
@@ -602,6 +619,7 @@ fn advisor_input(
     attachment: Option<&ClaimedAdvisorTextAttachment>,
     document_attachment: Option<&ClaimedAdvisorDocumentAttachment>,
     archive_attachment: Option<&ClaimedAdvisorArchiveAttachment>,
+    binary_attachment: Option<&ClaimedAdvisorBinaryAttachment>,
 ) -> String {
     let mut input = prompt.to_owned();
     if let Some(context) = context {
@@ -621,6 +639,9 @@ fn advisor_input(
     }
     if let Some(attachment) = archive_attachment {
         input.push_str(&format!("\n\nUser-confirmed ZIP archive manifest (transient, bounded, path-free):\nname: {}\nsha256: {}\nprojection: archive-manifest-v1\n--- begin manifest ---\n{}\n--- end manifest ---", attachment.manifest.display_name, attachment.manifest.sha256, attachment.projection_text));
+    }
+    if let Some(attachment) = binary_attachment {
+        input.push_str(&format!("\n\nUser-confirmed ELF static metadata (transient, bounded, path-free):\nname: {}\nsha256: {}\nprojection: static-binary-manifest-v1\n--- begin manifest ---\n{}\n--- end manifest ---", attachment.manifest.display_name, attachment.manifest.sha256, attachment.projection_text));
     }
     input
 }
@@ -838,7 +859,7 @@ mod tests {
     #[test]
     fn context_is_a_safe_projection_and_is_only_added_when_selected() {
         assert_eq!(
-            advisor_input("Plan this", None, None, None, None),
+            advisor_input("Plan this", None, None, None, None, None),
             "Plan this"
         );
         let context = AdvisorSelectedProjectStateSnapshot {
@@ -851,7 +872,7 @@ mod tests {
             worktree: crate::project_state::WorktreeState::Clean,
             diagnostic_count: 0,
         };
-        let input = advisor_input("Plan this", Some(&context), None, None, None);
+        let input = advisor_input("Plan this", Some(&context), None, None, None, None);
         assert!(input.contains("User-confirmed Project State summary"));
         assert!(!input.contains("/mnt/"));
         assert!(!input.contains("main"));
@@ -889,7 +910,7 @@ mod tests {
             },
             projection_text: "safe summary".to_owned(),
         };
-        let input = advisor_input("Plan safely", None, None, Some(&document), None);
+        let input = advisor_input("Plan safely", None, None, Some(&document), None, None);
         assert!(input.contains("Plan safely"));
         assert!(input.contains("safe summary"));
         assert!(!input.contains("/mnt/"));
@@ -928,7 +949,7 @@ mod tests {
             },
             projection_text: "archive-manifest-v1\nnotes.txt\tFile\t2\t4\n".to_owned(),
         };
-        let input = advisor_input("Review safely", None, None, None, Some(&archive));
+        let input = advisor_input("Review safely", None, None, None, Some(&archive), None);
         assert!(input.contains("archive-manifest-v1"));
         assert!(input.contains("notes.txt"));
         assert!(!input.contains("/mnt/"));
@@ -937,12 +958,54 @@ mod tests {
         assert!(!input.contains("PK\\x03\\x04"));
     }
 
+    #[test]
+    fn elf_transport_is_bounded_text_only_and_path_free() {
+        use crate::advisor_attachment::{AdvisorContentCategory, AdvisorContentDisposal};
+        use crate::advisor_binary_attachment::{
+            AdvisorBinaryAttachmentManifest, AdvisorBinaryFileType, AdvisorBinaryMediaType,
+            AdvisorBinaryProjection, AdvisorBinaryProjectionKind,
+        };
+        let binary = ClaimedAdvisorBinaryAttachment {
+            manifest: AdvisorBinaryAttachmentManifest {
+                attachment_id: "018f0000-0000-7000-8000-000000000097".to_owned(),
+                display_name: "candidate".to_owned(),
+                content_category: AdvisorContentCategory::StaticBinary,
+                media_type: AdvisorBinaryMediaType::Elf,
+                byte_size: 12,
+                sha256: "c".repeat(64),
+                projection: AdvisorBinaryProjection {
+                    kind: AdvisorBinaryProjectionKind::StaticBinaryManifestV1,
+                    schema_version: 1,
+                    elf_class: "elf64".to_owned(),
+                    endianness: "little".to_owned(),
+                    file_type: AdvisorBinaryFileType::Executable,
+                    machine: 62,
+                    os_abi: 3,
+                    program_header_count: 1,
+                    section_header_count: 1,
+                    dynamic_section_present: false,
+                    dynamic_entry_count: 0,
+                    manifest_byte_size: 120,
+                },
+                disposal: AdvisorContentDisposal::TransientMemoryOneSend,
+            },
+            projection_text: "static-binary-manifest-v1\nbinary-format: elf\n".to_owned(),
+        };
+        let input = advisor_input("Inspect safely", None, None, None, None, Some(&binary));
+        assert!(input.contains("static-binary-manifest-v1"));
+        assert!(input.contains("binary-format: elf"));
+        assert!(!input.contains("/mnt/"));
+        assert!(!input.contains("localImage"));
+        assert!(!input.contains("data:application"));
+        assert!(!input.contains("\x7fELF"));
+    }
+
     #[tokio::test]
     async fn managed_advisor_starts_without_project_or_tool_capabilities() {
         let script = r#"
 read -r initialize
 case "$initialize" in
-  *'"method":"initialize"'*'"clientInfo":{"name":"quireforge","title":"QuireForge","version":"0.1.0-beta.31"}'*) ;;
+  *'"method":"initialize"'*'"clientInfo":{"name":"quireforge","title":"QuireForge","version":"0.1.0-beta.32"}'*) ;;
   *) exit 70 ;;
 esac
 printf '%s\n' '{"id":1,"result":{}}'
@@ -971,9 +1034,13 @@ printf '%s\n' '{"method":"turn/completed","params":{"threadId":"018f0000-0000-70
                     archive_attachment_id: None,
                     archive_attachment_manifest_sha256: None,
                     archive_attachment_confirmation: None,
+                    binary_attachment_id: None,
+                    binary_attachment_manifest_sha256: None,
+                    binary_attachment_confirmation: None,
                 },
                 &CodexAuthSnapshot::authenticated(AuthAccountKind::Chatgpt),
                 &ProjectService::in_memory(),
+                None,
                 None,
                 None,
                 None,
@@ -1000,7 +1067,7 @@ printf '%s\n' '{"method":"turn/completed","params":{"threadId":"018f0000-0000-70
         let script = r#"
 read -r initialize
 case "$initialize" in
-  *'"method":"initialize"'*'"clientInfo":{"name":"quireforge","title":"QuireForge","version":"0.1.0-beta.31"}'*) ;;
+  *'"method":"initialize"'*'"clientInfo":{"name":"quireforge","title":"QuireForge","version":"0.1.0-beta.32"}'*) ;;
   *) exit 70 ;;
 esac
 printf '%s\n' '{"id":1,"result":{}}'
@@ -1031,9 +1098,13 @@ printf '%s\n' '{"method":"turn/completed","params":{"threadId":"018f0000-0000-70
                     archive_attachment_id: None,
                     archive_attachment_manifest_sha256: None,
                     archive_attachment_confirmation: None,
+                    binary_attachment_id: None,
+                    binary_attachment_manifest_sha256: None,
+                    binary_attachment_confirmation: None,
                 },
                 &CodexAuthSnapshot::authenticated(AuthAccountKind::Chatgpt),
                 &ProjectService::in_memory(),
+                None,
                 None,
                 None,
                 None,
@@ -1081,9 +1152,13 @@ printf '%s\n' '{"id":3,"error":{"code":-32602,"message":"do not expose this eith
                     archive_attachment_id: None,
                     archive_attachment_manifest_sha256: None,
                     archive_attachment_confirmation: None,
+                    binary_attachment_id: None,
+                    binary_attachment_manifest_sha256: None,
+                    binary_attachment_confirmation: None,
                 },
                 &CodexAuthSnapshot::authenticated(AuthAccountKind::Chatgpt),
                 &ProjectService::in_memory(),
+                None,
                 None,
                 None,
                 None,
@@ -1122,9 +1197,13 @@ printf '%s\n' '{"id":3,"error":{"code":-32602,"message":"do not expose this eith
                     archive_attachment_id: None,
                     archive_attachment_manifest_sha256: None,
                     archive_attachment_confirmation: None,
+                    binary_attachment_id: None,
+                    binary_attachment_manifest_sha256: None,
+                    binary_attachment_confirmation: None,
                 },
                 &CodexAuthSnapshot::authenticated(AuthAccountKind::ApiKey),
                 &ProjectService::in_memory(),
+                None,
                 None,
                 None,
                 None,
