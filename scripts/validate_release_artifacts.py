@@ -15,12 +15,16 @@ from release_contract import (
     CANONICAL_DESKTOP,
     DEBIAN_PACKAGE,
     EXPECTED_IMAGE,
+    GLIBC_BASELINE,
     LEGACY_DESKTOP,
+    RELEASE_OUTPUT_DIR,
+    RELEASE_WORKFLOW_COMMAND,
     ROOT,
     appstream_validation_command,
     debian_artifact_filename,
     debian_version,
-    package_output_dir,
+    glibc_requirement,
+    glibc_version_text,
     replace_control_field,
     run,
     sha256,
@@ -29,7 +33,6 @@ from release_contract import (
 
 
 EXPECTED_DEPENDENCIES = {"libgtk-3-0", "libwebkit2gtk-4.1-0"}
-GLIBC_BASELINE = (2, 35)
 EXPECTED_FILES = {
     "release-manifest.json",
     "SHA256SUMS",
@@ -52,7 +55,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         "--artifact-dir",
         type=Path,
-        default=package_output_dir(),
+        default=RELEASE_OUTPUT_DIR,
     )
     parser.add_argument("--lifecycle", action="store_true")
     parser.add_argument("--smoke", action="store_true")
@@ -91,18 +94,8 @@ def validate_metainfo(path: Path) -> None:
         run(appstream_validation_command(validator, path))
 
 
-def validate_glibc_baseline(path: Path) -> None:
-    result = run(["readelf", "--version-info", str(path)], capture=True)
-    versions = {
-        (int(major), int(minor))
-        for major, minor in re.findall(r"GLIBC_(\d+)\.(\d+)", result.stdout)
-    }
-    if not versions:
-        raise RuntimeError(f"no GLIBC version contract found in {path}")
-    newest = max(versions)
-    if newest > GLIBC_BASELINE:
-        rendered = ".".join(str(component) for component in newest)
-        raise RuntimeError(f"{path} requires GLIBC {rendered}, newer than Ubuntu 22.04")
+def validate_glibc_baseline(path: Path) -> tuple[int, int]:
+    return glibc_requirement(path)
 
 
 def validate_manifest(
@@ -113,7 +106,7 @@ def validate_manifest(
     manifest_path = artifact_dir / "release-manifest.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     version = source_version()
-    if manifest.get("schemaVersion") != 1 or manifest.get("version") != version:
+    if manifest.get("schemaVersion") != 2 or manifest.get("version") != version:
         raise RuntimeError("release manifest schema or version mismatch")
 
     source = manifest.get("source")
@@ -122,21 +115,27 @@ def validate_manifest(
         raise RuntimeError("release manifest source or builder is malformed")
     if not re.fullmatch(r"[0-9a-f]{40}", str(source.get("commit", ""))):
         raise RuntimeError("release manifest source commit is invalid")
-    if source.get("treeState") not in {"clean", "dirty"}:
-        raise RuntimeError("release manifest tree state is invalid")
+    required_builder = {
+        "distribution": "ubuntu",
+        "version": "22.04",
+        "architecture": "x86_64",
+        "image": EXPECTED_IMAGE,
+    }
+    required_provenance = {
+        "kind": "pinned-ubuntu-22.04-container",
+        "command": RELEASE_WORKFLOW_COMMAND,
+        "containerImage": EXPECTED_IMAGE,
+    }
+    if (
+        manifest.get("state") != "release-candidate"
+        or source.get("treeState") != "clean"
+        or "diffSha256" in source
+        or builder != required_builder
+        or manifest.get("provenance") != required_provenance
+    ):
+        raise RuntimeError("release artifacts require clean pinned-container provenance")
 
     if require_publishable:
-        if manifest.get("state") != "release-candidate":
-            raise RuntimeError("publication requires a clean release candidate")
-        if source.get("treeState") != "clean" or "diffSha256" in source:
-            raise RuntimeError("publication requires a clean source tree")
-        if builder != {
-            "distribution": "ubuntu",
-            "version": "22.04",
-            "architecture": "x86_64",
-            "image": EXPECTED_IMAGE,
-        }:
-            raise RuntimeError("publication requires the pinned Ubuntu 22.04 builder")
         if expected_tag != f"v{version}":
             raise RuntimeError(
                 f"release tag must be v{version}, not {expected_tag or 'unset'}"
@@ -192,7 +191,7 @@ def deb_field(package: Path, field: str) -> str:
     return result.stdout.strip()
 
 
-def validate_debian(package: Path, version: str) -> None:
+def validate_debian(package: Path, version: str) -> tuple[int, int]:
     expected_name = debian_artifact_filename(version)
     if package.name != expected_name:
         raise RuntimeError(f"Debian filename mismatch: {package.name}")
@@ -230,7 +229,7 @@ def validate_debian(package: Path, version: str) -> None:
         binary = root / "usr/bin/quireforge"
         if not binary.is_file() or not os.access(binary, os.X_OK):
             raise RuntimeError("Debian executable is missing or not executable")
-        validate_glibc_baseline(binary)
+        glibc = validate_glibc_baseline(binary)
         metainfo = (
             root
             / "usr/share/metainfo/io.github.codeframe78.QuireForge.metainfo.xml"
@@ -251,9 +250,10 @@ def validate_debian(package: Path, version: str) -> None:
             or legacy_md5_path in md5_paths
         ):
             raise RuntimeError("Debian md5sums retain the wrong desktop filename")
+        return glibc
 
 
-def validate_appimage(package: Path, version: str) -> None:
+def validate_appimage(package: Path, version: str) -> tuple[int, int]:
     expected_name = f"QuireForge-{version}-x86_64.AppImage"
     if package.name != expected_name:
         raise RuntimeError(f"AppImage filename mismatch: {package.name}")
@@ -279,7 +279,7 @@ def validate_appimage(package: Path, version: str) -> None:
         binary = appdir / "usr/bin/quireforge"
         if not binary.is_file() or not os.access(binary, os.X_OK):
             raise RuntimeError("AppImage executable is missing or not executable")
-        validate_glibc_baseline(binary)
+        glibc = validate_glibc_baseline(binary)
         metainfo = (
             appdir
             / "usr/share/metainfo/io.github.codeframe78.QuireForge.metainfo.xml"
@@ -290,6 +290,24 @@ def validate_appimage(package: Path, version: str) -> None:
         if metainfo.exists() or not appdata.is_file():
             raise RuntimeError("AppImage AppStream metadata layout is invalid")
         validate_metainfo(appdata)
+        return glibc
+
+
+def validate_abi_evidence(
+    manifest: dict[str, object],
+    debian_glibc: tuple[int, int],
+    appimage_glibc: tuple[int, int],
+) -> None:
+    expected = {
+        "baseline": glibc_version_text(GLIBC_BASELINE),
+        "highestRequired": glibc_version_text(max(debian_glibc, appimage_glibc)),
+        "binaries": [
+            {"format": "appimage", "highestRequired": glibc_version_text(appimage_glibc)},
+            {"format": "deb", "highestRequired": glibc_version_text(debian_glibc)},
+        ],
+    }
+    if manifest.get("abi") != expected:
+        raise RuntimeError("release ABI evidence is absent, malformed, or inconsistent")
 
 
 def smoke_packages(debian: Path, appimage: Path) -> None:
@@ -398,8 +416,9 @@ def main() -> int:
         arguments.expected_tag,
     )
     version = str(manifest["version"])
-    validate_debian(artifacts["deb"], version)
-    validate_appimage(artifacts["appimage"], version)
+    debian_glibc = validate_debian(artifacts["deb"], version)
+    appimage_glibc = validate_appimage(artifacts["appimage"], version)
+    validate_abi_evidence(manifest, debian_glibc, appimage_glibc)
     if arguments.lifecycle:
         lifecycle(artifacts["deb"], debian_version(version))
     if arguments.smoke:

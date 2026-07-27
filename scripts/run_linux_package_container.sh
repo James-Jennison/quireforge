@@ -42,13 +42,14 @@ docker run \
   --env QUIRE_FORGE_BUILD_DISTRIBUTION=ubuntu \
   --env QUIRE_FORGE_BUILD_IMAGE="$builder_source" \
   --env QUIRE_FORGE_BUILD_VERSION=22.04 \
+  --env QUIRE_FORGE_RELEASE_BUILDER=pinned-ubuntu-22.04 \
   --env QUIRE_FORGE_TAURI_CACHE_DIR=/cache/home/.cache/tauri \
   --env SOURCE_DATE_EPOCH="$source_epoch" \
   --workdir /workspace \
   "$builder_image" \
   /bin/bash -c \
   "pnpm install --frozen-lockfile --store-dir /cache/pnpm-store \
-    && pnpm package:linux \
+    && pnpm package:linux:release \
     && python3 scripts/validate_release_artifacts.py \
       --artifact-dir target/ubuntu-22.04/release/packages/.candidate-$(node -p 'require("./package.json").version') \
       --lifecycle \

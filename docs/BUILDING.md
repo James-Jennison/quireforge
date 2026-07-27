@@ -112,7 +112,11 @@ an own `toString` property during startup and otherwise fails before mounting.
 The explicit production CSP, restricted Tauri capability, and narrow typed IPC
 remain the primary webview/native controls.
 
-## Build local Linux package candidates
+## Build Linux package artifacts
+
+`pnpm package:linux` is a host-development-only build. Its raw Tauri output is
+written under `target/host-development/`, is non-distributable, and never
+creates release manifests, checksums, or authoritative artifacts.
 
 The authoritative package build uses Docker, not the newer discovery host:
 
@@ -140,10 +144,11 @@ The dot in the outer Debian filename is intentional because GitHub Releases
 normalizes tildes in asset names. The package's internal Debian version remains
 `0.1.0~beta.2`, preserving correct prerelease ordering before `0.1.0`.
 
-The directory is ignored by Git. A dirty source tree deliberately produces a
-`local-candidate` manifest; only a clean exact-tag build can pass the separate
-publication validator. Building candidates does not authorize a GitHub
-release, website edit, deployment, package installation, or signing action.
+The directory is ignored by Git and is produced only by the pinned container
+workflow. Each future release manifest records clean source provenance and ABI
+evidence for both shipped executables; missing or inconsistent evidence fails
+validation. Building candidates does not authorize a GitHub release, website
+edit, deployment, package installation, or signing action.
 See [Releasing](RELEASING.md) for the guarded handoff.
 
 ### Native-only notification probe

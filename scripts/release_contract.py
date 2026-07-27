@@ -24,6 +24,12 @@ EXPECTED_IMAGE = (
     "ubuntu:22.04@sha256:"
     "0e0a0fc6d18feda9db1590da249ac93e8d5abfea8f4c3c0c849ce512b5ef8982"
 )
+RELEASE_BUILDER_ENV = "QUIRE_FORGE_RELEASE_BUILDER"
+RELEASE_BUILDER_VALUE = "pinned-ubuntu-22.04"
+RELEASE_WORKFLOW_COMMAND = "scripts/run_linux_package_container.sh"
+RELEASE_OUTPUT_DIR = ROOT / "target/ubuntu-22.04/release/packages"
+HOST_DEVELOPMENT_TARGET_DIR = ROOT / "target/host-development"
+GLIBC_BASELINE = (2, 35)
 SEMVER_RE = re.compile(
     r"^(?P<major>0|[1-9]\d*)\.(?P<minor>0|[1-9]\d*)\."
     r"(?P<patch>0|[1-9]\d*)(?:-(?P<prerelease>[0-9A-Za-z.-]+))?$"
@@ -74,6 +80,27 @@ def sha256(path: Path) -> str:
         for chunk in iter(lambda: source.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def glibc_requirement(path: Path) -> tuple[int, int]:
+    result = run(["readelf", "--version-info", str(path)], capture=True)
+    versions = {
+        (int(major), int(minor))
+        for major, minor in re.findall(r"GLIBC_(\d+)\.(\d+)", result.stdout)
+    }
+    if not versions:
+        raise RuntimeError(f"no GLIBC version contract found in {path}")
+    newest = max(versions)
+    if newest > GLIBC_BASELINE:
+        rendered = ".".join(str(component) for component in newest)
+        raise RuntimeError(
+            f"{path} requires GLIBC {rendered}, newer than Ubuntu 22.04"
+        )
+    return newest
+
+
+def glibc_version_text(version: tuple[int, int]) -> str:
+    return f"GLIBC_{version[0]}.{version[1]}"
 
 
 def source_version() -> str:
@@ -144,12 +171,33 @@ def cargo_target_dir() -> Path:
     return path.resolve() if path.is_absolute() else (ROOT / path).resolve()
 
 
+def release_builder_active() -> bool:
+    return os.environ.get(RELEASE_BUILDER_ENV) == RELEASE_BUILDER_VALUE
+
+
 def package_output_dir() -> Path:
-    override = os.environ.get("QUIRE_FORGE_PACKAGE_DIR")
-    if override:
-        path = Path(override)
-        return path.resolve() if path.is_absolute() else (ROOT / path).resolve()
-    return cargo_target_dir() / "release/packages"
+    if release_builder_active():
+        return RELEASE_OUTPUT_DIR
+    return HOST_DEVELOPMENT_TARGET_DIR / "packages"
+
+
+def assert_authoritative_release_builder() -> None:
+    """Reject host normalization into the authoritative Ubuntu release path."""
+    if not release_builder_active():
+        raise RuntimeError(
+            "authoritative Linux release artifacts require "
+            "scripts/run_linux_package_container.sh"
+        )
+    os_release = Path("/etc/os-release")
+    fields = {}
+    for line in os_release.read_text(encoding="utf-8").splitlines():
+        key, separator, value = line.partition("=")
+        if separator:
+            fields[key] = value.strip().strip('"')
+    if fields.get("ID") != "ubuntu" or fields.get("VERSION_ID") != "22.04":
+        raise RuntimeError(
+            "authoritative Linux release artifacts require Ubuntu 22.04"
+        )
 
 
 def source_date_epoch() -> int:
@@ -197,9 +245,12 @@ def source_record() -> tuple[str, str, str | None]:
 
 
 def builder_record() -> dict[str, str]:
-    distribution = os.environ.get("QUIRE_FORGE_BUILD_DISTRIBUTION", "ubuntu")
-    version = os.environ.get("QUIRE_FORGE_BUILD_VERSION", "host")
-    image = os.environ.get("QUIRE_FORGE_BUILD_IMAGE", "unverified-host")
+    assert_authoritative_release_builder()
+    distribution = os.environ.get("QUIRE_FORGE_BUILD_DISTRIBUTION")
+    version = os.environ.get("QUIRE_FORGE_BUILD_VERSION")
+    image = os.environ.get("QUIRE_FORGE_BUILD_IMAGE")
+    if distribution != "ubuntu" or version != "22.04" or image != EXPECTED_IMAGE:
+        raise RuntimeError("authoritative builder identity is not pinned")
     return {
         "distribution": distribution,
         "version": version,

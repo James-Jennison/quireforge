@@ -6,16 +6,23 @@ import re
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from scripts.release_contract import (
     EXPECTED_IMAGE,
+    HOST_DEVELOPMENT_TARGET_DIR,
+    RELEASE_BUILDER_ENV,
+    RELEASE_BUILDER_VALUE,
+    RELEASE_OUTPUT_DIR,
     ROOT,
+    assert_authoritative_release_builder,
     appimagetool_command,
     appstream_validation_command,
     architectures,
     debian_artifact_filename,
     debian_version,
     matches_cleared_appimage_marker,
+    package_output_dir,
     replace_control_field,
     source_version,
 )
@@ -23,7 +30,7 @@ from scripts.release_contract import (
 
 class PackageContractTests(unittest.TestCase):
     def test_all_source_versions_match_the_beta_candidate(self) -> None:
-        self.assertEqual(source_version(), "0.1.0-beta.30")
+        self.assertEqual(source_version(), "0.1.0-beta.31")
 
     def test_debian_metadata_and_artifact_versions_are_deliberately_distinct(
         self,
@@ -152,6 +159,54 @@ class PackageContractTests(unittest.TestCase):
             / "io.github.codeframe78.QuireForge.metainfo.xml"
         )
         self.assertTrue(metainfo.is_file())
+
+    def test_host_and_authoritative_package_outputs_are_separate(self) -> None:
+        with patch.dict("os.environ", {}, clear=False):
+            self.assertEqual(
+                package_output_dir(), HOST_DEVELOPMENT_TARGET_DIR / "packages"
+            )
+        with patch.dict(
+            "os.environ",
+            {RELEASE_BUILDER_ENV: RELEASE_BUILDER_VALUE},
+            clear=False,
+        ):
+            self.assertEqual(package_output_dir(), RELEASE_OUTPUT_DIR)
+
+        package_scripts = json.loads((ROOT / "package.json").read_text())[
+            "scripts"
+        ]
+        self.assertIn("CARGO_TARGET_DIR=target/host-development", package_scripts["package:linux"])
+        self.assertNotIn("package_linux.py", package_scripts["package:linux"])
+        self.assertIn("package_linux.py", package_scripts["package:linux:release"])
+        with patch.dict("os.environ", {}, clear=False):
+            with self.assertRaisesRegex(RuntimeError, "container"):
+                assert_authoritative_release_builder()
+
+    def test_release_manifest_contract_requires_pinned_provenance_and_abi(self) -> None:
+        schema = json.loads(
+            (ROOT / "packaging/release-manifest.schema.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertEqual(schema["properties"]["schemaVersion"], {"const": 2})
+        self.assertEqual(schema["properties"]["state"], {"const": "release-candidate"})
+        self.assertEqual(
+            schema["properties"]["source"]["properties"]["treeState"],
+            {"const": "clean"},
+        )
+        self.assertIn("provenance", schema["required"])
+        self.assertIn("abi", schema["required"])
+        self.assertEqual(
+            schema["properties"]["provenance"]["properties"]["command"],
+            {"const": "scripts/run_linux_package_container.sh"},
+        )
+
+    def test_release_ci_uses_the_authoritative_container_entrypoint(self) -> None:
+        workflow = (ROOT / ".github/workflows/linux-release.yml").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("bash scripts/run_linux_package_container.sh", workflow)
+        self.assertIn("target/ubuntu-22.04/release/packages/", workflow)
 
 
 if __name__ == "__main__":

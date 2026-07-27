@@ -10,17 +10,16 @@
     "version",
     "source",
     "builder",
+    "provenance",
+    "abi",
     "artifacts"
   ],
   "properties": {
     "schemaVersion": {
-      "const": 1
+      "const": 2
     },
     "state": {
-      "enum": [
-        "local-candidate",
-        "release-candidate"
-      ]
+      "const": "release-candidate"
     },
     "version": {
       "type": "string",
@@ -39,14 +38,7 @@
           "pattern": "^[0-9a-f]{40}$"
         },
         "treeState": {
-          "enum": [
-            "clean",
-            "dirty"
-          ]
-        },
-        "diffSha256": {
-          "type": "string",
-          "pattern": "^[0-9a-f]{64}$"
+          "const": "clean"
         }
       }
     },
@@ -64,13 +56,78 @@
           "const": "ubuntu"
         },
         "version": {
-          "type": "string"
+          "const": "22.04"
         },
         "architecture": {
           "const": "x86_64"
         },
         "image": {
+          "type": "string",
+          "pattern": "^ubuntu:22\\.04@sha256:[0-9a-f]{64}$"
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "command",
+        "containerImage"
+      ],
+      "properties": {
+        "kind": {
+          "const": "pinned-ubuntu-22.04-container"
+        },
+        "command": {
+          "const": "scripts/run_linux_package_container.sh"
+        },
+        "containerImage": {
+          "type": "string",
+          "pattern": "^ubuntu:22\\.04@sha256:[0-9a-f]{64}$"
+        }
+      }
+    },
+    "abi": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "baseline",
+        "highestRequired",
+        "binaries"
+      ],
+      "properties": {
+        "baseline": {
+          "const": "GLIBC_2.35"
+        },
+        "highestRequired": {
+          "pattern": "^GLIBC_[0-9]+\\.[0-9]+$",
           "type": "string"
+        },
+        "binaries": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "format",
+              "highestRequired"
+            ],
+            "properties": {
+              "format": {
+                "enum": [
+                  "appimage",
+                  "deb"
+                ]
+              },
+              "highestRequired": {
+                "type": "string",
+                "pattern": "^GLIBC_[0-9]+\\.[0-9]+$"
+              }
+            }
+          }
         }
       }
     },

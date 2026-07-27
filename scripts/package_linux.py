@@ -16,13 +16,17 @@ from release_contract import (
     CANONICAL_DESKTOP,
     DEBIAN_PACKAGE,
     LEGACY_DESKTOP,
+    RELEASE_WORKFLOW_COMMAND,
     ROOT,
+    assert_authoritative_release_builder,
     appimagetool_command,
     architectures,
     builder_record,
     cargo_target_dir,
     debian_artifact_filename,
     debian_version,
+    glibc_requirement,
+    glibc_version_text,
     package_output_dir,
     replace_control_field,
     run,
@@ -175,6 +179,38 @@ def staging_dir(output_dir: Path, version: str) -> Path:
     return output_dir / f".candidate-{version}"
 
 
+def abi_evidence(debian: Path, appimage: Path) -> dict[str, object]:
+    """Inspect the shipped executable in each installable artifact."""
+    observed = []
+    with tempfile.TemporaryDirectory(prefix="quireforge-release-abi-") as temporary:
+        root = Path(temporary)
+        deb_root = root / "deb"
+        run(["dpkg-deb", "--extract", str(debian), str(deb_root)])
+        deb_binary = deb_root / "usr/bin/quireforge"
+        if not deb_binary.is_file():
+            raise RuntimeError("Debian package is missing its shipped executable")
+        observed.append(("deb", glibc_requirement(deb_binary)))
+
+        appimage_copy = root / appimage.name
+        shutil.copy2(appimage, appimage_copy)
+        appimage_copy.chmod(0o755)
+        run([str(appimage_copy), "--appimage-extract"], cwd=root)
+        appimage_binary = root / "squashfs-root/usr/bin/quireforge"
+        if not appimage_binary.is_file():
+            raise RuntimeError("AppImage is missing its shipped executable")
+        observed.append(("appimage", glibc_requirement(appimage_binary)))
+
+    by_format = [
+        {"format": artifact_format, "highestRequired": glibc_version_text(version)}
+        for artifact_format, version in observed
+    ]
+    return {
+        "baseline": "GLIBC_2.35",
+        "highestRequired": glibc_version_text(max(version for _, version in observed)),
+        "binaries": by_format,
+    }
+
+
 def finalize(output_dir: Path, version: str) -> int:
     candidate = staging_dir(output_dir, version)
     expected = {
@@ -204,10 +240,16 @@ def finalize(output_dir: Path, version: str) -> int:
 
 
 def main() -> int:
+    assert_authoritative_release_builder()
     # tauri-bundler clears linuxdeploy's three-byte AppImage marker after it
     # verifies and extracts the reviewed tool. Accept only that exact mutation.
     verify_tauri_tools(allow_linuxdeploy_marker_cleared=True)
     version = source_version()
+    commit, tree_state, diff_digest = source_record()
+    if tree_state != "clean" or diff_digest:
+        raise RuntimeError(
+            "authoritative Linux release artifacts require a clean source tree"
+        )
     release_arch, tauri_arch, deb_arch = architectures()
     output_dir = package_output_dir()
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -240,8 +282,9 @@ def main() -> int:
     )
     rebuild_debian(raw_deb, deb_output, version, timestamp)
     rebuild_appimage(raw_appimage, appimage_output, version, timestamp)
+    abi = abi_evidence(deb_output, appimage_output)
+    builder = builder_record()
 
-    commit, tree_state, diff_digest = source_record()
     artifacts = []
     for artifact_format, path, package_version in (
         ("appimage", appimage_output, version),
@@ -258,17 +301,18 @@ def main() -> int:
             }
         )
 
-    source = {"commit": commit, "treeState": tree_state}
-    if diff_digest:
-        source["diffSha256"] = diff_digest
     manifest = {
-        "schemaVersion": 1,
-        "state": (
-            "release-candidate" if tree_state == "clean" else "local-candidate"
-        ),
+        "schemaVersion": 2,
+        "state": "release-candidate",
         "version": version,
-        "source": source,
-        "builder": builder_record(),
+        "source": {"commit": commit, "treeState": "clean"},
+        "builder": builder,
+        "provenance": {
+            "command": RELEASE_WORKFLOW_COMMAND,
+            "containerImage": builder["image"],
+            "kind": "pinned-ubuntu-22.04-container",
+        },
+        "abi": abi,
         "artifacts": artifacts,
     }
     (candidate_dir / "release-manifest.json").write_text(

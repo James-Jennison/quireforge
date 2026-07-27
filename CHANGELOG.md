@@ -1,6 +1,16 @@
 # Changelog
 
-## Unreleased — 0.1.0-beta.30
+## Unreleased — 0.1.0-beta.31
+
+### Added
+
+- Harden Linux packaging so host development bundles are isolated and
+  non-distributable, while only the pinned Ubuntu 22.04 workflow can generate
+  authoritative release artifacts with fail-closed provenance and shipped-ELF
+  GLIBC evidence. This post-M35 corrective checkpoint does not change M35's
+  ZIP archive capability scope; beta.30 remains its immutable release set.
+
+## 0.1.0-beta.30
 
 ### Added
 

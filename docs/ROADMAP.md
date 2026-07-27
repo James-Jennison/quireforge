@@ -981,7 +981,7 @@ Add one closed `static-binary` registry entry for a single supported binary
 format after an approved format and bounded-projection matrix. It may produce
 only safe static metadata; it never loads, executes, debugs, emulates, or
 detonates a file. Unsupported formats fail closed. The package gate requires a
-fresh `0.1.0-beta.31` candidate with format-specific parser/resource-limit,
+fresh `0.1.0-beta.32` candidate with format-specific parser/resource-limit,
 no-execution, retention, contract, accessibility, and package evidence.
 
 ### 37 — Advisor/Approval/Dispatch/Execution End-to-End Acceptance Gate

@@ -143,8 +143,11 @@ Milestone 34 — **Workspace Selector and QuireForge Naming** is integrated at
 `0481c667df946f83d0b716bc131ada88a376499b` with its verified
 `0.1.0-beta.29` package evidence. It adds the compact accessible workspace
 selector and user-facing QuireForge naming without changing managed Codex
-protocol terminology or authority boundaries. Milestone 35 is the active
-package-changing milestone and requires the fresh `0.1.0-beta.30` candidate.
+protocol terminology or authority boundaries. Milestone 35 is integrated at
+`ac5beb32f08798615e2be72f6f5f55f17ec18434` with its verified immutable
+`0.1.0-beta.30` package set. The post-M35 packaging-hardening corrective
+checkpoint uses the fresh `0.1.0-beta.31` candidate; it changes release
+provenance and ABI validation only, not M35 archive behavior.
 
 Milestone 27 — **Unified Conversation Engine** is complete. It adds strict
 Rust/Zod Chat/Codex capability profiles, a Settings navigation foundation,

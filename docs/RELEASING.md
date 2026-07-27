@@ -16,8 +16,10 @@ The Linux beta contract is:
   filename while the package control version remains `0.1.0~beta.2` for
   Debian prerelease ordering;
 - `SHA256SUMS` covering exactly both installable artifacts; and
-- `release-manifest.json` recording version, source commit/tree state, pinned
-  builder identity, artifact names, formats, architecture, sizes, and hashes.
+- `release-manifest.json` recording version, clean source commit, pinned
+  container identity and command provenance, artifact names, formats,
+  architecture, sizes, hashes, and independently recomputed GLIBC ABI evidence
+  from both shipped executables.
 
 The package payload uses `quireforge` for the executable and Debian package,
 `QuireForge` for display and AppImage naming, and
@@ -33,6 +35,11 @@ Run from a clean repository root:
 ./scripts/run_linux_package_container.sh
 ```
 
+`pnpm package:linux` is deliberately not an alternative release path: it writes
+host-development-only raw bundles under `target/host-development/` and cannot
+create manifests, checksums, or artifacts in the authoritative Ubuntu 22.04
+release directory.
+
 This builds inside the digest-pinned Ubuntu 22.04 container. Node, Rust, and
 the base image are pinned by digest; the Tauri Linux helpers are fetched over
 HTTPS and accepted only when their reviewed SHA-256 values match. The build
@@ -42,7 +49,9 @@ then validates:
   desktop entry, AppStream data, and checksums;
 - offline AppStream validation with `appstreamcli validate --no-net`, without
   making release reproducibility depend on homepage reachability;
-- a maximum GLIBC requirement of 2.35 for the packaged executable;
+- a maximum GLIBC requirement of 2.35 for each executable extracted from the
+  Debian and AppImage artifacts, recorded in the manifest and recomputed by
+  validation;
 - AppImage extraction and canonical desktop/AppStream layout;
 - disposable Debian install, upgrade from a synthetic prior version, removal,
   and preservation of project/application data;
