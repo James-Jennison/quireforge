@@ -106,6 +106,12 @@ import {
   type AdvisorConversationStartRequest,
 } from "./advisorConversation";
 import {
+  advisorTextAttachmentSnapshotSchema,
+  advisorTextExportRequestSchema,
+  type AdvisorTextAttachmentSnapshot,
+  type AdvisorTextExportRequest,
+} from "./advisorAttachment";
+import {
   advisorWorkspaceSnapshotSchema,
   parseAdvisorProjectStateReadRequest,
   parseAdvisorSelectedProjectStateSnapshot,
@@ -259,6 +265,13 @@ export const ADVISOR_CONVERSATION_START_COMMAND = "advisor_conversation_start";
 export const ADVISOR_CONVERSATION_POLL_COMMAND = "advisor_conversation_poll";
 export const ADVISOR_CONVERSATION_INTERRUPT_COMMAND =
   "advisor_conversation_interrupt";
+export const ADVISOR_TEXT_ATTACHMENT_STATUS_COMMAND =
+  "advisor_text_attachment_status";
+export const ADVISOR_TEXT_ATTACHMENT_PICK_COMMAND =
+  "advisor_text_attachment_pick";
+export const ADVISOR_TEXT_ATTACHMENT_CANCEL_COMMAND =
+  "advisor_text_attachment_cancel";
+export const ADVISOR_TEXT_EXPORT_SAVE_COMMAND = "advisor_text_export_save";
 export const CONVERSATION_ACTIVE_COMMAND = "conversation_active";
 export const CONVERSATION_NOTIFY_COMMAND = "conversation_notify";
 export const CONVERSATION_START_COMMAND = "conversation_start";
@@ -480,6 +493,39 @@ export async function interruptAdvisorConversation(
       conversationId: advisorConversationIdSchema.parse(conversationId),
     }),
   );
+}
+
+export async function loadAdvisorTextAttachment(
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<AdvisorTextAttachmentSnapshot> {
+  return advisorTextAttachmentSnapshotSchema.parse(
+    await invokeFunction(ADVISOR_TEXT_ATTACHMENT_STATUS_COMMAND),
+  );
+}
+
+export async function pickAdvisorTextAttachment(
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<AdvisorTextAttachmentSnapshot> {
+  return advisorTextAttachmentSnapshotSchema.parse(
+    await invokeFunction(ADVISOR_TEXT_ATTACHMENT_PICK_COMMAND),
+  );
+}
+
+export async function cancelAdvisorTextAttachment(
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<AdvisorTextAttachmentSnapshot> {
+  return advisorTextAttachmentSnapshotSchema.parse(
+    await invokeFunction(ADVISOR_TEXT_ATTACHMENT_CANCEL_COMMAND),
+  );
+}
+
+export async function saveAdvisorTextExport(
+  request: AdvisorTextExportRequest,
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<void> {
+  await invokeFunction(ADVISOR_TEXT_EXPORT_SAVE_COMMAND, {
+    request: advisorTextExportRequestSchema.parse(request),
+  });
 }
 
 export async function refreshCodexAuth(

@@ -15,7 +15,16 @@ import {
   decideAdvisorDraft,
   dispatchAdvisorOnce,
   loadAdvisorCompletionReport,
+  cancelAdvisorTextAttachment,
+  loadAdvisorTextAttachment,
+  pickAdvisorTextAttachment,
+  saveAdvisorTextExport,
 } from "./lib/bridge";
+import {
+  scaffoldAdvisorTextAttachment,
+  advisorTextExportCandidates,
+  type AdvisorTextAttachmentSnapshot,
+} from "./lib/advisorAttachment";
 import type {
   AdvisorApprovalSnapshot,
   AdvisorDispatchSnapshot,
@@ -26,6 +35,25 @@ import type { CodexRuntimeSnapshot } from "./lib/codex";
 interface AdvisorApprovalState {
   snapshot: AdvisorApprovalSnapshot;
   bindingKey: string;
+}
+
+type AdvisorConversationEvent = AdvisorConversationSnapshot["events"][number];
+
+function coalesceAssistantMessageDeltas(
+  events: AdvisorConversationEvent[],
+): AdvisorConversationEvent[] {
+  return events.reduce<AdvisorConversationEvent[]>((coalesced, event) => {
+    const previous = coalesced.at(-1);
+    if (
+      event.type === "agent-message-delta" &&
+      previous?.type === "agent-message-delta"
+    ) {
+      previous.delta += event.delta;
+      return coalesced;
+    }
+    coalesced.push({ ...event });
+    return coalesced;
+  }, []);
 }
 
 interface AdvisorWorkspaceProps {
@@ -72,6 +100,12 @@ const diagnosticMessage: Partial<
     "Advisor blocked an attempted tool or permission request.",
   "metadata-unavailable":
     "Advisor could not record its bounded thread reference.",
+  "protocol-invalid":
+    "Advisor could not complete the managed Codex conversation safely. Try again later.",
+  "runtime-unavailable":
+    "The managed Codex service is unavailable. Try again later.",
+  "thread-start-rejected":
+    "Advisor could not start a managed conversation with its read-only settings. Try again later.",
 };
 
 export function AdvisorWorkspace({
@@ -99,6 +133,11 @@ export function AdvisorWorkspace({
   const [prompt, setPrompt] = useState("");
   const [includeProjectState, setIncludeProjectState] = useState(false);
   const [confirmContextSend, setConfirmContextSend] = useState(false);
+  const [confirmAttachmentSend, setConfirmAttachmentSend] = useState(false);
+  const [textAttachment, setTextAttachment] =
+    useState<AdvisorTextAttachmentSnapshot>(scaffoldAdvisorTextAttachment);
+  const [attachmentBusy, setAttachmentBusy] = useState(false);
+  const [exportCandidateIndex, setExportCandidateIndex] = useState(0);
   const [actionError, setActionError] = useState(false);
   const [draft, setDraft] = useState("");
   const defaultModel = runtime.models.find((model) => model.isDefault) ?? null;
@@ -157,6 +196,18 @@ export function AdvisorWorkspace({
           : null;
 
   useEffect(() => {
+    void loadAdvisorTextAttachment()
+      .then(setTextAttachment)
+      .catch(() =>
+        setTextAttachment({
+          ...scaffoldAdvisorTextAttachment,
+          state: "unavailable",
+          diagnosticCode: "read-failed",
+        }),
+      );
+  }, []);
+
+  useEffect(() => {
     if (!active || !conversation.conversationId) return undefined;
     const conversationId = conversation.conversationId;
     const timer = window.setTimeout(() => {
@@ -168,9 +219,63 @@ export function AdvisorWorkspace({
   function submit(projectId: string | null) {
     if (conversationBusy || active || authentication !== "ready") return;
     setActionError(false);
-    void onConversationStart({ prompt, projectId })
+    const attachment =
+      textAttachment.state === "ready" ? textAttachment.attachment : null;
+    void onConversationStart({
+      prompt,
+      projectId,
+      attachmentId: attachment?.attachmentId ?? null,
+      attachmentManifestSha256: attachment?.sha256 ?? null,
+      attachmentConfirmation: attachment ? "confirmed-for-single-send" : null,
+    })
       .then(() => setPrompt(""))
+      .then(() => setTextAttachment(scaffoldAdvisorTextAttachment))
       .catch(() => setActionError(true));
+  }
+
+  async function pickTextAttachment() {
+    setAttachmentBusy(true);
+    setActionError(false);
+    try {
+      setTextAttachment(await pickAdvisorTextAttachment());
+    } catch {
+      setActionError(true);
+    } finally {
+      setAttachmentBusy(false);
+    }
+  }
+
+  async function clearTextAttachment() {
+    setAttachmentBusy(true);
+    try {
+      setTextAttachment(await cancelAdvisorTextAttachment());
+    } catch {
+      setActionError(true);
+    } finally {
+      setAttachmentBusy(false);
+    }
+  }
+
+  const latestReply = coalesceAssistantMessageDeltas(conversation.events)
+    .filter((event) => event.type === "agent-message-delta")
+    .map((event) => event.delta)
+    .join("");
+  const exportCandidates = advisorTextExportCandidates(latestReply);
+
+  async function exportLatestReply() {
+    const candidate =
+      exportCandidates[exportCandidateIndex] ?? exportCandidates[0];
+    if (!candidate?.content) return;
+    setActionError(false);
+    try {
+      await saveAdvisorTextExport({
+        suggestedName: candidate.suggestedName,
+        contentType: candidate.contentType,
+        content: candidate.content,
+      });
+    } catch {
+      setActionError(true);
+    }
   }
 
   async function createDraft() {
@@ -628,7 +733,8 @@ export function AdvisorWorkspace({
           <h2 id="advisor-chat-title">Advisor conversation</h2>
           <p>
             Uses the managed ChatGPT browser sign-in through Codex. No project
-            attachment, tools, or execution permissions are available.
+            browsing, tools, or execution permissions are available. You may
+            explicitly include one bounded text or data file with one message.
           </p>
           {authentication !== "ready" && (
             <p className="project-message" role="status">
@@ -655,7 +761,7 @@ export function AdvisorWorkspace({
             </p>
           )}
           <div className="conversation-events" aria-live="polite">
-            {conversation.events.map((event) =>
+            {coalesceAssistantMessageDeltas(conversation.events).map((event) =>
               event.type === "agent-message-delta" ? (
                 <p className="conversation-event__message" key={event.sequence}>
                   {event.delta}
@@ -678,6 +784,33 @@ export function AdvisorWorkspace({
               ),
             )}
           </div>
+          {conversation.state === "completed" && latestReply && (
+            <div className="conversation-actions">
+              {exportCandidates.length > 1 && (
+                <label>
+                  Output to save
+                  <select
+                    value={exportCandidateIndex}
+                    onChange={(event) =>
+                      setExportCandidateIndex(Number(event.target.value))
+                    }
+                  >
+                    {exportCandidates.map((candidate, index) => (
+                      <option
+                        key={`${candidate.suggestedName}-${index}`}
+                        value={index}
+                      >
+                        {candidate.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              <button type="button" onClick={() => void exportLatestReply()}>
+                Save selected Advisor output
+              </button>
+            </div>
+          )}
           <div className="conversation-composer">
             <label className="sr-only" htmlFor="advisor-prompt">
               Advisor message
@@ -710,9 +843,57 @@ export function AdvisorWorkspace({
                 message
               </label>
             )}
+            <div
+              className="advisor-text-attachment"
+              aria-label="Optional text attachment"
+            >
+              <p className="project-message" role="note">
+                Optional: choose one .txt, .md, .csv, .json, or .py file up to
+                512 KiB. Its text is temporary, has no path attached, and is
+                included only after you confirm this message.
+              </p>
+              {textAttachment.state === "ready" && textAttachment.attachment ? (
+                <div>
+                  <p role="status">
+                    Ready: {textAttachment.attachment.displayName} (
+                    {textAttachment.attachment.byteSize} bytes, SHA-256
+                    verified).
+                  </p>
+                  <button
+                    type="button"
+                    disabled={attachmentBusy || active || conversationBusy}
+                    onClick={() => void clearTextAttachment()}
+                  >
+                    Remove attached text file
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  disabled={
+                    attachmentBusy ||
+                    active ||
+                    conversationBusy ||
+                    authentication !== "ready"
+                  }
+                  onClick={() => void pickTextAttachment()}
+                >
+                  Attach text or data file
+                </button>
+              )}
+              {textAttachment.state === "unavailable" && (
+                <p
+                  className="project-message project-message--warning"
+                  role="alert"
+                >
+                  The text attachment was not available and was not included.
+                </p>
+              )}
+            </div>
             <p className="project-message" role="note">
               Advisor is read-only: no commands, project changes, or dispatch.
-              Project State is optional and requires confirmation.
+              Project State and a text attachment are optional and require
+              confirmation.
             </p>
             {sendDisabledReason && !active && (
               <p className="project-message" role="status">
@@ -740,7 +921,9 @@ export function AdvisorWorkspace({
                     authentication !== "ready"
                   }
                   onClick={() => {
-                    if (includeProjectState && canIncludeProjectState)
+                    if (textAttachment.state === "ready")
+                      setConfirmAttachmentSend(true);
+                    else if (includeProjectState && canIncludeProjectState)
                       setConfirmContextSend(true);
                     else submit(null);
                   }}
@@ -775,6 +958,44 @@ export function AdvisorWorkspace({
                 <button
                   type="button"
                   onClick={() => setConfirmContextSend(false)}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+          {confirmAttachmentSend && textAttachment.attachment && (
+            <div
+              className="project-confirmation"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Confirm text attachment inclusion"
+            >
+              <p>
+                Include {textAttachment.attachment.displayName} as transient
+                normalized text in this one Advisor message? Its path is not
+                shared, it is consumed after this send, and it grants no project
+                or execution authority.
+              </p>
+              <div className="project-actions">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setConfirmAttachmentSend(false);
+                    if (
+                      includeProjectState &&
+                      canIncludeProjectState &&
+                      selectedProjectId
+                    )
+                      setConfirmContextSend(true);
+                    else submit(null);
+                  }}
+                >
+                  Confirm inclusion
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmAttachmentSend(false)}
                 >
                   Cancel
                 </button>

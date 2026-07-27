@@ -1,6 +1,38 @@
 # Changelog
 
-## Unreleased — 0.1.0-beta.13
+## Unreleased — 0.1.0-beta.18
+
+- Add F1’s first closed Advisor Content Ingestion Registry entry: one bounded,
+  user-confirmed normalized UTF-8 text/data file held only in native memory for
+  one send. Image, document, archive, and static-binary registry categories are
+  reserved without handlers, parsers, transport, or UI.
+- Add explicit user-selected, previewed single-file export of visible Advisor
+  text, Python, CSV, JSON, or Markdown output through the native Save dialog.
+  Exports do not overwrite existing files or grant Advisor project authority.
+- Raise only the measured desktop total-JavaScript regression ceiling from 884
+  KiB to 890 KiB for F1; entry, application-shell, and CSS ceilings are
+  unchanged.
+
+- Fix managed Advisor startup to send the reviewed QuireForge `clientInfo`
+  initialization identity required by the Codex app-server. Advisor remains
+  no-project, read-only, no-tools, no-network, and non-executable.
+- Start Advisor with the minimal read-only app-server profile and retry once
+  with an explicit empty-capability compatibility profile only after a rejected
+  thread start. The UI reports that closed failure category without retaining
+  or exposing raw server diagnostics.
+- Render consecutive transient Advisor message fragments as one readable
+  message while keeping reasoning and error entries separate.
+- Accumulate same-conversation Advisor poll fragments only in transient UI
+  memory, preserving complete replies across polls without local transcript
+  storage.
+- Add bounded recovery copy for managed-Codex protocol and runtime failures;
+  raw app-server diagnostics remain undisclosed.
+- Raise only the measured desktop total-JavaScript regression ceiling from 880
+  KiB to 884 KiB for the integrated Approval/Dispatch B2/B3 flow and Advisor
+  initialization compatibility fix; the entry, application-shell, and CSS
+  ceilings remain unchanged.
+
+## 0.1.0-beta.13
 
 - Pin the transitive Node `brace-expansion` resolution to `5.0.8`, removing
   the high-severity Dependabot advisory from the linting toolchain.

@@ -151,6 +151,7 @@ import {
   type ConversationStartRequest,
 } from "./lib/conversation";
 import {
+  mergeAdvisorConversationSnapshot,
   scaffoldAdvisorConversation,
   type AdvisorConversationSnapshot,
   type AdvisorConversationStartRequest,
@@ -2293,7 +2294,9 @@ export default function App({
     conversationId: string,
   ): Promise<AdvisorConversationSnapshot> {
     const result = await pollAdvisorConversationTask(conversationId);
-    setAdvisorConversation(result);
+    setAdvisorConversation((current) =>
+      mergeAdvisorConversationSnapshot(current, result),
+    );
     return result;
   }
 

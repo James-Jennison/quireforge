@@ -13,6 +13,8 @@ use serde_json::{json, Value};
 use tokio::sync::Mutex;
 use uuid::Uuid;
 
+use crate::advisor_attachment::ClaimedAdvisorTextAttachment;
+
 use crate::{
     advisor::AdvisorSelectedProjectStateSnapshot,
     project::{AdvisorConversationMetadata, ProjectService},
@@ -42,6 +44,11 @@ pub struct AdvisorConversationStartRequest {
     /// A UI-held, application-owned attached-project identifier. When present,
     /// the command re-reads the fixed safe projection before a turn starts.
     pub project_id: Option<String>,
+    /// A one-time, native-held text attachment. React receives only its safe
+    /// manifest; the file path and bytes never cross the UI boundary.
+    pub attachment_id: Option<String>,
+    pub attachment_manifest_sha256: Option<String>,
+    pub attachment_confirmation: Option<crate::advisor_attachment::AdvisorContentConfirmationState>,
 }
 
 impl AdvisorConversationStartRequest {
@@ -51,6 +58,8 @@ impl AdvisorConversationStartRequest {
                 .project_id
                 .as_deref()
                 .is_none_or(|project_id| validate_uuid_v7(project_id).is_ok())
+            && (self.attachment_id.is_some() == self.attachment_manifest_sha256.is_some())
+            && (self.attachment_id.is_some() == self.attachment_confirmation.is_some())
     }
 }
 
@@ -76,9 +85,11 @@ pub enum AdvisorConversationDiagnosticCode {
     InvalidRequest,
     ContextUnavailable,
     RuntimeUnavailable,
+    ThreadStartRejected,
     ProtocolInvalid,
     CapabilityBlocked,
     MetadataUnavailable,
+    AttachmentUnavailable,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
@@ -204,6 +215,7 @@ impl AdvisorConversationService {
         authentication: &CodexAuthSnapshot,
         projects: &ProjectService,
         selected_project_state: Option<AdvisorSelectedProjectStateSnapshot>,
+        attachment: Option<ClaimedAdvisorTextAttachment>,
     ) -> AdvisorConversationSnapshot {
         match managed_chat_authentication_state(authentication) {
             ChatAuthenticationState::SignInRequired | ChatAuthenticationState::SignInPending => {
@@ -244,6 +256,7 @@ impl AdvisorConversationService {
             &self.command,
             &request.prompt,
             selected_project_state.as_ref(),
+            attachment.as_ref(),
             projects,
         )
         .await;
@@ -415,19 +428,14 @@ async fn start_advisor_process(
     command: &AppServerCommand,
     prompt: &str,
     selected_project_state: Option<&AdvisorSelectedProjectStateSnapshot>,
+    attachment: Option<&ClaimedAdvisorTextAttachment>,
     projects: &ProjectService,
 ) -> Result<ActiveAdvisorConversation, AdvisorConversationDiagnosticCode> {
     let mut process = AppServerProcess::spawn(command.clone())
         .map_err(|_| AdvisorConversationDiagnosticCode::RuntimeUnavailable)?;
     let result = async {
-        process
-            .request("initialize", json!({}))
-            .await
-            .map_err(map_adapter_error)?;
-        let thread = process
-            .request("thread/start", advisor_thread_start_params())
-            .await
-            .map_err(map_adapter_error)?;
+        process.initialize().await.map_err(map_adapter_error)?;
+        let thread = start_advisor_thread(&mut process).await?;
         let thread_id = parse_thread_start(thread)?;
         let conversation_id = Uuid::now_v7().to_string();
         projects
@@ -441,7 +449,7 @@ async fn start_advisor_process(
                 "turn/start",
                 advisor_turn_start_params(
                     &thread_id,
-                    &advisor_input(prompt, selected_project_state),
+                    &advisor_input(prompt, selected_project_state, attachment),
                 ),
             )
             .await
@@ -469,11 +477,38 @@ async fn start_advisor_process(
 fn advisor_thread_start_params() -> Value {
     json!({
         "cwd": Value::Null,
+        "approvalPolicy": "never",
+        "sandbox": "read-only",
+    })
+}
+
+/// Compatibility-only profile for managed app-server versions that require an
+/// explicit empty capability declaration. It grants no more authority than
+/// the minimal Advisor profile above.
+fn advisor_thread_start_compatibility_params() -> Value {
+    json!({
+        "cwd": Value::Null,
         "environments": [],
         "dynamicTools": [],
         "approvalPolicy": "never",
         "sandbox": "read-only",
     })
+}
+
+async fn start_advisor_thread(
+    process: &mut AppServerProcess,
+) -> Result<Value, AdvisorConversationDiagnosticCode> {
+    match process
+        .request("thread/start", advisor_thread_start_params())
+        .await
+    {
+        Ok(thread) => Ok(thread),
+        Err(CodexAdapterError::RpcRejected) => process
+            .request("thread/start", advisor_thread_start_compatibility_params())
+            .await
+            .map_err(map_thread_start_error),
+        Err(error) => Err(map_thread_start_error(error)),
+    }
 }
 
 fn advisor_turn_start_params(thread_id: &str, prompt: &str) -> Value {
@@ -486,14 +521,25 @@ fn advisor_turn_start_params(thread_id: &str, prompt: &str) -> Value {
     })
 }
 
-fn advisor_input(prompt: &str, context: Option<&AdvisorSelectedProjectStateSnapshot>) -> String {
-    match context {
-        None => prompt.to_owned(),
-        Some(context) => format!(
-            "{prompt}\n\nUser-confirmed Project State summary (safe projection only):\nsource: project-state\ntrust: {:?}\nfreshness: {:?}\nworktree: {:?}\ndiagnostic count: {}",
+fn advisor_input(
+    prompt: &str,
+    context: Option<&AdvisorSelectedProjectStateSnapshot>,
+    attachment: Option<&ClaimedAdvisorTextAttachment>,
+) -> String {
+    let mut input = prompt.to_owned();
+    if let Some(context) = context {
+        input.push_str(&format!(
+            "\n\nUser-confirmed Project State summary (safe projection only):\nsource: project-state\ntrust: {:?}\nfreshness: {:?}\nworktree: {:?}\ndiagnostic count: {}",
             context.trust, context.freshness, context.worktree, context.diagnostic_count
-        ),
+        ));
     }
+    if let Some(attachment) = attachment {
+        input.push_str(&format!(
+            "\n\nUser-confirmed text attachment (transient normalized text; no file path):\nname: {}\nkind: {:?}\nsha256: {}\n--- begin attachment ---\n{}\n--- end attachment ---",
+            attachment.manifest.display_name, attachment.manifest.content_type, attachment.manifest.sha256, attachment.text
+        ));
+    }
+    input
 }
 
 enum AdvisorNotificationOutcome {
@@ -675,6 +721,13 @@ fn map_adapter_error(error: CodexAdapterError) -> AdvisorConversationDiagnosticC
     }
 }
 
+fn map_thread_start_error(error: CodexAdapterError) -> AdvisorConversationDiagnosticCode {
+    match error {
+        CodexAdapterError::RpcRejected => AdvisorConversationDiagnosticCode::ThreadStartRejected,
+        other => map_adapter_error(other),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -684,10 +737,15 @@ mod tests {
     fn fixed_wire_parameters_never_add_project_or_tool_authority() {
         let thread = advisor_thread_start_params();
         assert_eq!(thread["cwd"], Value::Null);
-        assert_eq!(thread["environments"], json!([]));
-        assert_eq!(thread["dynamicTools"], json!([]));
         assert_eq!(thread["approvalPolicy"], "never");
         assert!(thread.get("projectId").is_none());
+        assert!(thread.get("environments").is_none());
+        assert!(thread.get("dynamicTools").is_none());
+        let compatibility = advisor_thread_start_compatibility_params();
+        assert_eq!(compatibility["cwd"], Value::Null);
+        assert_eq!(compatibility["environments"], json!([]));
+        assert_eq!(compatibility["dynamicTools"], json!([]));
+        assert_eq!(compatibility["approvalPolicy"], "never");
         let turn = advisor_turn_start_params("thread", "Prompt");
         assert_eq!(turn["cwd"], Value::Null);
         assert_eq!(turn["sandboxPolicy"]["networkAccess"], false);
@@ -696,7 +754,7 @@ mod tests {
 
     #[test]
     fn context_is_a_safe_projection_and_is_only_added_when_selected() {
-        assert_eq!(advisor_input("Plan this", None), "Plan this");
+        assert_eq!(advisor_input("Plan this", None, None), "Plan this");
         let context = AdvisorSelectedProjectStateSnapshot {
             schema_version: 1,
             source_kind: crate::advisor::AdvisorContextKind::ProjectState,
@@ -707,7 +765,7 @@ mod tests {
             worktree: crate::project_state::WorktreeState::Clean,
             diagnostic_count: 0,
         };
-        let input = advisor_input("Plan this", Some(&context));
+        let input = advisor_input("Plan this", Some(&context), None);
         assert!(input.contains("User-confirmed Project State summary"));
         assert!(!input.contains("/mnt/"));
         assert!(!input.contains("main"));
@@ -717,6 +775,10 @@ mod tests {
     async fn managed_advisor_starts_without_project_or_tool_capabilities() {
         let script = r#"
 read -r initialize
+case "$initialize" in
+  *'"method":"initialize"'*'"clientInfo":{"name":"quireforge","title":"QuireForge","version":"0.1.0-beta.18"}'*) ;;
+  *) exit 70 ;;
+esac
 printf '%s\n' '{"id":1,"result":{}}'
 read -r thread
 printf '%s\n' '{"id":2,"result":{"thread":{"id":"018f0000-0000-7000-8000-000000000020"}}}'
@@ -731,9 +793,13 @@ printf '%s\n' '{"method":"turn/completed","params":{"threadId":"018f0000-0000-70
                 AdvisorConversationStartRequest {
                     prompt: "Plan the next safe step.".to_owned(),
                     project_id: None,
+                    attachment_id: None,
+                    attachment_manifest_sha256: None,
+                    attachment_confirmation: None,
                 },
                 &CodexAuthSnapshot::authenticated(AuthAccountKind::Chatgpt),
                 &ProjectService::in_memory(),
+                None,
                 None,
             )
             .await;
@@ -752,6 +818,86 @@ printf '%s\n' '{"method":"turn/completed","params":{"threadId":"018f0000-0000-70
     }
 
     #[tokio::test]
+    async fn advisor_retries_thread_start_once_with_the_same_empty_capability_boundary() {
+        let script = r#"
+read -r initialize
+case "$initialize" in
+  *'"method":"initialize"'*'"clientInfo":{"name":"quireforge","title":"QuireForge","version":"0.1.0-beta.18"}'*) ;;
+  *) exit 70 ;;
+esac
+printf '%s\n' '{"id":1,"result":{}}'
+read -r _primary_thread
+printf '%s\n' '{"id":2,"error":{"code":-32602,"message":"redacted"}}'
+read -r _compatibility_thread
+printf '%s\n' '{"id":3,"result":{"thread":{"id":"018f0000-0000-7000-8000-000000000020"}}}'
+read -r turn
+printf '%s\n' '{"id":4,"result":{"turn":{"id":"018f0000-0000-7000-8000-000000000030","status":"inProgress"}}}'
+printf '%s\n' '{"method":"turn/completed","params":{"threadId":"018f0000-0000-7000-8000-000000000020","turn":{"id":"018f0000-0000-7000-8000-000000000030","status":"completed"}}}'
+"#;
+        let service =
+            AdvisorConversationService::with_command(AppServerCommand::test("sh", &["-c", script]));
+        let started = service
+            .start(
+                AdvisorConversationStartRequest {
+                    prompt: "Plan the next safe step.".to_owned(),
+                    project_id: None,
+                    attachment_id: None,
+                    attachment_manifest_sha256: None,
+                    attachment_confirmation: None,
+                },
+                &CodexAuthSnapshot::authenticated(AuthAccountKind::Chatgpt),
+                &ProjectService::in_memory(),
+                None,
+                None,
+            )
+            .await;
+        assert_eq!(
+            started.state,
+            AdvisorConversationState::Running,
+            "unexpected Advisor start snapshot: {started:?}"
+        );
+        let completed = service
+            .poll(started.conversation_id.expect("conversation ID is present"))
+            .await;
+        assert_eq!(completed.state, AdvisorConversationState::Completed);
+    }
+
+    #[tokio::test]
+    async fn advisor_reports_only_the_closed_thread_start_rejection_code() {
+        let script = r#"
+read -r _initialize
+printf '%s\n' '{"id":1,"result":{}}'
+read -r _primary_thread
+printf '%s\n' '{"id":2,"error":{"code":-32602,"message":"do not expose this"}}'
+read -r _compatibility_thread
+printf '%s\n' '{"id":3,"error":{"code":-32602,"message":"do not expose this either"}}'
+"#;
+        let service =
+            AdvisorConversationService::with_command(AppServerCommand::test("sh", &["-c", script]));
+        let snapshot = service
+            .start(
+                AdvisorConversationStartRequest {
+                    prompt: "Plan the next safe step.".to_owned(),
+                    project_id: None,
+                    attachment_id: None,
+                    attachment_manifest_sha256: None,
+                    attachment_confirmation: None,
+                },
+                &CodexAuthSnapshot::authenticated(AuthAccountKind::Chatgpt),
+                &ProjectService::in_memory(),
+                None,
+                None,
+            )
+            .await;
+        assert_eq!(snapshot.state, AdvisorConversationState::Unavailable);
+        assert_eq!(
+            snapshot.diagnostic_code,
+            Some(AdvisorConversationDiagnosticCode::ThreadStartRejected)
+        );
+        assert!(snapshot.events.is_empty());
+    }
+
+    #[tokio::test]
     async fn only_managed_chatgpt_auth_can_start_advisor() {
         let service = AdvisorConversationService::with_command(AppServerCommand::test(
             "sh",
@@ -762,9 +908,13 @@ printf '%s\n' '{"method":"turn/completed","params":{"threadId":"018f0000-0000-70
                 AdvisorConversationStartRequest {
                     prompt: "Hello".to_owned(),
                     project_id: None,
+                    attachment_id: None,
+                    attachment_manifest_sha256: None,
+                    attachment_confirmation: None,
                 },
                 &CodexAuthSnapshot::authenticated(AuthAccountKind::ApiKey),
                 &ProjectService::in_memory(),
+                None,
                 None,
             )
             .await;

@@ -18,6 +18,7 @@ export const advisorConversationDiagnosticCodeSchema = z.enum([
   "invalid-request",
   "context-unavailable",
   "runtime-unavailable",
+  "thread-start-rejected",
   "protocol-invalid",
   "capability-blocked",
   "metadata-unavailable",
@@ -68,10 +69,28 @@ export const advisorConversationStartRequestSchema = z
       .max(64 * 1024)
       .refine((value) => !value.includes("\0"), "Prompt must not contain NUL"),
     projectId: z.string().uuid().nullable(),
+    attachmentId: z.string().uuid().nullable(),
+    attachmentManifestSha256: z
+      .string()
+      .regex(/^[a-f0-9]{64}$/iu)
+      .nullable(),
+    attachmentConfirmation: z.literal("confirmed-for-single-send").nullable(),
   })
-  .strict();
+  .strict()
+  .refine(
+    (value) =>
+      (value.attachmentId === null) ===
+      (value.attachmentManifestSha256 === null),
+  )
+  .refine(
+    (value) =>
+      (value.attachmentId === null) === (value.attachmentConfirmation === null),
+  );
 
 export const advisorConversationIdSchema = z.string().uuid();
+
+const MAX_ADVISOR_TRANSIENT_EVENTS = 32;
+const MAX_ADVISOR_MESSAGE_DELTA_CHARS = 64 * 1024;
 
 export type AdvisorConversationSnapshot = z.infer<
   typeof advisorConversationSnapshotSchema
@@ -89,3 +108,44 @@ export const scaffoldAdvisorConversation: AdvisorConversationSnapshot = {
   events: [],
   diagnosticCode: null,
 };
+
+/**
+ * Poll responses contain only the newly received stream fragments. Merge them
+ * into the live UI snapshot for the same conversation without persisting text.
+ */
+export function mergeAdvisorConversationSnapshot(
+  current: AdvisorConversationSnapshot,
+  incoming: AdvisorConversationSnapshot,
+): AdvisorConversationSnapshot {
+  if (
+    current.conversationId === null ||
+    incoming.conversationId === null ||
+    current.conversationId !== incoming.conversationId
+  ) {
+    return incoming;
+  }
+
+  const events = current.events.map((event) => ({ ...event }));
+  let newestSequence = events.at(-1)?.sequence ?? 0;
+  for (const event of incoming.events) {
+    if (event.sequence <= newestSequence) continue;
+    const previous = events.at(-1);
+    if (
+      event.type === "agent-message-delta" &&
+      previous?.type === "agent-message-delta" &&
+      previous.delta.length + event.delta.length <=
+        MAX_ADVISOR_MESSAGE_DELTA_CHARS
+    ) {
+      previous.delta += event.delta;
+      previous.sequence = event.sequence;
+    } else {
+      events.push({ ...event });
+    }
+    newestSequence = event.sequence;
+  }
+
+  return {
+    ...incoming,
+    events: events.slice(-MAX_ADVISOR_TRANSIENT_EVENTS),
+  };
+}

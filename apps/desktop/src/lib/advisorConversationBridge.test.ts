@@ -21,6 +21,9 @@ describe("Advisor conversation bridge", () => {
         {
           prompt: "Review this safe summary.",
           projectId: "018f0000-0000-7000-8000-000000000001",
+          attachmentId: null,
+          attachmentManifestSha256: null,
+          attachmentConfirmation: null,
         },
         invoke,
       ),
@@ -40,6 +43,9 @@ describe("Advisor conversation bridge", () => {
         request: {
           prompt: "Review this safe summary.",
           projectId: "018f0000-0000-7000-8000-000000000001",
+          attachmentId: null,
+          attachmentManifestSha256: null,
+          attachmentConfirmation: null,
         },
       },
     );
@@ -56,7 +62,13 @@ describe("Advisor conversation bridge", () => {
     const invoke = vi.fn();
     await expect(
       startAdvisorConversation(
-        { prompt: "Review this", projectId: "/tmp/unsafe" },
+        {
+          prompt: "Review this",
+          projectId: "/tmp/unsafe",
+          attachmentId: null,
+          attachmentManifestSha256: null,
+          attachmentConfirmation: null,
+        },
         invoke,
       ),
     ).rejects.toThrow();

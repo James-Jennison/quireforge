@@ -1,4 +1,5 @@
 pub mod advisor;
+mod advisor_attachment;
 mod attachment;
 mod codex;
 mod contract;
@@ -12,6 +13,10 @@ mod worktree;
 
 pub use codex::integration;
 
+use advisor_attachment::{
+    AdvisorTextAttachmentClaimRequest, AdvisorTextAttachmentService, AdvisorTextAttachmentSnapshot,
+    AdvisorTextExportRequest,
+};
 use attachment::{
     types::{
         ConversationAttachmentCancelRequest, ConversationAttachmentDropRequest,
@@ -252,6 +257,7 @@ async fn advisor_conversation_start(
     authentication: tauri::State<'_, CodexAuthService>,
     projects: tauri::State<'_, ProjectService>,
     reader: tauri::State<'_, RepositoryStateReader>,
+    attachments: tauri::State<'_, AdvisorTextAttachmentService>,
 ) -> Result<AdvisorConversationSnapshot, ()> {
     if !request.is_valid() {
         return Ok(AdvisorConversationSnapshot::unavailable(
@@ -293,14 +299,101 @@ async fn advisor_conversation_start(
     } else {
         None
     };
+    let attachment = match (
+        &request.attachment_id,
+        &request.attachment_manifest_sha256,
+        request.attachment_confirmation,
+    ) {
+        (None, None, None) => None,
+        (Some(attachment_id), Some(manifest_sha256), Some(confirmation)) => {
+            match attachments.claim(&AdvisorTextAttachmentClaimRequest {
+                attachment_id: attachment_id.clone(),
+                manifest_sha256: manifest_sha256.clone(),
+                confirmation,
+            }) {
+                Ok(attachment) => Some(attachment),
+                Err(_) => {
+                    return Ok(AdvisorConversationSnapshot::unavailable(
+                        AdvisorConversationDiagnosticCode::AttachmentUnavailable,
+                    ))
+                }
+            }
+        }
+        _ => {
+            return Ok(AdvisorConversationSnapshot::unavailable(
+                AdvisorConversationDiagnosticCode::InvalidRequest,
+            ))
+        }
+    };
     Ok(service
         .start(
             request,
             &authentication.status().await,
             &projects,
             selected_project_state,
+            attachment,
         )
         .await)
+}
+
+#[tauri::command]
+fn advisor_text_attachment_status(
+    service: tauri::State<'_, AdvisorTextAttachmentService>,
+) -> AdvisorTextAttachmentSnapshot {
+    service.snapshot()
+}
+
+#[tauri::command]
+async fn advisor_text_attachment_pick(
+    app: tauri::AppHandle,
+    service: tauri::State<'_, AdvisorTextAttachmentService>,
+) -> Result<AdvisorTextAttachmentSnapshot, ()> {
+    let selection = app
+        .dialog()
+        .file()
+        .set_title("Attach one text or data file to the next Advisor message")
+        .add_filter("Text and data", &["txt", "md", "csv", "json", "py"])
+        .blocking_pick_file();
+    Ok(match selection {
+        Some(file) => match file.into_path() {
+            Ok(path) => service.stage_path(path),
+            Err(_) => AdvisorTextAttachmentSnapshot::empty(),
+        },
+        None => service.snapshot(),
+    })
+}
+
+#[tauri::command]
+fn advisor_text_attachment_cancel(
+    service: tauri::State<'_, AdvisorTextAttachmentService>,
+) -> AdvisorTextAttachmentSnapshot {
+    service.clear()
+}
+
+#[tauri::command]
+async fn advisor_text_export_save(
+    request: AdvisorTextExportRequest,
+    app: tauri::AppHandle,
+) -> Result<(), ()> {
+    let extension = match request.content_type {
+        advisor_attachment::AdvisorContentType::Text => "txt",
+        advisor_attachment::AdvisorContentType::Markdown => "md",
+        advisor_attachment::AdvisorContentType::Csv => "csv",
+        advisor_attachment::AdvisorContentType::Json => "json",
+        advisor_attachment::AdvisorContentType::Python => "py",
+    };
+    let selected = app
+        .dialog()
+        .file()
+        .set_title("Save Advisor output")
+        .add_filter("Selected output", &[extension])
+        .set_file_name(&request.suggested_name)
+        .blocking_save_file();
+    let Some(selected) = selected else {
+        return Ok(());
+    };
+    let path = selected.into_path().map_err(|_| ())?;
+    advisor_attachment::save_export(path, &request).map_err(|_| ())
 }
 
 #[tauri::command]
@@ -1392,6 +1485,7 @@ pub fn run() {
         .manage(ConversationService::default())
         .manage(ChatConversationService::default())
         .manage(AdvisorConversationService::default())
+        .manage(AdvisorTextAttachmentService::default())
         .manage(DesktopNotificationService::default())
         .manage(GitService::default())
         .manage(RepositoryStateReader)
@@ -1460,6 +1554,10 @@ pub fn run() {
             advisor_conversation_start,
             advisor_conversation_poll,
             advisor_conversation_interrupt,
+            advisor_text_attachment_status,
+            advisor_text_attachment_pick,
+            advisor_text_attachment_cancel,
+            advisor_text_export_save,
             codex_auth_start,
             codex_auth_cancel,
             codex_auth_logout,

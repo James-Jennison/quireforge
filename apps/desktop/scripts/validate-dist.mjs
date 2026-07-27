@@ -36,11 +36,12 @@ const limits = {
   app: 300 * 1024,
   // M27's native Chat/Codex capability contracts, the eight closed M26
   // palettes, M28's explicitly confirmed safe snapshot boundary, and M29's
-  // bounded managed Advisor conversation, and its digest-bound Phase A
-  // approval controller are included in the shipped desktop bundle. Keep a
-  // narrow, measured ceiling instead of weakening the check or excluding
-  // chunks.
-  javascript: 880 * 1024,
+  // bounded managed Advisor conversation, its digest-bound approval controller,
+  // one-time B2 handoff, bounded B3 status return, and the managed-initializer
+  // compatibility hotfix and F1's bounded content-ingestion registry are
+  // included in the shipped desktop bundle. Keep a
+  // narrow, measured ceiling instead of weakening the check or excluding chunks.
+  javascript: 890 * 1024,
   stylesheets: 105 * 1024,
 };
 
