@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — 0.1.0-beta.27
+## Unreleased — 0.1.0-beta.28
 
 ### Added
 
@@ -21,7 +21,7 @@
 - Refine Advisor into a transient chat-first workspace with a compact header,
   centered scrollable conversation, sticky composer, and optional closed details
   drawer. This changes no Advisor authority, transcript retention, or execution
-  boundary; beta.27 supersedes beta.26 locally.
+  boundary; beta.28 supersedes the pre-commit beta.27 candidate locally.
 
 - Add Milestone 32’s bounded, transient Advisor conversation viewport and
   confirmed Advisor/Codex mode picker. Mode changes clear temporary Advisor
