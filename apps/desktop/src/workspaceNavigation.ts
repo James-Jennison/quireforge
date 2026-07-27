@@ -58,7 +58,7 @@ export const workspaceNavigation: readonly WorkspaceNavigationItem[] = [
     label: "New task",
     icon: "plus",
     group: "main",
-    description: "Create a focused Codex task",
+    description: "Create a focused QuireForge task",
   },
   {
     route: "projects",

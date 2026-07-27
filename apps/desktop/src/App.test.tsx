@@ -307,12 +307,8 @@ describe("QuireForge desktop shell", () => {
     );
 
     await navigateTo("New task");
-    fireEvent.change(
-      screen.getByRole("combobox", { name: "Conversation mode" }),
-      {
-        target: { value: "advisor" },
-      },
-    );
+    fireEvent.click(screen.getByRole("button", { name: "QuireForge" }));
+    fireEvent.click(screen.getByRole("menuitemradio", { name: /Advisor/u }));
     expect(screen.getByRole("dialog")).toHaveTextContent(/no project/i);
     expect(window.localStorage.getItem("quireforge-conversation-mode")).toBe(
       "codex",
@@ -323,12 +319,23 @@ describe("QuireForge desktop shell", () => {
       "codex",
     );
 
-    fireEvent.change(
-      screen.getByRole("combobox", { name: "Conversation mode" }),
-      {
-        target: { value: "advisor" },
-      },
-    );
+    const workspaceTrigger = screen.getByRole("button", {
+      name: "QuireForge",
+    });
+    fireEvent.click(workspaceTrigger);
+    expect(
+      screen.getByRole("menu", { name: "Choose workspace" }),
+    ).toBeInTheDocument();
+    fireEvent.keyDown(screen.getByRole("menu", { name: "Choose workspace" }), {
+      key: "Escape",
+    });
+    expect(
+      screen.queryByRole("menu", { name: "Choose workspace" }),
+    ).not.toBeInTheDocument();
+    expect(workspaceTrigger).toHaveFocus();
+
+    fireEvent.click(screen.getByRole("button", { name: "QuireForge" }));
+    fireEvent.click(screen.getByRole("menuitemradio", { name: /Advisor/u }));
     fireEvent.click(screen.getByRole("button", { name: "Confirm Advisor" }));
     expect(
       await screen.findByRole("heading", {
@@ -369,8 +376,8 @@ describe("QuireForge desktop shell", () => {
 
     await navigateTo("New task");
     expect(
-      screen.getByRole("combobox", { name: "Conversation mode" }),
-    ).toHaveValue("codex");
+      screen.getByRole("button", { name: "QuireForge" }),
+    ).toBeInTheDocument();
     expect(window.localStorage.getItem("quireforge-conversation-mode")).toBe(
       "codex",
     );

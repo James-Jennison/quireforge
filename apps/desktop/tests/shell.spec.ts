@@ -668,7 +668,7 @@ async function openWorkspace(
       .catch(() => false)
   ) {
     await confirmation
-      .getByRole("button", { name: /Confirm (Advisor|Codex)/u })
+      .getByRole("button", { name: /Confirm (Advisor|QuireForge)/u })
       .click();
   }
   await expect(destination).toHaveAttribute("aria-current", "page");
@@ -876,15 +876,22 @@ test("Advisor presents a bounded chat-first conversation with safe summaries", a
     advisor.getByRole("complementary", { name: "Advisor details" }),
   ).toContainText("no shell, terminal, Git");
   await details.click();
-  const modePicker = advisor.getByRole("combobox", {
-    name: "Conversation mode",
+  const workspaceSelector = page.getByRole("button", {
+    name: "Advisor",
+    exact: true,
   });
-  await expect(modePicker).toHaveValue("advisor");
-  await expect(modePicker.locator("option")).toHaveText([
-    "Advisor — Create, Learn, Explore",
-    "Codex — Build, Debug, and Ship",
+  if ((page.viewportSize()?.width ?? 0) <= 760) {
+    await page.getByRole("button", { name: "Open navigation" }).click();
+  }
+  await workspaceSelector.click();
+  const workspaceMenu = page.getByRole("menu", { name: "Choose workspace" });
+  await expect(workspaceMenu.getByRole("menuitemradio")).toHaveText([
+    "AdvisorCreate, learn, and explore✓",
+    "QuireForgeBuild, debug, and ship",
   ]);
-  await modePicker.selectOption("codex");
+  await workspaceMenu
+    .getByRole("menuitemradio", { name: /QuireForge/u })
+    .click();
   const modeConfirmation = page.getByRole("dialog", {
     name: "Confirm conversation mode change",
   });
@@ -892,7 +899,10 @@ test("Advisor presents a bounded chat-first conversation with safe summaries", a
     "No project, attachment, integration, approval, dispatch, completion report, or transient transcript transfers automatically.",
   );
   await modeConfirmation.getByRole("button", { name: "Cancel" }).click();
-  await expect(modePicker).toHaveValue("advisor");
+  if ((page.viewportSize()?.width ?? 0) <= 760) {
+    await page.locator(".sidebar-close").click();
+  }
+  await expect(workspaceSelector).toHaveAccessibleName("Advisor");
   const transcript = advisor.getByRole("log", {
     name: "Active Advisor conversation",
   });

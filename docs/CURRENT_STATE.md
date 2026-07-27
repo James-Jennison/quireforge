@@ -139,6 +139,13 @@ failures are intentionally reported as malformed or unsupported documents.
 In-process parser CPU and memory denial-of-service limits are deferred; no
 subprocess isolation is claimed.
 
+The integrated `0.1.0-beta.28` Advisor chat-first maintenance update adds a
+compact header, centered transient conversation column, sticky composer, and
+closed-by-default details panel without changing Advisor authority, transcript
+retention, or execution boundaries. Milestone 34 — **Workspace Selector and
+QuireForge Naming** is the next package-changing milestone and requires a fresh
+`0.1.0-beta.29` candidate.
+
 Milestone 27 — **Unified Conversation Engine** is complete. It adds strict
 Rust/Zod Chat/Codex capability profiles, a Settings navigation foundation,
 bounded mode-aware metadata, a fixed no-project native Chat bridge, and an

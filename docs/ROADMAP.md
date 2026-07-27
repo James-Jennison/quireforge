@@ -952,27 +952,39 @@ export, and project browsing. The package gate requires a fresh
 `0.1.0-beta.26` lifecycle/transport corrective candidate, strict QuireForge-owned projection/resource-limit tests, no-raw-content
 or path-retention tests, and full accessibility/package evidence.
 
-### 34 — Advisor Archive Manifest-First Analysis
+### 34 — Workspace Selector and QuireForge Naming
+
+Replace the page-level Conversation Mode selector with one compact accessible
+workspace menu in the application/sidebar header: **Advisor — Create, learn,
+and explore** and **QuireForge — Build, debug, and ship**. The menu invokes the
+existing capability-boundary confirmation and clearing behavior; it adds no
+authority, persistence, transfer, or authentication behavior. User-facing
+workspace labels use QuireForge while technically accurate managed Codex
+protocol, authentication, and runtime labels remain unchanged. The package gate
+requires a fresh `0.1.0-beta.29` candidate and keyboard, focus-restoration,
+screen-reader, desktop, and narrow-layout evidence.
+
+### 35 — Advisor Archive Manifest-First Analysis
 
 Add one closed `archive` registry entry for a single safely validated archive.
 Advisor may receive only a bounded native-generated manifest of entry names and
 aggregate safe metadata after explicit manifest/hash confirmation. It excludes
 archive extraction into projects, recursive content analysis, embedded-file
 handoff, password handling, symlink/path-traversal acceptance, and execution.
-The package gate requires a fresh `0.1.0-beta.23` candidate with malformed,
+The package gate requires a fresh `0.1.0-beta.30` candidate with malformed,
 zip-bomb, traversal, symlink, manifest-bound, disposal, and authority-regression
 coverage.
 
-### 35 — Advisor Static Binary/Executable Inspection
+### 36 — Advisor Static Binary/Executable Inspection
 
 Add one closed `static-binary` registry entry for a single supported binary
 format after an approved format and bounded-projection matrix. It may produce
 only safe static metadata; it never loads, executes, debugs, emulates, or
 detonates a file. Unsupported formats fail closed. The package gate requires a
-fresh `0.1.0-beta.23` candidate with format-specific parser/resource-limit,
+fresh `0.1.0-beta.31` candidate with format-specific parser/resource-limit,
 no-execution, retention, contract, accessibility, and package evidence.
 
-### 36 — Advisor/Approval/Dispatch/Execution End-to-End Acceptance Gate
+### 37 — Advisor/Approval/Dispatch/Execution End-to-End Acceptance Gate
 
 Run a separately approved human-in-the-loop acceptance gate over the existing
 Advisor, digest-bound Approval/Dispatch controller, one-time managed Codex
@@ -984,16 +996,16 @@ retention, and destructive project actions. A package version changes only if
 implementation corrections are separately approved; otherwise this is a
 release-acceptance gate with bounded evidence and cleanup.
 
-### 37 — Dynamic Sandbox / Malware-Analysis Discovery Gate
+### 38 — Dynamic Sandbox / Malware-Analysis Discovery Gate
 
 Produce a decision-ready threat model and feasibility proposal for any future
 dynamic analysis. It must define isolation, cleanup, platform support, legal and
 operational constraints, network policy, and a clear go/no-go recommendation.
 It adds no product code, package, sandbox, execution, or malware handling.
 
-### 38 — Dynamic Sandbox Analysis Implementation
+### 39 — Dynamic Sandbox Analysis Implementation
 
-This milestone is intentionally undefined until Milestone 37 has closed and a
+This milestone is intentionally undefined until Milestone 38 has closed and a
 separate implementation proposal is approved. It cannot begin merely because
 static binary inspection exists.
 

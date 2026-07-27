@@ -463,43 +463,129 @@ function initialConversationMode(): ConversationMode {
   return stored === "chat" || stored === "codex" ? stored : "codex";
 }
 
-type WorkspaceConversationMode = "advisor" | "codex";
+type WorkspaceConversationMode = "advisor" | "quireforge";
 
 function workspaceConversationMode(
   mode: ConversationMode,
 ): WorkspaceConversationMode {
-  return mode === "chat" ? "advisor" : "codex";
+  return mode === "chat" ? "advisor" : "quireforge";
 }
 
-function ConversationModePicker({
+function WorkspaceSelector({
   mode,
   onRequestChange,
 }: {
   mode: WorkspaceConversationMode;
   onRequestChange: (mode: WorkspaceConversationMode) => void;
 }) {
-  const pickerId = useId();
-  const descriptionId = `${pickerId}-description`;
+  const menuId = useId();
+  const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const workspaces: Array<{
+    id: WorkspaceConversationMode;
+    title: string;
+    subtitle: string;
+  }> = [
+    {
+      id: "advisor",
+      title: "Advisor",
+      subtitle: "Create, learn, and explore",
+    },
+    {
+      id: "quireforge",
+      title: "QuireForge",
+      subtitle: "Build, debug, and ship",
+    },
+  ];
+
+  function closeAndRestoreFocus() {
+    setOpen(false);
+    triggerRef.current?.focus();
+  }
+
+  function selectWorkspace(next: WorkspaceConversationMode) {
+    setOpen(false);
+    onRequestChange(next);
+  }
+
+  function handleMenuKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+    const index = optionRefs.current.findIndex(
+      (option) => option === document.activeElement,
+    );
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeAndRestoreFocus();
+      return;
+    }
+    if (["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) {
+      event.preventDefault();
+      const nextIndex =
+        event.key === "Home"
+          ? 0
+          : event.key === "End"
+            ? workspaces.length - 1
+            : (index +
+                (event.key === "ArrowDown" ? 1 : -1) +
+                workspaces.length) %
+              workspaces.length;
+      optionRefs.current[nextIndex]?.focus();
+    }
+  }
+
   return (
-    <div className="conversation-mode-picker">
-      <label htmlFor={pickerId}>Conversation mode</label>
-      <select
-        id={pickerId}
-        aria-label="Conversation mode"
-        aria-describedby={descriptionId}
-        value={mode}
-        onChange={(event) =>
-          onRequestChange(event.target.value as WorkspaceConversationMode)
-        }
+    <div className="workspace-selector">
+      <button
+        ref={triggerRef}
+        className="workspace-selector__trigger"
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-controls={menuId}
+        onClick={() => setOpen((current) => !current)}
+        onKeyDown={(event) => {
+          if (["ArrowDown", "ArrowUp"].includes(event.key)) {
+            event.preventDefault();
+            setOpen(true);
+            window.requestAnimationFrame(() =>
+              optionRefs.current[event.key === "ArrowDown" ? 0 : 1]?.focus(),
+            );
+          }
+        }}
       >
-        <option value="advisor">Advisor — Create, Learn, Explore</option>
-        <option value="codex">Codex — Build, Debug, and Ship</option>
-      </select>
-      <p id={descriptionId}>
-        {mode === "advisor"
-          ? "Advisor is read-only and has no project, terminal, Git, or execution authority."
-          : "Codex is project-attached and owns approved execution workflows."}
-      </p>
+        <span>{mode === "advisor" ? "Advisor" : "QuireForge"}</span>
+        <span aria-hidden="true">⌄</span>
+      </button>
+      {open && (
+        <div
+          id={menuId}
+          className="workspace-selector__menu"
+          role="menu"
+          tabIndex={-1}
+          aria-label="Choose workspace"
+          onKeyDown={handleMenuKeyDown}
+        >
+          {workspaces.map((workspace, index) => (
+            <button
+              ref={(element) => {
+                optionRefs.current[index] = element;
+              }}
+              className="workspace-selector__option"
+              type="button"
+              role="menuitemradio"
+              aria-checked={mode === workspace.id}
+              key={workspace.id}
+              onClick={() => selectWorkspace(workspace.id)}
+            >
+              <span>
+                <strong>{workspace.title}</strong>
+                <small>{workspace.subtitle}</small>
+              </span>
+              <span aria-hidden="true">{mode === workspace.id ? "✓" : ""}</span>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -1632,9 +1718,13 @@ export default function App({
     setAdvisorResetToken((current) => current + 1);
   }
 
-  function requestWorkspaceConversationMode(next: WorkspaceConversationMode) {
+  function requestWorkspaceSelection(next: WorkspaceConversationMode) {
     const requested = next === "advisor" ? "chat" : "codex";
-    if (requested !== conversationMode) setPendingConversationMode(requested);
+    if (requested !== conversationMode) {
+      setPendingConversationMode(requested);
+      return;
+    }
+    navigateWorkspace(next === "advisor" ? "advisor" : "conversation");
   }
 
   function requestConversationWorkspace(route: "advisor" | "conversation") {
@@ -3155,6 +3245,11 @@ export default function App({
           </button>
         </div>
 
+        <WorkspaceSelector
+          mode={workspaceConversationMode(conversationMode)}
+          onRequestChange={requestWorkspaceSelection}
+        />
+
         <nav className="primary-nav" aria-label="Primary navigation">
           <p className="nav-label">Main</p>
           {workspaceNavigation
@@ -3415,14 +3510,16 @@ export default function App({
                 <p>
                   {pendingConversationMode === "chat"
                     ? "Advisor is read-only and has no project, terminal, Git, worktree, integration, native-action, approval, or dispatch capability."
-                    : "Codex requires an attached project and restores its visible execution and approval boundaries."}
+                    : "QuireForge requires an attached project and restores its visible execution and approval boundaries."}
                   No project, attachment, integration, approval, dispatch,
                   completion report, or transient transcript transfers
                   automatically.
                 </p>
                 <button type="button" onClick={confirmConversationModeChange}>
                   Confirm{" "}
-                  {pendingConversationMode === "chat" ? "Advisor" : "Codex"}
+                  {pendingConversationMode === "chat"
+                    ? "Advisor"
+                    : "QuireForge"}
                 </button>
                 <button
                   type="button"
@@ -3493,10 +3590,6 @@ export default function App({
               route="advisor"
               active={workspaceLocation.route === "advisor"}
             >
-              <ConversationModePicker
-                mode={workspaceConversationMode(conversationMode)}
-                onRequestChange={requestWorkspaceConversationMode}
-              />
               <AdvisorWorkspace
                 resetToken={advisorResetToken}
                 availability={advisorViewState}
@@ -3715,10 +3808,6 @@ export default function App({
               active={workspaceLocation.route === "conversation"}
             >
               <section className="conversation-mode-workspace">
-                <ConversationModePicker
-                  mode={workspaceConversationMode(conversationMode)}
-                  onRequestChange={requestWorkspaceConversationMode}
-                />
                 {conversationMode === "chat" ? (
                   <p className="conversation-boundary-note" role="status">
                     Advisor is selected. Use the Advisor workspace to create,

@@ -1,8 +1,17 @@
 # Changelog
 
-## Unreleased — 0.1.0-beta.28
+## Unreleased — 0.1.0-beta.29
 
 ### Added
+
+- Add Milestone 34's compact Advisor/QuireForge workspace selector with the
+  existing explicit capability-boundary confirmation and state clearing. Remove
+  the redundant page-level conversation-mode selector and use QuireForge in
+  user-facing workspace wording without changing managed Codex integration
+  terminology.
+- Adopt enforced temporary 1,280 KiB JavaScript and 134 KiB CSS desktop bundle
+  ceilings for the active UI-construction period, with recorded actual sizes and
+  a mandatory permanent-budget reconciliation before product readiness.
 
 - Added one transient, bounded PDF projection for Advisor. Selected PDF bytes
   and source paths stay native-only; Advisor receives only a confirmed,
