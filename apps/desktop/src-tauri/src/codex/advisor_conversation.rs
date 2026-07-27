@@ -840,7 +840,7 @@ mod tests {
         let script = r#"
 read -r initialize
 case "$initialize" in
-  *'"method":"initialize"'*'"clientInfo":{"name":"quireforge","title":"QuireForge","version":"0.1.0-beta.23"}'*) ;;
+  *'"method":"initialize"'*'"clientInfo":{"name":"quireforge","title":"QuireForge","version":"0.1.0-beta.24"}'*) ;;
   *) exit 70 ;;
 esac
 printf '%s\n' '{"id":1,"result":{}}'
@@ -894,7 +894,7 @@ printf '%s\n' '{"method":"turn/completed","params":{"threadId":"018f0000-0000-70
         let script = r#"
 read -r initialize
 case "$initialize" in
-  *'"method":"initialize"'*'"clientInfo":{"name":"quireforge","title":"QuireForge","version":"0.1.0-beta.23"}'*) ;;
+  *'"method":"initialize"'*'"clientInfo":{"name":"quireforge","title":"QuireForge","version":"0.1.0-beta.24"}'*) ;;
   *) exit 70 ;;
 esac
 printf '%s\n' '{"id":1,"result":{}}'

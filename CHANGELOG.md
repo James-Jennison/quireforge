@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — 0.1.0-beta.23
+## Unreleased — 0.1.0-beta.24
 
 ### Added
 
@@ -11,6 +11,9 @@
   objects, and make projection page accounting accurate when truncation occurs.
 - Supersede the unintegrated beta.21 and beta.22 candidates with final beta.23
   PDF-boundary coverage and release evidence.
+- Define the PDF parser boundary: pinned lopdf accepts low-level PDF syntax;
+  QuireForge owns the source boundary, bounded post-parse policy, projection,
+  lifecycle, and path-free diagnostics. Beta.24 supersedes beta.23 locally.
 
 - Add Milestone 32’s bounded, transient Advisor conversation viewport and
   confirmed Advisor/Codex mode picker. Mode changes clear temporary Advisor

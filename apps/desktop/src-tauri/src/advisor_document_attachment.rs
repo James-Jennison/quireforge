@@ -2,6 +2,11 @@
 //!
 //! PDF source bytes and paths are consumed here, then discarded. Only a
 //! deliberately bounded plain-text projection can enter the Advisor turn.
+//!
+//! `lopdf` is the pinned, delegated syntax parser. A successful `load_mem`
+//! means only that that parser accepted enough of the source to construct a
+//! document. QuireForge deliberately does not claim independent xref, trailer,
+//! EOF, offset, object-stream, or low-level syntax diagnostics.
 
 use std::{
     fs::{File, OpenOptions},
@@ -57,11 +62,13 @@ pub enum AdvisorDocumentAttachmentDiagnosticCode {
     InvalidRequest,
     UnsupportedType,
     FileTooLarge,
-    InvalidContent,
+    MalformedOrUnsupportedDocument,
     UnsafeName,
     ReadFailed,
     Encrypted,
     ActiveContent,
+    EmbeddedContent,
+    ExternalAction,
     PageLimitExceeded,
     ParseBudgetExceeded,
     ObjectLimitExceeded,
@@ -292,7 +299,7 @@ fn prepare(
         .read_to_end(&mut bytes)
         .map_err(|_| AdvisorDocumentAttachmentDiagnosticCode::ReadFailed)?;
     if bytes.len() as u64 != opened.len() || !bytes.starts_with(b"%PDF-") {
-        return Err(AdvisorDocumentAttachmentDiagnosticCode::InvalidContent);
+        return Err(AdvisorDocumentAttachmentDiagnosticCode::MalformedOrUnsupportedDocument);
     }
     let sha256 = format!("{:x}", Sha256::digest(&bytes));
     let (projection, projection_text) = project_pdf(&bytes)?;
@@ -314,8 +321,10 @@ fn project_pdf(
     bytes: &[u8],
 ) -> Result<(AdvisorDocumentProjection, String), AdvisorDocumentAttachmentDiagnosticCode> {
     let started = Instant::now();
+    // Parser errors intentionally map to one stable, path-free category. They
+    // are compatibility evidence for the pinned parser, not a second PDF parser.
     let document = Document::load_mem(bytes)
-        .map_err(|_| AdvisorDocumentAttachmentDiagnosticCode::InvalidContent)?;
+        .map_err(|_| AdvisorDocumentAttachmentDiagnosticCode::MalformedOrUnsupportedDocument)?;
     if document.is_encrypted() {
         return Err(AdvisorDocumentAttachmentDiagnosticCode::Encrypted);
     }
@@ -335,7 +344,7 @@ fn project_pdf(
         }
         let page_text = document
             .extract_text(&[*page])
-            .map_err(|_| AdvisorDocumentAttachmentDiagnosticCode::InvalidContent)?;
+            .map_err(|_| AdvisorDocumentAttachmentDiagnosticCode::MalformedOrUnsupportedDocument)?;
         let before = text.len();
         append_bounded(&mut text, &page_text, &mut truncated);
         inspected += 1;
@@ -407,7 +416,7 @@ fn inspect_pdf_object(
             let target = document
                 .objects
                 .get(id)
-                .ok_or(AdvisorDocumentAttachmentDiagnosticCode::InvalidContent)?;
+                .ok_or(AdvisorDocumentAttachmentDiagnosticCode::MalformedOrUnsupportedDocument)?;
             inspect_pdf_object(document, target, Some(*id), depth + 1, visited)?;
         }
         Object::Array(items) => {
@@ -429,41 +438,35 @@ fn inspect_pdf_dictionary(
     depth: usize,
     visited: &mut HashSet<ObjectId>,
 ) -> Result<(), AdvisorDocumentAttachmentDiagnosticCode> {
-    const PROHIBITED: &[&[u8]] = &[
-        b"JavaScript",
-        b"JS",
-        b"AA",
-        b"OpenAction",
-        b"Launch",
-        b"URI",
-        b"GoToR",
-        b"SubmitForm",
-        b"ImportData",
-        b"EmbeddedFiles",
-        b"Filespec",
-        b"AcroForm",
-        b"XFA",
-        b"RichMedia",
-        b"Movie",
-        b"Sound",
-        b"Collection",
-        b"Portfolio",
-    ];
     for (key, value) in dictionary.iter() {
-        if PROHIBITED
-            .iter()
-            .any(|prohibited| key.as_slice() == *prohibited)
-        {
-            return Err(AdvisorDocumentAttachmentDiagnosticCode::ActiveContent);
+        if let Some(code) = prohibited_key_code(key.as_slice()) {
+            return Err(code);
         }
-        if matches!(key.as_slice(), b"S" | b"Type")
-            && matches!(value, Object::Name(name) if PROHIBITED.iter().any(|prohibited| name.as_slice() == *prohibited))
-        {
-            return Err(AdvisorDocumentAttachmentDiagnosticCode::ActiveContent);
+        if matches!(key.as_slice(), b"S" | b"Type") {
+            if let Object::Name(name) = value {
+                if let Some(code) = prohibited_key_code(name) {
+                    return Err(code);
+                }
+            }
         }
         inspect_pdf_object(document, value, None, depth + 1, visited)?;
     }
     Ok(())
+}
+fn prohibited_key_code(key: &[u8]) -> Option<AdvisorDocumentAttachmentDiagnosticCode> {
+    match key {
+        b"EmbeddedFiles" | b"Filespec" => {
+            Some(AdvisorDocumentAttachmentDiagnosticCode::EmbeddedContent)
+        }
+        b"URI" | b"GoToR" | b"Launch" | b"SubmitForm" | b"ImportData" => {
+            Some(AdvisorDocumentAttachmentDiagnosticCode::ExternalAction)
+        }
+        b"JavaScript" | b"JS" | b"AA" | b"OpenAction" | b"AcroForm" | b"XFA" | b"RichMedia"
+        | b"Movie" | b"Sound" | b"Collection" | b"Portfolio" => {
+            Some(AdvisorDocumentAttachmentDiagnosticCode::ActiveContent)
+        }
+        _ => None,
+    }
 }
 fn append_bounded(output: &mut String, addition: &str, truncated: &mut bool) {
     for character in addition.chars() {
@@ -535,7 +538,7 @@ mod tests {
         assert_eq!(snapshot.state, AdvisorDocumentAttachmentState::Unavailable);
         assert_eq!(
             snapshot.diagnostic_code,
-            Some(AdvisorDocumentAttachmentDiagnosticCode::InvalidContent)
+            Some(AdvisorDocumentAttachmentDiagnosticCode::MalformedOrUnsupportedDocument)
         );
         assert!(!format!("{snapshot:?}").contains(path.to_str().unwrap()));
         std::fs::remove_dir_all(dir).unwrap();
@@ -576,24 +579,42 @@ mod tests {
         document.objects.insert((2, 0), Object::Dictionary(nested));
         assert_eq!(
             inspect_pdf_object_graph(&document),
-            Err(AdvisorDocumentAttachmentDiagnosticCode::ActiveContent)
+            Err(AdvisorDocumentAttachmentDiagnosticCode::ExternalAction)
         );
     }
 
     #[test]
     fn rejects_active_content_in_names_annotations_forms_and_streams() {
-        for key in [
-            "JavaScript",
-            "EmbeddedFiles",
-            "AcroForm",
-            "XFA",
-            "RichMedia",
-            "Collection",
+        for (key, expected) in [
+            (
+                "JavaScript",
+                AdvisorDocumentAttachmentDiagnosticCode::ActiveContent,
+            ),
+            (
+                "EmbeddedFiles",
+                AdvisorDocumentAttachmentDiagnosticCode::EmbeddedContent,
+            ),
+            (
+                "AcroForm",
+                AdvisorDocumentAttachmentDiagnosticCode::ActiveContent,
+            ),
+            (
+                "XFA",
+                AdvisorDocumentAttachmentDiagnosticCode::ActiveContent,
+            ),
+            (
+                "RichMedia",
+                AdvisorDocumentAttachmentDiagnosticCode::ActiveContent,
+            ),
+            (
+                "Collection",
+                AdvisorDocumentAttachmentDiagnosticCode::ActiveContent,
+            ),
         ] {
             let document = document_with_reference(active_dictionary(key));
             assert_eq!(
                 inspect_pdf_object_graph(&document),
-                Err(AdvisorDocumentAttachmentDiagnosticCode::ActiveContent),
+                Err(expected),
                 "{key} must fail closed"
             );
         }
@@ -606,28 +627,52 @@ mod tests {
         )));
         assert_eq!(
             inspect_pdf_object_graph(&document),
-            Err(AdvisorDocumentAttachmentDiagnosticCode::ActiveContent)
+            Err(AdvisorDocumentAttachmentDiagnosticCode::ExternalAction)
         );
     }
 
     #[test]
     fn rejects_all_supported_action_names_when_nested() {
-        for action in [
-            "URI",
-            "GoToR",
-            "SubmitForm",
-            "ImportData",
-            "Filespec",
-            "Portfolio",
-            "Movie",
-            "Sound",
+        for (action, expected) in [
+            (
+                "URI",
+                AdvisorDocumentAttachmentDiagnosticCode::ExternalAction,
+            ),
+            (
+                "GoToR",
+                AdvisorDocumentAttachmentDiagnosticCode::ExternalAction,
+            ),
+            (
+                "SubmitForm",
+                AdvisorDocumentAttachmentDiagnosticCode::ExternalAction,
+            ),
+            (
+                "ImportData",
+                AdvisorDocumentAttachmentDiagnosticCode::ExternalAction,
+            ),
+            (
+                "Filespec",
+                AdvisorDocumentAttachmentDiagnosticCode::EmbeddedContent,
+            ),
+            (
+                "Portfolio",
+                AdvisorDocumentAttachmentDiagnosticCode::ActiveContent,
+            ),
+            (
+                "Movie",
+                AdvisorDocumentAttachmentDiagnosticCode::ActiveContent,
+            ),
+            (
+                "Sound",
+                AdvisorDocumentAttachmentDiagnosticCode::ActiveContent,
+            ),
         ] {
             let mut dictionary = lopdf::Dictionary::new();
             dictionary.set("S", Object::Name(action.as_bytes().to_vec()));
             let document = document_with_reference(Object::Dictionary(dictionary));
             assert_eq!(
                 inspect_pdf_object_graph(&document),
-                Err(AdvisorDocumentAttachmentDiagnosticCode::ActiveContent),
+                Err(expected),
                 "{action} must fail closed"
             );
         }
@@ -643,7 +688,7 @@ mod tests {
         missing.objects.insert((1, 0), Object::Reference((99, 0)));
         assert_eq!(
             inspect_pdf_object_graph(&missing),
-            Err(AdvisorDocumentAttachmentDiagnosticCode::InvalidContent)
+            Err(AdvisorDocumentAttachmentDiagnosticCode::MalformedOrUnsupportedDocument)
         );
 
         let mut deep = Object::Null;

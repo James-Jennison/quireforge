@@ -1155,7 +1155,20 @@ export function AdvisorWorkspace({
                   className="project-message project-message--warning"
                   role="alert"
                 >
-                  The PDF was not available and was not included.
+                  {documentAttachment.diagnosticCode ===
+                  "malformed-or-unsupported-document"
+                    ? "This PDF is malformed or unsupported and was not included."
+                    : documentAttachment.diagnosticCode === "encrypted"
+                      ? "Encrypted PDFs are not supported and were not included."
+                      : documentAttachment.diagnosticCode === "embedded-content"
+                        ? "PDF embedded content is not supported and was not included."
+                        : documentAttachment.diagnosticCode ===
+                            "external-action"
+                          ? "PDF external actions are not supported and were not included."
+                          : documentAttachment.diagnosticCode ===
+                              "active-content"
+                            ? "PDF active content is not supported and was not included."
+                            : "The PDF was not available and was not included."}
                 </p>
               )}
             </div>

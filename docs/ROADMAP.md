@@ -949,7 +949,7 @@ and construct a bounded, safe native projection with a path-free manifest/hash
 and explicit per-send confirmation. It excludes generic document upload,
 raw-document transport, macros, embedded-object execution, document editing or
 export, and project browsing. The package gate requires a fresh
-`0.1.0-beta.23` final corrective candidate, strict projection/resource-limit tests, no-raw-content
+`0.1.0-beta.24` parser-delegation corrective candidate, strict QuireForge-owned projection/resource-limit tests, no-raw-content
 or path-retention tests, and full accessibility/package evidence.
 
 ### 34 — Advisor Archive Manifest-First Analysis
