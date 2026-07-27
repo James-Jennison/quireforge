@@ -1,3 +1,5 @@
+/* eslint-disable jsx-a11y/no-noninteractive-tabindex -- The bounded log must be keyboard-focusable for scrollback review. */
+
 import { useEffect, useRef, useState } from "react";
 
 import type { CodexAuthSnapshot } from "./lib/auth";
@@ -64,6 +66,7 @@ function coalesceAssistantMessageDeltas(
 }
 
 interface AdvisorWorkspaceProps {
+  resetToken?: number;
   availability: "checking" | "native" | "preview" | "error";
   snapshot: AdvisorWorkspaceSnapshot | null;
   selectedProjectState: AdvisorSelectedProjectStateSnapshot | null;
@@ -116,6 +119,7 @@ const diagnosticMessage: Partial<
 };
 
 export function AdvisorWorkspace({
+  resetToken = 0,
   availability,
   snapshot,
   selectedProjectState,
@@ -162,6 +166,9 @@ export function AdvisorWorkspace({
   const draftRef = useRef<HTMLTextAreaElement>(null);
   const [completionReport, setCompletionReport] =
     useState<AdvisorCompletionReportSnapshot | null>(null);
+  const lastResetToken = useRef(resetToken);
+  const conversationViewportRef = useRef<HTMLDivElement>(null);
+  const [followLatest, setFollowLatest] = useState(true);
   const empty =
     snapshot?.conversationCount === 0 &&
     snapshot.contextReferenceCount === 0 &&
@@ -215,6 +222,40 @@ export function AdvisorWorkspace({
         }),
       );
   }, []);
+
+  useEffect(() => {
+    if (lastResetToken.current === resetToken) return;
+    lastResetToken.current = resetToken;
+    setPrompt("");
+    setIncludeProjectState(false);
+    setConfirmContextSend(false);
+    setConfirmAttachmentSend(false);
+    setDraft("");
+    setApproval(null);
+    setDispatchResult(null);
+    setCompletionReport(null);
+    setExportCandidateIndex(0);
+    setTextAttachment(scaffoldAdvisorTextAttachment);
+    setImageAttachment(scaffoldAdvisorImageAttachment);
+    void Promise.all([
+      cancelAdvisorTextAttachment(),
+      cancelAdvisorImageAttachment(),
+    ]).catch(() => setActionError(true));
+  }, [resetToken]);
+
+  useEffect(() => {
+    const viewport = conversationViewportRef.current;
+    if (!viewport || !followLatest) return;
+    viewport.scrollTop = viewport.scrollHeight;
+  }, [conversation.events, followLatest]);
+
+  function updateViewportPosition() {
+    const viewport = conversationViewportRef.current;
+    if (!viewport) return;
+    setFollowLatest(
+      viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight < 12,
+    );
+  }
   useEffect(() => {
     void loadAdvisorImageAttachment()
       .then(setImageAttachment)
@@ -807,7 +848,16 @@ export function AdvisorWorkspace({
               QuireForge could not reach the native Advisor bridge.
             </p>
           )}
-          <div className="conversation-events" aria-live="polite">
+          <div
+            className="conversation-events conversation-events--advisor"
+            ref={conversationViewportRef}
+            role="log"
+            aria-label="Active Advisor conversation"
+            aria-live="polite"
+            aria-relevant="additions text"
+            tabIndex={0}
+            onScroll={updateViewportPosition}
+          >
             {coalesceAssistantMessageDeltas(conversation.events).map((event) =>
               event.type === "agent-message-delta" ? (
                 <p className="conversation-event__message" key={event.sequence}>

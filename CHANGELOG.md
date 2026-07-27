@@ -1,6 +1,12 @@
 # Changelog
 
-## Unreleased — 0.1.0-beta.19
+## Unreleased — 0.1.0-beta.20
+
+- Add Milestone 32’s bounded, transient Advisor conversation viewport and
+  confirmed Advisor/Codex mode picker. Mode changes clear temporary Advisor
+  context, attachments, approvals, dispatch state, completion reports, and
+  visible transcript data; no transcript storage or execution authority is
+  added.
 
 - Begin Milestone 31’s closed Advisor image registry entry: one transient,
   explicitly confirmed PNG or JPEG with native type/decode/dimension checks,

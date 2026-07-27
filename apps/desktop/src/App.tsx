@@ -2,6 +2,7 @@ import {
   lazy,
   Suspense,
   useEffect,
+  useId,
   useRef,
   useState,
   type CSSProperties,
@@ -21,7 +22,6 @@ import {
 } from "./appearanceThemes";
 import { AuthGate } from "./AuthGate";
 import { AdvisorWorkspace } from "./AdvisorWorkspace";
-import { ChatWorkspace } from "./ChatWorkspace";
 import { ConversationWorkspace } from "./ConversationWorkspace";
 import { FilePreviewWorkspace } from "./FilePreviewWorkspace";
 import { GitWorkspace } from "./GitWorkspace";
@@ -52,10 +52,8 @@ import {
   dispatchAdvisorOnce,
   detachProject,
   interruptConversation,
-  interruptChatConversation,
   interruptAdvisorConversation,
   loadAdvisorConversation,
-  loadChatConversation,
   loadActiveConversations,
   loadCodexAuth,
   loadConversationStatus,
@@ -88,7 +86,6 @@ import {
   refreshIntegrationCatalog as refreshIntegrationCatalogNative,
   pollConversation,
   pollAdvisorConversation,
-  pollChatConversation,
   refreshCodexAuth,
   refreshCodexUsage,
   recoverGitMutation,
@@ -97,7 +94,6 @@ import {
   forkConversation,
   startConversation,
   startAdvisorConversation,
-  startChatConversation,
   startCodexAuth,
   stageDroppedConversationAttachments,
   updateModelSelection,
@@ -156,11 +152,6 @@ import {
   type AdvisorConversationSnapshot,
   type AdvisorConversationStartRequest,
 } from "./lib/advisorConversation";
-import {
-  scaffoldChatConversation,
-  type ChatConversationSnapshot,
-  type ChatConversationStartRequest,
-} from "./lib/chat";
 import { type ConversationMode } from "./lib/conversationMode";
 import { mergeConversationEvents } from "./lib/conversationView";
 import {
@@ -363,16 +354,6 @@ interface AppProps {
   interruptConversationTask?: (
     conversationId: string,
   ) => Promise<ConversationSnapshot>;
-  loadChatConversationTask?: () => Promise<ChatConversationSnapshot>;
-  startChatConversationTask?: (
-    request: ChatConversationStartRequest,
-  ) => Promise<ChatConversationSnapshot>;
-  pollChatConversationTask?: (
-    conversationId: string,
-  ) => Promise<ChatConversationSnapshot>;
-  interruptChatConversationTask?: (
-    conversationId: string,
-  ) => Promise<ChatConversationSnapshot>;
   loadAdvisorConversationTask?: () => Promise<AdvisorConversationSnapshot>;
   startAdvisorConversationTask?: (
     request: AdvisorConversationStartRequest,
@@ -480,6 +461,47 @@ function initialSidebarCompact(): boolean {
 function initialConversationMode(): ConversationMode {
   const stored = window.localStorage.getItem(conversationModeStorageKey);
   return stored === "chat" || stored === "codex" ? stored : "codex";
+}
+
+type WorkspaceConversationMode = "advisor" | "codex";
+
+function workspaceConversationMode(
+  mode: ConversationMode,
+): WorkspaceConversationMode {
+  return mode === "chat" ? "advisor" : "codex";
+}
+
+function ConversationModePicker({
+  mode,
+  onRequestChange,
+}: {
+  mode: WorkspaceConversationMode;
+  onRequestChange: (mode: WorkspaceConversationMode) => void;
+}) {
+  const pickerId = useId();
+  const descriptionId = `${pickerId}-description`;
+  return (
+    <div className="conversation-mode-picker">
+      <label htmlFor={pickerId}>Conversation mode</label>
+      <select
+        id={pickerId}
+        aria-label="Conversation mode"
+        aria-describedby={descriptionId}
+        value={mode}
+        onChange={(event) =>
+          onRequestChange(event.target.value as WorkspaceConversationMode)
+        }
+      >
+        <option value="advisor">Advisor — Create, Learn, Explore</option>
+        <option value="codex">Codex — Build, Debug, and Ship</option>
+      </select>
+      <p id={descriptionId}>
+        {mode === "advisor"
+          ? "Advisor is read-only and has no project, terminal, Git, or execution authority."
+          : "Codex is project-attached and owns approved execution workflows."}
+      </p>
+    </div>
+  );
 }
 
 function initialInspectorOpen(): boolean {
@@ -662,10 +684,6 @@ export default function App({
   pollConversationTask = pollConversation,
   notifyConversationTask = notifyConversation,
   interruptConversationTask = interruptConversation,
-  loadChatConversationTask = loadChatConversation,
-  startChatConversationTask = startChatConversation,
-  pollChatConversationTask = pollChatConversation,
-  interruptChatConversationTask = interruptChatConversation,
   loadAdvisorConversationTask = loadAdvisorConversation,
   startAdvisorConversationTask = startAdvisorConversation,
   pollAdvisorConversationTask = pollAdvisorConversation,
@@ -787,12 +805,10 @@ export default function App({
   );
   const [pendingConversationMode, setPendingConversationMode] =
     useState<ConversationMode | null>(null);
-  const [chatConversation, setChatConversation] =
-    useState<ChatConversationSnapshot>(scaffoldChatConversation);
-  const [chatConversationBusy, setChatConversationBusy] = useState(false);
   const [advisorConversation, setAdvisorConversation] =
     useState<AdvisorConversationSnapshot>(scaffoldAdvisorConversation);
   const [advisorConversationBusy, setAdvisorConversationBusy] = useState(false);
+  const [advisorResetToken, setAdvisorResetToken] = useState(0);
   const conversationActionGenerations = useRef<Record<string, number>>({});
   const observedConversationStates = useRef<
     Record<string, ConversationSnapshot["state"]>
@@ -901,21 +917,6 @@ export default function App({
       active = false;
     };
   }, [loadAuth]);
-
-  useEffect(() => {
-    if (!accessGranted) return;
-    let active = true;
-    void loadChatConversationTask()
-      .then((result) => {
-        if (active) setChatConversation(result);
-      })
-      .catch(() => {
-        if (active) setChatConversation(scaffoldChatConversation);
-      });
-    return () => {
-      active = false;
-    };
-  }, [accessGranted, loadChatConversationTask]);
 
   useEffect(() => {
     if (!accessGranted) return;
@@ -1622,6 +1623,38 @@ export default function App({
     setInspectorOpen(initialInspectorOpen());
   }
 
+  function clearAdvisorTransientState() {
+    setAdvisorConversation(scaffoldAdvisorConversation);
+    setAdvisorConversationBusy(false);
+    setAdvisorProjectStateSnapshot(null);
+    setAdvisorProjectStateProjectId(null);
+    setAdvisorProjectStateSelection("idle");
+    setAdvisorResetToken((current) => current + 1);
+  }
+
+  function requestWorkspaceConversationMode(next: WorkspaceConversationMode) {
+    const requested = next === "advisor" ? "chat" : "codex";
+    if (requested !== conversationMode) setPendingConversationMode(requested);
+  }
+
+  function requestConversationWorkspace(route: "advisor" | "conversation") {
+    const requested = route === "advisor" ? "chat" : "codex";
+    if (requested !== conversationMode) {
+      setPendingConversationMode(requested);
+      return;
+    }
+    navigateWorkspace(route);
+  }
+
+  function confirmConversationModeChange() {
+    if (!pendingConversationMode) return;
+    const next = pendingConversationMode;
+    clearAdvisorTransientState();
+    setConversationMode(next);
+    setPendingConversationMode(null);
+    navigateWorkspace(next === "chat" ? "advisor" : "conversation");
+  }
+
   function requestAdvisorProjectState() {
     if (!currentProject) return;
     setAdvisorProjectStateSelection("confirming");
@@ -2240,40 +2273,6 @@ export default function App({
       throw error;
     } finally {
       setConversationBusy(false);
-    }
-  }
-
-  async function beginChatConversation(
-    request: ChatConversationStartRequest,
-  ): Promise<ChatConversationSnapshot> {
-    setChatConversationBusy(true);
-    try {
-      const result = await startChatConversationTask(request);
-      setChatConversation(result);
-      return result;
-    } finally {
-      setChatConversationBusy(false);
-    }
-  }
-
-  async function pollChatConversationById(
-    conversationId: string,
-  ): Promise<ChatConversationSnapshot> {
-    const result = await pollChatConversationTask(conversationId);
-    setChatConversation(result);
-    return result;
-  }
-
-  async function stopChatConversation(
-    conversationId: string,
-  ): Promise<ChatConversationSnapshot> {
-    setChatConversationBusy(true);
-    try {
-      const result = await interruptChatConversationTask(conversationId);
-      setChatConversation(result);
-      return result;
-    } finally {
-      setChatConversationBusy(false);
     }
   }
 
@@ -3176,7 +3175,14 @@ export default function App({
                 title={item.description}
                 onClick={(event) => {
                   event.preventDefault();
-                  navigateWorkspace(item.route);
+                  if (
+                    item.route === "advisor" ||
+                    item.route === "conversation"
+                  ) {
+                    requestConversationWorkspace(item.route);
+                  } else {
+                    navigateWorkspace(item.route);
+                  }
                 }}
               >
                 <Glyph name={item.icon} />
@@ -3202,7 +3208,14 @@ export default function App({
                 title={item.description}
                 onClick={(event) => {
                   event.preventDefault();
-                  navigateWorkspace(item.route);
+                  if (
+                    item.route === "advisor" ||
+                    item.route === "conversation"
+                  ) {
+                    requestConversationWorkspace(item.route);
+                  } else {
+                    navigateWorkspace(item.route);
+                  }
                 }}
               >
                 <Glyph name={item.icon} />
@@ -3328,7 +3341,7 @@ export default function App({
               <button
                 className="topbar-button topbar-button--primary"
                 type="button"
-                onClick={() => navigateWorkspace("conversation")}
+                onClick={() => requestConversationWorkspace("conversation")}
               >
                 <Glyph name="plus" />
                 New task
@@ -3391,6 +3404,34 @@ export default function App({
           }
         >
           <div className="workspace-stage">
+            {pendingConversationMode && (
+              <div
+                className="conversation-boundary-note"
+                role="dialog"
+                aria-modal="true"
+                aria-label="Confirm conversation mode change"
+              >
+                <strong>Confirm mode change</strong>
+                <p>
+                  {pendingConversationMode === "chat"
+                    ? "Advisor is read-only and has no project, terminal, Git, worktree, integration, native-action, approval, or dispatch capability."
+                    : "Codex requires an attached project and restores its visible execution and approval boundaries."}
+                  No project, attachment, integration, approval, dispatch,
+                  completion report, or transient transcript transfers
+                  automatically.
+                </p>
+                <button type="button" onClick={confirmConversationModeChange}>
+                  Confirm{" "}
+                  {pendingConversationMode === "chat" ? "Advisor" : "Codex"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPendingConversationMode(null)}
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
             <WorkspaceView
               route="home"
               active={workspaceLocation.route === "home"}
@@ -3452,7 +3493,12 @@ export default function App({
               route="advisor"
               active={workspaceLocation.route === "advisor"}
             >
+              <ConversationModePicker
+                mode={workspaceConversationMode(conversationMode)}
+                onRequestChange={requestWorkspaceConversationMode}
+              />
               <AdvisorWorkspace
+                resetToken={advisorResetToken}
                 availability={advisorViewState}
                 snapshot={advisorSnapshot}
                 selectedProjectState={advisorProjectStateSnapshot}
@@ -3669,76 +3715,15 @@ export default function App({
               active={workspaceLocation.route === "conversation"}
             >
               <section className="conversation-mode-workspace">
-                <div
-                  className="conversation-mode-switcher"
-                  role="group"
-                  aria-label="Conversation mode"
-                >
-                  <button
-                    type="button"
-                    aria-pressed={conversationMode === "chat"}
-                    onClick={() =>
-                      conversationMode === "chat"
-                        ? undefined
-                        : setPendingConversationMode("chat")
-                    }
-                  >
-                    Chat
-                  </button>
-                  <button
-                    type="button"
-                    aria-pressed={conversationMode === "codex"}
-                    onClick={() =>
-                      conversationMode === "codex"
-                        ? undefined
-                        : setPendingConversationMode("codex")
-                    }
-                  >
-                    Codex
-                  </button>
-                </div>
-                {pendingConversationMode && (
-                  <div
-                    className="conversation-boundary-note"
-                    role="dialog"
-                    aria-modal="true"
-                    aria-label="Confirm conversation mode change"
-                  >
-                    <strong>Confirm mode change</strong>
-                    <p>
-                      {pendingConversationMode === "chat"
-                        ? "Chat has no project, terminal, Git, worktree, integration, native-action, or approval capability."
-                        : "Codex requires an attached project and restores its visible execution and approval boundaries."}
-                      No project, attachment, integration, approval, or hidden
-                      transcript transfers automatically.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setConversationMode(pendingConversationMode);
-                        setPendingConversationMode(null);
-                      }}
-                    >
-                      Confirm{" "}
-                      {pendingConversationMode === "chat" ? "Chat" : "Codex"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setPendingConversationMode(null)}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                )}
+                <ConversationModePicker
+                  mode={workspaceConversationMode(conversationMode)}
+                  onRequestChange={requestWorkspaceConversationMode}
+                />
                 {conversationMode === "chat" ? (
-                  <ChatWorkspace
-                    auth={auth}
-                    snapshot={chatConversation}
-                    busy={chatConversationBusy}
-                    onStart={beginChatConversation}
-                    onPoll={pollChatConversationById}
-                    onInterrupt={stopChatConversation}
-                  />
+                  <p className="conversation-boundary-note" role="status">
+                    Advisor is selected. Use the Advisor workspace to create,
+                    learn, and explore without execution authority.
+                  </p>
                 ) : (
                   <ConversationWorkspace
                     availability={conversationState}

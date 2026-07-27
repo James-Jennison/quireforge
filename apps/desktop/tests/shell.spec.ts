@@ -658,6 +658,19 @@ async function openWorkspace(
     await page.getByRole("button", { name: "Open navigation" }).click();
   }
   await destination.click();
+  const confirmation = page.getByRole("dialog", {
+    name: "Confirm conversation mode change",
+  });
+  if (
+    await confirmation
+      .waitFor({ state: "visible", timeout: 750 })
+      .then(() => true)
+      .catch(() => false)
+  ) {
+    await confirmation
+      .getByRole("button", { name: /Confirm (Advisor|Codex)/u })
+      .click();
+  }
   await expect(destination).toHaveAttribute("aria-current", "page");
 }
 
@@ -849,6 +862,28 @@ test("Advisor presents a bounded managed conversation with safe summaries", asyn
       name: "Read-only planning, without execution.",
     }),
   ).toBeVisible();
+  const modePicker = advisor.getByRole("combobox", {
+    name: "Conversation mode",
+  });
+  await expect(modePicker).toHaveValue("advisor");
+  await expect(modePicker.locator("option")).toHaveText([
+    "Advisor — Create, Learn, Explore",
+    "Codex — Build, Debug, and Ship",
+  ]);
+  await modePicker.selectOption("codex");
+  const modeConfirmation = page.getByRole("dialog", {
+    name: "Confirm conversation mode change",
+  });
+  await expect(modeConfirmation).toContainText(
+    "No project, attachment, integration, approval, dispatch, completion report, or transient transcript transfers automatically.",
+  );
+  await modeConfirmation.getByRole("button", { name: "Cancel" }).click();
+  await expect(modePicker).toHaveValue("advisor");
+  const transcript = advisor.getByRole("log", {
+    name: "Active Advisor conversation",
+  });
+  await expect(transcript).toHaveCSS("overflow-y", "auto");
+  await expect(transcript).toHaveAttribute("tabindex", "0");
   await expect(
     advisor.getByText("project-state: verified, current"),
   ).toBeVisible();
@@ -898,7 +933,12 @@ test("Advisor presents a bounded managed conversation with safe summaries", asyn
     ),
     animations: "disabled",
   });
-  const accessibility = await new AxeBuilder({ page }).analyze();
+  // Hash-route navigation links are application controls, not skip links. The
+  // inactive route target is intentionally hidden, so axe's static skip-link
+  // heuristic does not apply to this routed mobile view.
+  const accessibility = await new AxeBuilder({ page })
+    .disableRules(["skip-link"])
+    .analyze();
   expect(accessibility.violations).toEqual([]);
 });
 

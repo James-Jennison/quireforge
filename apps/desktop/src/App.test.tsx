@@ -39,7 +39,6 @@ import {
 import { sessionLifecycleSchema } from "./lib/session";
 import { worktreeWorkspaceSchema } from "./lib/worktree";
 import { scaffoldCodexUsage } from "./lib/usage";
-import { scaffoldChatConversation } from "./lib/chat";
 import {
   parseAdvisorSelectedProjectStateSnapshot,
   advisorWorkspaceSnapshotSchema,
@@ -297,22 +296,23 @@ describe("QuireForge desktop shell", () => {
     );
   });
 
-  it("requires confirmation before persisting a project-free Chat mode", async () => {
-    const loadChatConversationTask = vi
-      .fn()
-      .mockResolvedValue(scaffoldChatConversation);
+  it("requires confirmation before switching to the separate Advisor mode", async () => {
     const { unmount } = render(
       <App
         loadBootstrap={() => Promise.resolve(scaffoldBootstrap)}
         loadRuntime={() => Promise.resolve(scaffoldCodexRuntime)}
         loadAuth={() => Promise.resolve(authenticatedAuth)}
         loadProjects={() => Promise.resolve(attachedProject)}
-        loadChatConversationTask={loadChatConversationTask}
       />,
     );
 
     await navigateTo("New task");
-    fireEvent.click(screen.getByRole("button", { name: "Chat" }));
+    fireEvent.change(
+      screen.getByRole("combobox", { name: "Conversation mode" }),
+      {
+        target: { value: "advisor" },
+      },
+    );
     expect(screen.getByRole("dialog")).toHaveTextContent(/no project/i);
     expect(window.localStorage.getItem("quireforge-conversation-mode")).toBe(
       "codex",
@@ -323,11 +323,16 @@ describe("QuireForge desktop shell", () => {
       "codex",
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Chat" }));
-    fireEvent.click(screen.getByRole("button", { name: "Confirm Chat" }));
+    fireEvent.change(
+      screen.getByRole("combobox", { name: "Conversation mode" }),
+      {
+        target: { value: "advisor" },
+      },
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Confirm Advisor" }));
     expect(
       await screen.findByRole("heading", {
-        name: "A no-project conversation.",
+        name: "Read-only planning, without execution.",
       }),
     ).toBeInTheDocument();
     expect(window.localStorage.getItem("quireforge-conversation-mode")).toBe(
@@ -341,13 +346,12 @@ describe("QuireForge desktop shell", () => {
         loadRuntime={() => Promise.resolve(scaffoldCodexRuntime)}
         loadAuth={() => Promise.resolve(authenticatedAuth)}
         loadProjects={() => Promise.resolve(attachedProject)}
-        loadChatConversationTask={loadChatConversationTask}
       />,
     );
-    await navigateTo("New task");
+    await navigateTo("Advisor");
     expect(
       await screen.findByRole("heading", {
-        name: "A no-project conversation.",
+        name: "Read-only planning, without execution.",
       }),
     ).toBeInTheDocument();
   });
@@ -364,10 +368,9 @@ describe("QuireForge desktop shell", () => {
     );
 
     await navigateTo("New task");
-    expect(screen.getByRole("button", { name: "Codex" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
+    expect(
+      screen.getByRole("combobox", { name: "Conversation mode" }),
+    ).toHaveValue("codex");
     expect(window.localStorage.getItem("quireforge-conversation-mode")).toBe(
       "codex",
     );

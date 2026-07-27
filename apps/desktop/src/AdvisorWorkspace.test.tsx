@@ -290,6 +290,22 @@ describe("AdvisorWorkspace", () => {
       "aria-live",
       "polite",
     );
+    expect(
+      screen.getByRole("log", { name: "Active Advisor conversation" }),
+    ).toHaveAttribute("tabindex", "0");
+  });
+
+  it("clears transient composer state and attachments when a mode reset is accepted", async () => {
+    const { rerender } = render(<AdvisorWorkspace {...props} resetToken={0} />);
+    const prompt = screen.getByRole("textbox", { name: "Advisor message" });
+    fireEvent.change(prompt, { target: { value: "Do not transfer this." } });
+    expect(prompt).toHaveValue("Do not transfer this.");
+
+    rerender(<AdvisorWorkspace {...props} resetToken={1} />);
+
+    await waitFor(() => expect(prompt).toHaveValue(""));
+    expect(advisorDraftBridge.cancelAdvisorTextAttachment).toHaveBeenCalled();
+    expect(advisorDraftBridge.cancelAdvisorImageAttachment).toHaveBeenCalled();
   });
 
   it("keeps the capability notice separate when a sendable message is entered", () => {
