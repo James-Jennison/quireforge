@@ -556,6 +556,45 @@ mod tests {
         assert_eq!(result.chars().count(), MAX_PROJECTION_CHARS);
     }
     #[test]
+    fn source_boundary_helpers_are_path_free_and_hash_stable() {
+        assert_eq!(
+            validate_display_name("brief.pdf"),
+            Ok("brief.pdf".to_owned())
+        );
+        assert_eq!(
+            validate_display_name("/tmp/brief.pdf"),
+            Err(AdvisorDocumentAttachmentDiagnosticCode::UnsafeName)
+        );
+        let first = format!("{:x}", Sha256::digest(b"same bytes"));
+        let second = format!("{:x}", Sha256::digest(b"same bytes"));
+        let changed = format!("{:x}", Sha256::digest(b"changed bytes"));
+        assert_eq!(first, second);
+        assert_ne!(first, changed);
+        assert!(valid_hash(&first));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn stage_rejects_direct_symlinks_and_non_regular_sources() {
+        use std::os::unix::fs::symlink;
+        let dir = std::env::temp_dir().join(Uuid::now_v7().to_string());
+        std::fs::create_dir_all(&dir).unwrap();
+        let target = dir.join("target.pdf");
+        std::fs::write(&target, b"%PDF-not-a-real-document").unwrap();
+        let link = dir.join("linked.pdf");
+        symlink(&target, &link).unwrap();
+        let service = AdvisorDocumentAttachmentService::default();
+        assert_eq!(
+            service.stage_path(link).diagnostic_code,
+            Some(AdvisorDocumentAttachmentDiagnosticCode::ReadFailed)
+        );
+        assert_eq!(
+            service.stage_path(dir.clone()).diagnostic_code,
+            Some(AdvisorDocumentAttachmentDiagnosticCode::ReadFailed)
+        );
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+    #[test]
     fn active_content_dictionary_is_rejected() {
         let mut dictionary = lopdf::Dictionary::new();
         dictionary.set("JavaScript", Object::Null);

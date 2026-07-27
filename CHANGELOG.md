@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — 0.1.0-beta.24
+## Unreleased — 0.1.0-beta.25
 
 ### Added
 
@@ -14,6 +14,8 @@
 - Define the PDF parser boundary: pinned lopdf accepts low-level PDF syntax;
   QuireForge owns the source boundary, bounded post-parse policy, projection,
   lifecycle, and path-free diagnostics. Beta.24 supersedes beta.23 locally.
+- Add direct QuireForge-owned PDF source-boundary and path-free diagnostic
+  coverage. Beta.25 supersedes beta.24 locally.
 
 - Add Milestone 32’s bounded, transient Advisor conversation viewport and
   confirmed Advisor/Codex mode picker. Mode changes clear temporary Advisor

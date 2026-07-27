@@ -2902,7 +2902,7 @@ dependencies = [
 
 [[package]]
 name = "quireforge"
-version = "0.1.0-beta.24"
+version = "0.1.0-beta.25"
 dependencies = [
  "base64 0.22.1",
  "gtk",

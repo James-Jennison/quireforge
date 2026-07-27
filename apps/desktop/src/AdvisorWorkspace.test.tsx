@@ -102,6 +102,26 @@ const props = {
 };
 
 describe("AdvisorWorkspace", () => {
+  it.each([
+    ["malformed-or-unsupported-document", /malformed or unsupported/i],
+    ["encrypted", /encrypted PDFs are not supported/i],
+    ["active-content", /active content is not supported/i],
+    ["embedded-content", /embedded content is not supported/i],
+    ["external-action", /external actions are not supported/i],
+  ])("announces the path-free PDF %s diagnostic", async (diagnosticCode, text) => {
+    advisorDraftBridge.loadAdvisorDocumentAttachment.mockResolvedValueOnce({
+      schemaVersion: 1,
+      state: "unavailable",
+      attachment: null,
+      confirmationState: null,
+      diagnosticCode,
+    });
+    render(<AdvisorWorkspace {...props} />);
+    expect(await screen.findByRole("alert")).toHaveTextContent(text);
+    expect(screen.getByRole("alert")).not.toHaveTextContent("/mnt/");
+    expect(screen.getByRole("button", { name: "Attach PDF document" })).toBeEnabled();
+  });
+
   it("renders a managed read-only composer without executable controls", () => {
     render(
       <AdvisorWorkspace
