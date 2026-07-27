@@ -27,6 +27,9 @@ import {
   cancelAdvisorDocumentAttachment,
   loadAdvisorDocumentAttachment,
   pickAdvisorDocumentAttachment,
+  cancelAdvisorArchiveAttachment,
+  loadAdvisorArchiveAttachment,
+  pickAdvisorArchiveAttachment,
 } from "./lib/bridge";
 import {
   scaffoldAdvisorTextAttachment,
@@ -41,6 +44,10 @@ import {
   scaffoldAdvisorDocumentAttachment,
   type AdvisorDocumentAttachmentSnapshot,
 } from "./lib/advisorDocumentAttachment";
+import {
+  scaffoldAdvisorArchiveAttachment,
+  type AdvisorArchiveAttachmentSnapshot,
+} from "./lib/advisorArchiveAttachment";
 import type {
   AdvisorApprovalSnapshot,
   AdvisorDispatchSnapshot,
@@ -160,6 +167,10 @@ export function AdvisorWorkspace({
     useState<AdvisorDocumentAttachmentSnapshot>(
       scaffoldAdvisorDocumentAttachment,
     );
+  const [archiveAttachment, setArchiveAttachment] =
+    useState<AdvisorArchiveAttachmentSnapshot>(
+      scaffoldAdvisorArchiveAttachment,
+    );
   const [exportCandidateIndex, setExportCandidateIndex] = useState(0);
   const [actionError, setActionError] = useState(false);
   const [draft, setDraft] = useState("");
@@ -246,10 +257,12 @@ export function AdvisorWorkspace({
     setTextAttachment(scaffoldAdvisorTextAttachment);
     setImageAttachment(scaffoldAdvisorImageAttachment);
     setDocumentAttachment(scaffoldAdvisorDocumentAttachment);
+    setArchiveAttachment(scaffoldAdvisorArchiveAttachment);
     void Promise.all([
       cancelAdvisorTextAttachment(),
       cancelAdvisorImageAttachment(),
       cancelAdvisorDocumentAttachment(),
+      cancelAdvisorArchiveAttachment(),
     ]).catch(() => setActionError(true));
   }, [resetToken]);
 
@@ -272,6 +285,17 @@ export function AdvisorWorkspace({
       .catch(() =>
         setImageAttachment({
           ...scaffoldAdvisorImageAttachment,
+          state: "unavailable",
+          diagnosticCode: "read-failed",
+        }),
+      );
+  }, []);
+  useEffect(() => {
+    void loadAdvisorArchiveAttachment()
+      .then(setArchiveAttachment)
+      .catch(() =>
+        setArchiveAttachment({
+          ...scaffoldAdvisorArchiveAttachment,
           state: "unavailable",
           diagnosticCode: "read-failed",
         }),
@@ -309,6 +333,8 @@ export function AdvisorWorkspace({
       documentAttachment.state === "ready"
         ? documentAttachment.attachment
         : null;
+    const archive =
+      archiveAttachment.state === "ready" ? archiveAttachment.attachment : null;
     void onConversationStart({
       prompt,
       projectId,
@@ -323,11 +349,17 @@ export function AdvisorWorkspace({
       documentAttachmentConfirmation: document
         ? "confirmed-for-single-send"
         : null,
+      archiveAttachmentId: archive?.attachmentId ?? null,
+      archiveAttachmentManifestSha256: archive?.sha256 ?? null,
+      archiveAttachmentConfirmation: archive
+        ? "confirmed-for-single-send"
+        : null,
     })
       .then(() => setPrompt(""))
       .then(() => setTextAttachment(scaffoldAdvisorTextAttachment))
       .then(() => setImageAttachment(scaffoldAdvisorImageAttachment))
       .then(() => setDocumentAttachment(scaffoldAdvisorDocumentAttachment))
+      .then(() => setArchiveAttachment(scaffoldAdvisorArchiveAttachment))
       .catch(() => setActionError(true));
   }
 
@@ -389,6 +421,27 @@ export function AdvisorWorkspace({
     setAttachmentBusy(true);
     try {
       setDocumentAttachment(await cancelAdvisorDocumentAttachment());
+    } catch {
+      setActionError(true);
+    } finally {
+      setAttachmentBusy(false);
+    }
+  }
+  async function pickArchiveAttachment() {
+    setAttachmentBusy(true);
+    setActionError(false);
+    try {
+      setArchiveAttachment(await pickAdvisorArchiveAttachment());
+    } catch {
+      setActionError(true);
+    } finally {
+      setAttachmentBusy(false);
+    }
+  }
+  async function clearArchiveAttachment() {
+    setAttachmentBusy(true);
+    try {
+      setArchiveAttachment(await cancelAdvisorArchiveAttachment());
     } catch {
       setActionError(true);
     } finally {
@@ -1027,7 +1080,8 @@ export function AdvisorWorkspace({
                     conversationBusy ||
                     authentication !== "ready" ||
                     imageAttachment.state === "ready" ||
-                    documentAttachment.state === "ready"
+                    documentAttachment.state === "ready" ||
+                    archiveAttachment.state === "ready"
                   }
                 >
                   Attach text or data file
@@ -1084,7 +1138,8 @@ export function AdvisorWorkspace({
                     conversationBusy ||
                     authentication !== "ready" ||
                     textAttachment.state === "ready" ||
-                    documentAttachment.state === "ready"
+                    documentAttachment.state === "ready" ||
+                    archiveAttachment.state === "ready"
                   }
                   onClick={() => void pickImageAttachment()}
                 >
@@ -1141,7 +1196,8 @@ export function AdvisorWorkspace({
                     conversationBusy ||
                     authentication !== "ready" ||
                     textAttachment.state === "ready" ||
-                    imageAttachment.state === "ready"
+                    imageAttachment.state === "ready" ||
+                    archiveAttachment.state === "ready"
                   }
                   onClick={() => void pickDocumentAttachment()}
                 >
@@ -1170,10 +1226,78 @@ export function AdvisorWorkspace({
                 </p>
               )}
             </div>
+            <div
+              className="advisor-text-attachment"
+              aria-label="Optional ZIP archive attachment"
+            >
+              <p className="project-message" role="note">
+                Optional: choose one ZIP archive up to 32 MiB. Advisor receives
+                only a temporary bounded entry-name manifest, never archive
+                contents or a source path.
+              </p>
+              {archiveAttachment.state === "ready" &&
+              archiveAttachment.attachment ? (
+                <div>
+                  <p role="status">
+                    Ready: {archiveAttachment.attachment.displayName} (ZIP,{" "}
+                    {archiveAttachment.attachment.byteSize} bytes,{" "}
+                    {archiveAttachment.attachment.projection.includedEntryCount}{" "}
+                    of{" "}
+                    {
+                      archiveAttachment.attachment.projection
+                        .discoveredEntryCount
+                    }{" "}
+                    entries listed
+                    {archiveAttachment.attachment.projection.truncated
+                      ? "; manifest truncated"
+                      : ""}
+                    , SHA-256 verified).
+                  </p>
+                  <button
+                    type="button"
+                    disabled={attachmentBusy || active || conversationBusy}
+                    onClick={() => void clearArchiveAttachment()}
+                  >
+                    Remove attached ZIP archive
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  disabled={
+                    attachmentBusy ||
+                    active ||
+                    conversationBusy ||
+                    authentication !== "ready" ||
+                    textAttachment.state === "ready" ||
+                    imageAttachment.state === "ready" ||
+                    documentAttachment.state === "ready"
+                  }
+                  onClick={() => void pickArchiveAttachment()}
+                >
+                  Attach ZIP archive
+                </button>
+              )}
+              {archiveAttachment.state === "unavailable" && (
+                <p
+                  className="project-message project-message--warning"
+                  role="alert"
+                >
+                  {archiveAttachment.diagnosticCode === "encrypted-archive"
+                    ? "Encrypted ZIP archives are not supported and were not included."
+                    : archiveAttachment.diagnosticCode === "unsafe-entry-path"
+                      ? "This ZIP has an unsafe entry path and was not included."
+                      : archiveAttachment.diagnosticCode === "duplicate-entry"
+                        ? "This ZIP has ambiguous duplicate entries and was not included."
+                        : "The ZIP archive was not available and was not included."}
+                </p>
+              )}
+            </div>
             <p className="project-message" role="note">
               Advisor is read-only: no commands, project changes, or dispatch.
-              Project State and one text/data file, one image, or one PDF
-              projection are optional and require confirmation.
+              Project State and one text/data file, one image, one PDF
+              projection, or one ZIP manifest are optional and require
+              confirmation.
             </p>
             {sendDisabledReason && !active && (
               <p className="project-message" role="status">
@@ -1204,7 +1328,8 @@ export function AdvisorWorkspace({
                     if (
                       textAttachment.state === "ready" ||
                       imageAttachment.state === "ready" ||
-                      documentAttachment.state === "ready"
+                      documentAttachment.state === "ready" ||
+                      archiveAttachment.state === "ready"
                     )
                       setConfirmAttachmentSend(true);
                     else if (includeProjectState && canIncludeProjectState)
@@ -1251,7 +1376,8 @@ export function AdvisorWorkspace({
           {confirmAttachmentSend &&
             (textAttachment.attachment ||
               imageAttachment.attachment ||
-              documentAttachment.attachment) && (
+              documentAttachment.attachment ||
+              archiveAttachment.attachment) && (
               <div
                 className="project-confirmation"
                 role="dialog"
@@ -1264,7 +1390,8 @@ export function AdvisorWorkspace({
                     (
                       textAttachment.attachment ??
                       imageAttachment.attachment ??
-                      documentAttachment.attachment
+                      documentAttachment.attachment ??
+                      archiveAttachment.attachment
                     )?.displayName
                   }{" "}
                   as transient
@@ -1272,7 +1399,9 @@ export function AdvisorWorkspace({
                     ? " PNG/JPEG image data"
                     : documentAttachment.attachment
                       ? " bounded PDF text projection"
-                      : " normalized text"}{" "}
+                      : archiveAttachment.attachment
+                        ? " bounded ZIP entry-name manifest"
+                        : " normalized text"}{" "}
                   in this one Advisor message? Its path is not shared, it is
                   consumed after this send, and it grants no project or
                   execution authority.

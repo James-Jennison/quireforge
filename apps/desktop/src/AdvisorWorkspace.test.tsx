@@ -33,6 +33,16 @@ const advisorDraftBridge = vi.hoisted(() => ({
   }),
   pickAdvisorDocumentAttachment: vi.fn(),
   cancelAdvisorDocumentAttachment: vi.fn(),
+  loadAdvisorArchiveAttachment: vi.fn().mockResolvedValue({
+    schemaVersion: 1,
+    state: "empty",
+    attachment: null,
+    entries: [],
+    confirmationState: null,
+    diagnosticCode: null,
+  }),
+  pickAdvisorArchiveAttachment: vi.fn(),
+  cancelAdvisorArchiveAttachment: vi.fn(),
   saveAdvisorTextExport: vi.fn(),
 }));
 
@@ -232,6 +242,9 @@ describe("AdvisorWorkspace", () => {
       documentAttachmentId: null,
       documentAttachmentManifestSha256: null,
       documentAttachmentConfirmation: null,
+      archiveAttachmentId: null,
+      archiveAttachmentManifestSha256: null,
+      archiveAttachmentConfirmation: null,
     });
   });
 
@@ -353,7 +366,7 @@ describe("AdvisorWorkspace", () => {
     ).toBeEnabled();
     expect(
       screen.getByText(
-        /Project State and one text\/data file, one image, or one PDF projection are optional and require confirmation/u,
+        /Project State and one text\/data file, one image, one PDF projection, or one ZIP manifest are optional and require confirmation/u,
       ),
     ).toBeInTheDocument();
     expect(
@@ -399,7 +412,9 @@ describe("AdvisorWorkspace", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Send to Advisor" }));
     expect(onConversationStart).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Confirm inclusion" }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Confirm inclusion" }),
+    );
     expect(onConversationStart).toHaveBeenCalledWith({
       prompt: "Review the attached notes.",
       projectId: null,
@@ -412,7 +427,74 @@ describe("AdvisorWorkspace", () => {
       documentAttachmentId: null,
       documentAttachmentManifestSha256: null,
       documentAttachmentConfirmation: null,
+      archiveAttachmentId: null,
+      archiveAttachmentManifestSha256: null,
+      archiveAttachmentConfirmation: null,
     });
+  });
+
+  it("shows a path-free ZIP manifest and sends only its confirmed identity", async () => {
+    const archive = {
+      schemaVersion: 1,
+      state: "ready",
+      attachment: {
+        attachmentId: "018f0000-0000-7000-8000-000000000097",
+        displayName: "notes.zip",
+        contentCategory: "archive",
+        mediaType: "zip",
+        byteSize: 120,
+        sha256: "b".repeat(64),
+        projection: {
+          kind: "archive-manifest-v1",
+          schemaVersion: 1,
+          discoveredEntryCount: 1,
+          includedEntryCount: 1,
+          omittedEntryCount: 0,
+          declaredAggregateUncompressedBytes: 12,
+          manifestByteSize: 80,
+          truncated: false,
+          warnings: [],
+        },
+        disposal: "transient-memory-one-send",
+      },
+      entries: [
+        {
+          name: "notes.txt",
+          kind: "file",
+          compressedSize: 8,
+          declaredUncompressedSize: 12,
+          nestedArchiveLike: false,
+        },
+      ],
+      confirmationState: "confirmation-required",
+      diagnosticCode: null,
+    };
+    advisorDraftBridge.loadAdvisorArchiveAttachment.mockResolvedValueOnce(
+      archive,
+    );
+    const onConversationStart = vi
+      .fn()
+      .mockResolvedValue(scaffoldAdvisorConversation);
+    render(
+      <AdvisorWorkspace {...props} onConversationStart={onConversationStart} />,
+    );
+    expect(await screen.findByText(/Ready: notes\.zip/u)).toBeInTheDocument();
+    expect(screen.queryByText("/tmp/notes.zip")).not.toBeInTheDocument();
+    fireEvent.change(screen.getByRole("textbox", { name: "Advisor message" }), {
+      target: { value: "Review this archive manifest." },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Send to Advisor" }));
+    expect(onConversationStart).not.toHaveBeenCalled();
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Confirm inclusion" }),
+    );
+    expect(onConversationStart).toHaveBeenCalledWith(
+      expect.objectContaining({
+        archiveAttachmentId: archive.attachment.attachmentId,
+        archiveAttachmentManifestSha256: archive.attachment.sha256,
+        archiveAttachmentConfirmation: "confirmed-for-single-send",
+      }),
+    );
   });
 
   it("labels Phase A draft approval as non-executable", () => {

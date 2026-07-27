@@ -13,6 +13,7 @@ use serde_json::{json, Value};
 use tokio::sync::Mutex;
 use uuid::Uuid;
 
+use crate::advisor_archive_attachment::ClaimedAdvisorArchiveAttachment;
 use crate::advisor_attachment::ClaimedAdvisorTextAttachment;
 use crate::advisor_document_attachment::ClaimedAdvisorDocumentAttachment;
 use crate::advisor_image_attachment::ClaimedAdvisorImageAttachment;
@@ -67,6 +68,10 @@ pub struct AdvisorConversationStartRequest {
     #[serde(default)]
     pub document_attachment_confirmation:
         Option<crate::advisor_attachment::AdvisorContentConfirmationState>,
+    pub archive_attachment_id: Option<String>,
+    pub archive_attachment_manifest_sha256: Option<String>,
+    pub archive_attachment_confirmation:
+        Option<crate::advisor_attachment::AdvisorContentConfirmationState>,
 }
 
 impl AdvisorConversationStartRequest {
@@ -85,10 +90,15 @@ impl AdvisorConversationStartRequest {
                 == self.document_attachment_manifest_sha256.is_some())
             && (self.document_attachment_id.is_some()
                 == self.document_attachment_confirmation.is_some())
+            && (self.archive_attachment_id.is_some()
+                == self.archive_attachment_manifest_sha256.is_some())
+            && (self.archive_attachment_id.is_some()
+                == self.archive_attachment_confirmation.is_some())
             && [
                 self.attachment_id.is_some(),
                 self.image_attachment_id.is_some(),
                 self.document_attachment_id.is_some(),
+                self.archive_attachment_id.is_some(),
             ]
             .into_iter()
             .filter(|value| *value)
@@ -256,6 +266,7 @@ impl AdvisorConversationService {
         attachment: Option<ClaimedAdvisorTextAttachment>,
         image_attachment: Option<ClaimedAdvisorImageAttachment>,
         document_attachment: Option<ClaimedAdvisorDocumentAttachment>,
+        archive_attachment: Option<ClaimedAdvisorArchiveAttachment>,
     ) -> AdvisorConversationSnapshot {
         match managed_chat_authentication_state(authentication) {
             ChatAuthenticationState::SignInRequired | ChatAuthenticationState::SignInPending => {
@@ -299,6 +310,7 @@ impl AdvisorConversationService {
             attachment.as_ref(),
             image_attachment.as_ref(),
             document_attachment.as_ref(),
+            archive_attachment.as_ref(),
             projects,
         )
         .await;
@@ -467,6 +479,7 @@ impl ActiveAdvisorConversation {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn start_advisor_process(
     command: &AppServerCommand,
     prompt: &str,
@@ -474,6 +487,7 @@ async fn start_advisor_process(
     attachment: Option<&ClaimedAdvisorTextAttachment>,
     image_attachment: Option<&ClaimedAdvisorImageAttachment>,
     document_attachment: Option<&ClaimedAdvisorDocumentAttachment>,
+    archive_attachment: Option<&ClaimedAdvisorArchiveAttachment>,
     projects: &ProjectService,
 ) -> Result<ActiveAdvisorConversation, AdvisorConversationDiagnosticCode> {
     let mut process = AppServerProcess::spawn(command.clone())
@@ -499,6 +513,7 @@ async fn start_advisor_process(
                         selected_project_state,
                         attachment,
                         document_attachment,
+                        archive_attachment,
                     ),
                     image_attachment,
                 ),
@@ -586,6 +601,7 @@ fn advisor_input(
     context: Option<&AdvisorSelectedProjectStateSnapshot>,
     attachment: Option<&ClaimedAdvisorTextAttachment>,
     document_attachment: Option<&ClaimedAdvisorDocumentAttachment>,
+    archive_attachment: Option<&ClaimedAdvisorArchiveAttachment>,
 ) -> String {
     let mut input = prompt.to_owned();
     if let Some(context) = context {
@@ -602,6 +618,9 @@ fn advisor_input(
     }
     if let Some(attachment) = document_attachment {
         input.push_str(&format!("\n\nUser-confirmed PDF projection (transient, bounded, path-free):\nname: {}\nsha256: {}\nprojection: pdf-plain-text-v1\n--- begin projection ---\n{}\n--- end projection ---", attachment.manifest.display_name, attachment.manifest.sha256, attachment.projection_text));
+    }
+    if let Some(attachment) = archive_attachment {
+        input.push_str(&format!("\n\nUser-confirmed ZIP archive manifest (transient, bounded, path-free):\nname: {}\nsha256: {}\nprojection: archive-manifest-v1\n--- begin manifest ---\n{}\n--- end manifest ---", attachment.manifest.display_name, attachment.manifest.sha256, attachment.projection_text));
     }
     input
 }
@@ -818,7 +837,10 @@ mod tests {
 
     #[test]
     fn context_is_a_safe_projection_and_is_only_added_when_selected() {
-        assert_eq!(advisor_input("Plan this", None, None, None), "Plan this");
+        assert_eq!(
+            advisor_input("Plan this", None, None, None, None),
+            "Plan this"
+        );
         let context = AdvisorSelectedProjectStateSnapshot {
             schema_version: 1,
             source_kind: crate::advisor::AdvisorContextKind::ProjectState,
@@ -829,7 +851,7 @@ mod tests {
             worktree: crate::project_state::WorktreeState::Clean,
             diagnostic_count: 0,
         };
-        let input = advisor_input("Plan this", Some(&context), None, None);
+        let input = advisor_input("Plan this", Some(&context), None, None, None);
         assert!(input.contains("User-confirmed Project State summary"));
         assert!(!input.contains("/mnt/"));
         assert!(!input.contains("main"));
@@ -867,7 +889,7 @@ mod tests {
             },
             projection_text: "safe summary".to_owned(),
         };
-        let input = advisor_input("Plan safely", None, None, Some(&document));
+        let input = advisor_input("Plan safely", None, None, Some(&document), None);
         assert!(input.contains("Plan safely"));
         assert!(input.contains("safe summary"));
         assert!(!input.contains("/mnt/"));
@@ -876,12 +898,51 @@ mod tests {
         assert!(!input.contains("%PDF-"));
     }
 
+    #[test]
+    fn archive_transport_is_manifest_text_only_and_path_free() {
+        use crate::advisor_archive_attachment::{
+            AdvisorArchiveAttachmentManifest, AdvisorArchiveMediaType, AdvisorArchiveProjection,
+            AdvisorArchiveProjectionKind,
+        };
+        use crate::advisor_attachment::{AdvisorContentCategory, AdvisorContentDisposal};
+        let archive = ClaimedAdvisorArchiveAttachment {
+            manifest: AdvisorArchiveAttachmentManifest {
+                attachment_id: "018f0000-0000-7000-8000-000000000098".to_owned(),
+                display_name: "safe.zip".to_owned(),
+                content_category: AdvisorContentCategory::Archive,
+                media_type: AdvisorArchiveMediaType::Zip,
+                byte_size: 12,
+                sha256: "b".repeat(64),
+                projection: AdvisorArchiveProjection {
+                    kind: AdvisorArchiveProjectionKind::ArchiveManifestV1,
+                    schema_version: 1,
+                    discovered_entry_count: 1,
+                    included_entry_count: 1,
+                    omitted_entry_count: 0,
+                    declared_aggregate_uncompressed_bytes: 4,
+                    manifest_byte_size: 90,
+                    truncated: false,
+                    warnings: Vec::new(),
+                },
+                disposal: AdvisorContentDisposal::TransientMemoryOneSend,
+            },
+            projection_text: "archive-manifest-v1\nnotes.txt\tFile\t2\t4\n".to_owned(),
+        };
+        let input = advisor_input("Review safely", None, None, None, Some(&archive));
+        assert!(input.contains("archive-manifest-v1"));
+        assert!(input.contains("notes.txt"));
+        assert!(!input.contains("/mnt/"));
+        assert!(!input.contains("localImage"));
+        assert!(!input.contains("data:application/zip"));
+        assert!(!input.contains("PK\\x03\\x04"));
+    }
+
     #[tokio::test]
     async fn managed_advisor_starts_without_project_or_tool_capabilities() {
         let script = r#"
 read -r initialize
 case "$initialize" in
-  *'"method":"initialize"'*'"clientInfo":{"name":"quireforge","title":"QuireForge","version":"0.1.0-beta.29"}'*) ;;
+  *'"method":"initialize"'*'"clientInfo":{"name":"quireforge","title":"QuireForge","version":"0.1.0-beta.30"}'*) ;;
   *) exit 70 ;;
 esac
 printf '%s\n' '{"id":1,"result":{}}'
@@ -907,9 +968,13 @@ printf '%s\n' '{"method":"turn/completed","params":{"threadId":"018f0000-0000-70
                     document_attachment_id: None,
                     document_attachment_manifest_sha256: None,
                     document_attachment_confirmation: None,
+                    archive_attachment_id: None,
+                    archive_attachment_manifest_sha256: None,
+                    archive_attachment_confirmation: None,
                 },
                 &CodexAuthSnapshot::authenticated(AuthAccountKind::Chatgpt),
                 &ProjectService::in_memory(),
+                None,
                 None,
                 None,
                 None,
@@ -935,7 +1000,7 @@ printf '%s\n' '{"method":"turn/completed","params":{"threadId":"018f0000-0000-70
         let script = r#"
 read -r initialize
 case "$initialize" in
-  *'"method":"initialize"'*'"clientInfo":{"name":"quireforge","title":"QuireForge","version":"0.1.0-beta.29"}'*) ;;
+  *'"method":"initialize"'*'"clientInfo":{"name":"quireforge","title":"QuireForge","version":"0.1.0-beta.30"}'*) ;;
   *) exit 70 ;;
 esac
 printf '%s\n' '{"id":1,"result":{}}'
@@ -963,9 +1028,13 @@ printf '%s\n' '{"method":"turn/completed","params":{"threadId":"018f0000-0000-70
                     document_attachment_id: None,
                     document_attachment_manifest_sha256: None,
                     document_attachment_confirmation: None,
+                    archive_attachment_id: None,
+                    archive_attachment_manifest_sha256: None,
+                    archive_attachment_confirmation: None,
                 },
                 &CodexAuthSnapshot::authenticated(AuthAccountKind::Chatgpt),
                 &ProjectService::in_memory(),
+                None,
                 None,
                 None,
                 None,
@@ -1009,9 +1078,13 @@ printf '%s\n' '{"id":3,"error":{"code":-32602,"message":"do not expose this eith
                     document_attachment_id: None,
                     document_attachment_manifest_sha256: None,
                     document_attachment_confirmation: None,
+                    archive_attachment_id: None,
+                    archive_attachment_manifest_sha256: None,
+                    archive_attachment_confirmation: None,
                 },
                 &CodexAuthSnapshot::authenticated(AuthAccountKind::Chatgpt),
                 &ProjectService::in_memory(),
+                None,
                 None,
                 None,
                 None,
@@ -1046,9 +1119,13 @@ printf '%s\n' '{"id":3,"error":{"code":-32602,"message":"do not expose this eith
                     document_attachment_id: None,
                     document_attachment_manifest_sha256: None,
                     document_attachment_confirmation: None,
+                    archive_attachment_id: None,
+                    archive_attachment_manifest_sha256: None,
+                    archive_attachment_confirmation: None,
                 },
                 &CodexAuthSnapshot::authenticated(AuthAccountKind::ApiKey),
                 &ProjectService::in_memory(),
+                None,
                 None,
                 None,
                 None,

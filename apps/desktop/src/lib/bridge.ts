@@ -120,6 +120,10 @@ import {
   type AdvisorDocumentAttachmentSnapshot,
 } from "./advisorDocumentAttachment";
 import {
+  advisorArchiveAttachmentSnapshotSchema,
+  type AdvisorArchiveAttachmentSnapshot,
+} from "./advisorArchiveAttachment";
+import {
   advisorWorkspaceSnapshotSchema,
   parseAdvisorProjectStateReadRequest,
   parseAdvisorSelectedProjectStateSnapshot,
@@ -292,6 +296,12 @@ export const ADVISOR_DOCUMENT_ATTACHMENT_PICK_COMMAND =
   "advisor_document_attachment_pick";
 export const ADVISOR_DOCUMENT_ATTACHMENT_CANCEL_COMMAND =
   "advisor_document_attachment_cancel";
+export const ADVISOR_ARCHIVE_ATTACHMENT_STATUS_COMMAND =
+  "advisor_archive_attachment_status";
+export const ADVISOR_ARCHIVE_ATTACHMENT_PICK_COMMAND =
+  "advisor_archive_attachment_pick";
+export const ADVISOR_ARCHIVE_ATTACHMENT_CANCEL_COMMAND =
+  "advisor_archive_attachment_cancel";
 export const CONVERSATION_ACTIVE_COMMAND = "conversation_active";
 export const CONVERSATION_NOTIFY_COMMAND = "conversation_notify";
 export const CONVERSATION_START_COMMAND = "conversation_start";
@@ -590,6 +600,27 @@ export async function cancelAdvisorDocumentAttachment(
 ): Promise<AdvisorDocumentAttachmentSnapshot> {
   return advisorDocumentAttachmentSnapshotSchema.parse(
     await invokeFunction(ADVISOR_DOCUMENT_ATTACHMENT_CANCEL_COMMAND),
+  );
+}
+export async function loadAdvisorArchiveAttachment(
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<AdvisorArchiveAttachmentSnapshot> {
+  return advisorArchiveAttachmentSnapshotSchema.parse(
+    await invokeFunction(ADVISOR_ARCHIVE_ATTACHMENT_STATUS_COMMAND),
+  );
+}
+export async function pickAdvisorArchiveAttachment(
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<AdvisorArchiveAttachmentSnapshot> {
+  return advisorArchiveAttachmentSnapshotSchema.parse(
+    await invokeFunction(ADVISOR_ARCHIVE_ATTACHMENT_PICK_COMMAND),
+  );
+}
+export async function cancelAdvisorArchiveAttachment(
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<AdvisorArchiveAttachmentSnapshot> {
+  return advisorArchiveAttachmentSnapshotSchema.parse(
+    await invokeFunction(ADVISOR_ARCHIVE_ATTACHMENT_CANCEL_COMMAND),
   );
 }
 

@@ -1,8 +1,13 @@
 # Changelog
 
-## Unreleased — 0.1.0-beta.29
+## Unreleased — 0.1.0-beta.30
 
 ### Added
+
+- Add Milestone 35's closed ZIP-only Advisor archive entry. QuireForge accepts
+  one explicitly confirmed transient ZIP source per send, rejects unsafe entry
+  metadata, and sends only a bounded `archive-manifest-v1` text projection;
+  archive contents are never extracted, decompressed, rendered, or transported.
 
 - Add Milestone 34's compact Advisor/QuireForge workspace selector with the
   existing explicit capability-boundary confirmation and state clearing. Remove

@@ -1,4 +1,5 @@
 pub mod advisor;
+mod advisor_archive_attachment;
 mod advisor_attachment;
 mod advisor_document_attachment;
 mod advisor_image_attachment;
@@ -15,6 +16,10 @@ mod worktree;
 
 pub use codex::integration;
 
+use advisor_archive_attachment::{
+    AdvisorArchiveAttachmentClaimRequest, AdvisorArchiveAttachmentService,
+    AdvisorArchiveAttachmentSnapshot,
+};
 use advisor_attachment::{
     AdvisorTextAttachmentClaimRequest, AdvisorTextAttachmentService, AdvisorTextAttachmentSnapshot,
     AdvisorTextExportRequest,
@@ -273,6 +278,7 @@ async fn advisor_conversation_start(
     attachments: tauri::State<'_, AdvisorTextAttachmentService>,
     image_attachments: tauri::State<'_, AdvisorImageAttachmentService>,
     document_attachments: tauri::State<'_, AdvisorDocumentAttachmentService>,
+    archive_attachments: tauri::State<'_, AdvisorArchiveAttachmentService>,
 ) -> Result<AdvisorConversationSnapshot, ()> {
     if !request.is_valid() {
         return Ok(AdvisorConversationSnapshot::unavailable(
@@ -391,6 +397,32 @@ async fn advisor_conversation_start(
             ))
         }
     };
+    let archive_attachment = match (
+        &request.archive_attachment_id,
+        &request.archive_attachment_manifest_sha256,
+        request.archive_attachment_confirmation,
+    ) {
+        (None, None, None) => None,
+        (Some(attachment_id), Some(manifest_sha256), Some(confirmation)) => {
+            match archive_attachments.claim(&AdvisorArchiveAttachmentClaimRequest {
+                attachment_id: attachment_id.clone(),
+                manifest_sha256: manifest_sha256.clone(),
+                confirmation,
+            }) {
+                Ok(attachment) => Some(attachment),
+                Err(_) => {
+                    return Ok(AdvisorConversationSnapshot::unavailable(
+                        AdvisorConversationDiagnosticCode::AttachmentUnavailable,
+                    ))
+                }
+            }
+        }
+        _ => {
+            return Ok(AdvisorConversationSnapshot::unavailable(
+                AdvisorConversationDiagnosticCode::InvalidRequest,
+            ))
+        }
+    };
     Ok(service
         .start(
             request,
@@ -400,6 +432,7 @@ async fn advisor_conversation_start(
             attachment,
             image_attachment,
             document_attachment,
+            archive_attachment,
         )
         .await)
 }
@@ -501,6 +534,38 @@ async fn advisor_document_attachment_pick(
 fn advisor_document_attachment_cancel(
     service: tauri::State<'_, AdvisorDocumentAttachmentService>,
 ) -> AdvisorDocumentAttachmentSnapshot {
+    service.clear()
+}
+
+#[tauri::command]
+fn advisor_archive_attachment_status(
+    service: tauri::State<'_, AdvisorArchiveAttachmentService>,
+) -> AdvisorArchiveAttachmentSnapshot {
+    service.snapshot()
+}
+#[tauri::command]
+async fn advisor_archive_attachment_pick(
+    app: tauri::AppHandle,
+    service: tauri::State<'_, AdvisorArchiveAttachmentService>,
+) -> Result<AdvisorArchiveAttachmentSnapshot, ()> {
+    let selection = app
+        .dialog()
+        .file()
+        .set_title("Attach one ZIP archive to the next Advisor message")
+        .add_filter("ZIP archive", &["zip"])
+        .blocking_pick_file();
+    Ok(match selection {
+        Some(file) => match file.into_path() {
+            Ok(path) => service.stage_path(path),
+            Err(_) => AdvisorArchiveAttachmentSnapshot::empty(),
+        },
+        None => service.snapshot(),
+    })
+}
+#[tauri::command]
+fn advisor_archive_attachment_cancel(
+    service: tauri::State<'_, AdvisorArchiveAttachmentService>,
+) -> AdvisorArchiveAttachmentSnapshot {
     service.clear()
 }
 
@@ -1622,6 +1687,7 @@ pub fn run() {
         .manage(AdvisorTextAttachmentService::default())
         .manage(AdvisorImageAttachmentService::default())
         .manage(AdvisorDocumentAttachmentService::default())
+        .manage(AdvisorArchiveAttachmentService::default())
         .manage(DesktopNotificationService::default())
         .manage(GitService::default())
         .manage(RepositoryStateReader)
@@ -1699,6 +1765,9 @@ pub fn run() {
             advisor_document_attachment_status,
             advisor_document_attachment_pick,
             advisor_document_attachment_cancel,
+            advisor_archive_attachment_status,
+            advisor_archive_attachment_pick,
+            advisor_archive_attachment_cancel,
             advisor_text_export_save,
             codex_auth_start,
             codex_auth_cancel,
