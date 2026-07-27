@@ -1011,6 +1011,14 @@ dynamic analysis. It must define isolation, cleanup, platform support, legal and
 operational constraints, network policy, and a clear go/no-go recommendation.
 It adds no product code, package, sandbox, execution, or malware handling.
 
+**Complete (decision-only):** the discovery gate closes with a no-go for
+dynamic analysis in the current desktop architecture. Docker, bubblewrap, and
+an ad-hoc QEMU process are not accepted as a hostile-binary boundary. Any future
+proposal requires a separately approved KVM microVM architecture, zero-network
+and no-host-mount policy, disposable lifecycle, typed bounded results, image
+provenance, supported-host matrix, and legal/operational ownership. M39 remains
+intentionally undefined. See [Milestone 38 discovery record](MILESTONE_38_DYNAMIC_SANDBOX_DISCOVERY.md).
+
 ### 39 — Dynamic Sandbox Analysis Implementation
 
 This milestone is intentionally undefined until Milestone 38 has closed and a

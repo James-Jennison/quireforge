@@ -169,6 +169,14 @@ read-only/untrusted execution-profile turn in a disposable directory; no
 authority request or project modification occurred. See
 [Milestone 37](MILESTONE_37_END_TO_END_ACCEPTANCE.md).
 
+Milestone 38 — **Dynamic Sandbox / Malware-Analysis Discovery Gate** is
+complete as a decision-only checkpoint with no product or package change. It
+finds no safe dynamic-analysis capability in the current desktop architecture:
+containers, bubblewrap, and an ad-hoc QEMU process are not accepted as a
+hostile-binary boundary. M39 remains undefined pending a separately approved
+microVM, lifecycle, network, legal, and operational design. See
+[Milestone 38](MILESTONE_38_DYNAMIC_SANDBOX_DISCOVERY.md).
+
 Milestone 27 — **Unified Conversation Engine** is complete. It adds strict
 Rust/Zod Chat/Codex capability profiles, a Settings navigation foundation,
 bounded mode-aware metadata, a fixed no-project native Chat bridge, and an

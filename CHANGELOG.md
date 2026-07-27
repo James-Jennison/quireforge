@@ -4,6 +4,11 @@
 
 ### Added
 
+- Complete Milestone 38 as a decision-only dynamic-sandbox discovery gate. It
+  records a no-go for dynamic or malware analysis in the present desktop
+  architecture; no product behavior, sandbox, execution authority, dependency,
+  package version, release, or deployment was added.
+
 - Complete Milestone 37 as an evidence-only human-in-the-loop acceptance gate.
   Existing digest-bound approval, one-time dispatch, bounded completion,
   mode-reset, and recovery contracts passed alongside user-authorized managed
