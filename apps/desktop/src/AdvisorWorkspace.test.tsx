@@ -20,6 +20,16 @@ const advisorDraftBridge = vi.hoisted(() => ({
   }),
   pickAdvisorTextAttachment: vi.fn(),
   cancelAdvisorTextAttachment: vi.fn(),
+  loadAdvisorImageAttachment: vi.fn().mockResolvedValue({
+    schemaVersion: 1,
+    state: "empty",
+    attachment: null,
+    previewDataUrl: null,
+    confirmationState: null,
+    diagnosticCode: null,
+  }),
+  pickAdvisorImageAttachment: vi.fn(),
+  cancelAdvisorImageAttachment: vi.fn(),
   saveAdvisorTextExport: vi.fn(),
 }));
 
@@ -188,6 +198,9 @@ describe("AdvisorWorkspace", () => {
       attachmentId: null,
       attachmentManifestSha256: null,
       attachmentConfirmation: null,
+      imageAttachmentId: null,
+      imageAttachmentManifestSha256: null,
+      imageAttachmentConfirmation: null,
     });
   });
 
@@ -290,7 +303,7 @@ describe("AdvisorWorkspace", () => {
     ).toBeEnabled();
     expect(
       screen.getByText(
-        /Project State and a text attachment are optional and require confirmation/u,
+        /Project State and one text\/data file or one image are optional and require confirmation/u,
       ),
     ).toBeInTheDocument();
     expect(
@@ -343,6 +356,9 @@ describe("AdvisorWorkspace", () => {
       attachmentId: attachment.attachment.attachmentId,
       attachmentManifestSha256: attachment.attachment.sha256,
       attachmentConfirmation: "confirmed-for-single-send",
+      imageAttachmentId: null,
+      imageAttachmentManifestSha256: null,
+      imageAttachmentConfirmation: null,
     });
   });
 

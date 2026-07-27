@@ -22,6 +22,7 @@ export const advisorConversationDiagnosticCodeSchema = z.enum([
   "protocol-invalid",
   "capability-blocked",
   "metadata-unavailable",
+  "attachment-unavailable",
 ]);
 
 export const advisorConversationEventSchema = z.discriminatedUnion("type", [
@@ -75,6 +76,16 @@ export const advisorConversationStartRequestSchema = z
       .regex(/^[a-f0-9]{64}$/iu)
       .nullable(),
     attachmentConfirmation: z.literal("confirmed-for-single-send").nullable(),
+    imageAttachmentId: z.string().uuid().nullable().default(null),
+    imageAttachmentManifestSha256: z
+      .string()
+      .regex(/^[a-f0-9]{64}$/iu)
+      .nullable()
+      .default(null),
+    imageAttachmentConfirmation: z
+      .literal("confirmed-for-single-send")
+      .nullable()
+      .default(null),
   })
   .strict()
   .refine(
@@ -85,6 +96,20 @@ export const advisorConversationStartRequestSchema = z
   .refine(
     (value) =>
       (value.attachmentId === null) === (value.attachmentConfirmation === null),
+  )
+  .refine(
+    (value) =>
+      (value.imageAttachmentId === null) ===
+      (value.imageAttachmentManifestSha256 === null),
+  )
+  .refine(
+    (value) =>
+      (value.imageAttachmentId === null) ===
+      (value.imageAttachmentConfirmation === null),
+  )
+  .refine(
+    (value) => value.attachmentId === null || value.imageAttachmentId === null,
+    "Advisor accepts one content attachment per send",
   );
 
 export const advisorConversationIdSchema = z.string().uuid();

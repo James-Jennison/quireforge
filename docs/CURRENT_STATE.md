@@ -103,12 +103,17 @@ the current presentation layer and calls that façade through its bridge.
 ## Next action
 
 Milestone 30 — **Advisor Bounded Text/Data Content Ingestion and Reviewed
-Single-File Export** is the active approved scope. It is limited to one
-explicitly confirmed, transient, normalized UTF-8 text/data file and one
-reviewed single-file native export. Advisor remains no-project, read-only, and
-non-executable. Image, document, archive, static-binary, and dynamic sandbox
-analysis remain separate future milestones; no generic upload system is
-approved.
+Single-File Export** is complete in the integrated `0.1.0-beta.18` candidate.
+It is limited to one explicitly confirmed, transient, normalized UTF-8 text/data
+file and one reviewed single-file native export. Advisor remains no-project,
+read-only, and non-executable.
+
+Milestone 31 — **Advisor Bounded PNG/JPEG Image Analysis** is the active
+approved implementation scope. It is limited to one
+explicitly confirmed, transient, natively validated image sent only through the
+documented `localImage` path. Document, archive, static-binary, and dynamic
+sandbox analysis remain later separately scoped milestones; no generic upload
+system is approved.
 
 Milestone 27 — **Unified Conversation Engine** is complete. It adds strict
 Rust/Zod Chat/Codex capability profiles, a Settings navigation foundation,

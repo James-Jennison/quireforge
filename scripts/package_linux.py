@@ -209,6 +209,12 @@ def main() -> int:
     verify_tauri_tools(allow_linuxdeploy_marker_cleared=True)
     version = source_version()
     release_arch, tauri_arch, deb_arch = architectures()
+    output_dir = package_output_dir()
+    output_dir.mkdir(parents=True, exist_ok=True)
+    if sys.argv[1:] == ["--finalize"]:
+        return finalize(output_dir, version)
+    if len(sys.argv) != 1:
+        raise RuntimeError("expected no arguments or --finalize")
     target = cargo_target_dir()
     bundle_root = target / "release/bundle"
     raw_deb = one_match(
@@ -222,12 +228,6 @@ def main() -> int:
         "raw AppImage",
     )
 
-    output_dir = package_output_dir()
-    output_dir.mkdir(parents=True, exist_ok=True)
-    if sys.argv[1:] == ["--finalize"]:
-        return finalize(output_dir, version)
-    if len(sys.argv) != 1:
-        raise RuntimeError("expected no arguments or --finalize")
     candidate_dir = staging_dir(output_dir, version)
     if candidate_dir.exists():
         shutil.rmtree(candidate_dir)

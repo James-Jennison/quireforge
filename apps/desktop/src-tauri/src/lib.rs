@@ -1,5 +1,6 @@
 pub mod advisor;
 mod advisor_attachment;
+mod advisor_image_attachment;
 mod attachment;
 mod codex;
 mod contract;
@@ -16,6 +17,10 @@ pub use codex::integration;
 use advisor_attachment::{
     AdvisorTextAttachmentClaimRequest, AdvisorTextAttachmentService, AdvisorTextAttachmentSnapshot,
     AdvisorTextExportRequest,
+};
+use advisor_image_attachment::{
+    AdvisorImageAttachmentClaimRequest, AdvisorImageAttachmentService,
+    AdvisorImageAttachmentSnapshot,
 };
 use attachment::{
     types::{
@@ -258,6 +263,7 @@ async fn advisor_conversation_start(
     projects: tauri::State<'_, ProjectService>,
     reader: tauri::State<'_, RepositoryStateReader>,
     attachments: tauri::State<'_, AdvisorTextAttachmentService>,
+    image_attachments: tauri::State<'_, AdvisorImageAttachmentService>,
 ) -> Result<AdvisorConversationSnapshot, ()> {
     if !request.is_valid() {
         return Ok(AdvisorConversationSnapshot::unavailable(
@@ -325,6 +331,31 @@ async fn advisor_conversation_start(
             ))
         }
     };
+    let image_attachment = match (
+        &request.image_attachment_id,
+        &request.image_attachment_manifest_sha256,
+        request.image_attachment_confirmation,
+    ) {
+        (None, None, None) => None,
+        (Some(attachment_id), Some(manifest_sha256), Some(confirmation)) => match image_attachments
+            .claim(&AdvisorImageAttachmentClaimRequest {
+                attachment_id: attachment_id.clone(),
+                manifest_sha256: manifest_sha256.clone(),
+                confirmation,
+            }) {
+            Ok(attachment) => Some(attachment),
+            Err(_) => {
+                return Ok(AdvisorConversationSnapshot::unavailable(
+                    AdvisorConversationDiagnosticCode::AttachmentUnavailable,
+                ))
+            }
+        },
+        _ => {
+            return Ok(AdvisorConversationSnapshot::unavailable(
+                AdvisorConversationDiagnosticCode::InvalidRequest,
+            ))
+        }
+    };
     Ok(service
         .start(
             request,
@@ -332,6 +363,7 @@ async fn advisor_conversation_start(
             &projects,
             selected_project_state,
             attachment,
+            image_attachment,
         )
         .await)
 }
@@ -367,6 +399,40 @@ async fn advisor_text_attachment_pick(
 fn advisor_text_attachment_cancel(
     service: tauri::State<'_, AdvisorTextAttachmentService>,
 ) -> AdvisorTextAttachmentSnapshot {
+    service.clear()
+}
+
+#[tauri::command]
+fn advisor_image_attachment_status(
+    service: tauri::State<'_, AdvisorImageAttachmentService>,
+) -> AdvisorImageAttachmentSnapshot {
+    service.snapshot()
+}
+
+#[tauri::command]
+async fn advisor_image_attachment_pick(
+    app: tauri::AppHandle,
+    service: tauri::State<'_, AdvisorImageAttachmentService>,
+) -> Result<AdvisorImageAttachmentSnapshot, ()> {
+    let selection = app
+        .dialog()
+        .file()
+        .set_title("Attach one PNG or JPEG image to the next Advisor message")
+        .add_filter("PNG or JPEG image", &["png", "jpg", "jpeg"])
+        .blocking_pick_file();
+    Ok(match selection {
+        Some(file) => match file.into_path() {
+            Ok(path) => service.stage_path(path),
+            Err(_) => AdvisorImageAttachmentSnapshot::empty(),
+        },
+        None => service.snapshot(),
+    })
+}
+
+#[tauri::command]
+fn advisor_image_attachment_cancel(
+    service: tauri::State<'_, AdvisorImageAttachmentService>,
+) -> AdvisorImageAttachmentSnapshot {
     service.clear()
 }
 
@@ -1486,6 +1552,7 @@ pub fn run() {
         .manage(ChatConversationService::default())
         .manage(AdvisorConversationService::default())
         .manage(AdvisorTextAttachmentService::default())
+        .manage(AdvisorImageAttachmentService::default())
         .manage(DesktopNotificationService::default())
         .manage(GitService::default())
         .manage(RepositoryStateReader)
@@ -1557,6 +1624,9 @@ pub fn run() {
             advisor_text_attachment_status,
             advisor_text_attachment_pick,
             advisor_text_attachment_cancel,
+            advisor_image_attachment_status,
+            advisor_image_attachment_pick,
+            advisor_image_attachment_cancel,
             advisor_text_export_save,
             codex_auth_start,
             codex_auth_cancel,

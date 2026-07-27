@@ -14,6 +14,7 @@ use tokio::sync::Mutex;
 use uuid::Uuid;
 
 use crate::advisor_attachment::ClaimedAdvisorTextAttachment;
+use crate::advisor_image_attachment::ClaimedAdvisorImageAttachment;
 
 use crate::{
     advisor::AdvisorSelectedProjectStateSnapshot,
@@ -49,6 +50,15 @@ pub struct AdvisorConversationStartRequest {
     pub attachment_id: Option<String>,
     pub attachment_manifest_sha256: Option<String>,
     pub attachment_confirmation: Option<crate::advisor_attachment::AdvisorContentConfirmationState>,
+    /// A one-time, native-held PNG/JPEG image. React sees only its safe
+    /// manifest; source path and image bytes remain native-only.
+    #[serde(default)]
+    pub image_attachment_id: Option<String>,
+    #[serde(default)]
+    pub image_attachment_manifest_sha256: Option<String>,
+    #[serde(default)]
+    pub image_attachment_confirmation:
+        Option<crate::advisor_attachment::AdvisorContentConfirmationState>,
 }
 
 impl AdvisorConversationStartRequest {
@@ -60,6 +70,10 @@ impl AdvisorConversationStartRequest {
                 .is_none_or(|project_id| validate_uuid_v7(project_id).is_ok())
             && (self.attachment_id.is_some() == self.attachment_manifest_sha256.is_some())
             && (self.attachment_id.is_some() == self.attachment_confirmation.is_some())
+            && (self.image_attachment_id.is_some()
+                == self.image_attachment_manifest_sha256.is_some())
+            && (self.image_attachment_id.is_some() == self.image_attachment_confirmation.is_some())
+            && !(self.attachment_id.is_some() && self.image_attachment_id.is_some())
     }
 }
 
@@ -155,6 +169,7 @@ struct ActiveAdvisorConversation {
     project_state_included: bool,
     next_sequence: u64,
     process: AppServerProcess,
+    _image_attachment: Option<ClaimedAdvisorImageAttachment>,
 }
 
 impl AdvisorConversationServiceState {
@@ -216,6 +231,7 @@ impl AdvisorConversationService {
         projects: &ProjectService,
         selected_project_state: Option<AdvisorSelectedProjectStateSnapshot>,
         attachment: Option<ClaimedAdvisorTextAttachment>,
+        image_attachment: Option<ClaimedAdvisorImageAttachment>,
     ) -> AdvisorConversationSnapshot {
         match managed_chat_authentication_state(authentication) {
             ChatAuthenticationState::SignInRequired | ChatAuthenticationState::SignInPending => {
@@ -257,13 +273,15 @@ impl AdvisorConversationService {
             &request.prompt,
             selected_project_state.as_ref(),
             attachment.as_ref(),
+            image_attachment.as_ref(),
             projects,
         )
         .await;
         let mut state = self.state.lock().await;
         state.starting = false;
         match started {
-            Ok(active) => {
+            Ok(mut active) => {
+                active._image_attachment = image_attachment;
                 let snapshot = active.snapshot(Vec::new(), None);
                 state.active = Some(active);
                 state.remember(snapshot.clone());
@@ -429,6 +447,7 @@ async fn start_advisor_process(
     prompt: &str,
     selected_project_state: Option<&AdvisorSelectedProjectStateSnapshot>,
     attachment: Option<&ClaimedAdvisorTextAttachment>,
+    image_attachment: Option<&ClaimedAdvisorImageAttachment>,
     projects: &ProjectService,
 ) -> Result<ActiveAdvisorConversation, AdvisorConversationDiagnosticCode> {
     let mut process = AppServerProcess::spawn(command.clone())
@@ -450,6 +469,7 @@ async fn start_advisor_process(
                 advisor_turn_start_params(
                     &thread_id,
                     &advisor_input(prompt, selected_project_state, attachment),
+                    image_attachment,
                 ),
             )
             .await
@@ -466,6 +486,7 @@ async fn start_advisor_process(
             project_state_included: selected_project_state.is_some(),
             next_sequence: 1,
             process,
+            _image_attachment: None,
         }),
         Err(error) => {
             let _ = process.shutdown().await;
@@ -511,10 +532,18 @@ async fn start_advisor_thread(
     }
 }
 
-fn advisor_turn_start_params(thread_id: &str, prompt: &str) -> Value {
+fn advisor_turn_start_params(
+    thread_id: &str,
+    prompt: &str,
+    image_attachment: Option<&ClaimedAdvisorImageAttachment>,
+) -> Value {
+    let mut input = vec![json!({"type": "text", "text": prompt})];
+    if let Some(image_attachment) = image_attachment {
+        input.push(image_attachment.protocol_input());
+    }
     json!({
         "threadId": thread_id,
-        "input": [{"type": "text", "text": prompt}],
+        "input": input,
         "cwd": Value::Null,
         "approvalPolicy": "never",
         "sandboxPolicy": {"type": "readOnly", "networkAccess": false},
@@ -746,7 +775,7 @@ mod tests {
         assert_eq!(compatibility["environments"], json!([]));
         assert_eq!(compatibility["dynamicTools"], json!([]));
         assert_eq!(compatibility["approvalPolicy"], "never");
-        let turn = advisor_turn_start_params("thread", "Prompt");
+        let turn = advisor_turn_start_params("thread", "Prompt", None);
         assert_eq!(turn["cwd"], Value::Null);
         assert_eq!(turn["sandboxPolicy"]["networkAccess"], false);
         assert_eq!(turn["input"], json!([{"type":"text","text":"Prompt"}]));
@@ -776,7 +805,7 @@ mod tests {
         let script = r#"
 read -r initialize
 case "$initialize" in
-  *'"method":"initialize"'*'"clientInfo":{"name":"quireforge","title":"QuireForge","version":"0.1.0-beta.18"}'*) ;;
+  *'"method":"initialize"'*'"clientInfo":{"name":"quireforge","title":"QuireForge","version":"0.1.0-beta.19"}'*) ;;
   *) exit 70 ;;
 esac
 printf '%s\n' '{"id":1,"result":{}}'
@@ -796,9 +825,13 @@ printf '%s\n' '{"method":"turn/completed","params":{"threadId":"018f0000-0000-70
                     attachment_id: None,
                     attachment_manifest_sha256: None,
                     attachment_confirmation: None,
+                    image_attachment_id: None,
+                    image_attachment_manifest_sha256: None,
+                    image_attachment_confirmation: None,
                 },
                 &CodexAuthSnapshot::authenticated(AuthAccountKind::Chatgpt),
                 &ProjectService::in_memory(),
+                None,
                 None,
                 None,
             )
@@ -822,7 +855,7 @@ printf '%s\n' '{"method":"turn/completed","params":{"threadId":"018f0000-0000-70
         let script = r#"
 read -r initialize
 case "$initialize" in
-  *'"method":"initialize"'*'"clientInfo":{"name":"quireforge","title":"QuireForge","version":"0.1.0-beta.18"}'*) ;;
+  *'"method":"initialize"'*'"clientInfo":{"name":"quireforge","title":"QuireForge","version":"0.1.0-beta.19"}'*) ;;
   *) exit 70 ;;
 esac
 printf '%s\n' '{"id":1,"result":{}}'
@@ -844,9 +877,13 @@ printf '%s\n' '{"method":"turn/completed","params":{"threadId":"018f0000-0000-70
                     attachment_id: None,
                     attachment_manifest_sha256: None,
                     attachment_confirmation: None,
+                    image_attachment_id: None,
+                    image_attachment_manifest_sha256: None,
+                    image_attachment_confirmation: None,
                 },
                 &CodexAuthSnapshot::authenticated(AuthAccountKind::Chatgpt),
                 &ProjectService::in_memory(),
+                None,
                 None,
                 None,
             )
@@ -882,9 +919,13 @@ printf '%s\n' '{"id":3,"error":{"code":-32602,"message":"do not expose this eith
                     attachment_id: None,
                     attachment_manifest_sha256: None,
                     attachment_confirmation: None,
+                    image_attachment_id: None,
+                    image_attachment_manifest_sha256: None,
+                    image_attachment_confirmation: None,
                 },
                 &CodexAuthSnapshot::authenticated(AuthAccountKind::Chatgpt),
                 &ProjectService::in_memory(),
+                None,
                 None,
                 None,
             )
@@ -911,9 +952,13 @@ printf '%s\n' '{"id":3,"error":{"code":-32602,"message":"do not expose this eith
                     attachment_id: None,
                     attachment_manifest_sha256: None,
                     attachment_confirmation: None,
+                    image_attachment_id: None,
+                    image_attachment_manifest_sha256: None,
+                    image_attachment_confirmation: None,
                 },
                 &CodexAuthSnapshot::authenticated(AuthAccountKind::ApiKey),
                 &ProjectService::in_memory(),
+                None,
                 None,
                 None,
             )

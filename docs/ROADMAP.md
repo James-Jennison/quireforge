@@ -883,7 +883,7 @@ visible-launch, and installed-host smoke gates. See the
 
 ### 30 — Advisor Bounded Text/Data Content Ingestion and Reviewed Single-File Export
 
-Implement one closed `text-data` Advisor Content Ingestion Registry entry for
+Complete one closed `text-data` Advisor Content Ingestion Registry entry for
 one user-selected `.txt`, `.md`, `.csv`, `.json`, or `.py` file. The native
 boundary accepts at most 512 KiB of normalized UTF-8, exposes only a typed
 display manifest, hash, bounded projection, explicit per-send confirmation,
@@ -907,7 +907,97 @@ Rust/TypeScript contract parity, accessibility/responsive coverage, production
 bundle/Tauri/package contracts, and fresh Debian/AppImage lifecycle and visible
 launch evidence.
 
-### Advisor Approval/Dispatch Phase A (unnumbered)
+Every future Advisor content-type entry below remains closed and type-specific:
+there is no generic upload system. Each must use native validation and a bounded
+projection, expose a path-free manifest/hash, require explicit per-send
+confirmation, and dispose of source bytes and projections transiently. Advisor
+never receives shell, Git, project-write, execution, credential, or provider
+authority from an ingestion entry.
+
+### 31 — Advisor Bounded PNG/JPEG Image Analysis
+
+Extend the Advisor Content Ingestion Registry with one closed `image` entry for
+one user-selected PNG or JPEG per send. Native code validates extension, magic
+bytes, safe decode, dimensions, and resource limits before a path-free display
+manifest, preview, hash, and explicit per-send confirmation are available.
+Only the documented app-server `localImage` input may carry the confirmed image;
+native staging remains transient through the terminal turn. This excludes generic
+uploads, multi-image batches, image export, project access, execution, and all
+other file types. The package gate requires a fresh `0.1.0-beta.19` candidate,
+strict native/frontend parity, malformed-image and disposal coverage,
+accessibility/responsive checks, and Debian/AppImage lifecycle and visible-launch
+evidence.
+
+### 32 — Advisor Conversation History Viewport and Mode Picker
+
+Provide a bounded, scrollable in-memory viewport for the active transient
+Advisor conversation and an accessible explicit mode picker: **Advisor — Create,
+Learn, Explore** and **Codex — Build, Debug, and Ship**. A mode change that
+affects capability, attached-project context, visible context, or permissions
+requires confirmation and never inherits project context, approvals, dispatch,
+or transcript data. This excludes persistent transcript/history storage,
+provider/authentication changes, automatic dispatch, and any new execution
+authority. The package gate requires a fresh `0.1.0-beta.20` candidate with
+streaming/rendering, keyboard, screen-reader, zoom, desktop, and narrow-layout
+coverage.
+
+### 33 — Advisor Bounded PDF/Office Document Analysis
+
+Add one closed `document` registry entry only after a type-specific native
+projection design is reviewed. It may accept one supported PDF or Office document
+and construct a bounded, safe native projection with a path-free manifest/hash
+and explicit per-send confirmation. It excludes generic document upload,
+raw-document transport, macros, embedded-object execution, document editing or
+export, and project browsing. The package gate requires a fresh
+`0.1.0-beta.21` candidate, strict projection/resource-limit tests, no-raw-content
+or path-retention tests, and full accessibility/package evidence.
+
+### 34 — Advisor Archive Manifest-First Analysis
+
+Add one closed `archive` registry entry for a single safely validated archive.
+Advisor may receive only a bounded native-generated manifest of entry names and
+aggregate safe metadata after explicit manifest/hash confirmation. It excludes
+archive extraction into projects, recursive content analysis, embedded-file
+handoff, password handling, symlink/path-traversal acceptance, and execution.
+The package gate requires a fresh `0.1.0-beta.22` candidate with malformed,
+zip-bomb, traversal, symlink, manifest-bound, disposal, and authority-regression
+coverage.
+
+### 35 — Advisor Static Binary/Executable Inspection
+
+Add one closed `static-binary` registry entry for a single supported binary
+format after an approved format and bounded-projection matrix. It may produce
+only safe static metadata; it never loads, executes, debugs, emulates, or
+detonates a file. Unsupported formats fail closed. The package gate requires a
+fresh `0.1.0-beta.23` candidate with format-specific parser/resource-limit,
+no-execution, retention, contract, accessibility, and package evidence.
+
+### 36 — Advisor/Approval/Dispatch/Execution End-to-End Acceptance Gate
+
+Run a separately approved human-in-the-loop acceptance gate over the existing
+Advisor, digest-bound Approval/Dispatch controller, one-time managed Codex
+execution handoff, and bounded completion-report flow. It uses deterministic
+contracts plus explicitly user-participated managed-Codex session checks and
+proves approval, invalidation, dispatch, completion, mode-switch, and recovery
+behavior. It excludes new authority, automatic retry or redispatch, transcript
+retention, and destructive project actions. A package version changes only if
+implementation corrections are separately approved; otherwise this is a
+release-acceptance gate with bounded evidence and cleanup.
+
+### 37 — Dynamic Sandbox / Malware-Analysis Discovery Gate
+
+Produce a decision-ready threat model and feasibility proposal for any future
+dynamic analysis. It must define isolation, cleanup, platform support, legal and
+operational constraints, network policy, and a clear go/no-go recommendation.
+It adds no product code, package, sandbox, execution, or malware handling.
+
+### 38 — Dynamic Sandbox Analysis Implementation
+
+This milestone is intentionally undefined until Milestone 37 has closed and a
+separate implementation proposal is approved. It cannot begin merely because
+static binary inspection exists.
+
+### Advisor Approval/Dispatch Phases A–B3 (completed capability history)
 
 The approved Phase A/B1 controller is an editable, transient draft and explicit,
 expiring digest-only approval record. It binds the prompt, exact temporary safe
@@ -916,12 +1006,14 @@ requested model and reasoning labels, timestamp, and decision. Approval
 revalidates the complete transient binding and native target-project preflight
 immediately before recording a decision. It has no dispatch command and no
 reference to the Codex execution service; changing any bound input requires a
-new approval. The separately approved B2 slice may hand one approved,
+new approval. The integrated B2 slice hands one approved,
 immediately revalidated request to the existing project-bound managed Codex
 execution workspace. It supports only read-only/untrusted and
 workspace-write/on-request profiles, consumes the approval once, stores only an
-opaque start receipt, and never returns execution output to Advisor. Danger full
-access and completion-report return remain separate proposal and approval gates.
+opaque start receipt, and never returns execution output to Advisor. The
+integrated B3 slice returns only a bounded, correlated terminal completion
+report; it never returns a terminal stream, raw transcript, repository data,
+credentials, or new authority. Danger full access remains unavailable.
 
 ## Forecast policy
 

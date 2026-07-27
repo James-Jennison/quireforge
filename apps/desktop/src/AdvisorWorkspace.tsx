@@ -19,12 +19,19 @@ import {
   loadAdvisorTextAttachment,
   pickAdvisorTextAttachment,
   saveAdvisorTextExport,
+  cancelAdvisorImageAttachment,
+  loadAdvisorImageAttachment,
+  pickAdvisorImageAttachment,
 } from "./lib/bridge";
 import {
   scaffoldAdvisorTextAttachment,
   advisorTextExportCandidates,
   type AdvisorTextAttachmentSnapshot,
 } from "./lib/advisorAttachment";
+import {
+  scaffoldAdvisorImageAttachment,
+  type AdvisorImageAttachmentSnapshot,
+} from "./lib/advisorImageAttachment";
 import type {
   AdvisorApprovalSnapshot,
   AdvisorDispatchSnapshot,
@@ -137,6 +144,8 @@ export function AdvisorWorkspace({
   const [textAttachment, setTextAttachment] =
     useState<AdvisorTextAttachmentSnapshot>(scaffoldAdvisorTextAttachment);
   const [attachmentBusy, setAttachmentBusy] = useState(false);
+  const [imageAttachment, setImageAttachment] =
+    useState<AdvisorImageAttachmentSnapshot>(scaffoldAdvisorImageAttachment);
   const [exportCandidateIndex, setExportCandidateIndex] = useState(0);
   const [actionError, setActionError] = useState(false);
   const [draft, setDraft] = useState("");
@@ -206,6 +215,17 @@ export function AdvisorWorkspace({
         }),
       );
   }, []);
+  useEffect(() => {
+    void loadAdvisorImageAttachment()
+      .then(setImageAttachment)
+      .catch(() =>
+        setImageAttachment({
+          ...scaffoldAdvisorImageAttachment,
+          state: "unavailable",
+          diagnosticCode: "read-failed",
+        }),
+      );
+  }, []);
 
   useEffect(() => {
     if (!active || !conversation.conversationId) return undefined;
@@ -221,15 +241,21 @@ export function AdvisorWorkspace({
     setActionError(false);
     const attachment =
       textAttachment.state === "ready" ? textAttachment.attachment : null;
+    const image =
+      imageAttachment.state === "ready" ? imageAttachment.attachment : null;
     void onConversationStart({
       prompt,
       projectId,
       attachmentId: attachment?.attachmentId ?? null,
       attachmentManifestSha256: attachment?.sha256 ?? null,
       attachmentConfirmation: attachment ? "confirmed-for-single-send" : null,
+      imageAttachmentId: image?.attachmentId ?? null,
+      imageAttachmentManifestSha256: image?.sha256 ?? null,
+      imageAttachmentConfirmation: image ? "confirmed-for-single-send" : null,
     })
       .then(() => setPrompt(""))
       .then(() => setTextAttachment(scaffoldAdvisorTextAttachment))
+      .then(() => setImageAttachment(scaffoldAdvisorImageAttachment))
       .catch(() => setActionError(true));
   }
 
@@ -249,6 +275,27 @@ export function AdvisorWorkspace({
     setAttachmentBusy(true);
     try {
       setTextAttachment(await cancelAdvisorTextAttachment());
+    } catch {
+      setActionError(true);
+    } finally {
+      setAttachmentBusy(false);
+    }
+  }
+  async function pickImageAttachment() {
+    setAttachmentBusy(true);
+    setActionError(false);
+    try {
+      setImageAttachment(await pickAdvisorImageAttachment());
+    } catch {
+      setActionError(true);
+    } finally {
+      setAttachmentBusy(false);
+    }
+  }
+  async function clearImageAttachment() {
+    setAttachmentBusy(true);
+    try {
+      setImageAttachment(await cancelAdvisorImageAttachment());
     } catch {
       setActionError(true);
     } finally {
@@ -870,13 +917,14 @@ export function AdvisorWorkspace({
               ) : (
                 <button
                   type="button"
+                  onClick={() => void pickTextAttachment()}
                   disabled={
                     attachmentBusy ||
                     active ||
                     conversationBusy ||
-                    authentication !== "ready"
+                    authentication !== "ready" ||
+                    imageAttachment.state === "ready"
                   }
-                  onClick={() => void pickTextAttachment()}
                 >
                   Attach text or data file
                 </button>
@@ -890,10 +938,67 @@ export function AdvisorWorkspace({
                 </p>
               )}
             </div>
+            <div
+              className="advisor-text-attachment"
+              aria-label="Optional image attachment"
+            >
+              <p className="project-message" role="note">
+                Optional: choose one PNG or JPEG image up to 4 MiB. Its preview
+                and manifest are temporary, its source path is not shared, and
+                it is sent only after confirmation.
+              </p>
+              {imageAttachment.state === "ready" &&
+              imageAttachment.attachment &&
+              imageAttachment.previewDataUrl ? (
+                <div>
+                  <img
+                    src={imageAttachment.previewDataUrl}
+                    alt={`Preview of ${imageAttachment.attachment.displayName}`}
+                    className="advisor-image-preview"
+                  />
+                  <p role="status">
+                    Ready: {imageAttachment.attachment.displayName} (
+                    {imageAttachment.attachment.mediaType},{" "}
+                    {imageAttachment.attachment.byteSize} bytes,{" "}
+                    {imageAttachment.attachment.width} ×{" "}
+                    {imageAttachment.attachment.height}, SHA-256 verified).
+                  </p>
+                  <button
+                    type="button"
+                    disabled={attachmentBusy || active || conversationBusy}
+                    onClick={() => void clearImageAttachment()}
+                  >
+                    Remove attached image
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  disabled={
+                    attachmentBusy ||
+                    active ||
+                    conversationBusy ||
+                    authentication !== "ready" ||
+                    textAttachment.state === "ready"
+                  }
+                  onClick={() => void pickImageAttachment()}
+                >
+                  Attach PNG or JPEG image
+                </button>
+              )}
+              {imageAttachment.state === "unavailable" && (
+                <p
+                  className="project-message project-message--warning"
+                  role="alert"
+                >
+                  The image attachment was not available and was not included.
+                </p>
+              )}
+            </div>
             <p className="project-message" role="note">
               Advisor is read-only: no commands, project changes, or dispatch.
-              Project State and a text attachment are optional and require
-              confirmation.
+              Project State and one text/data file or one image are optional and
+              require confirmation.
             </p>
             {sendDisabledReason && !active && (
               <p className="project-message" role="status">
@@ -921,7 +1026,10 @@ export function AdvisorWorkspace({
                     authentication !== "ready"
                   }
                   onClick={() => {
-                    if (textAttachment.state === "ready")
+                    if (
+                      textAttachment.state === "ready" ||
+                      imageAttachment.state === "ready"
+                    )
                       setConfirmAttachmentSend(true);
                     else if (includeProjectState && canIncludeProjectState)
                       setConfirmContextSend(true);
@@ -964,44 +1072,53 @@ export function AdvisorWorkspace({
               </div>
             </div>
           )}
-          {confirmAttachmentSend && textAttachment.attachment && (
-            <div
-              className="project-confirmation"
-              role="dialog"
-              aria-modal="true"
-              aria-label="Confirm text attachment inclusion"
-            >
-              <p>
-                Include {textAttachment.attachment.displayName} as transient
-                normalized text in this one Advisor message? Its path is not
-                shared, it is consumed after this send, and it grants no project
-                or execution authority.
-              </p>
-              <div className="project-actions">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setConfirmAttachmentSend(false);
-                    if (
-                      includeProjectState &&
-                      canIncludeProjectState &&
-                      selectedProjectId
-                    )
-                      setConfirmContextSend(true);
-                    else submit(null);
-                  }}
-                >
-                  Confirm inclusion
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setConfirmAttachmentSend(false)}
-                >
-                  Cancel
-                </button>
+          {confirmAttachmentSend &&
+            (textAttachment.attachment || imageAttachment.attachment) && (
+              <div
+                className="project-confirmation"
+                role="dialog"
+                aria-modal="true"
+                aria-label="Confirm attachment inclusion"
+              >
+                <p>
+                  Include{" "}
+                  {
+                    (textAttachment.attachment ?? imageAttachment.attachment)
+                      ?.displayName
+                  }{" "}
+                  as transient
+                  {imageAttachment.attachment
+                    ? " PNG/JPEG image data"
+                    : " normalized text"}{" "}
+                  in this one Advisor message? Its path is not shared, it is
+                  consumed after this send, and it grants no project or
+                  execution authority.
+                </p>
+                <div className="project-actions">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setConfirmAttachmentSend(false);
+                      if (
+                        includeProjectState &&
+                        canIncludeProjectState &&
+                        selectedProjectId
+                      )
+                        setConfirmContextSend(true);
+                      else submit(null);
+                    }}
+                  >
+                    Confirm inclusion
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmAttachmentSend(false)}
+                  >
+                    Cancel
+                  </button>
+                </div>
               </div>
-            </div>
-          )}
+            )}
         </section>
       )}
     </section>

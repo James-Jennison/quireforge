@@ -4292,6 +4292,16 @@ button:disabled {
   padding: 22px;
 }
 
+.advisor-image-preview {
+  display: block;
+  max-width: min(100%, 28rem);
+  max-height: 18rem;
+  margin: 0.75rem 0;
+  border: 1px solid var(--border-muted);
+  border-radius: 0.5rem;
+  object-fit: contain;
+}
+
 .file-preview-pdf p,
 .file-preview-empty p {
   max-width: 46rem;

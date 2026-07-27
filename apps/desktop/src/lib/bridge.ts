@@ -112,6 +112,10 @@ import {
   type AdvisorTextExportRequest,
 } from "./advisorAttachment";
 import {
+  advisorImageAttachmentSnapshotSchema,
+  type AdvisorImageAttachmentSnapshot,
+} from "./advisorImageAttachment";
+import {
   advisorWorkspaceSnapshotSchema,
   parseAdvisorProjectStateReadRequest,
   parseAdvisorSelectedProjectStateSnapshot,
@@ -272,6 +276,12 @@ export const ADVISOR_TEXT_ATTACHMENT_PICK_COMMAND =
 export const ADVISOR_TEXT_ATTACHMENT_CANCEL_COMMAND =
   "advisor_text_attachment_cancel";
 export const ADVISOR_TEXT_EXPORT_SAVE_COMMAND = "advisor_text_export_save";
+export const ADVISOR_IMAGE_ATTACHMENT_STATUS_COMMAND =
+  "advisor_image_attachment_status";
+export const ADVISOR_IMAGE_ATTACHMENT_PICK_COMMAND =
+  "advisor_image_attachment_pick";
+export const ADVISOR_IMAGE_ATTACHMENT_CANCEL_COMMAND =
+  "advisor_image_attachment_cancel";
 export const CONVERSATION_ACTIVE_COMMAND = "conversation_active";
 export const CONVERSATION_NOTIFY_COMMAND = "conversation_notify";
 export const CONVERSATION_START_COMMAND = "conversation_start";
@@ -526,6 +536,30 @@ export async function saveAdvisorTextExport(
   await invokeFunction(ADVISOR_TEXT_EXPORT_SAVE_COMMAND, {
     request: advisorTextExportRequestSchema.parse(request),
   });
+}
+
+export async function loadAdvisorImageAttachment(
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<AdvisorImageAttachmentSnapshot> {
+  return advisorImageAttachmentSnapshotSchema.parse(
+    await invokeFunction(ADVISOR_IMAGE_ATTACHMENT_STATUS_COMMAND),
+  );
+}
+
+export async function pickAdvisorImageAttachment(
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<AdvisorImageAttachmentSnapshot> {
+  return advisorImageAttachmentSnapshotSchema.parse(
+    await invokeFunction(ADVISOR_IMAGE_ATTACHMENT_PICK_COMMAND),
+  );
+}
+
+export async function cancelAdvisorImageAttachment(
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<AdvisorImageAttachmentSnapshot> {
+  return advisorImageAttachmentSnapshotSchema.parse(
+    await invokeFunction(ADVISOR_IMAGE_ATTACHMENT_CANCEL_COMMAND),
+  );
 }
 
 export async function refreshCodexAuth(

@@ -1,7 +1,15 @@
 # Changelog
 
-## Unreleased — 0.1.0-beta.18
+## Unreleased — 0.1.0-beta.19
 
+- Begin Milestone 31’s closed Advisor image registry entry: one transient,
+  explicitly confirmed PNG or JPEG with native type/decode/dimension checks,
+  a path-free manifest and preview, and a documented memory-backed `localImage`
+  handoff. It adds no project, execution, credential, or generic-upload path.
+- Formalize the post-M30 roadmap sequence: bounded image analysis, history
+  viewport and Advisor/Codex mode picker, document, archive, and static-binary
+  analysis, an end-to-end acceptance gate, and an isolated dynamic-analysis
+  discovery gate. No future capability is implemented by this documentation.
 - Add Milestone 30’s first closed Advisor Content Ingestion Registry entry: one bounded,
   user-confirmed normalized UTF-8 text/data file held only in native memory for
   one send. Image, document, archive, and static-binary registry categories are
