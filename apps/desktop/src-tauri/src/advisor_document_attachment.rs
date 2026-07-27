@@ -339,12 +339,18 @@ fn project_pdf(
         let before = text.len();
         append_bounded(&mut text, &page_text, &mut truncated);
         inspected += 1;
+        if truncated {
+            // A page is "included" only when its complete extracted text was
+            // admitted to the projection.  Keeping a separate partial count
+            // prevents the UI from claiming a fully projected page when the
+            // byte limit stopped in the middle of it.
+            if text.len() > before {
+                partial = 1;
+            }
+            break;
+        }
         if text.len() > before {
             included += 1;
-        }
-        if truncated {
-            partial = 1;
-            break;
         }
     }
     let mut warnings = Vec::new();
@@ -503,6 +509,21 @@ fn valid_hash(value: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn active_dictionary(key: &str) -> Object {
+        let mut dictionary = lopdf::Dictionary::new();
+        dictionary.set(key, Object::Null);
+        Object::Dictionary(dictionary)
+    }
+
+    fn document_with_reference(value: Object) -> Document {
+        let mut document = Document::with_version("1.5");
+        let mut root = lopdf::Dictionary::new();
+        root.set("Next", Object::Reference((2, 0)));
+        document.objects.insert((1, 0), Object::Dictionary(root));
+        document.objects.insert((2, 0), value);
+        document
+    }
     #[test]
     fn rejects_non_pdf_content_without_retaining_a_path() {
         let dir = std::env::temp_dir().join(Uuid::now_v7().to_string());
@@ -556,6 +577,165 @@ mod tests {
         assert_eq!(
             inspect_pdf_object_graph(&document),
             Err(AdvisorDocumentAttachmentDiagnosticCode::ActiveContent)
+        );
+    }
+
+    #[test]
+    fn rejects_active_content_in_names_annotations_forms_and_streams() {
+        for key in [
+            "JavaScript",
+            "EmbeddedFiles",
+            "AcroForm",
+            "XFA",
+            "RichMedia",
+            "Collection",
+        ] {
+            let document = document_with_reference(active_dictionary(key));
+            assert_eq!(
+                inspect_pdf_object_graph(&document),
+                Err(AdvisorDocumentAttachmentDiagnosticCode::ActiveContent),
+                "{key} must fail closed"
+            );
+        }
+
+        let mut stream_dictionary = lopdf::Dictionary::new();
+        stream_dictionary.set("S", Object::Name(b"Launch".to_vec()));
+        let document = document_with_reference(Object::Stream(lopdf::Stream::new(
+            stream_dictionary,
+            Vec::new(),
+        )));
+        assert_eq!(
+            inspect_pdf_object_graph(&document),
+            Err(AdvisorDocumentAttachmentDiagnosticCode::ActiveContent)
+        );
+    }
+
+    #[test]
+    fn rejects_all_supported_action_names_when_nested() {
+        for action in [
+            "URI",
+            "GoToR",
+            "SubmitForm",
+            "ImportData",
+            "Filespec",
+            "Portfolio",
+            "Movie",
+            "Sound",
+        ] {
+            let mut dictionary = lopdf::Dictionary::new();
+            dictionary.set("S", Object::Name(action.as_bytes().to_vec()));
+            let document = document_with_reference(Object::Dictionary(dictionary));
+            assert_eq!(
+                inspect_pdf_object_graph(&document),
+                Err(AdvisorDocumentAttachmentDiagnosticCode::ActiveContent),
+                "{action} must fail closed"
+            );
+        }
+    }
+
+    #[test]
+    fn graph_walk_is_bounded_and_fails_closed_for_missing_references() {
+        let mut cyclic = Document::with_version("1.5");
+        cyclic.objects.insert((1, 0), Object::Reference((1, 0)));
+        assert_eq!(inspect_pdf_object_graph(&cyclic), Ok(()));
+
+        let mut missing = Document::with_version("1.5");
+        missing.objects.insert((1, 0), Object::Reference((99, 0)));
+        assert_eq!(
+            inspect_pdf_object_graph(&missing),
+            Err(AdvisorDocumentAttachmentDiagnosticCode::InvalidContent)
+        );
+
+        let mut deep = Object::Null;
+        for _ in 0..=MAX_PDF_NESTING {
+            deep = Object::Array(vec![deep]);
+        }
+        let document = document_with_reference(deep);
+        assert_eq!(
+            inspect_pdf_object_graph(&document),
+            Err(AdvisorDocumentAttachmentDiagnosticCode::NestingLimitExceeded)
+        );
+    }
+
+    fn pending_document() -> PendingDocument {
+        PendingDocument {
+            manifest: AdvisorDocumentAttachmentManifest {
+                attachment_id: "018f0000-0000-7000-8000-000000000099".to_owned(),
+                display_name: "brief.pdf".to_owned(),
+                content_category: AdvisorContentCategory::Document,
+                media_type: AdvisorDocumentMediaType::Pdf,
+                byte_size: 42,
+                sha256: "a".repeat(64),
+                projection: AdvisorDocumentProjection {
+                    kind: AdvisorDocumentProjectionKind::PdfPlainTextV1,
+                    schema_version: 1,
+                    page_count: 1,
+                    processed_page_count: 1,
+                    included_page_count: 1,
+                    omitted_page_count: 0,
+                    partial_page_count: 0,
+                    projected_byte_size: 4,
+                    outline_entry_count: 0,
+                    truncated: false,
+                    warnings: Vec::new(),
+                },
+                disposal: AdvisorContentDisposal::TransientMemoryOneSend,
+            },
+            projection_text: "safe".to_owned(),
+            created_at: Instant::now(),
+        }
+    }
+
+    #[test]
+    fn claim_is_confirmation_hash_bound_one_use_and_disposes_transient_data() {
+        let service = AdvisorDocumentAttachmentService {
+            pending: Mutex::new(Some(pending_document())),
+        };
+        let mismatch = AdvisorDocumentAttachmentClaimRequest {
+            attachment_id: "018f0000-0000-7000-8000-000000000099".to_owned(),
+            manifest_sha256: "b".repeat(64),
+            confirmation: AdvisorContentConfirmationState::ConfirmedForSingleSend,
+        };
+        assert!(matches!(
+            service.claim(&mismatch),
+            Err(AdvisorDocumentAttachmentDiagnosticCode::ManifestMismatch)
+        ));
+        assert_eq!(
+            service.snapshot().state,
+            AdvisorDocumentAttachmentState::Empty,
+            "a mismatched claim consumes and disposes the native-only staging"
+        );
+
+        *service.pending.lock().unwrap() = Some(pending_document());
+        let request = AdvisorDocumentAttachmentClaimRequest {
+            attachment_id: "018f0000-0000-7000-8000-000000000099".to_owned(),
+            manifest_sha256: "a".repeat(64),
+            confirmation: AdvisorContentConfirmationState::ConfirmedForSingleSend,
+        };
+        let claimed = service.claim(&request).unwrap();
+        assert_eq!(claimed.projection_text, "safe");
+        assert!(matches!(
+            service.claim(&request),
+            Err(AdvisorDocumentAttachmentDiagnosticCode::AttachmentNotFound)
+        ));
+    }
+
+    #[test]
+    fn expired_and_cleared_documents_are_never_recovered() {
+        let service = AdvisorDocumentAttachmentService {
+            pending: Mutex::new(Some(PendingDocument {
+                created_at: Instant::now() - ATTACHMENT_TTL - Duration::from_secs(1),
+                ..pending_document()
+            })),
+        };
+        assert_eq!(
+            service.snapshot().diagnostic_code,
+            Some(AdvisorDocumentAttachmentDiagnosticCode::AttachmentExpired)
+        );
+        assert_eq!(service.clear().state, AdvisorDocumentAttachmentState::Empty);
+        assert_eq!(
+            service.snapshot().state,
+            AdvisorDocumentAttachmentState::Empty
         );
     }
 }

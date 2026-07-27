@@ -92,7 +92,16 @@ export const advisorDocumentAttachmentSnapshotSchema = z
           value.attachment.projection.pageCount ||
         value.attachment.projection.omittedPageCount !==
           value.attachment.projection.pageCount -
-            value.attachment.projection.processedPageCount)
+            value.attachment.projection.processedPageCount ||
+        value.attachment.projection.includedPageCount +
+          value.attachment.projection.partialPageCount >
+          value.attachment.projection.processedPageCount ||
+        (value.attachment.projection.partialPageCount > 0 &&
+          !value.attachment.projection.truncated) ||
+        (value.attachment.projection.truncated &&
+          !value.attachment.projection.warnings.includes(
+            "projection-truncated",
+          )))
     )
       context.addIssue({
         code: "custom",

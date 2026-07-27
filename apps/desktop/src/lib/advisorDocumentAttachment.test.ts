@@ -64,4 +64,37 @@ describe("Advisor document attachment contract", () => {
       }),
     ).toThrow();
   });
+  it("rejects a partial page without bounded truncation evidence", () => {
+    expect(() =>
+      advisorDocumentAttachmentSnapshotSchema.parse({
+        ...ready,
+        attachment: {
+          ...ready.attachment,
+          projection: {
+            ...ready.attachment.projection,
+            includedPageCount: 0,
+            partialPageCount: 1,
+          },
+        },
+      }),
+    ).toThrow();
+  });
+  it("accepts a path-free partial-page truncation record", () => {
+    const partial = {
+      ...ready,
+      attachment: {
+        ...ready.attachment,
+        projection: {
+          ...ready.attachment.projection,
+          includedPageCount: 0,
+          partialPageCount: 1,
+          truncated: true,
+          warnings: ["projection-truncated"],
+        },
+      },
+    };
+    expect(advisorDocumentAttachmentSnapshotSchema.parse(partial)).toEqual(
+      partial,
+    );
+  });
 });

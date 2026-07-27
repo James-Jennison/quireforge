@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — 0.1.0-beta.22
+## Unreleased — 0.1.0-beta.23
 
 ### Added
 
@@ -9,7 +9,8 @@
   path-free plain-text projection for one send.
 - Harden PDF active-content inspection across bounded nested and indirect
   objects, and make projection page accounting accurate when truncation occurs.
-- Supersede the unintegrated beta.21 candidate with corrected beta.22 evidence.
+- Supersede the unintegrated beta.21 and beta.22 candidates with final beta.23
+  PDF-boundary coverage and release evidence.
 
 - Add Milestone 32’s bounded, transient Advisor conversation viewport and
   confirmed Advisor/Codex mode picker. Mode changes clear temporary Advisor

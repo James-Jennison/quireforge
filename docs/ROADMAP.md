@@ -949,7 +949,7 @@ and construct a bounded, safe native projection with a path-free manifest/hash
 and explicit per-send confirmation. It excludes generic document upload,
 raw-document transport, macros, embedded-object execution, document editing or
 export, and project browsing. The package gate requires a fresh
-`0.1.0-beta.22` corrective candidate, strict projection/resource-limit tests, no-raw-content
+`0.1.0-beta.23` final corrective candidate, strict projection/resource-limit tests, no-raw-content
 or path-retention tests, and full accessibility/package evidence.
 
 ### 34 — Advisor Archive Manifest-First Analysis
@@ -959,7 +959,7 @@ Advisor may receive only a bounded native-generated manifest of entry names and
 aggregate safe metadata after explicit manifest/hash confirmation. It excludes
 archive extraction into projects, recursive content analysis, embedded-file
 handoff, password handling, symlink/path-traversal acceptance, and execution.
-The package gate requires a fresh `0.1.0-beta.22` candidate with malformed,
+The package gate requires a fresh `0.1.0-beta.23` candidate with malformed,
 zip-bomb, traversal, symlink, manifest-bound, disposal, and authority-regression
 coverage.
 
