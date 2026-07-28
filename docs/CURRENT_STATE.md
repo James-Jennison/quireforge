@@ -237,15 +237,18 @@ launch. It adds only a user-approved, one-use transient brief/receipt envelope;
 it does not transfer transcripts, attachments, project, terminal, Git,
 approval, dispatch, execution, path, or authority state.
 
-The post-beta.38 **Temporary Bundle Construction-Envelope Checkpoint** is the
-next packaging-only candidate: `0.1.0-beta.40`. A preliminary beta.39 package
-set was superseded locally before integration after the approved roadmap was
-confirmed through M58. The corrected temporary limits are 256 KiB startup
-entry, 448 KiB application shell, 1.5 MiB total JavaScript, and 160 KiB CSS.
-They cover approved M44–M58 UI construction without adding a product capability,
-dependency, authority, transport, provider, connector, release, or deployment
-behavior. The existing post-workbench permanent-budget reconciliation remains
-required.
+The post-beta.38 **Temporary Bundle Construction-Envelope Checkpoint** is
+complete locally as `0.1.0-beta.40`; a preliminary beta.39 package set was
+superseded before it was recorded as authoritative package evidence after the
+approved roadmap was confirmed through M58. The corrected temporary limits are
+256 KiB startup entry, 448 KiB
+application shell, 1.5 MiB total JavaScript, and 160 KiB CSS. The clean pinned
+Ubuntu 22.04 Debian set is bound to
+`0fed7983a3f32aa79ea4d1feee9947535d370a9b`, passes provenance/ABI, lifecycle,
+container and installed smoke, and visible-launch gates, and adds no product
+capability, dependency, authority, transport, provider, connector, release, or
+deployment behavior. The existing post-workbench permanent-budget
+reconciliation remains required.
 
 Milestone 27 — **Unified Conversation Engine** is complete. It adds strict
 Rust/Zod Chat/Codex capability profiles, a Settings navigation foundation,

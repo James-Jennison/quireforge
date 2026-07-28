@@ -54,10 +54,29 @@ that make the total-JavaScript and CSS headroom necessary.
 
 ## Package and evidence boundary
 
-The preliminary beta.39 locally generated release set is superseded before
-integration because it covered only M44–M50. This corrected checkpoint uses
+The preliminary beta.39 locally generated release set is superseded before it
+is recorded as authoritative package evidence because it covered only M44–M50.
+This corrected checkpoint uses
 the unique `0.1.0-beta.40` package identity. Its Debian release evidence must
 be bound to the clean policy commit and include measured JavaScript/CSS totals,
 provenance, checksums, ABI, lifecycle, installed-smoke, and visible-launch
 results. M44 and later provisional package identities shift by one without
 changing their product scope.
+
+## Beta.40 evidence
+
+The authoritative pinned Ubuntu 22.04 release workflow produced the clean
+`0fed7983a3f32aa79ea4d1feee9947535d370a9b` beta.40 set with unchanged measured
+desktop output: 194,943-byte entry, 309,489-byte application shell, 941,807
+bytes total JavaScript, and 108,515 bytes CSS. Its release manifest records
+`treeState: clean`, the digest-pinned Ubuntu 22.04 builder, and highest shipped
+`GLIBC_2.34`, within the required `GLIBC_2.35` ceiling.
+
+- `quireforge_0.1.0.beta.40_amd64.deb` —
+  `bdf3662530630ee8dad4d6600c77723e2541cc92823d0977babf89e3cba12fd5`
+- `quireforge-sandboxd_0.1.0.beta.40_amd64.deb` —
+  `5648541e28eeaa44669c8f433ba7cb3bb8b7f250268dab4b5b8e995091cd5458`
+
+Checksum, provenance/ABI, lifecycle, container smoke, restricted installed
+Debian validation, and the installed visible X11 launch all passed. No release
+or deployment was performed.

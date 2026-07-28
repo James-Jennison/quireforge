@@ -1173,11 +1173,17 @@ if separately approved, M52 durable-task records, M54 local artifact/design
 review, and M56 local templates. M51, M53, M55, M57, and M58 are decision-only
 and add no shipped bundle by themselves. Every limit remains enforced, reported
 with largest assets, and closed to automatic escalation. The preliminary
-beta.39 release set was superseded locally before integration because it covered
-only M44–M50. This corrected packaging-only checkpoint is the next unique
+beta.39 release set was superseded locally before it was recorded as
+authoritative package evidence because it covered only M44–M50. This corrected
+packaging-only checkpoint is the next unique
 `0.1.0-beta.40` candidate and shifts later provisional package identities by
 one without changing product scope. The post-workbench permanent-budget
 reconciliation remains mandatory.
+
+**Complete locally:** the clean `0.1.0-beta.40` Debian set is bound to
+`0fed7983a3f32aa79ea4d1feee9947535d370a9b`; checksum, provenance/ABI,
+lifecycle, container/installed smoke, and visible-launch gates passed. It does
+not add a product capability or alter the permanent-budget reconciliation gate.
 
 ### 44 — Unified Single Attachment Entry
 
