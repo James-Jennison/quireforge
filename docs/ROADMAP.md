@@ -1222,10 +1222,11 @@ expiration, one-use claim, and disposal; any invalid member fails the whole
 request without silent omission or partial reuse. This is not generic upload.
 The provisional package candidate is `0.1.0-beta.42`.
 
-**Implementation candidate:** the approved closed collection supports at most
-three existing typed entries and at most one image, with native 40 MiB
-aggregate preflight and one explicit collection confirmation. Package evidence
-is pending the clean beta.42 provenance build.
+**Complete:** implemented at `1bc2e787ab785016041d70845c97ca9c2c4f84db` with
+the verified `0.1.0-beta.42` Debian and worker set. The closed collection is
+limited to three existing typed entries and one image, with native 40 MiB
+aggregate preflight and explicit collection confirmation. See the
+[Milestone 46 report](MILESTONE_46_BOUNDED_MULTI_ATTACHMENT.md).
 
 ### 47 — Generated Artifact Workflow Proposal
 
