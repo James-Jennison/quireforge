@@ -154,6 +154,7 @@ def finalize(output_dir: Path, version: str) -> int:
         if existing.is_file() and (
             existing.name in {"SHA256SUMS", "release-manifest.json"}
             or existing.suffix == ".deb"
+            or existing.name.endswith(".AppImage")
         ):
             existing.unlink()
         else:
