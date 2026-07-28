@@ -203,12 +203,17 @@ passed full source validation, 46 desktop and 8 website Playwright checks,
 provenance/ABI validation (`GLIBC_2.34` within the Ubuntu 22.04 `GLIBC_2.35`
 ceiling), container lifecycle/smoke, and installed-host visible-launch checks.
 
-Milestone 41 — **Advisor Conversation Usability** is the active approved
-`0.1.0-beta.36` candidate. It is limited to the bounded transient Advisor
-transcript viewport, reader-controlled follow-latest and Jump to latest,
-final-reply reachability above the anchored composer, and a closed-by-default
-safe details drawer. It does not change Advisor authority, transport,
-attachments, persistence, Approval/Dispatch, or execution boundaries.
+Milestone 41 — **Advisor Conversation Usability** is integrated at
+`eee6a9ac7e3393fd7dcd73a2c4304894c70839d4`. It limits its changes to the
+bounded transient Advisor transcript viewport, reader-controlled follow-latest
+and Jump to latest, final-reply reachability above the anchored composer, and a
+closed-by-default safe details drawer. Its clean `0.1.0-beta.36` Debian-only
+desktop and worker release set passed full source validation, `48` desktop and
+`8` website Playwright checks, provenance/ABI validation (`GLIBC_2.34` within
+the Ubuntu 22.04 `GLIBC_2.35` ceiling), container lifecycle/smoke, restricted
+installed-package validation, and installed-host visible-launch checks. It
+does not change Advisor authority, transport, attachments, persistence,
+Approval/Dispatch, or execution boundaries.
 
 Milestone 27 — **Unified Conversation Engine** is complete. It adds strict
 Rust/Zod Chat/Codex capability profiles, a Settings navigation foundation,

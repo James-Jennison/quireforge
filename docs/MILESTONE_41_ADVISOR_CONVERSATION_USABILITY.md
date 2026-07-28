@@ -35,7 +35,24 @@ desktop drawer or narrow overlay.
 
 ## Package gate
 
-The M41 candidate is `0.1.0-beta.36`. It requires full source, contract,
-accessibility, desktop/narrow Playwright, production-bundle, Debian-only
-pinned-container provenance/ABI, lifecycle, installed-smoke, and visible-launch
-validation before evidence can be recorded.
+The clean implementation commit is
+`eee6a9ac7e3393fd7dcd73a2c4304894c70839d4`. Focused Advisor workspace tests
+passed; full source validation passed with `268` desktop and `7` website unit
+tests, `251` Rust tests (with `3` expected ignores), and the required
+formatting, lint, type, production-build, distribution, and Tauri build gates.
+Desktop and narrow Playwright coverage passed `48/48`; website Playwright
+coverage passed `8/8`.
+
+The pinned Ubuntu 22.04 Debian-only `0.1.0-beta.36` release set is bound to
+that exact clean commit:
+
+- `quireforge_0.1.0.beta.36_amd64.deb` — SHA-256
+  `9c72140b28e92ae2b764406b7886f545bef86c852165a5d71bb8a9d560ea889b`;
+- `quireforge-sandboxd_0.1.0.beta.36_amd64.deb` — SHA-256
+  `d361d4b171a0157070cee74f99eb15179aa36d7c0bbc0f35bd1a9889b6eef82f`.
+
+Release-set, metadata, checksum, container lifecycle/smoke, restricted host
+installation, and installed-host visible-launch validation passed. The release
+manifest records clean pinned-container provenance and a highest shipped
+`GLIBC_2.34`, within the Ubuntu 22.04 `GLIBC_2.35` ceiling. No release or
+deployment was performed.

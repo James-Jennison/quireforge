@@ -1102,6 +1102,13 @@ desktop/narrow Playwright, 200%-zoom, keyboard, focus-restoration,
 screen-reader, no-overflow, bundle-ceiling, provenance/ABI, lifecycle,
 installed-smoke, and visible-launch evidence are required.
 
+**Complete:** integrated at `eee6a9ac7e3393fd7dcd73a2c4304894c70839d4` with
+the clean `0.1.0-beta.36` Debian-only desktop and worker release set. Source,
+desktop/narrow accessibility and scrolling checks, `48` desktop and `8`
+website Playwright checks, bundle validation, provenance/ABI, container
+lifecycle/smoke, restricted installed-package validation, and installed-host
+visible-launch gates passed. See the [Milestone 41 report](MILESTONE_41_ADVISOR_CONVERSATION_USABILITY.md).
+
 ### 42 — Shared Task Continuity Proposal
 
 Produce a separately approved architecture decision for one explicit,
