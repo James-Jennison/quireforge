@@ -47,6 +47,9 @@ implementation position and [Roadmap](ROADMAP.md) for approved sequencing.
   evidence, and package records.
 - [Milestone 29 — Managed Advisor conversation foundation](MILESTONE_29_MANAGED_ADVISOR_CONVERSATION.md)
   — managed, transient Advisor conversation evidence and boundaries.
+- [Milestone 41 — Advisor Conversation Usability](MILESTONE_41_ADVISOR_CONVERSATION_USABILITY.md)
+  — bounded transcript scrolling, reader-controlled follow-latest, and the
+  safe optional details-drawer contract.
 - [Milestone forecasts](MILESTONE-FORECASTS.md) — planning estimates and
   uncertainty records.
 - [Milestone time ledger](MILESTONE_TIME_LEDGER.md) — recorded effort evidence.

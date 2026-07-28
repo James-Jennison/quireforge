@@ -1083,6 +1083,114 @@ source, keyboard/focus, accessibility, desktop/narrow-layout, bundle,
 provenance/ABI, container lifecycle/smoke, and installed-host visible-launch
 gates passed. See the [Milestone 40 report](MILESTONE_40_TASK_WORKBENCH_SHELL.md).
 
+### 41 — Advisor Conversation Usability
+
+Refine the existing bounded, transient Advisor conversation only: make its
+transcript the independent scrolling region; preserve follow-latest while a
+reader remains at the end; provide a keyboard-accessible **Jump to latest**
+control when they scroll away; ensure the final reply remains reachable above
+the anchored composer; and make the existing closed-by-default Advisor details
+surface independently scrollable as a desktop drawer and narrow overlay. The
+drawer may display only existing safe, transient Advisor context summaries and
+capability information.
+
+This changes no Advisor input, attachment, app-server transport, approval,
+dispatch, project, terminal, Git, execution, connector, authority, retention,
+or persistence contract. The package gate requires a fresh
+`0.1.0-beta.36` Debian desktop and worker release set; deterministic unit,
+desktop/narrow Playwright, 200%-zoom, keyboard, focus-restoration,
+screen-reader, no-overflow, bundle-ceiling, provenance/ABI, lifecycle,
+installed-smoke, and visible-launch evidence are required.
+
+### 42 — Shared Task Continuity Proposal
+
+Produce a separately approved architecture decision for one explicit,
+user-visible task envelope between Advisor and QuireForge. It may contain only
+a task title, original user request, user-approved task brief/handoff,
+explicitly selected safe attachment manifests or bounded representations, and
+bounded execution/completion receipts. It must exclude default transcript
+transfer, project/repository/worktree/terminal/Git/permission state, raw paths,
+approval/dispatch internals, execution authority, and hidden synchronization.
+This is a decision-only gate with no package or product change.
+
+### 43 — Shared Task Continuity
+
+After the M42 contract is approved, implement the explicit Advisor-to-QuireForge
+reviewed brief and QuireForge-to-Advisor bounded completion-receipt flows. Every
+handoff is user initiated, expiring, cancelable, isolated, path-free, and
+auditable; it never transfers a full transcript or authority. The provisional
+package candidate is `0.1.0-beta.37`, subject to revalidation as the next unique
+version when implementation is approved.
+
+### 44 — Unified Single Attachment Entry
+
+Present one **Attach a file** action that routes only to already supported,
+type-specific native pickers and validators. Native code remains authoritative
+for type determination. The UI gains a compact bounded attachment tray without
+adding generic upload, drag-and-drop, a new file type, multi-attachment
+collection, changed transport, or relaxed confirmation/disposal rules. The
+provisional package candidate is `0.1.0-beta.38`.
+
+### 45 — Bounded Multi-Attachment Proposal
+
+Verify documented managed app-server multi-input support and define an ordered
+collection manifest, collection digest, aggregate limits, atomic confirmation,
+failure, claim, and disposal behavior for already supported closed types. This
+is a capability-boundary decision gate with no package change.
+
+### 46 — Bounded Multi-Attachment
+
+Only after M45 approval, add a closed ordered collection of approved existing
+attachment types. Every member retains its own manifest, confirmation,
+expiration, one-use claim, and disposal; any invalid member fails the whole
+request without silent omission or partial reuse. This is not generic upload.
+The provisional package candidate is `0.1.0-beta.39`.
+
+### 47 — Generated Artifact Workflow Proposal
+
+Define a bounded transient artifact registry, multiple reviewed output cards,
+type-specific validation, and an explicit native save boundary for `.txt`,
+`.md`, `.json`, `.csv`, and `.py`. This decision gate must exclude automatic
+save, execution, project writes, overwrite, Git actions, retained destination
+paths, and content persistence. No package changes here.
+
+### 48 — Generated Artifacts and Explicit Save
+
+After M47 approval, provide typed inline artifact cards and independent,
+explicit native Save dialogs. Saving remains one artifact at a time and never
+opens, runs, imports, writes to a project automatically, or transfers
+authority. The provisional package candidate is `0.1.0-beta.40`.
+
+### 49 — QuireForge Review Panes
+
+Extend the task workbench with user-controlled, lazily loaded Files, Diff,
+Git, Preview, Activity, and Approval panes over existing typed native services.
+Background events may badge but never steal focus; stale data invalidates on
+project/worktree changes. No new Git, project-write, shell, terminal, dispatch,
+execution, browser, or provider authority is added. The provisional package
+candidate is `0.1.0-beta.41`.
+
+### 50 — QuireForge Workbench Layout Refinement
+
+Add accessible resizable/collapsible presentation controls, bounded local
+layout preferences, and managed-terminal-dock ergonomics over existing PTY
+ownership. Preferences must exclude paths, transcripts, terminal output,
+approvals, credentials, and capability state. This does not create a shell,
+PTY, command-launch, execution, or context-transfer path. The provisional
+package candidate is `0.1.0-beta.42`.
+
+### Deferred capability gates
+
+New archive, Office, or binary formats; generic upload; executable loading or
+execution beyond the separately installed M39 worker; dynamic loader support;
+browser/provider expansion; direct third-party connectors (including Figma or
+GitHub); MCP per-project enablement; browser verification agents; extension
+marketplaces; and parallel/multi-agent execution each require their own
+security, authority, transport, dependency, and retention proposal before any
+implementation. A post-workbench bundle-reconciliation gate must establish
+evidence-based permanent JavaScript and CSS ceilings before product-readiness or
+public-release approval.
+
 ### Advisor Approval/Dispatch Phases A–B3 (completed capability history)
 
 The approved Phase A/B1 controller is an editable, transient draft and explicit,

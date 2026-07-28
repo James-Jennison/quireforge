@@ -4382,9 +4382,10 @@ button:disabled {
   display: flex;
   flex-direction: column;
   position: relative;
+  min-width: 0;
   max-width: 58rem;
   margin-inline: auto;
-  padding-bottom: 9rem;
+  padding-bottom: 2rem;
 }
 
 .advisor-chat-header {
@@ -4405,24 +4406,62 @@ button:disabled {
 }
 .advisor-details {
   order: 1;
+  z-index: 12;
+  max-block-size: min(70dvh, 44rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   margin-bottom: 1rem;
   padding: 0.75rem 1rem;
   border: 1px solid var(--border);
   border-radius: 0.75rem;
   background: var(--sr);
+  box-shadow: 0 1rem 2.5rem color-mix(in srgb, var(--shadow) 28%, transparent);
+}
+
+.advisor-details__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.advisor-details__header strong {
+  font-size: 0.9rem;
+}
+
+.advisor-details__header button,
+.advisor-jump-to-latest {
+  min-height: 2.25rem;
+  border: 1px solid var(--bs);
+  border-radius: 0.55rem;
+  background: var(--sr);
+  color: var(--text);
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.advisor-details__header button {
+  padding: 0 0.65rem;
 }
 
 @media (min-width: 1200px) {
   #advisor .advisor-details {
-    position: absolute;
-    top: 0;
-    left: calc(100% + 1rem);
-    width: min(19rem, 22vw);
+    position: fixed;
+    top: 5rem;
+    right: 1rem;
+    width: min(20rem, calc(100vw - 3rem));
     margin: 0;
   }
 }
 
 #advisor .advisor-chat-panel {
+  display: flex;
+  position: relative;
+  min-width: 0;
+  min-height: 24rem;
+  height: min(52rem, calc(100dvh - 8.5rem));
+  flex-direction: column;
+  gap: 0.75rem;
   order: 2;
   border: 0;
   border-radius: 0;
@@ -4436,22 +4475,48 @@ button:disabled {
 }
 
 #advisor .conversation-events--advisor {
-  min-height: 12rem;
-  max-height: min(58vh, 46rem);
+  min-width: 0;
+  min-height: 10rem;
+  max-height: none;
+  flex: 1 1 auto;
+  overscroll-behavior: contain;
+  scroll-padding-block-end: 1rem;
   border: 0;
   border-radius: 0;
   background: transparent;
 }
 
 #advisor .conversation-composer {
-  position: sticky;
-  bottom: 1rem;
+  position: relative;
   z-index: 2;
+  flex: 0 0 auto;
+  max-block-size: min(48dvh, 34rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 1rem;
   border: 1px solid var(--border);
   border-radius: 1rem;
   background: color-mix(in srgb, var(--surface) 94%, var(--bg));
   box-shadow: 0 0.75rem 2rem color-mix(in srgb, black 18%, transparent);
+}
+
+.advisor-jump-to-latest {
+  align-self: end;
+  flex: 0 0 auto;
+  padding: 0 0.8rem;
+  box-shadow: 0 0.5rem 1.25rem
+    color-mix(in srgb, var(--shadow) 36%, transparent);
+}
+
+@media (max-width: 1199px) {
+  #advisor .advisor-details {
+    position: fixed;
+    right: 0.5rem;
+    bottom: 0.5rem;
+    left: 0.5rem;
+    max-block-size: min(70dvh, 38rem);
+    margin: 0;
+  }
 }
 
 .advisor-composer-context {
@@ -4470,13 +4535,16 @@ button:disabled {
 @media (max-width: 700px) {
   #advisor.project-workspace {
     padding-inline: 0.75rem;
-    padding-bottom: 8rem;
   }
   .advisor-chat-header {
     align-items: center;
   }
   #advisor .conversation-composer {
-    bottom: 0.5rem;
+    max-block-size: min(52dvh, 30rem);
+  }
+  #advisor .advisor-chat-panel {
+    min-height: 23rem;
+    height: calc(100dvh - 7.5rem);
   }
 }
 

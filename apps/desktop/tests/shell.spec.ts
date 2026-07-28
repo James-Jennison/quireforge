@@ -359,6 +359,43 @@ const nativeResponses = {
     events: [],
     diagnosticCode: null,
   },
+  advisor_text_attachment_status: {
+    schemaVersion: 1,
+    state: "empty",
+    attachment: null,
+    confirmationState: null,
+    diagnosticCode: null,
+  },
+  advisor_image_attachment_status: {
+    schemaVersion: 1,
+    state: "empty",
+    attachment: null,
+    previewDataUrl: null,
+    confirmationState: null,
+    diagnosticCode: null,
+  },
+  advisor_document_attachment_status: {
+    schemaVersion: 1,
+    state: "empty",
+    attachment: null,
+    confirmationState: null,
+    diagnosticCode: null,
+  },
+  advisor_archive_attachment_status: {
+    schemaVersion: 1,
+    state: "empty",
+    attachment: null,
+    entries: [],
+    confirmationState: null,
+    diagnosticCode: null,
+  },
+  advisor_binary_attachment_status: {
+    schemaVersion: 1,
+    state: "empty",
+    attachment: null,
+    confirmationState: null,
+    diagnosticCode: null,
+  },
   repository_state_read: repositoryStateFixture,
   worktree_status: {
     schemaVersion: 2,
@@ -881,7 +918,10 @@ test("Advisor presents a bounded chat-first conversation with safe summaries", a
   await expect(
     advisor.getByText("Create, Learn, Explore · Read-only"),
   ).toBeVisible();
-  const details = advisor.getByRole("button", { name: "Details" });
+  const details = advisor.getByRole("button", {
+    name: "Details",
+    exact: true,
+  });
   await expect(details).toHaveAttribute("aria-expanded", "false");
   await expect(
     advisor.getByRole("complementary", { name: "Advisor details" }),
@@ -942,7 +982,7 @@ test("Advisor presents a bounded chat-first conversation with safe summaries", a
   const sendButton = advisor.getByRole("button", { name: "Send to Advisor" });
   await expect(advisor.locator(".conversation-composer")).toHaveCSS(
     "position",
-    "sticky",
+    "relative",
   );
   await expect(sendButton).toBeDisabled();
   await advisor
@@ -986,6 +1026,77 @@ test("Advisor presents a bounded chat-first conversation with safe summaries", a
     .disableRules(["skip-link"])
     .analyze();
   expect(accessibility.violations).toEqual([]);
+});
+
+test("Advisor keeps a long transient reply reachable without forcing a reader to the latest update", async ({
+  page,
+}) => {
+  const longReply = Array.from(
+    { length: 160 },
+    (_, index) =>
+      `Bounded Advisor reply line ${index + 1}: review remains transient and read-only.`,
+  ).join("\n");
+  await installNativeFixture(page, {
+    ...nativeResponses,
+    advisor_conversation_start: {
+      schemaVersion: 1,
+      mode: "advisor",
+      state: "completed",
+      conversationId: "018f0000-0000-7000-8000-000000000062",
+      projectStateIncluded: false,
+      events: [
+        {
+          type: "agent-message-delta",
+          sequence: 1,
+          delta: longReply,
+        },
+      ],
+      diagnosticCode: null,
+    },
+  });
+  await page.goto("/");
+  await openWorkspace(page, "Advisor");
+
+  const advisor = page.locator('[data-workspace-view="advisor"]');
+  await advisor
+    .getByRole("textbox", { name: "Advisor message" })
+    .fill("Review the bounded response.");
+  await advisor.getByRole("button", { name: "Send to Advisor" }).click();
+  const transcript = advisor.getByRole("log", {
+    name: "Active Advisor conversation",
+  });
+  await expect(transcript).toHaveCSS("overflow-y", "auto");
+  await expect
+    .poll(() =>
+      transcript.evaluate((node) => node.scrollHeight > node.clientHeight),
+    )
+    .toBe(true);
+
+  await transcript.evaluate((node) => {
+    node.scrollTop = 0;
+    node.dispatchEvent(new Event("scroll", { bubbles: true }));
+  });
+  const jump = advisor.getByRole("button", { name: "Jump to latest" });
+  await expect(jump).toBeVisible();
+  await jump.click();
+  await expect
+    .poll(() =>
+      transcript.evaluate(
+        (node) => node.scrollHeight - node.scrollTop - node.clientHeight <= 1,
+      ),
+    )
+    .toBe(true);
+  await expect(jump).toHaveCount(0);
+
+  const reply = advisor.getByText("Bounded Advisor reply line 160:");
+  const composer = advisor.locator(".conversation-composer");
+  await expect(async () => {
+    const replyBox = await reply.boundingBox();
+    const composerBox = await composer.boundingBox();
+    expect(replyBox).not.toBeNull();
+    expect(composerBox).not.toBeNull();
+    expect(replyBox!.y + replyBox!.height).toBeLessThanOrEqual(composerBox!.y);
+  }).toPass();
 });
 
 test("project state workspace presents read-only normalized evidence accessibly", async ({

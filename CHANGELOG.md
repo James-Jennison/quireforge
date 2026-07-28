@@ -1,8 +1,15 @@
 # Changelog
 
-## Unreleased — 0.1.0-beta.35
+## Unreleased — 0.1.0-beta.36
 
 ### Added
+
+- Add Milestone 41's bounded Advisor conversation usability refinement. The
+  transcript is the independent scrolling region, readers can pause
+  follow-latest and jump back to the newest reply, the anchored composer no
+  longer obscures the final response, and the optional details drawer is
+  independently scrollable with keyboard focus restoration. No Advisor
+  authority, transport, attachment, retention, or execution boundary changes.
 
 - Add Milestone 40's QuireForge Task Workbench Shell. The task conversation
   remains primary while an opt-in workbench context drawer, compact safe-actions

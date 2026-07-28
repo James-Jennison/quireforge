@@ -567,7 +567,7 @@ describe("QuireForge desktop shell", () => {
     );
   });
 
-  it("renders Advisor through the fixed reference-only snapshot reader", async () => {
+  it("loads safe Advisor metadata alongside the managed bounded composer", async () => {
     window.history.replaceState(null, "", "#advisor");
     const loadAdvisorSnapshotTask = vi
       .fn()
@@ -587,8 +587,10 @@ describe("QuireForge desktop shell", () => {
         name: "Advisor",
       }),
     ).toBeInTheDocument();
-    expect(loadAdvisorSnapshotTask).toHaveBeenCalledWith();
-    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+    await waitFor(() => expect(loadAdvisorSnapshotTask).toHaveBeenCalledWith());
+    expect(
+      screen.getByRole("textbox", { name: "Advisor message" }),
+    ).toBeInTheDocument();
   });
 
   it("requires confirmation before reading an ephemeral Advisor Project State snapshot", async () => {

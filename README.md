@@ -34,6 +34,9 @@ static project site is [quireforge.jamesjennison.net](https://quireforge.jamesje
 - A QuireForge task workbench shell with a primary conversation surface, an
   opt-in context drawer, safe navigation actions, and a collapsed view of the
   existing managed terminal; it adds no new execution authority.
+- A bounded transient Advisor conversation surface with independently
+  scrollable replies, reader-controlled follow-latest, and an optional safe
+  details drawer; it adds no Advisor authority or persistence.
 
 The current implementation status, completed milestones, known limitations,
 and next approved work are maintained in [Current State](docs/CURRENT_STATE.md).

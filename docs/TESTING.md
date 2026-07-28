@@ -976,6 +976,24 @@ print the account-visible catalog.
 - Verify the unbundled release starts under isolated XDG directories, performs
   no conversation work without user action, and leaves no app-server child.
 
+## Milestone 41 Advisor conversation usability checklist
+
+- Run the deterministic Advisor viewport unit tests for coalesced stream
+  fragments, reader-controlled follow-latest, Jump to latest, drawer close, and
+  focus restoration.
+- Run desktop and narrow Playwright checks with a long bounded reply, streaming
+  updates, constrained height, attachment-heavy composer, and the optional
+  details drawer. Verify the final reply is reachable above the composer and
+  the outer document has no unintended horizontal overflow.
+- Check keyboard scrollback (Page Up, Page Down, Home, End, wheel, and
+  touchpad), visible focus, screen-reader names, Escape/focus return, 200% zoom,
+  and reduced-motion behavior.
+- Confirm the browser fixture and rendered DOM expose no source path, raw
+  attachment content, raw app-server payload, or retained transcript state.
+- Run full repository, bundle-ceiling, pinned Ubuntu 22.04 Debian provenance/ABI,
+  lifecycle, installed-smoke, and visible-launch validation before recording
+  beta.36 package evidence.
+
 ## Manual Milestone 6 checklist
 
 - Confirm the folder picker is native and no command accepts a frontend path.

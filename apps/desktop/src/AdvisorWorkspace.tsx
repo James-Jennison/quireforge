@@ -199,6 +199,7 @@ export function AdvisorWorkspace({
   const [detailsOpen, setDetailsOpen] = useState(false);
   const lastResetToken = useRef(resetToken);
   const conversationViewportRef = useRef<HTMLDivElement>(null);
+  const detailsTriggerRef = useRef<HTMLButtonElement>(null);
   const [followLatest, setFollowLatest] = useState(true);
   const authentication = managedChatAuthenticationState(auth);
   const active =
@@ -283,12 +284,36 @@ export function AdvisorWorkspace({
     viewport.scrollTop = viewport.scrollHeight;
   }, [conversation.events, followLatest]);
 
+  useEffect(() => {
+    if (!detailsOpen) return undefined;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      setDetailsOpen(false);
+      detailsTriggerRef.current?.focus();
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [detailsOpen]);
+
   function updateViewportPosition() {
     const viewport = conversationViewportRef.current;
     if (!viewport) return;
     setFollowLatest(
       viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight < 12,
     );
+  }
+
+  function jumpToLatest() {
+    const viewport = conversationViewportRef.current;
+    if (!viewport) return;
+    viewport.scrollTop = viewport.scrollHeight;
+    setFollowLatest(true);
+  }
+
+  function closeDetails() {
+    setDetailsOpen(false);
+    detailsTriggerRef.current?.focus();
   }
   useEffect(() => {
     void loadAdvisorImageAttachment()
@@ -347,6 +372,7 @@ export function AdvisorWorkspace({
   function submit(projectId: string | null) {
     if (conversationBusy || active || authentication !== "ready") return;
     setActionError(false);
+    setFollowLatest(true);
     const attachment =
       textAttachment.state === "ready" ? textAttachment.attachment : null;
     const image =
@@ -639,6 +665,7 @@ export function AdvisorWorkspace({
           <p>Create, Learn, Explore · Read-only</p>
         </div>
         <button
+          ref={detailsTriggerRef}
           type="button"
           aria-expanded={detailsOpen}
           aria-controls="advisor-details"
@@ -653,11 +680,24 @@ export function AdvisorWorkspace({
           className="advisor-details"
           aria-label="Advisor details"
         >
+          <div className="advisor-details__header">
+            <strong>Advisor details</strong>
+            <button type="button" onClick={closeDetails}>
+              Close Advisor details
+            </button>
+          </div>
           <p role="note">
             Advisor has no shell, terminal, Git, repository-write, or dispatch
             capability. Context and attachments are transient and require
             confirmation.
           </p>
+          {selectedProjectState && (
+            <p role="status">
+              Selected Project State is temporary:{" "}
+              {selectedProjectState.freshness}, {selectedProjectState.worktree}.
+              It is not retained after restart.
+            </p>
+          )}
         </aside>
       )}
       {availability === "checking" && (
@@ -995,6 +1035,7 @@ export function AdvisorWorkspace({
           <div
             className="conversation-events conversation-events--advisor"
             ref={conversationViewportRef}
+            id="advisor-conversation-log"
             role="log"
             aria-label="Active Advisor conversation"
             aria-live="polite"
@@ -1025,6 +1066,16 @@ export function AdvisorWorkspace({
               ),
             )}
           </div>
+          {!followLatest && hasConversation && (
+            <button
+              type="button"
+              className="advisor-jump-to-latest"
+              aria-controls="advisor-conversation-log"
+              onClick={jumpToLatest}
+            >
+              Jump to latest
+            </button>
+          )}
           {conversation.state === "completed" && latestReply && (
             <div className="conversation-actions">
               {exportCandidates.length > 1 && (

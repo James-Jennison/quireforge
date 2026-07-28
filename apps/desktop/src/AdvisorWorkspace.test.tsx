@@ -197,6 +197,24 @@ describe("AdvisorWorkspace", () => {
     expect(screen.queryByText(/gpt-5.6-terra/i)).not.toBeInTheDocument();
   });
 
+  it("closes the optional details drawer with Escape and restores trigger focus", async () => {
+    render(<AdvisorWorkspace {...props} />);
+    const trigger = screen.getByRole("button", { name: "Details" });
+    fireEvent.click(trigger);
+    const drawer = screen.getByRole("complementary", {
+      name: "Advisor details",
+    });
+
+    fireEvent.keyDown(drawer, { key: "Escape" });
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("complementary", { name: "Advisor details" }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(document.activeElement).toBe(trigger);
+  });
+
   it("requires explicit confirmation before selecting a snapshot", () => {
     const onRequestProjectState = vi.fn();
     render(
@@ -349,6 +367,55 @@ describe("AdvisorWorkspace", () => {
     expect(
       screen.getByRole("log", { name: "Active Advisor conversation" }),
     ).toHaveAttribute("tabindex", "0");
+  });
+
+  it("lets a reader pause follow-latest and jump back to the newest reply", () => {
+    const { container } = render(
+      <AdvisorWorkspace
+        {...props}
+        conversation={{
+          ...scaffoldAdvisorConversation,
+          state: "running",
+          conversationId: "018f0000-0000-7000-8000-000000000099",
+          events: [
+            {
+              type: "agent-message-delta",
+              sequence: 1,
+              delta: "A bounded reply that remains in the transient viewport.",
+            },
+          ],
+        }}
+      />,
+    );
+    const viewport = screen.getByRole("log", {
+      name: "Active Advisor conversation",
+    });
+    let scrollTop = 0;
+    Object.defineProperties(viewport, {
+      clientHeight: { configurable: true, value: 100 },
+      scrollHeight: { configurable: true, value: 1000 },
+      scrollTop: {
+        configurable: true,
+        get: () => scrollTop,
+        set: (value: number) => {
+          scrollTop = value;
+        },
+      },
+    });
+
+    scrollTop = 120;
+    fireEvent.scroll(viewport);
+    const jump = screen.getByRole("button", { name: "Jump to latest" });
+    expect(jump).toHaveAttribute("aria-controls", "advisor-conversation-log");
+
+    fireEvent.click(jump);
+    expect(scrollTop).toBe(1000);
+    expect(
+      screen.queryByRole("button", { name: "Jump to latest" }),
+    ).not.toBeInTheDocument();
+    expect(
+      container.querySelector(".conversation-composer"),
+    ).toBeInTheDocument();
   });
 
   it("clears transient composer state and attachments when a mode reset is accepted", async () => {

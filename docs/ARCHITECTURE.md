@@ -100,6 +100,19 @@ projection and supplies its closed trust/freshness/worktree/diagnostic summary;
 that does not attach a project or convey repository authority. Approval and
 dispatch remain deferred.
 
+### Milestone 41 Advisor conversation usability boundary
+
+The Advisor route keeps one bounded in-memory event list and gives that list its
+own scrolling viewport. React follows the newest event only while the reader is
+already at the end; an explicit local **Jump to latest** control restores that
+position after scrollback. The composer is a bounded, non-scrolling footer of
+the chat panel, so it remains available without covering the final reply. The
+closed-by-default details drawer contains only existing safe transient context
+and capability summaries; it has no native command, retained transcript, file,
+or attachment store. These presentation mechanics do not alter the fixed
+no-project Advisor app-server profile, its request schema, or its authority and
+retention boundaries.
+
 ### Milestone 3 implementation boundary
 
 The initial desktop package lives under `apps/desktop`. React and strict
