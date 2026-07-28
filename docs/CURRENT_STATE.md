@@ -215,6 +215,14 @@ installed-package validation, and installed-host visible-launch checks. It
 does not change Advisor authority, transport, attachments, persistence,
 Approval/Dispatch, or execution boundaries.
 
+The post-M41 **Packaging-Efficiency Corrective Checkpoint** is the active
+`0.1.0-beta.37` candidate. It changes only the pinned Ubuntu 22.04 release
+workflow: immutable Linux-kernel and Firecracker source archives may be reused
+from a checksum-verified container cache, while guest outputs are rebuilt in a
+disposable work directory and the existing provenance, ABI, lifecycle, and
+visible-launch gates remain mandatory. No application capability, dependency,
+release, or deployment behavior changes.
+
 Milestone 27 — **Unified Conversation Engine** is complete. It adds strict
 Rust/Zod Chat/Codex capability profiles, a Settings navigation foundation,
 bounded mode-aware metadata, a fixed no-project native Chat bridge, and an

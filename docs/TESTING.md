@@ -107,7 +107,9 @@ It builds in the pinned Ubuntu 22.04 container and runs structural, checksum,
 AppStream, GLIBC, lifecycle, and visible X11 checks for the Debian package.
 When M39's separately installed worker is present, the same gate also checks
 the worker package, immutable guest-asset hashes, and zero-network service
-policy.
+policy. The worker's Linux-kernel and Firecracker input archives may come only
+from the authoritative container's checksum-verified immutable-source cache;
+cache tests cover reuse, tamper eviction, and unsafe cache-name rejection.
 It uses isolated ignored caches, no personal Codex home or credentials, no live
 model call, no host package installation, and no local Vite server.
 

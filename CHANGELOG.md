@@ -1,6 +1,16 @@
 # Changelog
 
-## Unreleased — 0.1.0-beta.36
+## Unreleased — 0.1.0-beta.37
+
+### Changed
+
+- Add the post-M41 packaging-efficiency checkpoint. The pinned Ubuntu 22.04
+  release workflow now reuses only checksum-verified immutable Linux-kernel and
+  Firecracker source archives; it still rebuilds guest outputs in a disposable
+  directory and verifies every source before extraction. Release provenance,
+  ABI, lifecycle, and visible-launch gates remain mandatory.
+
+## 0.1.0-beta.36
 
 ### Added
 

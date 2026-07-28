@@ -125,8 +125,11 @@ The authoritative package build uses Docker, not the newer discovery host:
 ```
 
 The script builds the digest-pinned Ubuntu 22.04 image, uses isolated ignored
-caches, fetches only checksum-reviewed Tauri Linux tools, builds both Tauri
-bundles, normalizes their identity and timestamps, and validates metadata,
+caches, and reuses only checksum-verified immutable Linux-kernel and
+Firecracker source archives for the separately installed worker. It verifies
+every cache hit before extraction and rebuilds all guest outputs in a disposable
+directory. The workflow fetches only checksum-reviewed Tauri Linux tools,
+builds both Tauri bundles, normalizes their identity and timestamps, and validates metadata,
 checksums, GLIBC 2.35 compatibility, disposable package lifecycle, and visible
 X11 launches. It does not install either package on the host.
 

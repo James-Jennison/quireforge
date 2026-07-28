@@ -50,6 +50,9 @@ implementation position and [Roadmap](ROADMAP.md) for approved sequencing.
 - [Milestone 41 — Advisor Conversation Usability](MILESTONE_41_ADVISOR_CONVERSATION_USABILITY.md)
   — bounded transcript scrolling, reader-controlled follow-latest, and the
   safe optional details-drawer contract.
+- [Post-M41 packaging-efficiency checkpoint](PACKAGING_EFFICIENCY_CHECKPOINT.md)
+  — checksum-verified immutable guest-input caching within the authoritative
+  Ubuntu 22.04 release workflow.
 - [Milestone forecasts](MILESTONE-FORECASTS.md) — planning estimates and
   uncertainty records.
 - [Milestone time ledger](MILESTONE_TIME_LEDGER.md) — recorded effort evidence.

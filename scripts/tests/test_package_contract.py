@@ -27,7 +27,7 @@ from scripts.release_contract import (
 
 class PackageContractTests(unittest.TestCase):
     def test_all_source_versions_match_the_beta_candidate(self) -> None:
-        self.assertEqual(source_version(), "0.1.0-beta.36")
+        self.assertEqual(source_version(), "0.1.0-beta.37")
 
     def test_debian_metadata_and_artifact_versions_are_deliberately_distinct(
         self,
@@ -130,6 +130,18 @@ class PackageContractTests(unittest.TestCase):
         with patch.dict("os.environ", {}, clear=False):
             with self.assertRaisesRegex(RuntimeError, "container"):
                 assert_authoritative_release_builder()
+
+    def test_authoritative_builder_uses_only_the_verified_sandbox_source_cache(self) -> None:
+        builder = (ROOT / "scripts/run_linux_package_container.sh").read_text(
+            encoding="utf-8"
+        )
+        guest_assets = (
+            ROOT / "packaging/sandbox/build_guest_assets.sh"
+        ).read_text(encoding="utf-8")
+        self.assertIn("QUIRE_FORGE_SANDBOX_SOURCE_CACHE=/cache/sandbox-sources", builder)
+        self.assertIn('"$cache_root/sandbox-sources"', builder)
+        self.assertIn("authoritative sandbox source cache required", guest_assets)
+        self.assertIn("cache_verified_source.sh", guest_assets)
 
     def test_release_manifest_contract_requires_pinned_provenance_and_abi(self) -> None:
         schema = json.loads(

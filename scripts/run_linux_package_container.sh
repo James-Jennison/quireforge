@@ -18,7 +18,8 @@ mkdir -p \
   "$cache_root/node_modules/desktop" \
   "$cache_root/node_modules/root" \
   "$cache_root/node_modules/website" \
-  "$cache_root/pnpm-store"
+  "$cache_root/pnpm-store" \
+  "$cache_root/sandbox-sources"
 
 docker build \
   --file packaging/linux/Dockerfile \
@@ -43,6 +44,7 @@ docker run \
   --env QUIRE_FORGE_BUILD_IMAGE="$builder_source" \
   --env QUIRE_FORGE_BUILD_VERSION=22.04 \
   --env QUIRE_FORGE_RELEASE_BUILDER=pinned-ubuntu-22.04 \
+  --env QUIRE_FORGE_SANDBOX_SOURCE_CACHE=/cache/sandbox-sources \
   --env QUIRE_FORGE_TAURI_CACHE_DIR=/cache/home/.cache/tauri \
   --env SOURCE_DATE_EPOCH="$source_epoch" \
   --workdir /workspace \

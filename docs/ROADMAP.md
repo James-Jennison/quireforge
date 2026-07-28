@@ -1109,6 +1109,17 @@ website Playwright checks, bundle validation, provenance/ABI, container
 lifecycle/smoke, restricted installed-package validation, and installed-host
 visible-launch gates passed. See the [Milestone 41 report](MILESTONE_41_ADVISOR_CONVERSATION_USABILITY.md).
 
+### Post-M41 Packaging-Efficiency Corrective Checkpoint
+
+Use a checksum-verified cache for immutable Linux-kernel and Firecracker
+archives only inside the pinned Ubuntu 22.04 release container. Every cache
+hit is revalidated before extraction; all guest outputs remain disposable
+fresh builds, and release provenance, ABI, lifecycle, smoke, and visible-launch
+validation remain fail-closed. This changes no application capability,
+dependency, authority, release, or deployment behavior. Its package candidate
+is `0.1.0-beta.37`; this reserves that unique version and shifts the later
+provisional package sequence below.
+
 ### 42 — Shared Task Continuity Proposal
 
 Produce a separately approved architecture decision for one explicit,
@@ -1126,7 +1137,7 @@ After the M42 contract is approved, implement the explicit Advisor-to-QuireForge
 reviewed brief and QuireForge-to-Advisor bounded completion-receipt flows. Every
 handoff is user initiated, expiring, cancelable, isolated, path-free, and
 auditable; it never transfers a full transcript or authority. The provisional
-package candidate is `0.1.0-beta.37`, subject to revalidation as the next unique
+package candidate is `0.1.0-beta.38`, subject to revalidation as the next unique
 version when implementation is approved.
 
 ### 44 — Unified Single Attachment Entry
@@ -1136,7 +1147,7 @@ type-specific native pickers and validators. Native code remains authoritative
 for type determination. The UI gains a compact bounded attachment tray without
 adding generic upload, drag-and-drop, a new file type, multi-attachment
 collection, changed transport, or relaxed confirmation/disposal rules. The
-provisional package candidate is `0.1.0-beta.38`.
+provisional package candidate is `0.1.0-beta.39`.
 
 ### 45 — Bounded Multi-Attachment Proposal
 
@@ -1151,7 +1162,7 @@ Only after M45 approval, add a closed ordered collection of approved existing
 attachment types. Every member retains its own manifest, confirmation,
 expiration, one-use claim, and disposal; any invalid member fails the whole
 request without silent omission or partial reuse. This is not generic upload.
-The provisional package candidate is `0.1.0-beta.39`.
+The provisional package candidate is `0.1.0-beta.40`.
 
 ### 47 — Generated Artifact Workflow Proposal
 
@@ -1166,7 +1177,7 @@ paths, and content persistence. No package changes here.
 After M47 approval, provide typed inline artifact cards and independent,
 explicit native Save dialogs. Saving remains one artifact at a time and never
 opens, runs, imports, writes to a project automatically, or transfers
-authority. The provisional package candidate is `0.1.0-beta.40`.
+authority. The provisional package candidate is `0.1.0-beta.41`.
 
 ### 49 — QuireForge Review Panes
 
@@ -1175,7 +1186,7 @@ Git, Preview, Activity, and Approval panes over existing typed native services.
 Background events may badge but never steal focus; stale data invalidates on
 project/worktree changes. No new Git, project-write, shell, terminal, dispatch,
 execution, browser, or provider authority is added. The provisional package
-candidate is `0.1.0-beta.41`.
+candidate is `0.1.0-beta.42`.
 
 ### 50 — QuireForge Workbench Layout Refinement
 
@@ -1184,7 +1195,7 @@ layout preferences, and managed-terminal-dock ergonomics over existing PTY
 ownership. Preferences must exclude paths, transcripts, terminal output,
 approvals, credentials, and capability state. This does not create a shell,
 PTY, command-launch, execution, or context-transfer path. The provisional
-package candidate is `0.1.0-beta.42`.
+package candidate is `0.1.0-beta.43`.
 
 ### Deferred capability gates
 
