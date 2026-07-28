@@ -144,8 +144,8 @@ def validate_manifest(
             )
 
     artifacts = manifest.get("artifacts")
-    if not isinstance(artifacts, list) or len(artifacts) != 3:
-        raise RuntimeError("release manifest must contain exactly three artifacts")
+    if not isinstance(artifacts, list) or len(artifacts) != 2:
+        raise RuntimeError("release manifest must contain exactly two Debian artifacts")
     by_format: dict[str, Path] = {}
     for entry in artifacts:
         if not isinstance(entry, dict):
