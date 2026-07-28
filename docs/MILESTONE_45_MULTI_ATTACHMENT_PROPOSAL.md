@@ -1,7 +1,8 @@
 # Milestone 45 — Bounded Multi-Attachment Proposal
 
-Status: decision record awaiting explicit approval. No product code, package,
-transport endpoint, file type, or authority changes are included here.
+Status: approved decision record. Its closed contract was exercised only by the
+completed Milestone 46 implementation. This proposal itself introduced no
+product code, package, transport endpoint, file type, or authority changes.
 
 ## Evidence and recommendation
 

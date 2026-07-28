@@ -262,12 +262,18 @@ gates passed.
 
 ## Next action
 
-Milestone 45 — **Bounded Multi-Attachment Proposal** is ready for the required
-explicit product/security decision. It recommends an atomic, one-use,
-native-memory-only collection of at most three existing typed attachments with
-at most one image, a 40 MiB aggregate source ceiling, and no generic file or
-new transport path. See
-[Milestone 45](MILESTONE_45_MULTI_ATTACHMENT_PROPOSAL.md).
+Milestone 46 — **Bounded Multi-Attachment** is complete at
+`1bc2e787ab785016041d70845c97ca9c2c4f84db` with its verified
+`0.1.0-beta.42` Debian and worker set. Advisor now supports only the approved,
+native-memory-only collection of at most three existing typed attachments, at
+most one image, and a 40 MiB aggregate source ceiling. The existing text input
+plus optional `localImage` transport is retained; generic upload, persistence,
+and new authority remain out of scope. See
+[Milestone 46](MILESTONE_46_BOUNDED_MULTI_ATTACHMENT.md).
+
+Milestone 47 — **Generated Artifact Workflow Proposal** is the next genuine
+proposal decision. It must define a bounded transient artifact registry and
+explicit native save boundary without beginning package-changing M48 work.
 
 Milestone 27 — **Unified Conversation Engine** is complete. It adds strict
 Rust/Zod Chat/Codex capability profiles, a Settings navigation foundation,

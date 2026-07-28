@@ -54,7 +54,9 @@ implementation position and [Roadmap](ROADMAP.md) for approved sequencing.
   — one compact entry that routes only to existing closed native attachment
   handlers.
 - [Milestone 45 — Bounded Multi-Attachment Proposal](MILESTONE_45_MULTI_ATTACHMENT_PROPOSAL.md)
-  — proposed three-item atomic collection contract awaiting approval.
+  — approved three-item atomic collection contract used by M46.
+- [Milestone 46 — Bounded Multi-Attachment](MILESTONE_46_BOUNDED_MULTI_ATTACHMENT.md)
+  — verified closed Advisor collection of up to three existing typed entries.
 - [Post-M41 packaging-efficiency checkpoint](PACKAGING_EFFICIENCY_CHECKPOINT.md)
   — checksum-verified immutable guest-input caching within the authoritative
   Ubuntu 22.04 release workflow.
