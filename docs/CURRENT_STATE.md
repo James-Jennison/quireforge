@@ -228,6 +228,15 @@ container lifecycle/smoke, restricted installed-package validation, and
 installed-host visible-launch checks. No application capability, dependency,
 release, or deployment behavior changes.
 
+Milestone 43 — **Shared Task Continuity** source is integrated at
+`6eb526bdb0b1705414f5507081dc37872358198c`. Its clean
+`0.1.0-beta.38` Debian-only desktop and worker release set passed full source
+validation, provenance/ABI (`GLIBC_2.34` within the `GLIBC_2.35` ceiling),
+container lifecycle/smoke, restricted installed-package validation, and visible
+launch. It adds only a user-approved, one-use transient brief/receipt envelope;
+it does not transfer transcripts, attachments, project, terminal, Git,
+approval, dispatch, execution, path, or authority state.
+
 Milestone 27 — **Unified Conversation Engine** is complete. It adds strict
 Rust/Zod Chat/Codex capability profiles, a Settings navigation foundation,
 bounded mode-aware metadata, a fixed no-project native Chat bridge, and an

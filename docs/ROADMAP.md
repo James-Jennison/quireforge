@@ -1147,6 +1147,16 @@ auditable; it never transfers a full transcript or authority. The provisional
 package candidate is `0.1.0-beta.38`, subject to revalidation as the next unique
 version when implementation is approved.
 
+**Complete:** source integrated at `6eb526bdb0b1705414f5507081dc37872358198c`
+with the clean `0.1.0-beta.38` Debian-only desktop and worker release set. The
+bounded envelope is one-use, expiring, cancelable, path-free, and native-memory
+only; it transfers no attachment payload, transcript, project, terminal, Git,
+approval, dispatch, execution, or authority state. Full validation,
+provenance/ABI (`GLIBC_2.34`), lifecycle, installed-package, smoke, and visible
+launch gates passed. An initial transient Xvfb window-probe failure was
+diagnosed without changing the requirement; the unchanged official gate then
+passed.
+
 The initial `task-handoff-envelope-v1` carries only a bounded title, original
 user request, reviewed brief, or bounded completion receipt. Safe attachment
 manifest/projection transfer is intentionally deferred to a later, separately
