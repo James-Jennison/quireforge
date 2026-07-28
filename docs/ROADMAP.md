@@ -1264,6 +1264,10 @@ project/worktree changes. No new Git, project-write, shell, terminal, dispatch,
 execution, browser, or provider authority is added. The provisional package
 candidate is `0.1.0-beta.44`.
 
+**Complete:** implemented at `f1a44324859faa2ed43f24ab60db12b58e6c6836` with
+verified `0.1.0-beta.44` Debian and worker evidence. See the
+[Milestone 49 report](MILESTONE_49_REVIEW_PANES.md).
+
 ### 50 — QuireForge Workbench Layout Refinement
 
 Add accessible resizable/collapsible presentation controls, bounded local

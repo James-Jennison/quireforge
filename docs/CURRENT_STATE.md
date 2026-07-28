@@ -278,6 +278,13 @@ Milestone 48 — **Generated Artifacts and Explicit Save** is complete at
 `advisor-generated-artifact-registry-v1` contract. See
 [Milestone 48](MILESTONE_48_GENERATED_ARTIFACTS_AND_EXPLICIT_SAVE.md).
 
+Milestone 49 — **QuireForge Review Panes** is complete at
+`f1a44324859faa2ed43f24ab60db12b58e6c6836` with verified `0.1.0-beta.44`
+Debian and worker evidence. Its closed, individually lazy Files, Diff, Git,
+Preview, Activity, and Approval panes retain the existing typed read-only
+boundaries and make no new authority available. See
+[Milestone 49](MILESTONE_49_REVIEW_PANES.md).
+
 Milestone 27 — **Unified Conversation Engine** is complete. It adds strict
 Rust/Zod Chat/Codex capability profiles, a Settings navigation foundation,
 bounded mode-aware metadata, a fixed no-project native Chat bridge, and an

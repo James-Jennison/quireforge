@@ -61,6 +61,8 @@ implementation position and [Roadmap](ROADMAP.md) for approved sequencing.
   — decision-ready bounded transient generated-artifact and native Save-boundary contract.
 - [Milestone 48 — Generated Artifacts and Explicit Save](MILESTONE_48_GENERATED_ARTIFACTS_AND_EXPLICIT_SAVE.md)
   — completed native-memory-only generated-artifact registry and explicit no-replace Save evidence.
+- [Milestone 49 — QuireForge Review Panes](MILESTONE_49_REVIEW_PANES.md)
+  — closed, independently lazy inspection panes over existing typed evidence.
 - [Post-M41 packaging-efficiency checkpoint](PACKAGING_EFFICIENCY_CHECKPOINT.md)
   — checksum-verified immutable guest-input caching within the authoritative
   Ubuntu 22.04 release workflow.
