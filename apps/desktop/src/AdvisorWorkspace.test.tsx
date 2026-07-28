@@ -135,7 +135,7 @@ describe("AdvisorWorkspace", () => {
       expect(await screen.findByRole("alert")).toHaveTextContent(text);
       expect(screen.getByRole("alert")).not.toHaveTextContent("/mnt/");
       expect(
-        screen.getByRole("button", { name: "Attach PDF document" }),
+        screen.getByRole("button", { name: "Attach a file" }),
       ).toBeEnabled();
     },
   );
@@ -454,6 +454,52 @@ describe("AdvisorWorkspace", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("offers one bounded attachment entry that routes only to closed type pickers", () => {
+    render(<AdvisorWorkspace {...props} />);
+
+    expect(
+      screen.queryByRole("button", { name: /Attach (text|PNG|PDF|ZIP|ELF)/i }),
+    ).not.toBeInTheDocument();
+    expect(document.querySelector('input[type="file"]')).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Attach a file" }));
+    expect(
+      screen.getByRole("dialog", { name: "Choose attachment type" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Text or data · 512 KiB" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "PNG or JPEG · 4 MiB" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "PDF document · 8 MiB" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "ZIP archive · 32 MiB" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "ELF static metadata · 32 MiB" }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "PNG or JPEG · 4 MiB" }),
+    );
+    expect(advisorDraftBridge.pickAdvisorImageAttachment).toHaveBeenCalledTimes(
+      1,
+    );
+    expect(advisorDraftBridge.pickAdvisorTextAttachment).not.toHaveBeenCalled();
+    expect(
+      advisorDraftBridge.pickAdvisorDocumentAttachment,
+    ).not.toHaveBeenCalled();
+    expect(
+      advisorDraftBridge.pickAdvisorArchiveAttachment,
+    ).not.toHaveBeenCalled();
+    expect(
+      advisorDraftBridge.pickAdvisorBinaryAttachment,
+    ).not.toHaveBeenCalled();
+  });
+
   it("requires explicit confirmation before sending one bounded text attachment", async () => {
     const attachment = {
       schemaVersion: 1,
@@ -483,8 +529,9 @@ describe("AdvisorWorkspace", () => {
     render(
       <AdvisorWorkspace {...props} onConversationStart={onConversationStart} />,
     );
+    fireEvent.click(screen.getByRole("button", { name: "Attach a file" }));
     fireEvent.click(
-      screen.getByRole("button", { name: "Attach text or data file" }),
+      screen.getByRole("button", { name: "Text or data · 512 KiB" }),
     );
     await screen.findByText(/Ready: notes.md/u);
     fireEvent.change(screen.getByRole("textbox", { name: "Advisor message" }), {

@@ -50,6 +50,9 @@ implementation position and [Roadmap](ROADMAP.md) for approved sequencing.
 - [Milestone 41 — Advisor Conversation Usability](MILESTONE_41_ADVISOR_CONVERSATION_USABILITY.md)
   — bounded transcript scrolling, reader-controlled follow-latest, and the
   safe optional details-drawer contract.
+- [Milestone 44 — Unified Single Attachment Entry](MILESTONE_44_UNIFIED_SINGLE_ATTACHMENT_ENTRY.md)
+  — one compact entry that routes only to existing closed native attachment
+  handlers.
 - [Post-M41 packaging-efficiency checkpoint](PACKAGING_EFFICIENCY_CHECKPOINT.md)
   — checksum-verified immutable guest-input caching within the authoritative
   Ubuntu 22.04 release workflow.

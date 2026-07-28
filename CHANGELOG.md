@@ -1,6 +1,15 @@
 # Changelog
 
-## Unreleased — 0.1.0-beta.40
+## Unreleased — 0.1.0-beta.41
+
+### Added
+
+- Add Milestone 44's compact single-file attachment tray. One **Attach a file**
+  entry selects a closed, existing text/data, PNG/JPEG, PDF, ZIP, or ELF native
+  picker. It keeps one attachment at a time and does not add generic upload,
+  drag-and-drop, new file types, transport, persistence, or authority.
+
+## 0.1.0-beta.40
 
 ### Changed
 

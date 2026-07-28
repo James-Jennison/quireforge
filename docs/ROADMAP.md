@@ -1194,6 +1194,10 @@ adding generic upload, drag-and-drop, a new file type, multi-attachment
 collection, changed transport, or relaxed confirmation/disposal rules. The
 provisional package candidate is `0.1.0-beta.41`.
 
+**Implementation candidate:** the compact single entry selects one of the
+existing closed text/data, PNG/JPEG, PDF, ZIP, or ELF native handlers. Its
+package evidence remains pending the clean beta.41 provenance build.
+
 ### 45 — Bounded Multi-Attachment Proposal
 
 Verify documented managed app-server multi-input support and define an ordered

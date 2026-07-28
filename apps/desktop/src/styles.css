@@ -4366,6 +4366,42 @@ button:disabled {
   padding: 22px;
 }
 
+.advisor-attachment-tray {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid var(--border-muted);
+  border-radius: 0.5rem;
+}
+
+.advisor-attachment-tray strong,
+.advisor-attachment-tray span {
+  display: block;
+}
+
+.advisor-attachment-tray span {
+  margin-top: 0.2rem;
+  color: var(--tm);
+  font-size: 0.75rem;
+}
+
+.advisor-attachment-picker {
+  position: absolute;
+  z-index: 2;
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background: var(--surface);
+  box-shadow: 0 0.75rem 2rem rgb(0 0 0 / 24%);
+}
+
+.advisor-attachment-picker p {
+  margin-top: 0;
+}
+
 .advisor-image-preview {
   display: block;
   max-width: min(100%, 28rem);

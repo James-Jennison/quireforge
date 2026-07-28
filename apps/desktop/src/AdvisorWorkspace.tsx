@@ -177,6 +177,7 @@ export function AdvisorWorkspace({
   const [includeProjectState, setIncludeProjectState] = useState(false);
   const [confirmContextSend, setConfirmContextSend] = useState(false);
   const [confirmAttachmentSend, setConfirmAttachmentSend] = useState(false);
+  const [attachmentPickerOpen, setAttachmentPickerOpen] = useState(false);
   const [textAttachment, setTextAttachment] =
     useState<AdvisorTextAttachmentSnapshot>(scaffoldAdvisorTextAttachment);
   const [attachmentBusy, setAttachmentBusy] = useState(false);
@@ -227,6 +228,18 @@ export function AdvisorWorkspace({
     runtime.models.find((model) => model.id === effectiveModel) ?? null;
   const effectiveReasoning =
     requestedReasoning || selectedModel?.defaultReasoningEffort || "";
+  const readyAttachment =
+    textAttachment.state === "ready"
+      ? { kind: "text", attachment: textAttachment.attachment }
+      : imageAttachment.state === "ready"
+        ? { kind: "image", attachment: imageAttachment.attachment }
+        : documentAttachment.state === "ready"
+          ? { kind: "document", attachment: documentAttachment.attachment }
+          : archiveAttachment.state === "ready"
+            ? { kind: "archive", attachment: archiveAttachment.attachment }
+            : binaryAttachment.state === "ready"
+              ? { kind: "binary", attachment: binaryAttachment.attachment }
+              : null;
   const approvalBindingKey = JSON.stringify({
     advisorConversationId: conversation.conversationId,
     targetProjectId,
@@ -273,6 +286,7 @@ export function AdvisorWorkspace({
     setIncludeProjectState(false);
     setConfirmContextSend(false);
     setConfirmAttachmentSend(false);
+    setAttachmentPickerOpen(false);
     setDraft("");
     setApproval(null);
     setDispatchResult(null);
@@ -536,6 +550,18 @@ export function AdvisorWorkspace({
     } finally {
       setAttachmentBusy(false);
     }
+  }
+
+  function chooseAttachment(
+    picker:
+      | typeof pickTextAttachment
+      | typeof pickImageAttachment
+      | typeof pickDocumentAttachment
+      | typeof pickArchiveAttachment
+      | typeof pickBinaryAttachment,
+  ) {
+    setAttachmentPickerOpen(false);
+    void picker();
   }
 
   const latestReply = coalesceAssistantMessageDeltas(conversation.events)
@@ -1217,14 +1243,84 @@ export function AdvisorWorkspace({
               </label>
             )}
             <div
+              className="advisor-attachment-tray"
+              aria-label="Attachment tray"
+            >
+              <div>
+                <strong>Optional attachment</strong>
+                <span>One supported file for this message only</span>
+              </div>
+              <button
+                type="button"
+                aria-haspopup="dialog"
+                aria-expanded={attachmentPickerOpen}
+                disabled={
+                  attachmentBusy ||
+                  active ||
+                  conversationBusy ||
+                  authentication !== "ready" ||
+                  readyAttachment !== null
+                }
+                onClick={() => setAttachmentPickerOpen(true)}
+              >
+                Attach a file
+              </button>
+              {attachmentPickerOpen && (
+                <div
+                  className="advisor-attachment-picker"
+                  role="dialog"
+                  aria-modal="true"
+                  aria-label="Choose attachment type"
+                >
+                  <p>
+                    Choose one supported type. Native validation decides whether
+                    the selected file is accepted.
+                  </p>
+                  <div className="project-actions">
+                    <button
+                      type="button"
+                      onClick={() => chooseAttachment(pickTextAttachment)}
+                    >
+                      Text or data · 512 KiB
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => chooseAttachment(pickImageAttachment)}
+                    >
+                      PNG or JPEG · 4 MiB
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => chooseAttachment(pickDocumentAttachment)}
+                    >
+                      PDF document · 8 MiB
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => chooseAttachment(pickArchiveAttachment)}
+                    >
+                      ZIP archive · 32 MiB
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => chooseAttachment(pickBinaryAttachment)}
+                    >
+                      ELF static metadata · 32 MiB
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAttachmentPickerOpen(false)}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+            <div
               className="advisor-text-attachment"
               aria-label="Optional text attachment"
             >
-              <p className="project-message" role="note">
-                Optional: choose one .txt, .md, .csv, .json, or .py file up to
-                512 KiB. Its text is temporary, has no path attached, and is
-                included only after you confirm this message.
-              </p>
               {textAttachment.state === "ready" && textAttachment.attachment ? (
                 <div>
                   <p role="status">
@@ -1240,24 +1336,7 @@ export function AdvisorWorkspace({
                     Remove attached text file
                   </button>
                 </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => void pickTextAttachment()}
-                  disabled={
-                    attachmentBusy ||
-                    active ||
-                    conversationBusy ||
-                    authentication !== "ready" ||
-                    imageAttachment.state === "ready" ||
-                    documentAttachment.state === "ready" ||
-                    archiveAttachment.state === "ready" ||
-                    binaryAttachment.state === "ready"
-                  }
-                >
-                  Attach text or data file
-                </button>
-              )}
+              ) : null}
               {textAttachment.state === "unavailable" && (
                 <p
                   className="project-message project-message--warning"
@@ -1271,11 +1350,6 @@ export function AdvisorWorkspace({
               className="advisor-text-attachment"
               aria-label="Optional image attachment"
             >
-              <p className="project-message" role="note">
-                Optional: choose one PNG or JPEG image up to 4 MiB. Its preview
-                and manifest are temporary, its source path is not shared, and
-                it is sent only after confirmation.
-              </p>
               {imageAttachment.state === "ready" &&
               imageAttachment.attachment &&
               imageAttachment.previewDataUrl ? (
@@ -1300,24 +1374,7 @@ export function AdvisorWorkspace({
                     Remove attached image
                   </button>
                 </div>
-              ) : (
-                <button
-                  type="button"
-                  disabled={
-                    attachmentBusy ||
-                    active ||
-                    conversationBusy ||
-                    authentication !== "ready" ||
-                    textAttachment.state === "ready" ||
-                    documentAttachment.state === "ready" ||
-                    archiveAttachment.state === "ready" ||
-                    binaryAttachment.state === "ready"
-                  }
-                  onClick={() => void pickImageAttachment()}
-                >
-                  Attach PNG or JPEG image
-                </button>
-              )}
+              ) : null}
               {imageAttachment.state === "unavailable" && (
                 <p
                   className="project-message project-message--warning"
@@ -1331,11 +1388,6 @@ export function AdvisorWorkspace({
               className="advisor-text-attachment"
               aria-label="Optional PDF document attachment"
             >
-              <p className="project-message" role="note">
-                Optional: choose one PDF up to 8 MiB. Advisor receives only a
-                temporary bounded text projection, never document bytes or a
-                source path.
-              </p>
               {documentAttachment.state === "ready" &&
               documentAttachment.attachment ? (
                 <div>
@@ -1359,24 +1411,7 @@ export function AdvisorWorkspace({
                     Remove attached PDF
                   </button>
                 </div>
-              ) : (
-                <button
-                  type="button"
-                  disabled={
-                    attachmentBusy ||
-                    active ||
-                    conversationBusy ||
-                    authentication !== "ready" ||
-                    textAttachment.state === "ready" ||
-                    imageAttachment.state === "ready" ||
-                    archiveAttachment.state === "ready" ||
-                    binaryAttachment.state === "ready"
-                  }
-                  onClick={() => void pickDocumentAttachment()}
-                >
-                  Attach PDF document
-                </button>
-              )}
+              ) : null}
               {documentAttachment.state === "unavailable" && (
                 <p
                   className="project-message project-message--warning"
@@ -1403,11 +1438,6 @@ export function AdvisorWorkspace({
               className="advisor-text-attachment"
               aria-label="Optional ZIP archive attachment"
             >
-              <p className="project-message" role="note">
-                Optional: choose one ZIP archive up to 32 MiB. Advisor receives
-                only a temporary bounded entry-name manifest, never archive
-                contents or a source path.
-              </p>
               {archiveAttachment.state === "ready" &&
               archiveAttachment.attachment ? (
                 <div>
@@ -1434,24 +1464,7 @@ export function AdvisorWorkspace({
                     Remove attached ZIP archive
                   </button>
                 </div>
-              ) : (
-                <button
-                  type="button"
-                  disabled={
-                    attachmentBusy ||
-                    active ||
-                    conversationBusy ||
-                    authentication !== "ready" ||
-                    textAttachment.state === "ready" ||
-                    imageAttachment.state === "ready" ||
-                    documentAttachment.state === "ready" ||
-                    binaryAttachment.state === "ready"
-                  }
-                  onClick={() => void pickArchiveAttachment()}
-                >
-                  Attach ZIP archive
-                </button>
-              )}
+              ) : null}
               {archiveAttachment.state === "unavailable" && (
                 <p
                   className="project-message project-message--warning"
@@ -1471,11 +1484,6 @@ export function AdvisorWorkspace({
               className="advisor-text-attachment"
               aria-label="Optional ELF static-binary attachment"
             >
-              <p className="project-message" role="note">
-                Optional: choose one ELF32 or ELF64 file up to 32 MiB. Advisor
-                receives only temporary bounded static metadata, never binary
-                bytes, paths, symbols, or executable content.
-              </p>
               {binaryAttachment.state === "ready" &&
               binaryAttachment.attachment ? (
                 <div>
@@ -1493,24 +1501,7 @@ export function AdvisorWorkspace({
                     Remove attached ELF file
                   </button>
                 </div>
-              ) : (
-                <button
-                  type="button"
-                  disabled={
-                    attachmentBusy ||
-                    active ||
-                    conversationBusy ||
-                    authentication !== "ready" ||
-                    textAttachment.state === "ready" ||
-                    imageAttachment.state === "ready" ||
-                    documentAttachment.state === "ready" ||
-                    archiveAttachment.state === "ready"
-                  }
-                  onClick={() => void pickBinaryAttachment()}
-                >
-                  Attach ELF file
-                </button>
-              )}
+              ) : null}
               {binaryAttachment.state === "unavailable" && (
                 <p
                   className="project-message project-message--warning"

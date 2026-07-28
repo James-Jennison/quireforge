@@ -250,6 +250,13 @@ capability, dependency, authority, transport, provider, connector, release, or
 deployment behavior. The existing post-workbench permanent-budget
 reconciliation remains required.
 
+Milestone 44 — **Unified Single Attachment Entry** is the clean
+`0.1.0-beta.41` implementation candidate. It replaces the five separate
+Advisor attachment entry buttons with one compact **Attach a file** tray that
+selects only the existing native text/data, PNG/JPEG, PDF, ZIP, and static-ELF
+handlers. It adds no generic upload, drag-and-drop, new type, collection,
+transport, persistence, or authority.
+
 Milestone 27 — **Unified Conversation Engine** is complete. It adds strict
 Rust/Zod Chat/Codex capability profiles, a Settings navigation foundation,
 bounded mode-aware metadata, a fixed no-project native Chat bridge, and an
