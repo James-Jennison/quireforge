@@ -1277,9 +1277,9 @@ approvals, credentials, and capability state. This does not create a shell,
 PTY, command-launch, execution, or context-transfer path. The provisional
 package candidate is `0.1.0-beta.45`.
 
-**In progress:** beta.45 limits local state to bounded task-evidence width,
-terminal-dock height, and last selected existing review pane. M51 behavior is
-not included.
+**Complete:** implemented at `1cc7c50ceed6d2b6c2f91274110471d71fe6292a`
+with verified `0.1.0-beta.45` Debian and worker evidence. M51 behavior is not
+included. See the [M50 report](MILESTONE_50_WORKBENCH_LAYOUT_REFINEMENT.md).
 
 ### 51 — Durable Task Records and Alternate-Plan Proposal
 
