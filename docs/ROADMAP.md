@@ -1120,6 +1120,13 @@ dependency, authority, release, or deployment behavior. Its package candidate
 is `0.1.0-beta.37`; this reserves that unique version and shifts the later
 provisional package sequence below.
 
+**Complete:** integrated at `502e56e46131c64e7821fc98b16152142ac50eff` with
+the clean `0.1.0-beta.37` Debian-only desktop and worker release set. Cache
+reuse/tamper/unsafe-name/symlink rejection tests, source validation,
+desktop/narrow and website Playwright, provenance/ABI, container lifecycle,
+restricted installed-package, and installed-host visible-launch gates passed.
+See the [packaging-efficiency checkpoint](PACKAGING_EFFICIENCY_CHECKPOINT.md).
+
 ### 42 — Shared Task Continuity Proposal
 
 Produce a separately approved architecture decision for one explicit,

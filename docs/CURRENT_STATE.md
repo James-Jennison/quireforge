@@ -215,12 +215,17 @@ installed-package validation, and installed-host visible-launch checks. It
 does not change Advisor authority, transport, attachments, persistence,
 Approval/Dispatch, or execution boundaries.
 
-The post-M41 **Packaging-Efficiency Corrective Checkpoint** is the active
-`0.1.0-beta.37` candidate. It changes only the pinned Ubuntu 22.04 release
-workflow: immutable Linux-kernel and Firecracker source archives may be reused
-from a checksum-verified container cache, while guest outputs are rebuilt in a
-disposable work directory and the existing provenance, ABI, lifecycle, and
-visible-launch gates remain mandatory. No application capability, dependency,
+The post-M41 **Packaging-Efficiency Corrective Checkpoint** is integrated at
+`502e56e46131c64e7821fc98b16152142ac50eff`. It changes only the pinned Ubuntu
+22.04 release workflow: immutable Linux-kernel and Firecracker source archives
+may be reused from a checksum-verified container cache, while guest outputs are
+rebuilt in a disposable work directory and the existing provenance, ABI,
+lifecycle, and visible-launch gates remain mandatory. Its clean
+`0.1.0-beta.37` Debian-only desktop and worker release set passed full source
+validation, `48` desktop and `8` website Playwright checks, provenance/ABI
+validation (`GLIBC_2.34` within the Ubuntu 22.04 `GLIBC_2.35` ceiling),
+container lifecycle/smoke, restricted installed-package validation, and
+installed-host visible-launch checks. No application capability, dependency,
 release, or deployment behavior changes.
 
 Milestone 27 — **Unified Conversation Engine** is complete. It adds strict

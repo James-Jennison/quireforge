@@ -44,3 +44,28 @@ The checkpoint candidate is `0.1.0-beta.37`. It requires focused cache tests,
 full source validation, the pinned container release workflow, release-set and
 checksum validation, restricted installed-package validation, installed-host
 smoke, and visible-launch evidence before it can be recorded as complete.
+
+## Evidence
+
+The clean implementation commit is
+`502e56e46131c64e7821fc98b16152142ac50eff`. The focused package/cache suite
+passed `14/14`, including cache reuse, tamper eviction, unsafe-name, and
+symlinked-cache-directory rejection. Full validation passed with `268` desktop
+and `7` website unit tests, `251` Rust tests (with `3` expected ignores), and
+the required formatting, lint, type, production-build, distribution, and Tauri
+build gates. Existing desktop/narrow Playwright coverage passed `48/48`; website
+Playwright coverage passed `8/8`.
+
+The pinned Ubuntu 22.04 Debian-only `0.1.0-beta.37` release set is bound to
+that exact clean commit:
+
+- `quireforge_0.1.0.beta.37_amd64.deb` — SHA-256
+  `95c6fdcdadc4ea6487efc5fdef958fbc9ecbe2429e9406795fe58ffd3ead7d72`;
+- `quireforge-sandboxd_0.1.0.beta.37_amd64.deb` — SHA-256
+  `1223cc5bdea3d03bf35c351cc3425585fa67e513547666bf8735d90268946d9e`.
+
+The release manifest records clean pinned-container provenance and a highest
+shipped `GLIBC_2.34`, within the Ubuntu 22.04 `GLIBC_2.35` ceiling. Release-set,
+checksum, metadata, lifecycle, restricted installed-package, installed-smoke,
+and installed-host visible-launch validation passed. No release or deployment
+was performed.
