@@ -1,8 +1,18 @@
 # Changelog
 
-## Unreleased — 0.1.0-beta.33
+## Unreleased — 0.1.0-beta.34
 
 ### Added
+
+- Add a post-M39 corrective checkpoint for the Advisor/QuireForge workspace
+  boundary acknowledgement. The first ordinary switch under
+  `advisor-quireforge-boundary-v1` requires confirmation; the exact closed,
+  non-sensitive acknowledgement suppresses later ordinary prompts under that
+  unchanged policy. Every completed switch still clears transient Advisor state
+  and preserves the existing capability and context-isolation boundary. No
+  project, transcript, attachment, approval, dispatch, terminal, Git,
+  worktree, execution, path, or credential data is persisted with the
+  acknowledgement.
 
 - Add Milestone 39's separately installed, root-owned Linux x86_64 KVM worker
   for one confirmed static ELF64 x86_64 sample. The worker uses pinned

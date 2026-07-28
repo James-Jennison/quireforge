@@ -307,7 +307,10 @@ describe("QuireForge desktop shell", () => {
     );
 
     await navigateTo("New task");
-    fireEvent.click(screen.getByRole("button", { name: "QuireForge" }));
+    const workspaceTrigger = screen.getByRole("button", {
+      name: "QuireForge",
+    });
+    fireEvent.click(workspaceTrigger);
     fireEvent.click(screen.getByRole("menuitemradio", { name: /Advisor/u }));
     expect(screen.getByRole("dialog")).toHaveTextContent(/no project/i);
     expect(window.localStorage.getItem("quireforge-conversation-mode")).toBe(
@@ -315,13 +318,16 @@ describe("QuireForge desktop shell", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(
+      window.localStorage.getItem(
+        "quireforge-workspace-boundary-acknowledgment",
+      ),
+    ).toBeNull();
+    await waitFor(() => expect(workspaceTrigger).toHaveFocus());
     expect(window.localStorage.getItem("quireforge-conversation-mode")).toBe(
       "codex",
     );
 
-    const workspaceTrigger = screen.getByRole("button", {
-      name: "QuireForge",
-    });
     fireEvent.click(workspaceTrigger);
     expect(
       screen.getByRole("menu", { name: "Choose workspace" }),
@@ -345,6 +351,33 @@ describe("QuireForge desktop shell", () => {
     expect(window.localStorage.getItem("quireforge-conversation-mode")).toBe(
       "chat",
     );
+    expect(
+      JSON.parse(
+        window.localStorage.getItem(
+          "quireforge-workspace-boundary-acknowledgment",
+        ) ?? "{}",
+      ),
+    ).toEqual({
+      schemaVersion: 1,
+      boundaryPolicyVersion: "advisor-quireforge-boundary-v1",
+      acknowledged: true,
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Advisor" }));
+    fireEvent.click(screen.getByRole("menuitemradio", { name: /QuireForge/u }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        document.querySelector('[data-workspace-view="conversation"]'),
+      ).not.toHaveAttribute("hidden"),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "QuireForge" }));
+    fireEvent.click(screen.getByRole("menuitemradio", { name: /Advisor/u }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Advisor" }),
+    ).toBeInTheDocument();
 
     unmount();
     render(
@@ -382,6 +415,49 @@ describe("QuireForge desktop shell", () => {
       "codex",
     );
   });
+
+  it.each([
+    null,
+    "not-json",
+    JSON.stringify({
+      schemaVersion: 1,
+      boundaryPolicyVersion: "advisor-quireforge-boundary-v0",
+      acknowledged: true,
+    }),
+    JSON.stringify({
+      schemaVersion: 1,
+      boundaryPolicyVersion: "advisor-quireforge-boundary-v2",
+      acknowledged: true,
+    }),
+    JSON.stringify({
+      schemaVersion: 1,
+      boundaryPolicyVersion: "advisor-quireforge-boundary-v1",
+      acknowledged: true,
+      extra: "malformed",
+    }),
+  ])(
+    "requires confirmation when the workspace-boundary acknowledgment is %s",
+    async (acknowledgment) => {
+      if (acknowledgment !== null) {
+        window.localStorage.setItem(
+          "quireforge-workspace-boundary-acknowledgment",
+          acknowledgment,
+        );
+      }
+      render(
+        <App
+          loadBootstrap={() => Promise.resolve(scaffoldBootstrap)}
+          loadRuntime={() => Promise.resolve(scaffoldCodexRuntime)}
+          loadAuth={() => Promise.resolve(authenticatedAuth)}
+          loadProjects={() => Promise.resolve(attachedProject)}
+        />,
+      );
+      await navigateTo("New task");
+      fireEvent.click(screen.getByRole("button", { name: "QuireForge" }));
+      fireEvent.click(screen.getByRole("menuitemradio", { name: /Advisor/u }));
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+    },
+  );
 
   it("loads project state only through the local metadata-only reader mode", async () => {
     window.history.replaceState(null, "", "#project-state");

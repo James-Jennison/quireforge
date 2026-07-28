@@ -1037,9 +1037,27 @@ Only signature-validated ELF64 x86_64 `ET_EXEC` and `ET_DYN` samples with no
 terminal output, guest-file export, Advisor input, project attachment, or
 automatic execution. It excludes dynamic-loader/library support, other binary
 formats, runtime interaction, network, release, and deployment. The package
-gate requires fresh `0.1.0-beta.33` desktop and worker Debian evidence, an
+gate requires fresh `0.1.0-beta.33` desktop and worker Debian evidence, a
 Debian-only release contract, immutable guest asset provenance, ABI evidence,
 benign-probe-only worker tests, and installed/visible desktop lifecycle gates.
+
+### Post-M39 corrective checkpoint — Workspace Boundary Acknowledgement
+
+Correct the repeated workspace-boundary confirmation without renumbering or
+rewriting completed M34 history. The first ordinary Advisor/QuireForge switch
+under `advisor-quireforge-boundary-v1` requires explicit confirmation.
+Confirmation stores only the closed non-sensitive local record
+`{ schemaVersion, boundaryPolicyVersion, acknowledged }`; ordinary later
+switches under that exact current policy proceed without another dialog.
+Missing, malformed, unknown, or stale data requires confirmation again, and a
+material change to the capability/context boundary must increment the policy
+version. Every completed switch still performs the existing transient clearing
+and isolation actions. This adds no workspace authority, context transfer,
+transcript persistence, project path, attachment, approval, dispatch, terminal,
+Git, worktree, execution, credential, or provider state. The corrective package
+gate requires a fresh `0.1.0-beta.34` Debian desktop and worker release set,
+focused acknowledgement/focus/isolation tests, full validation, provenance/ABI,
+lifecycle, installed-smoke, and visible-launch evidence.
 
 ### Advisor Approval/Dispatch Phases A–B3 (completed capability history)
 

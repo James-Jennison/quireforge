@@ -180,6 +180,19 @@ mounts, immutable guest assets, and bounded metadata-only results. Dynamic
 loader/library support remains deferred. See
 [Milestone 38](MILESTONE_38_DYNAMIC_SANDBOX_DISCOVERY.md).
 
+The post-M39 **Workspace Boundary Acknowledgement** corrective checkpoint is
+recorded separately from completed M34 history. Its `0.1.0-beta.34` package
+gate records the closed
+`advisor-quireforge-boundary-v1` local preference only as
+`{ schemaVersion, boundaryPolicyVersion, acknowledged }`. The first ordinary
+Advisor/QuireForge switch prompts; later switches under that exact policy do
+not. Missing, malformed, unknown, or stale records prompt again. Every
+completed switch continues to clear transient Advisor state and retains the
+existing no-context-transfer boundary. A material boundary-policy change must
+increment the policy version; no project, transcript, attachment, approval,
+dispatch, terminal, Git, worktree, execution, path, credential, or other
+capability-bearing state is persisted.
+
 Milestone 27 — **Unified Conversation Engine** is complete. It adds strict
 Rust/Zod Chat/Codex capability profiles, a Settings navigation foundation,
 bounded mode-aware metadata, a fixed no-project native Chat bridge, and an

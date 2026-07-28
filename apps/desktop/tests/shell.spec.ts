@@ -856,6 +856,21 @@ test("Advisor presents a bounded chat-first conversation with safe summaries", a
   await page.goto("/");
 
   await openWorkspace(page, "Advisor");
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        window.localStorage.getItem(
+          "quireforge-workspace-boundary-acknowledgment",
+        ),
+      ),
+    )
+    .toBe(
+      JSON.stringify({
+        schemaVersion: 1,
+        boundaryPolicyVersion: "advisor-quireforge-boundary-v1",
+        acknowledged: true,
+      }),
+    );
   const advisor = page.locator('[data-workspace-view="advisor"]');
   await expect(
     advisor.getByRole("heading", {
@@ -895,13 +910,16 @@ test("Advisor presents a bounded chat-first conversation with safe summaries", a
   const modeConfirmation = page.getByRole("dialog", {
     name: "Confirm conversation mode change",
   });
-  await expect(modeConfirmation).toContainText(
-    "No project, attachment, integration, approval, dispatch, completion report, or transient transcript transfers automatically.",
-  );
-  await modeConfirmation.getByRole("button", { name: "Cancel" }).click();
+  await expect(modeConfirmation).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "QuireForge", exact: true }),
+  ).toBeVisible();
   if ((page.viewportSize()?.width ?? 0) <= 760) {
-    await page.locator(".sidebar-close").click();
+    await page.getByRole("button", { name: "Open navigation" }).click();
   }
+  await page.getByRole("button", { name: "QuireForge", exact: true }).click();
+  await page.getByRole("menuitemradio", { name: /Advisor/u }).click();
+  await expect(modeConfirmation).toHaveCount(0);
   await expect(workspaceSelector).toHaveAccessibleName("Advisor");
   const transcript = advisor.getByRole("log", {
     name: "Active Advisor conversation",

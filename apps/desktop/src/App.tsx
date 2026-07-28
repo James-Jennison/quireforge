@@ -260,6 +260,9 @@ const workspaceStorageKey = "quireforge-workspace-location";
 const inspectorWidthStorageKey = "quireforge-inspector-width";
 const sidebarCompactStorageKey = "quireforge-sidebar-compact";
 const conversationModeStorageKey = "quireforge-conversation-mode";
+const workspaceBoundaryAcknowledgmentStorageKey =
+  "quireforge-workspace-boundary-acknowledgment";
+const workspaceBoundaryPolicyVersion = "advisor-quireforge-boundary-v1";
 const inspectorWidthMinimum = 280;
 const inspectorWidthMaximum = 520;
 
@@ -462,6 +465,39 @@ function initialSidebarCompact(): boolean {
 function initialConversationMode(): ConversationMode {
   const stored = window.localStorage.getItem(conversationModeStorageKey);
   return stored === "chat" || stored === "codex" ? stored : "codex";
+}
+
+function hasCurrentWorkspaceBoundaryAcknowledgment(): boolean {
+  const raw = window.localStorage.getItem(
+    workspaceBoundaryAcknowledgmentStorageKey,
+  );
+  if (!raw) return false;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return false;
+    }
+    const record = parsed as Record<string, unknown>;
+    return (
+      Object.keys(record).length === 3 &&
+      record.schemaVersion === 1 &&
+      record.boundaryPolicyVersion === workspaceBoundaryPolicyVersion &&
+      record.acknowledged === true
+    );
+  } catch {
+    return false;
+  }
+}
+
+function storeWorkspaceBoundaryAcknowledgment() {
+  window.localStorage.setItem(
+    workspaceBoundaryAcknowledgmentStorageKey,
+    JSON.stringify({
+      schemaVersion: 1,
+      boundaryPolicyVersion: workspaceBoundaryPolicyVersion,
+      acknowledged: true,
+    }),
+  );
 }
 
 type WorkspaceConversationMode = "advisor" | "quireforge";
@@ -1722,7 +1758,11 @@ export default function App({
   function requestWorkspaceSelection(next: WorkspaceConversationMode) {
     const requested = next === "advisor" ? "chat" : "codex";
     if (requested !== conversationMode) {
-      setPendingConversationMode(requested);
+      if (hasCurrentWorkspaceBoundaryAcknowledgment()) {
+        applyConversationModeChange(requested);
+      } else {
+        setPendingConversationMode(requested);
+      }
       return;
     }
     navigateWorkspace(next === "advisor" ? "advisor" : "conversation");
@@ -1731,19 +1771,36 @@ export default function App({
   function requestConversationWorkspace(route: "advisor" | "conversation") {
     const requested = route === "advisor" ? "chat" : "codex";
     if (requested !== conversationMode) {
-      setPendingConversationMode(requested);
+      if (hasCurrentWorkspaceBoundaryAcknowledgment()) {
+        applyConversationModeChange(requested);
+      } else {
+        setPendingConversationMode(requested);
+      }
       return;
     }
     navigateWorkspace(route);
   }
 
-  function confirmConversationModeChange() {
-    if (!pendingConversationMode) return;
-    const next = pendingConversationMode;
+  function applyConversationModeChange(next: ConversationMode) {
     clearAdvisorTransientState();
     setConversationMode(next);
     setPendingConversationMode(null);
     navigateWorkspace(next === "chat" ? "advisor" : "conversation");
+  }
+
+  function confirmConversationModeChange() {
+    if (!pendingConversationMode) return;
+    storeWorkspaceBoundaryAcknowledgment();
+    applyConversationModeChange(pendingConversationMode);
+  }
+
+  function cancelConversationModeChange() {
+    setPendingConversationMode(null);
+    window.requestAnimationFrame(() =>
+      document
+        .querySelector<HTMLButtonElement>(".workspace-selector__trigger")
+        ?.focus(),
+    );
   }
 
   function requestAdvisorProjectState() {
@@ -3543,10 +3600,7 @@ export default function App({
                     ? "Advisor"
                     : "QuireForge"}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setPendingConversationMode(null)}
-                >
+                <button type="button" onClick={cancelConversationModeChange}>
                   Cancel
                 </button>
               </div>
