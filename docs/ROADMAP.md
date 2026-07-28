@@ -1219,6 +1219,77 @@ approvals, credentials, and capability state. This does not create a shell,
 PTY, command-launch, execution, or context-transfer path. The provisional
 package candidate is `0.1.0-beta.43`.
 
+### 51 — Durable Task Records and Alternate-Plan Proposal
+
+Produce a separate persistence, privacy, and lifecycle decision for minimal
+durable task records, title/status search, archive/restore, and alternate-plan
+branches. It must distinguish existing Codex-owned session history from the
+transient Advisor transcript and the explicit M43 handoff envelope. It may not
+make raw transcript transfer, project/repository/worktree/terminal/Git state,
+permissions, credentials, or execution state shared by default; an alternate
+plan never clones execution state or authority. This is a decision-only gate
+with no package change.
+
+### 52 — Durable Task Records and Alternate Plans
+
+Only after M51 approval, implement the approved closed record schema and
+lifecycle. Retention, deletion, search, archive/restore, and any handoff
+reference must be explicit, bounded, testable, and separately scoped for
+Advisor and QuireForge. The provisional package candidate is
+`0.1.0-beta.44`.
+
+### 53 — Local Artifact and Design Review Proposal
+
+Define a bounded local artifact/design-review contract over approved task
+briefs, plans, mockups, safe previews, validation evidence, and generated
+artifacts. It must specify comparison, selection, annotations, review state,
+and user-approved promotion into a QuireForge task. It excludes broad
+repository scraping, automatic execution, external publishing, deployment,
+and direct third-party connectors, including Figma. This is a decision-only
+gate with no package change.
+
+### 54 — Local Artifact and Design Review
+
+Only after M53 approval, implement the approved local review surfaces by
+reusing the M48 typed artifact boundary and M49 preview/review services.
+Artifact lifecycle, selection, comparison, accessibility, and no-path/no-
+persistence boundaries must be deterministic. The provisional package
+candidate is `0.1.0-beta.45`.
+
+### 55 — Research Reports and Inspectable Task Templates Proposal
+
+Define separately the contracts for source-linked bounded research reports and
+user-visible QuireForge task templates/specialists with inspectable
+instructions and explicitly selected approved context. The template-only
+decision must remain separate from any live browsing, source retrieval, or
+provider integration. It excludes opaque personalization, hidden retrieval,
+automatic browsing, and automatic actions. This is a decision-only gate with
+no package change.
+
+### 56 — Inspectable Local Task Templates
+
+Only after the template portion of M55 is approved, implement inspectable
+local task templates using approved context only. Research, external providers,
+connectors, browser access, and hidden retrieval remain excluded. The
+provisional package candidate is `0.1.0-beta.46`.
+
+### 57 — Per-Project Connector and MCP Governance Proposal
+
+Extend the existing Integration Center only through a separate security,
+transport, and authorization decision that defines per-project enablement,
+read-only/approval-required/prohibited tool classes, authorization visibility,
+audit receipts, revocation, and failure behavior. No connector, MCP server,
+OAuth flow, provider integration, or Advisor authority is added by this
+proposal. This is a decision-only gate with no package change.
+
+### 58 — Controlled Browser Verification Proposal
+
+Determine whether a narrow, user-controlled verification-only browser surface
+can be made safe without credential or cookie reuse, hidden context, automatic
+action, generic browser automation, or Advisor execution authority. This is a
+high-risk security and transport decision gate with no implementation or
+package change.
+
 ### Deferred capability gates
 
 New archive, Office, or binary formats; generic upload; executable loading or
@@ -1229,7 +1300,10 @@ marketplaces; and parallel/multi-agent execution each require their own
 security, authority, transport, dependency, and retention proposal before any
 implementation. A post-workbench bundle-reconciliation gate must establish
 evidence-based permanent JavaScript and CSS ceilings before product-readiness or
-public-release approval.
+public-release approval. That gate must use the bundle-size ledger for every
+changed desktop package from M44 onward, measure route/chunk and stylesheet
+costs, review lazy-pane mounting and duplicate dependencies/CSS, and establish
+strict permanent ceilings rather than repeatedly raising temporary caps.
 
 ### Advisor Approval/Dispatch Phases A–B3 (completed capability history)
 
