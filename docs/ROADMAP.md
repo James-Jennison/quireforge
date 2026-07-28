@@ -1292,6 +1292,12 @@ permissions, credentials, or execution state shared by default; an alternate
 plan never clones execution state or authority. This is a decision-only gate
 with no package change.
 
+**Decision-ready proposal:** [M51 durable task records and alternate-plan
+proposal](MILESTONE_51_DURABLE_TASK_RECORDS_ALTERNATE_PLAN_PROPOSAL.md)
+selects a bounded local SQLite task catalogue, four non-authoritative plans per
+task, explicit archive/restore/deletion, and no transient-state import. M52
+remains blocked on explicit approval of that proposal.
+
 ### 52 — Durable Task Records and Alternate Plans
 
 Only after M51 approval, implement the approved closed record schema and

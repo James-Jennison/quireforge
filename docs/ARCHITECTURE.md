@@ -1121,6 +1121,17 @@ changes.
 
 M50 adds one strict browser-local presentation record, separate from native metadata and Codex state. It has fixed schema version 1 keys for a bounded review-shell width, bounded terminal-dock height, and last selected existing review pane. Invalid or unknown records fail to defaults. Secondary surfaces remain unmounted while closed; their resize controls are labelled, bounded separators with pointer and keyboard operation. No preference represents task, execution, terminal content, approval, Git, project, path, credential, or provider state.
 
+### M51 durable-task decision boundary
+
+M51 is documentation only. Its approved-for-M52 proposal confines durable task
+records to native-owned, private SQLite metadata: opaque UUIDv7 IDs, bounded
+user-controlled title/status/timestamps, and up to four bounded plan labels and
+bodies. It retains no conversation, path, task authority, attachment/artifact
+history, approval, dispatch, execution, terminal, Git, browser, provider, or
+Advisor state. Plan selection is organizational only and must clear/exclude
+transient capability state; it cannot start, restore, clone, or imply any
+operation. The M50 browser-local layout record remains independent.
+
 - Adapter contracts from generated schemas and sanitized fixtures.
 - In-memory/mock process transport for event streams and approvals.
 - Temporary Git repositories/worktrees.

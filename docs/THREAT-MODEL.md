@@ -703,6 +703,21 @@ retried in the background.
 
 The M50 browser-local layout record is a fixed, size-capped JSON schema with three presentation values only: review width, terminal height, and an existing review-pane identifier. Strict integer bounds and exact keys reject corrupt, unknown, oversized, or capability-bearing input. Closed review and terminal surfaces unmount, so layout state neither retains data nor sustains a subscription, timer, terminal, or hidden execution. Resize handling listens only during an active pointer drag and removes listeners on release, cancel, and unmount. No stored value can encode a path, CSS, content, authority, or cross-project/account synchronization.
 
+## M51 durable-task proposal boundary
+
+The M51 proposal limits future task persistence to private SQLite organizational
+metadata with strict UUIDv7 ownership, row/aggregate caps, immediate
+transactions, migrations, and explicit archive/restore/deletion. It excludes
+paths, transcripts, hidden context, credentials, provider/browser data,
+attachments/artifacts, approvals, dispatch, execution, terminal, and Git
+state. Alternate plans are bounded text records with no authority inheritance;
+switching must clear/exclude capability-bearing transient state and cannot
+trigger an operation. Retention refuses at capacity and requires explicit
+cleanup rather than silently evicting data. SQLite deletion is application
+irreversible but does not claim secure physical erasure from journals, media,
+or external backups. This decision adds no runtime persistence until M52
+approval.
+
 - OS keyring use for app-owned non-Codex secrets, if any are ever required.
 - Package signing identity and key custody.
 - Update channel design and rollback.

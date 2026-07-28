@@ -2,6 +2,13 @@
 
 ## Unreleased — 0.1.0-beta.45
 
+### Added
+
+- Record M51's decision-ready durable-task and alternate-plan proposal. It
+  selects bounded local SQLite organizational records and strict plan authority
+  isolation only; no M52 runtime behavior, package identity, or evidence is
+  changed.
+
 ### Changed
 
 - Refine M50's existing workbench with bounded, keyboard and pointer operable
