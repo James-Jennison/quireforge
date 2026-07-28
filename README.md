@@ -31,6 +31,9 @@ static project site is [quireforge.jamesjennison.net](https://quireforge.jamesje
   text, image, PDF, or ZIP-manifest projections.
 - Accessible routed workspaces, local appearance preferences, and reproducible
   Ubuntu 22.04 Debian candidate validation.
+- A QuireForge task workbench shell with a primary conversation surface, an
+  opt-in context drawer, safe navigation actions, and a collapsed view of the
+  existing managed terminal; it adds no new execution authority.
 
 The current implementation status, completed milestones, known limitations,
 and next approved work are maintained in [Current State](docs/CURRENT_STATE.md).

@@ -1059,6 +1059,24 @@ gate requires a fresh `0.1.0-beta.34` Debian desktop and worker release set,
 focused acknowledgement/focus/isolation tests, full validation, provenance/ABI,
 lifecycle, installed-smoke, and visible-launch evidence.
 
+### 40 — QuireForge Task Workbench Shell
+
+Evolve the existing QuireForge route into a calm task-centred workbench without
+creating a generic IDE or changing authority. The existing conversation remains
+the primary surface. Add a compact keyboard-accessible **Actions** palette for
+existing navigation, an optional closed-by-default workbench-context drawer
+with honest Diff, Git, and Problems summaries, and an optional collapsed
+managed-terminal dock that re-presents the existing terminal registry only.
+The shell preserves workspace isolation, terminal ownership, approval binding,
+responsive behavior, and focus restoration. It introduces no shell, PTY,
+command-launch, project-write, dispatch, execution, provider, or transport
+path. A future closed attachment-composer milestone may present one **Attach a
+file** entry; this shell does not add upload, drag-and-drop, attachment
+collection, or file-type behavior. The package gate requires a fresh
+`0.1.0-beta.35` Debian desktop and worker release set, full keyboard,
+screen-reader, desktop, narrow-layout, 200%-zoom, bundle-ceiling, provenance,
+ABI, lifecycle, installed-smoke, and visible-launch evidence.
+
 ### Advisor Approval/Dispatch Phases A–B3 (completed capability history)
 
 The approved Phase A/B1 controller is an editable, transient draft and explicit,

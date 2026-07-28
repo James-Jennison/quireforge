@@ -628,9 +628,111 @@ function WorkspaceSelector({
 }
 
 function initialInspectorOpen(): boolean {
+  // The workbench context drawer is intentionally opt-in. It remains an
+  // independent, local presentation surface rather than ambient task state.
+  return false;
+}
+
+type WorkbenchDrawerTab = "diff" | "git" | "problems";
+
+function WorkbenchActionPalette({
+  open,
+  onClose,
+  onNavigate,
+  onToggleDrawer,
+  onToggleTerminal,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onNavigate: (route: WorkspaceRoute) => void;
+  onToggleDrawer: () => void;
+  onToggleTerminal: () => void;
+}) {
+  const firstActionRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (open) firstActionRef.current?.focus();
+  }, [open]);
+
+  if (!open) return null;
   return (
-    window.matchMedia?.("(min-width: 1181px)").matches ??
-    window.innerWidth > 1180
+    <div
+      className="workbench-actions"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Command palette"
+    >
+      <button
+        className="workbench-actions__backdrop"
+        type="button"
+        aria-label="Close command palette"
+        onClick={onClose}
+      />
+      <div
+        className="workbench-actions__panel"
+        role="menu"
+        aria-label="QuireForge actions"
+      >
+        <div>
+          <p className="eyebrow">QuireForge</p>
+          <h2>Actions</h2>
+        </div>
+        <button
+          ref={firstActionRef}
+          type="button"
+          role="menuitem"
+          onClick={() => {
+            onNavigate("conversation");
+            onClose();
+          }}
+        >
+          Open task conversation
+        </button>
+        <button
+          type="button"
+          role="menuitem"
+          onClick={() => {
+            onNavigate("files");
+            onClose();
+          }}
+        >
+          Open files
+        </button>
+        <button
+          type="button"
+          role="menuitem"
+          onClick={() => {
+            onNavigate("changes");
+            onClose();
+          }}
+        >
+          Open changes
+        </button>
+        <button
+          type="button"
+          role="menuitem"
+          onClick={() => {
+            onToggleDrawer();
+            onClose();
+          }}
+        >
+          Toggle workbench context
+        </button>
+        <button
+          type="button"
+          role="menuitem"
+          onClick={() => {
+            onToggleTerminal();
+            onClose();
+          }}
+        >
+          Toggle terminal dock
+        </button>
+        <button type="button" role="menuitem" onClick={onClose}>
+          Close
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -977,9 +1079,14 @@ export default function App({
   );
   const [inspectorWidth, setInspectorWidth] = useState(initialInspectorWidth);
   const [inspectorOpen, setInspectorOpen] = useState(initialInspectorOpen);
+  const [workbenchDrawerTab, setWorkbenchDrawerTab] =
+    useState<WorkbenchDrawerTab>("diff");
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [terminalDockOpen, setTerminalDockOpen] = useState(false);
   const [sidebarCompact, setSidebarCompact] = useState(initialSidebarCompact);
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
   const workspaceMainRef = useRef<HTMLElement>(null);
+  const commandPaletteTriggerRef = useRef<HTMLButtonElement>(null);
   const focusWorkspaceAfterNavigation = useRef(false);
   const accessGranted =
     authState === "authenticated" || authState === "not-required";
@@ -1006,6 +1113,23 @@ export default function App({
       active = false;
     };
   }, [loadBootstrap]);
+
+  useEffect(() => {
+    function handleCommandPalette(event: KeyboardEvent) {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setCommandPaletteOpen((current) => !current);
+      }
+      if (event.key === "Escape" && commandPaletteOpen) {
+        setCommandPaletteOpen(false);
+        window.requestAnimationFrame(() =>
+          commandPaletteTriggerRef.current?.focus(),
+        );
+      }
+    }
+    window.addEventListener("keydown", handleCommandPalette);
+    return () => window.removeEventListener("keydown", handleCommandPalette);
+  }, [commandPaletteOpen]);
 
   useEffect(() => {
     let active = true;
@@ -1743,7 +1867,16 @@ export default function App({
       setWorkspaceLocation(next);
     }
     setMobileNavigationOpen(false);
-    setInspectorOpen(initialInspectorOpen());
+    setInspectorOpen(false);
+    setCommandPaletteOpen(false);
+    setTerminalDockOpen(false);
+  }
+
+  function closeCommandPalette() {
+    setCommandPaletteOpen(false);
+    window.requestAnimationFrame(() =>
+      commandPaletteTriggerRef.current?.focus(),
+    );
   }
 
   function clearAdvisorTransientState() {
@@ -2978,32 +3111,68 @@ export default function App({
         );
       case "conversation":
         return (
-          <section className="context-section">
-            <p className="eyebrow">Task context</p>
-            <h2>{currentProject?.displayName ?? "No project selected"}</h2>
-            <dl className="context-facts">
-              <div>
-                <dt>Project access</dt>
-                <dd>{activeProjectState}</dd>
-              </div>
-              <div>
-                <dt>Task state</dt>
-                <dd>{conversation.state}</dd>
-              </div>
-              <div>
-                <dt>Approvals</dt>
-                <dd>
-                  {conversation.state === "waiting-for-approval"
-                    ? "Decision required"
-                    : "No decision pending"}
-                </dd>
-              </div>
-            </dl>
-            <p className="context-note">
-              Task execution uses the verified project directory and the visible
-              sandbox and approval controls.
-            </p>
-          </section>
+          <>
+            <div
+              className="workbench-context-tabs"
+              role="tablist"
+              aria-label="Workbench context"
+            >
+              {(["diff", "git", "problems"] as const).map((tab) => (
+                <button
+                  type="button"
+                  role="tab"
+                  key={tab}
+                  aria-selected={workbenchDrawerTab === tab}
+                  onClick={() => setWorkbenchDrawerTab(tab)}
+                >
+                  {tab === "diff" ? "Diff" : tab === "git" ? "Git" : "Problems"}
+                </button>
+              ))}
+            </div>
+            {workbenchDrawerTab === "diff" ? (
+              <section className="context-section" role="tabpanel">
+                <p className="eyebrow">Selected diff</p>
+                <h2>{gitSelectedRequest?.path ?? "No diff selected"}</h2>
+                <p className="context-note">
+                  {gitSelectedRequest
+                    ? "Open Changes for the bounded reviewed diff."
+                    : "Select a changed file in Changes to review its diff."}
+                </p>
+              </section>
+            ) : workbenchDrawerTab === "git" ? (
+              <section className="context-section" role="tabpanel">
+                <p className="eyebrow">Git status</p>
+                <h2>{currentProject?.displayName ?? "No project selected"}</h2>
+                <dl className="context-facts">
+                  <div>
+                    <dt>Branch</dt>
+                    <dd>{gitSnapshot.branch?.head ?? "Unavailable"}</dd>
+                  </div>
+                  <div>
+                    <dt>Changes</dt>
+                    <dd>
+                      {gitSnapshot.state === "unavailable"
+                        ? "Unavailable"
+                        : gitSnapshot.changes.length}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Conflicts</dt>
+                    <dd>{conflictCount}</dd>
+                  </div>
+                </dl>
+              </section>
+            ) : (
+              <section className="context-section" role="tabpanel">
+                <p className="eyebrow">Problems</p>
+                <h2>No problem feed available</h2>
+                <p className="context-note">
+                  QuireForge does not invent diagnostics. Use the available
+                  review and approval surfaces for current task evidence.
+                </p>
+              </section>
+            )}
+          </>
         );
       case "projects":
         if (!currentProject) return null;
@@ -3253,6 +3422,39 @@ export default function App({
     }
   })();
   const inspectorAvailable = inspectorContent !== null;
+  const terminalWorkspace = (
+    <Suspense
+      fallback={
+        <section
+          className="workspace-loading"
+          id="terminal"
+          aria-labelledby="terminal-loading-title"
+          aria-busy="true"
+        >
+          <p className="eyebrow">Integrated terminal</p>
+          <h2 id="terminal-loading-title">Preparing the terminal view.</h2>
+          <p role="status" aria-live="polite">
+            Loading the local terminal renderer.
+          </p>
+        </section>
+      }
+    >
+      <TerminalWorkspace
+        theme={themePreview ?? theme}
+        availability={terminalState}
+        registry={terminals}
+        projects={projects}
+        busy={terminalBusy}
+        actionError={terminalActionError}
+        onStart={beginTerminal}
+        onPoll={pollActiveTerminal}
+        onWrite={writeActiveTerminal}
+        onResize={resizeActiveTerminal}
+        onClose={endTerminal}
+        onSnapshot={trackTerminal}
+      />
+    </Suspense>
+  );
 
   return (
     <div
@@ -3511,6 +3713,18 @@ export default function App({
             </div>
           </div>
           <div className="topbar-actions">
+            {conversationMode === "codex" && (
+              <button
+                ref={commandPaletteTriggerRef}
+                className="topbar-button topbar-button--workbench-actions"
+                type="button"
+                aria-haspopup="dialog"
+                aria-expanded={commandPaletteOpen}
+                onClick={() => setCommandPaletteOpen((current) => !current)}
+              >
+                ⌘ Actions
+              </button>
+            )}
             {workspaceLocation.route === "home" && (
               <button
                 className="topbar-button topbar-button--primary"
@@ -3549,8 +3763,8 @@ export default function App({
                 type="button"
                 aria-label={
                   inspectorOpen
-                    ? "Hide context inspector"
-                    : "Show context inspector"
+                    ? "Hide workbench context"
+                    : "Show workbench context"
                 }
                 aria-expanded={inspectorOpen}
                 onClick={() => setInspectorOpen((current) => !current)}
@@ -3569,6 +3783,14 @@ export default function App({
             </button>
           </div>
         </header>
+
+        <WorkbenchActionPalette
+          open={commandPaletteOpen}
+          onClose={closeCommandPalette}
+          onNavigate={navigateWorkspace}
+          onToggleDrawer={() => setInspectorOpen((current) => !current)}
+          onToggleTerminal={() => setTerminalDockOpen((current) => !current)}
+        />
 
         <div
           className={
@@ -3749,39 +3971,9 @@ export default function App({
               route="terminal"
               active={workspaceLocation.route === "terminal"}
             >
-              <Suspense
-                fallback={
-                  <section
-                    className="workspace-loading"
-                    id="terminal"
-                    aria-labelledby="terminal-loading-title"
-                    aria-busy="true"
-                  >
-                    <p className="eyebrow">Integrated terminal</p>
-                    <h2 id="terminal-loading-title">
-                      Preparing the terminal view.
-                    </h2>
-                    <p role="status" aria-live="polite">
-                      Loading the local terminal renderer.
-                    </p>
-                  </section>
-                }
-              >
-                <TerminalWorkspace
-                  theme={themePreview ?? theme}
-                  availability={terminalState}
-                  registry={terminals}
-                  projects={projects}
-                  busy={terminalBusy}
-                  actionError={terminalActionError}
-                  onStart={beginTerminal}
-                  onPoll={pollActiveTerminal}
-                  onWrite={writeActiveTerminal}
-                  onResize={resizeActiveTerminal}
-                  onClose={endTerminal}
-                  onSnapshot={trackTerminal}
-                />
-              </Suspense>
+              {terminalDockOpen && workspaceLocation.route === "conversation"
+                ? null
+                : terminalWorkspace}
             </WorkspaceView>
 
             <WorkspaceView
@@ -3918,6 +4110,34 @@ export default function App({
                     onAttachmentCancel={removeConversationAttachment}
                   />
                 )}
+                {conversationMode === "codex" && (
+                  <section
+                    className="workbench-terminal-dock"
+                    aria-label="Terminal dock"
+                  >
+                    <div className="workbench-terminal-dock__header">
+                      <div>
+                        <p className="eyebrow">Managed terminal</p>
+                        <strong>Terminal dock</strong>
+                      </div>
+                      <button
+                        type="button"
+                        aria-expanded={terminalDockOpen}
+                        onClick={() =>
+                          setTerminalDockOpen((current) => !current)
+                        }
+                      >
+                        {terminalDockOpen
+                          ? "Collapse dock"
+                          : "Open terminal dock"}
+                      </button>
+                    </div>
+                    {terminalDockOpen &&
+                    workspaceLocation.route === "conversation"
+                      ? terminalWorkspace
+                      : null}
+                  </section>
+                )}
               </section>
             </WorkspaceView>
 
@@ -3967,7 +4187,7 @@ export default function App({
               <div
                 className="pane-divider"
                 role="separator"
-                aria-label="Resize context inspector"
+                aria-label="Resize workbench context"
                 aria-orientation="vertical"
                 aria-valuemin={inspectorWidthMinimum}
                 aria-valuemax={inspectorWidthMaximum}
@@ -3982,12 +4202,12 @@ export default function App({
               >
                 <header className="context-inspector__header">
                   <div>
-                    <span>Current workspace</span>
-                    <h2 id="context-inspector-title">Context</h2>
+                    <span>Optional workspace detail</span>
+                    <h2 id="context-inspector-title">Workbench context</h2>
                   </div>
                   <button
                     type="button"
-                    aria-label="Close context inspector"
+                    aria-label="Close workbench context"
                     onClick={() => setInspectorOpen(false)}
                   >
                     ×

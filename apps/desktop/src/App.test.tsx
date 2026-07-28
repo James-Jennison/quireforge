@@ -396,6 +396,78 @@ describe("QuireForge desktop shell", () => {
     ).toBeInTheDocument();
   });
 
+  it("keeps the QuireForge workbench context closed until requested and exposes only safe shell actions", async () => {
+    render(
+      <App
+        loadBootstrap={() => Promise.resolve(scaffoldBootstrap)}
+        loadRuntime={() => Promise.resolve(scaffoldCodexRuntime)}
+        loadAuth={() => Promise.resolve(authenticatedAuth)}
+        loadProjects={() => Promise.resolve(attachedProject)}
+      />,
+    );
+
+    await navigateTo("New task");
+    expect(
+      screen.queryByRole("heading", { name: "Workbench context" }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Show workbench context" }),
+    );
+    expect(
+      screen.getByRole("heading", { name: "Workbench context" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Diff" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    fireEvent.click(screen.getByRole("tab", { name: "Problems" }));
+    expect(screen.getByText("No problem feed available")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "⌘ Actions" }));
+    expect(
+      screen.getByRole("dialog", { name: "Command palette" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("menuitem", { name: "Open files" }),
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        screen.getByRole("menuitem", { name: "Open task conversation" }),
+      ).toHaveFocus(),
+    );
+    fireEvent.keyDown(window, { key: "Escape" });
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "⌘ Actions" })).toHaveFocus(),
+    );
+    expect(
+      screen.queryByText(/run command|execute task|upload file/iu),
+    ).not.toBeInTheDocument();
+  });
+
+  it("keeps the managed terminal collapsed until the workbench user opens its dock", async () => {
+    render(
+      <App
+        loadBootstrap={() => Promise.resolve(scaffoldBootstrap)}
+        loadRuntime={() => Promise.resolve(scaffoldCodexRuntime)}
+        loadAuth={() => Promise.resolve(authenticatedAuth)}
+        loadProjects={() => Promise.resolve(attachedProject)}
+      />,
+    );
+
+    await navigateTo("New task");
+    const dock = screen.getByRole("region", { name: "Terminal dock" });
+    expect(
+      within(dock).getByRole("button", { name: "Open terminal dock" }),
+    ).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(
+      within(dock).getByRole("button", { name: "Open terminal dock" }),
+    );
+    expect(
+      within(dock).getByRole("button", { name: "Collapse dock" }),
+    ).toHaveAttribute("aria-expanded", "true");
+  });
+
   it("falls back safely to Codex when a persisted conversation mode is invalid", async () => {
     window.localStorage.setItem("quireforge-conversation-mode", "unsupported");
     render(

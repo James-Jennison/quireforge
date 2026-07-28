@@ -1,8 +1,14 @@
 # Changelog
 
-## Unreleased — 0.1.0-beta.34
+## Unreleased — 0.1.0-beta.35
 
 ### Added
+
+- Add Milestone 40's QuireForge Task Workbench Shell. The task conversation
+  remains primary while an opt-in workbench context drawer, compact safe-actions
+  palette, and collapsed existing managed-terminal dock improve task navigation
+  without adding shell, PTY, execution, dispatch, project-write, provider, or
+  transport authority.
 
 - Add a post-M39 corrective checkpoint for the Advisor/QuireForge workspace
   boundary acknowledgement. The first ordinary switch under

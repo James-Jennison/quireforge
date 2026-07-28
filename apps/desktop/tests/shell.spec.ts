@@ -1058,6 +1058,45 @@ test("visual polish keeps the branded shell and composer accessible", async ({
   });
 });
 
+test("QuireForge workbench controls remain optional, keyboard-operable, and bounded", async ({
+  page,
+}) => {
+  await installNativeFixture(page);
+  await page.goto("/");
+  await openWorkspace(page, "New task");
+
+  await expect(
+    page.getByRole("heading", { name: "Workbench context" }),
+  ).toHaveCount(0);
+  const actions = page.getByRole("button", { name: "⌘ Actions" });
+  await actions.click();
+  await expect(
+    page.getByRole("dialog", { name: "Command palette" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("menuitem", { name: "Open task conversation" }),
+  ).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(actions).toBeFocused();
+
+  await page.getByRole("button", { name: "Show workbench context" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Workbench context" }),
+  ).toBeVisible();
+  await page.getByRole("tab", { name: "Problems" }).click();
+  await expect(page.getByText("No problem feed available")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Open terminal dock" }),
+  ).toHaveAttribute("aria-expanded", "false");
+
+  const accessibility = await new AxeBuilder({ page }).analyze();
+  expect(accessibility.violations).toEqual([]);
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - window.innerWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(1);
+});
+
 test("native session fixture renders grouping, tabs, and bounded controls", async ({
   page,
 }) => {

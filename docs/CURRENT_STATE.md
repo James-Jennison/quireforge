@@ -193,6 +193,15 @@ increment the policy version; no project, transcript, attachment, approval,
 dispatch, terminal, Git, worktree, execution, path, credential, or other
 capability-bearing state is persisted.
 
+Milestone 40 — **QuireForge Task Workbench Shell** is the active presentation
+milestone. It keeps the task conversation dominant while adding an opt-in
+workbench-context drawer, safe keyboard-accessible action palette, and a
+collapsed re-presentation of the existing managed terminal. It does not add a
+shell, PTY, command-launch, execution, project-write, upload, or transport
+path. Its `0.1.0-beta.35` package gate remains Debian-only and requires the
+existing bundle, provenance/ABI, lifecycle, installed-smoke, and visible-launch
+evidence.
+
 Milestone 27 — **Unified Conversation Engine** is complete. It adds strict
 Rust/Zod Chat/Codex capability profiles, a Settings navigation foundation,
 bounded mode-aware metadata, a fixed no-project native Chat bridge, and an
