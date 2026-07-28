@@ -1,6 +1,8 @@
 # Milestone 44 — Unified Single Attachment Entry
 
-Status: implementation candidate for `0.1.0-beta.41`.
+Status: complete. Implementation provenance commit
+`891abf6d953e3b7c0dd3f0d3bd03baeb29de40fb` is verified by the fresh pinned
+Ubuntu 22.04 `0.1.0-beta.41` Debian evidence below.
 
 ## Scope
 
@@ -24,6 +26,26 @@ expiry, claim, confirmation, and disposal behavior.
 ## Validation and package evidence
 
 The focused UI test proves that the single entry exposes only the five closed
-type choices and routes the image choice to its existing typed picker. Full
-source and pinned-Ubuntu package evidence will be recorded only after the
-clean implementation commit is validated.
+type choices and routes the image choice to its existing typed picker. The full
+repository validation and the authoritative pinned Ubuntu 22.04 workflow
+passed from the clean implementation provenance commit.
+
+The ignored release records are:
+
+- `target/ubuntu-22.04/release/packages/release-manifest.json`
+- `target/ubuntu-22.04/release/packages/SHA256SUMS`
+
+The schema-3 manifest records `treeState: clean`, the digest-pinned Ubuntu
+22.04 builder, and maximum shipped `GLIBC_2.34`, within the `GLIBC_2.35`
+compatibility ceiling. The workflow passed checksum and provenance validation,
+Debian lifecycle, pinned-container smoke, restricted installed-package smoke,
+and installed visible X11 launch.
+
+| Artifact | Bytes | SHA-256 |
+| --- | ---: | --- |
+| `quireforge_0.1.0.beta.41_amd64.deb` | 5,486,240 | `a6875331fd1e7b022496481e89ad3c7064d1dbcd345f9ec02733115cd6b7c599` |
+| `quireforge-sandboxd_0.1.0.beta.41_amd64.deb` | 3,233,620 | `b2129b07cf3bfd26c5a3eabf685a3b5f8ffd2c95230c24d66aa5334565e66e3b` |
+
+The production desktop output remains inside the closed temporary envelope:
+194,943-byte startup entry, 309,016-byte application shell, 941,334 bytes total
+JavaScript, and 109,082 bytes CSS. No ceiling changed.
