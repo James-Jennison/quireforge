@@ -1222,6 +1222,11 @@ expiration, one-use claim, and disposal; any invalid member fails the whole
 request without silent omission or partial reuse. This is not generic upload.
 The provisional package candidate is `0.1.0-beta.42`.
 
+**Implementation candidate:** the approved closed collection supports at most
+three existing typed entries and at most one image, with native 40 MiB
+aggregate preflight and one explicit collection confirmation. Package evidence
+is pending the clean beta.42 provenance build.
+
 ### 47 — Generated Artifact Workflow Proposal
 
 Define a bounded transient artifact registry, multiple reviewed output cards,

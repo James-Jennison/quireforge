@@ -388,6 +388,63 @@ async fn advisor_conversation_start(
             AdvisorConversationDiagnosticCode::InvalidRequest,
         ));
     }
+    macro_rules! requested_attachment_bytes {
+        ($id:expr, $hash:expr, $snapshot:expr) => {{
+            match ($id, $hash) {
+                (None, None) => Ok(0_u64),
+                (Some(attachment_id), Some(manifest_sha256)) => $snapshot
+                    .attachment
+                    .filter(|attachment| {
+                        attachment.attachment_id == *attachment_id
+                            && attachment.sha256 == *manifest_sha256
+                    })
+                    .map(|attachment| attachment.byte_size)
+                    .ok_or(()),
+                _ => Err(()),
+            }
+        }};
+    }
+    let source_bytes = [
+        requested_attachment_bytes!(
+            request.attachment_id.as_ref(),
+            request.attachment_manifest_sha256.as_ref(),
+            attachments.snapshot()
+        ),
+        requested_attachment_bytes!(
+            request.image_attachment_id.as_ref(),
+            request.image_attachment_manifest_sha256.as_ref(),
+            image_attachments.snapshot()
+        ),
+        requested_attachment_bytes!(
+            request.document_attachment_id.as_ref(),
+            request.document_attachment_manifest_sha256.as_ref(),
+            document_attachments.snapshot()
+        ),
+        requested_attachment_bytes!(
+            request.archive_attachment_id.as_ref(),
+            request.archive_attachment_manifest_sha256.as_ref(),
+            archive_attachments.snapshot()
+        ),
+        requested_attachment_bytes!(
+            request.binary_attachment_id.as_ref(),
+            request.binary_attachment_manifest_sha256.as_ref(),
+            binary_attachments.snapshot()
+        ),
+    ]
+    .into_iter()
+    .try_fold(0_u64, |total, bytes| {
+        bytes.and_then(|bytes| total.checked_add(bytes).ok_or(()))
+    });
+    let Ok(source_bytes) = source_bytes else {
+        return Ok(AdvisorConversationSnapshot::unavailable(
+            AdvisorConversationDiagnosticCode::AttachmentUnavailable,
+        ));
+    };
+    if source_bytes > 40 * 1024 * 1024 {
+        return Ok(AdvisorConversationSnapshot::unavailable(
+            AdvisorConversationDiagnosticCode::AttachmentUnavailable,
+        ));
+    }
     let selected_project_state = if let Some(project_id) = request.project_id.as_ref() {
         let snapshot = reader
             .read(

@@ -1,6 +1,15 @@
 # Changelog
 
-## Unreleased — 0.1.0-beta.41
+## Unreleased — 0.1.0-beta.42
+
+### Added
+
+- Add Milestone 46's bounded Advisor attachment collection: up to three
+  existing typed attachments, one image at most, native aggregate preflight,
+  and one explicit collection confirmation. No generic upload, new file type,
+  new app-server method, persistence, or authority is added.
+
+## 0.1.0-beta.41
 
 ### Added
 

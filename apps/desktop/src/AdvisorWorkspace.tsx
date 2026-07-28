@@ -228,18 +228,24 @@ export function AdvisorWorkspace({
     runtime.models.find((model) => model.id === effectiveModel) ?? null;
   const effectiveReasoning =
     requestedReasoning || selectedModel?.defaultReasoningEffort || "";
-  const readyAttachment =
-    textAttachment.state === "ready"
-      ? { kind: "text", attachment: textAttachment.attachment }
-      : imageAttachment.state === "ready"
-        ? { kind: "image", attachment: imageAttachment.attachment }
-        : documentAttachment.state === "ready"
-          ? { kind: "document", attachment: documentAttachment.attachment }
-          : archiveAttachment.state === "ready"
-            ? { kind: "archive", attachment: archiveAttachment.attachment }
-            : binaryAttachment.state === "ready"
-              ? { kind: "binary", attachment: binaryAttachment.attachment }
-              : null;
+  const readyAttachmentCount = [
+    textAttachment,
+    imageAttachment,
+    documentAttachment,
+    archiveAttachment,
+    binaryAttachment,
+  ].filter((attachment) => attachment.state === "ready").length;
+  const readyAttachmentNames = [
+    textAttachment.attachment,
+    imageAttachment.attachment,
+    documentAttachment.attachment,
+    archiveAttachment.attachment,
+    binaryAttachment.attachment,
+  ]
+    .filter((attachment): attachment is NonNullable<typeof attachment> =>
+      Boolean(attachment),
+    )
+    .map((attachment) => attachment.displayName);
   const approvalBindingKey = JSON.stringify({
     advisorConversationId: conversation.conversationId,
     targetProjectId,
@@ -1102,7 +1108,8 @@ export function AdvisorWorkspace({
           <p className={hasConversation ? "sr-only" : undefined}>
             Uses the managed ChatGPT browser sign-in through Codex. No project
             browsing, tools, or execution permissions are available. You may
-            explicitly include one bounded text or data file with one message.
+            explicitly include up to three bounded supported files with one
+            message.
           </p>
           {authentication !== "ready" && (
             <p className="project-message" role="status">
@@ -1248,7 +1255,9 @@ export function AdvisorWorkspace({
             >
               <div>
                 <strong>Optional attachment</strong>
-                <span>One supported file for this message only</span>
+                <span>
+                  {readyAttachmentCount} of 3 supported files for this message
+                </span>
               </div>
               <button
                 type="button"
@@ -1259,7 +1268,7 @@ export function AdvisorWorkspace({
                   active ||
                   conversationBusy ||
                   authentication !== "ready" ||
-                  readyAttachment !== null
+                  readyAttachmentCount >= 3
                 }
                 onClick={() => setAttachmentPickerOpen(true)}
               >
@@ -1279,30 +1288,35 @@ export function AdvisorWorkspace({
                   <div className="project-actions">
                     <button
                       type="button"
+                      disabled={textAttachment.state === "ready"}
                       onClick={() => chooseAttachment(pickTextAttachment)}
                     >
                       Text or data · 512 KiB
                     </button>
                     <button
                       type="button"
+                      disabled={imageAttachment.state === "ready"}
                       onClick={() => chooseAttachment(pickImageAttachment)}
                     >
                       PNG or JPEG · 4 MiB
                     </button>
                     <button
                       type="button"
+                      disabled={documentAttachment.state === "ready"}
                       onClick={() => chooseAttachment(pickDocumentAttachment)}
                     >
                       PDF document · 8 MiB
                     </button>
                     <button
                       type="button"
+                      disabled={archiveAttachment.state === "ready"}
                       onClick={() => chooseAttachment(pickArchiveAttachment)}
                     >
                       ZIP archive · 32 MiB
                     </button>
                     <button
                       type="button"
+                      disabled={binaryAttachment.state === "ready"}
                       onClick={() => chooseAttachment(pickBinaryAttachment)}
                     >
                       ELF static metadata · 32 MiB
@@ -1518,9 +1532,8 @@ export function AdvisorWorkspace({
             </div>
             <p className="project-message" role="note">
               Advisor is read-only: no commands, project changes, or dispatch.
-              Project State and one text/data file, one image, one PDF
-              projection, one ZIP manifest, or one ELF static metadata manifest
-              are optional and require confirmation.
+              Project State and up to three existing bounded attachment
+              projections are optional and require collection confirmation.
             </p>
             {sendDisabledReason && !active && (
               <p className="project-message" role="status">
@@ -1610,29 +1623,11 @@ export function AdvisorWorkspace({
                 aria-label="Confirm attachment inclusion"
               >
                 <p>
-                  Include{" "}
-                  {
-                    (
-                      textAttachment.attachment ??
-                      imageAttachment.attachment ??
-                      documentAttachment.attachment ??
-                      archiveAttachment.attachment ??
-                      binaryAttachment.attachment
-                    )?.displayName
-                  }{" "}
-                  as transient
-                  {imageAttachment.attachment
-                    ? " PNG/JPEG image data"
-                    : documentAttachment.attachment
-                      ? " bounded PDF text projection"
-                      : archiveAttachment.attachment
-                        ? " bounded ZIP entry-name manifest"
-                        : binaryAttachment.attachment
-                          ? " bounded ELF static metadata"
-                          : " normalized text"}{" "}
-                  in this one Advisor message? Its path is not shared, it is
-                  consumed after this send, and it grants no project or
-                  execution authority.
+                  Include these {readyAttachmentNames.length} transient,
+                  independently validated attachments in this one Advisor
+                  message? {readyAttachmentNames.join(", ")}. Their paths are
+                  not shared, every item is consumed after this send, and they
+                  grant no project or execution authority.
                 </p>
                 <div className="project-actions">
                   <button
@@ -1648,7 +1643,7 @@ export function AdvisorWorkspace({
                       else submit(null);
                     }}
                   >
-                    Confirm inclusion
+                    Confirm all attachments for this send
                   </button>
                   <button
                     type="button"

@@ -446,7 +446,7 @@ describe("AdvisorWorkspace", () => {
     ).toBeEnabled();
     expect(
       screen.getByText(
-        /Project State and one text\/data file, one image, one PDF projection, one ZIP manifest, or one ELF static metadata manifest are optional and require confirmation/u,
+        /Project State and up to three existing bounded attachment projections are optional and require collection confirmation/u,
       ),
     ).toBeInTheDocument();
     expect(
@@ -540,7 +540,9 @@ describe("AdvisorWorkspace", () => {
     fireEvent.click(screen.getByRole("button", { name: "Send to Advisor" }));
     expect(onConversationStart).not.toHaveBeenCalled();
     fireEvent.click(
-      await screen.findByRole("button", { name: "Confirm inclusion" }),
+      await screen.findByRole("button", {
+        name: "Confirm all attachments for this send",
+      }),
     );
     expect(onConversationStart).toHaveBeenCalledWith({
       prompt: "Review the attached notes.",
@@ -616,7 +618,9 @@ describe("AdvisorWorkspace", () => {
     fireEvent.click(screen.getByRole("button", { name: "Send to Advisor" }));
     expect(onConversationStart).not.toHaveBeenCalled();
     fireEvent.click(
-      await screen.findByRole("button", { name: "Confirm inclusion" }),
+      await screen.findByRole("button", {
+        name: "Confirm all attachments for this send",
+      }),
     );
     expect(onConversationStart).toHaveBeenCalledWith(
       expect.objectContaining({
