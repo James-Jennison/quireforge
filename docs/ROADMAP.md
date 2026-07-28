@@ -1147,6 +1147,11 @@ auditable; it never transfers a full transcript or authority. The provisional
 package candidate is `0.1.0-beta.38`, subject to revalidation as the next unique
 version when implementation is approved.
 
+The initial `task-handoff-envelope-v1` carries only a bounded title, original
+user request, reviewed brief, or bounded completion receipt. Safe attachment
+manifest/projection transfer is intentionally deferred to a later, separately
+approved type-specific collection contract.
+
 ### 44 — Unified Single Attachment Entry
 
 Present one **Attach a file** action that routes only to already supported,

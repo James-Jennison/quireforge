@@ -13,6 +13,7 @@ mod git;
 mod preview;
 mod project;
 pub mod project_state;
+mod task_handoff;
 mod terminal;
 mod worktree;
 
@@ -90,6 +91,10 @@ use project::{
     types::{ProjectPreflightSnapshot, ProjectWorkspaceSnapshot},
     ProjectService,
 };
+use task_handoff::{
+    TaskHandoffCreateRequest, TaskHandoffDirection, TaskHandoffReceiptRequest, TaskHandoffService,
+    TaskHandoffSnapshot,
+};
 use tauri::Manager;
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_notification::NotificationExt;
@@ -109,6 +114,44 @@ use worktree::{
     },
     WorktreeService,
 };
+
+#[tauri::command]
+async fn task_handoff_status(
+    service: tauri::State<'_, TaskHandoffService>,
+) -> Result<TaskHandoffSnapshot, ()> {
+    Ok(service.status().await)
+}
+
+#[tauri::command]
+async fn task_handoff_prepare_advisor_brief(
+    request: TaskHandoffCreateRequest,
+    service: tauri::State<'_, TaskHandoffService>,
+) -> Result<TaskHandoffSnapshot, ()> {
+    Ok(service.prepare_advisor_brief(request).await)
+}
+
+#[tauri::command]
+async fn task_handoff_prepare_completion_receipt(
+    request: TaskHandoffReceiptRequest,
+    service: tauri::State<'_, TaskHandoffService>,
+) -> Result<TaskHandoffSnapshot, ()> {
+    Ok(service.prepare_completion_receipt(request).await)
+}
+
+#[tauri::command]
+async fn task_handoff_accept(
+    direction: TaskHandoffDirection,
+    service: tauri::State<'_, TaskHandoffService>,
+) -> Result<TaskHandoffSnapshot, ()> {
+    Ok(service.accept(direction).await)
+}
+
+#[tauri::command]
+async fn task_handoff_cancel(
+    service: tauri::State<'_, TaskHandoffService>,
+) -> Result<TaskHandoffSnapshot, ()> {
+    Ok(service.cancel().await)
+}
 
 #[tauri::command]
 fn desktop_bootstrap() -> DesktopBootstrap {
@@ -1807,6 +1850,7 @@ pub fn run() {
         .manage(AdvisorDocumentAttachmentService::default())
         .manage(AdvisorArchiveAttachmentService::default())
         .manage(AdvisorBinaryAttachmentService::default())
+        .manage(TaskHandoffService::default())
         .manage(DynamicAnalysisService::default())
         .manage(DesktopNotificationService::default())
         .manage(GitService::default())
@@ -1880,6 +1924,11 @@ pub fn run() {
             advisor_conversation_start,
             advisor_conversation_poll,
             advisor_conversation_interrupt,
+            task_handoff_status,
+            task_handoff_prepare_advisor_brief,
+            task_handoff_prepare_completion_receipt,
+            task_handoff_accept,
+            task_handoff_cancel,
             advisor_text_attachment_status,
             advisor_text_attachment_pick,
             advisor_text_attachment_cancel,

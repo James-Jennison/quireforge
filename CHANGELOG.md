@@ -1,6 +1,14 @@
 # Changelog
 
-## Unreleased — 0.1.0-beta.37
+## Unreleased — 0.1.0-beta.38
+
+### Added
+
+- Add Milestone 43's explicit, transient Shared Task Continuity envelope. A
+  reviewed Advisor brief can be opened once in QuireForge, and a bounded
+  QuireForge completion receipt can be reviewed once in Advisor. The envelope
+  is native-memory-only and carries no attachment payload, transcript, project,
+  terminal, Git, approval, dispatch, execution, path, or authority state.
 
 ### Changed
 

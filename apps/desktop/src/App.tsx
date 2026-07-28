@@ -44,6 +44,7 @@ import {
   cancelFilePreview,
   cancelConversationAttachments,
   cancelCodexAuth,
+  acceptTaskHandoff,
   cancelProjectAttachment,
   confirmProjectAttachment,
   confirmGitMutation,
@@ -110,8 +111,14 @@ import {
   previewWorktreeRemove,
   resizeTerminal,
   startTerminal,
+  prepareAdvisorTaskHandoff as prepareAdvisorTaskHandoffNative,
+  prepareTaskCompletionReceipt,
   writeTerminal,
 } from "./lib/bridge";
+import type {
+  TaskHandoffCreateRequest,
+  TaskHandoffSnapshot,
+} from "./lib/taskHandoff";
 import type {
   AdvisorProjectStateReadRequest,
   AdvisorSelectedProjectStateSnapshot,
@@ -1028,8 +1035,11 @@ export default function App({
   const [conversationMode, setConversationMode] = useState<ConversationMode>(
     initialConversationMode,
   );
+  const [acceptedTaskHandoff, setAcceptedTaskHandoff] =
+    useState<TaskHandoffSnapshot | null>(null);
   const [pendingConversationMode, setPendingConversationMode] =
     useState<ConversationMode | null>(null);
+  const [pendingTaskHandoffOpen, setPendingTaskHandoffOpen] = useState(false);
   const [advisorConversation, setAdvisorConversation] =
     useState<AdvisorConversationSnapshot>(scaffoldAdvisorConversation);
   const [advisorConversationBusy, setAdvisorConversationBusy] = useState(false);
@@ -1886,6 +1896,42 @@ export default function App({
     setAdvisorProjectStateProjectId(null);
     setAdvisorProjectStateSelection("idle");
     setAdvisorResetToken((current) => current + 1);
+    setAcceptedTaskHandoff(null);
+  }
+
+  async function prepareAdvisorTaskHandoff(request: TaskHandoffCreateRequest) {
+    return prepareAdvisorTaskHandoffNative(request);
+  }
+
+  async function openTaskHandoffInQuireforge() {
+    if (!hasCurrentWorkspaceBoundaryAcknowledgment()) {
+      setPendingTaskHandoffOpen(true);
+      setPendingConversationMode("codex");
+      return;
+    }
+    const accepted = await acceptTaskHandoff("advisor-to-quireforge");
+    if (accepted.state !== "accepted" || !accepted.brief) return;
+    applyConversationModeChange("codex");
+    setAcceptedTaskHandoff(accepted);
+  }
+
+  async function returnTaskHandoffToAdvisor(summary: string) {
+    const handoff = acceptedTaskHandoff;
+    if (!handoff?.taskId || !handoff.title || !handoff.originalRequest) return;
+    const receipt = await prepareTaskCompletionReceipt({
+      taskId: handoff.taskId,
+      title: handoff.title,
+      originalRequest: handoff.originalRequest,
+      summary,
+      status: "completed",
+    });
+    if (receipt.state !== "pending") return;
+    const accepted = await acceptTaskHandoff("quireforge-to-advisor");
+    if (accepted.state !== "accepted") return;
+    setAcceptedTaskHandoff(null);
+    applyConversationModeChange("chat");
+    // The receipt is intentionally shown only as a transient Advisor draft.
+    setAcceptedTaskHandoff(accepted);
   }
 
   function requestWorkspaceSelection(next: WorkspaceConversationMode) {
@@ -1921,14 +1967,23 @@ export default function App({
     navigateWorkspace(next === "chat" ? "advisor" : "conversation");
   }
 
-  function confirmConversationModeChange() {
+  async function confirmConversationModeChange() {
     if (!pendingConversationMode) return;
     storeWorkspaceBoundaryAcknowledgment();
+    if (pendingTaskHandoffOpen && pendingConversationMode === "codex") {
+      setPendingTaskHandoffOpen(false);
+      const accepted = await acceptTaskHandoff("advisor-to-quireforge");
+      if (accepted.state !== "accepted" || !accepted.brief) return;
+      applyConversationModeChange("codex");
+      setAcceptedTaskHandoff(accepted);
+      return;
+    }
     applyConversationModeChange(pendingConversationMode);
   }
 
   function cancelConversationModeChange() {
     setPendingConversationMode(null);
+    setPendingTaskHandoffOpen(false);
     window.requestAnimationFrame(() =>
       document
         .querySelector<HTMLButtonElement>(".workspace-selector__trigger")
@@ -3816,7 +3871,10 @@ export default function App({
                   completion report, or transient transcript transfers
                   automatically.
                 </p>
-                <button type="button" onClick={confirmConversationModeChange}>
+                <button
+                  type="button"
+                  onClick={() => void confirmConversationModeChange()}
+                >
                   Confirm{" "}
                   {pendingConversationMode === "chat"
                     ? "Advisor"
@@ -3912,6 +3970,13 @@ export default function App({
                 onConversationInterrupt={stopAdvisorConversation}
                 onDispatch={dispatchApprovedAdvisorRequest}
                 onOpenExecution={() => navigateWorkspace("conversation")}
+                onPrepareTaskHandoff={prepareAdvisorTaskHandoff}
+                onOpenTaskHandoff={openTaskHandoffInQuireforge}
+                returnedTaskReceipt={
+                  acceptedTaskHandoff?.direction === "quireforge-to-advisor"
+                    ? acceptedTaskHandoff.brief
+                    : null
+                }
               />
             </WorkspaceView>
 
@@ -4090,6 +4155,7 @@ export default function App({
                   </p>
                 ) : (
                   <ConversationWorkspace
+                    key={acceptedTaskHandoff?.taskId ?? "ordinary-task"}
                     availability={conversationState}
                     snapshot={conversation}
                     events={conversationEvents}
@@ -4108,6 +4174,8 @@ export default function App({
                     onAttachmentPick={chooseConversationAttachments}
                     onAttachmentDrop={stageConversationAttachmentDrop}
                     onAttachmentCancel={removeConversationAttachment}
+                    handoffBrief={acceptedTaskHandoff?.brief ?? null}
+                    onReturnTaskReceipt={returnTaskHandoffToAdvisor}
                   />
                 )}
                 {conversationMode === "codex" && (

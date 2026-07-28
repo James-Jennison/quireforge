@@ -61,6 +61,8 @@ interface ConversationWorkspaceProps {
     projectId: string,
     attachmentId: string,
   ) => Promise<void>;
+  handoffBrief?: string | null;
+  onReturnTaskReceipt?: (summary: string) => Promise<void>;
 }
 
 const sandboxOptions = [
@@ -305,10 +307,13 @@ export function ConversationWorkspace({
   onAttachmentPick,
   onAttachmentDrop,
   onAttachmentCancel,
+  handoffBrief = null,
+  onReturnTaskReceipt,
 }: ConversationWorkspaceProps) {
   const defaultModel =
     runtime.models.find((model) => model.isDefault) ?? runtime.models[0];
-  const [prompt, setPrompt] = useState("");
+  const [prompt, setPrompt] = useState(handoffBrief ?? "");
+  const [receiptSummary, setReceiptSummary] = useState("");
   const [modelId, setModelId] = useState(defaultModel?.id ?? "");
   const [reasoningEffort, setReasoningEffort] = useState(
     defaultModel?.defaultReasoningEffort ?? "",
@@ -528,6 +533,28 @@ export function ConversationWorkspace({
       </div>
 
       <div className="conversation-layout">
+        {handoffBrief && onReturnTaskReceipt && (
+          <section className="project-card" aria-label="Task handoff receipt">
+            <p>
+              Opened from a reviewed Advisor brief. Review a bounded completion
+              receipt before returning to Advisor.
+            </p>
+            <label htmlFor="task-handoff-receipt">Completion receipt</label>
+            <textarea
+              id="task-handoff-receipt"
+              value={receiptSummary}
+              onChange={(event) => setReceiptSummary(event.target.value)}
+              maxLength={4 * 1024}
+            />
+            <button
+              type="button"
+              disabled={!receiptSummary.trim()}
+              onClick={() => void onReturnTaskReceipt(receiptSummary)}
+            >
+              Review in Advisor
+            </button>
+          </section>
+        )}
         <form
           className="conversation-composer"
           data-visual-region="conversation-composer"

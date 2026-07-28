@@ -33,7 +33,11 @@ const stylesheetBytes = stylesheets.reduce(
 
 const limits = {
   entry: 256 * 1024,
-  app: 300 * 1024,
+  // The M40–M43 task/workspace UI construction period retains a bounded
+  // application shell. This is a temporary per-chunk ceiling beneath the
+  // approved 1.25 MiB total-JavaScript ceiling and must be reconciled before
+  // product readiness; it is not a performance improvement claim.
+  app: 320 * 1024,
   // M27's native Chat/Codex capability contracts, the eight closed M26
   // palettes, M28's explicitly confirmed safe snapshot boundary, and M29's
   // bounded managed Advisor conversation, its digest-bound approval controller,

@@ -61,6 +61,10 @@ import type {
   AdvisorCompletionReportSnapshot,
 } from "./lib/advisorApproval";
 import type { CodexRuntimeSnapshot } from "./lib/codex";
+import type {
+  TaskHandoffCreateRequest,
+  TaskHandoffSnapshot,
+} from "./lib/taskHandoff";
 
 interface AdvisorApprovalState {
   snapshot: AdvisorApprovalSnapshot;
@@ -116,6 +120,11 @@ interface AdvisorWorkspaceProps {
     request: Parameters<typeof dispatchAdvisorOnce>[0],
   ) => Promise<AdvisorDispatchSnapshot>;
   onOpenExecution: () => void;
+  onPrepareTaskHandoff?: (
+    request: TaskHandoffCreateRequest,
+  ) => Promise<TaskHandoffSnapshot>;
+  onOpenTaskHandoff?: () => Promise<void>;
+  returnedTaskReceipt?: string | null;
 }
 
 const diagnosticMessage: Partial<
@@ -160,6 +169,9 @@ export function AdvisorWorkspace({
   onConversationInterrupt,
   onDispatch,
   onOpenExecution,
+  onPrepareTaskHandoff,
+  onOpenTaskHandoff,
+  returnedTaskReceipt = null,
 }: AdvisorWorkspaceProps) {
   const [prompt, setPrompt] = useState("");
   const [includeProjectState, setIncludeProjectState] = useState(false);
@@ -197,6 +209,8 @@ export function AdvisorWorkspace({
   const [completionReport, setCompletionReport] =
     useState<AdvisorCompletionReportSnapshot | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [handoffBrief, setHandoffBrief] = useState("");
+  const [handoffPending, setHandoffPending] = useState(false);
   const lastResetToken = useRef(resetToken);
   const conversationViewportRef = useRef<HTMLDivElement>(null);
   const detailsTriggerRef = useRef<HTMLButtonElement>(null);
@@ -674,6 +688,62 @@ export function AdvisorWorkspace({
           Details
         </button>
       </header>
+      {returnedTaskReceipt && (
+        <section className="project-card" aria-label="Returned task receipt">
+          <h2>QuireForge task receipt</h2>
+          <p>{returnedTaskReceipt}</p>
+        </section>
+      )}
+      {availability === "native" &&
+        onPrepareTaskHandoff &&
+        onOpenTaskHandoff && (
+          <section
+            className="project-card"
+            aria-labelledby="advisor-handoff-title"
+          >
+            <h2 id="advisor-handoff-title">Continue this task in QuireForge</h2>
+            <p>
+              Review a bounded brief before opening it. No transcript, project,
+              attachment, or authority is transferred.
+            </p>
+            <label htmlFor="advisor-handoff-brief">Reviewed task brief</label>
+            <textarea
+              id="advisor-handoff-brief"
+              value={handoffBrief}
+              onChange={(event) => {
+                setHandoffBrief(event.target.value);
+                setHandoffPending(false);
+              }}
+              rows={3}
+            />
+            {!handoffPending ? (
+              <button
+                type="button"
+                disabled={!prompt.trim() || !handoffBrief.trim()}
+                onClick={() => {
+                  void onPrepareTaskHandoff({
+                    title: "Advisor task",
+                    originalRequest: prompt,
+                    brief: handoffBrief,
+                  }).then((result) =>
+                    setHandoffPending(result.state === "pending"),
+                  );
+                }}
+              >
+                Review handoff
+              </button>
+            ) : (
+              <>
+                <p role="status">
+                  Reviewed handoff ready. It expires and is used once.
+                </p>
+                <button type="button" onClick={() => void onOpenTaskHandoff()}>
+                  Open in QuireForge
+                </button>
+              </>
+            )}
+          </section>
+        )}
       {detailsOpen && (
         <aside
           id="advisor-details"

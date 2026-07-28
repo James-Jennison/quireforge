@@ -106,6 +106,14 @@ import {
   type AdvisorConversationStartRequest,
 } from "./advisorConversation";
 import {
+  taskHandoffCreateRequestSchema,
+  taskHandoffReceiptRequestSchema,
+  taskHandoffSnapshotSchema,
+  type TaskHandoffCreateRequest,
+  type TaskHandoffReceiptRequest,
+  type TaskHandoffSnapshot,
+} from "./taskHandoff";
+import {
   advisorTextAttachmentSnapshotSchema,
   advisorTextExportRequestSchema,
   type AdvisorTextAttachmentSnapshot,
@@ -286,6 +294,13 @@ export const ADVISOR_CONVERSATION_START_COMMAND = "advisor_conversation_start";
 export const ADVISOR_CONVERSATION_POLL_COMMAND = "advisor_conversation_poll";
 export const ADVISOR_CONVERSATION_INTERRUPT_COMMAND =
   "advisor_conversation_interrupt";
+export const TASK_HANDOFF_STATUS_COMMAND = "task_handoff_status";
+export const TASK_HANDOFF_PREPARE_ADVISOR_BRIEF_COMMAND =
+  "task_handoff_prepare_advisor_brief";
+export const TASK_HANDOFF_PREPARE_COMPLETION_RECEIPT_COMMAND =
+  "task_handoff_prepare_completion_receipt";
+export const TASK_HANDOFF_ACCEPT_COMMAND = "task_handoff_accept";
+export const TASK_HANDOFF_CANCEL_COMMAND = "task_handoff_cancel";
 export const ADVISOR_TEXT_ATTACHMENT_STATUS_COMMAND =
   "advisor_text_attachment_status";
 export const ADVISOR_TEXT_ATTACHMENT_PICK_COMMAND =
@@ -541,6 +556,42 @@ export async function interruptAdvisorConversation(
     await invokeFunction(ADVISOR_CONVERSATION_INTERRUPT_COMMAND, {
       conversationId: advisorConversationIdSchema.parse(conversationId),
     }),
+  );
+}
+
+export async function prepareAdvisorTaskHandoff(
+  request: TaskHandoffCreateRequest,
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<TaskHandoffSnapshot> {
+  return taskHandoffSnapshotSchema.parse(
+    await invokeFunction(TASK_HANDOFF_PREPARE_ADVISOR_BRIEF_COMMAND, {
+      request: taskHandoffCreateRequestSchema.parse(request),
+    }),
+  );
+}
+export async function prepareTaskCompletionReceipt(
+  request: TaskHandoffReceiptRequest,
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<TaskHandoffSnapshot> {
+  return taskHandoffSnapshotSchema.parse(
+    await invokeFunction(TASK_HANDOFF_PREPARE_COMPLETION_RECEIPT_COMMAND, {
+      request: taskHandoffReceiptRequestSchema.parse(request),
+    }),
+  );
+}
+export async function acceptTaskHandoff(
+  direction: "advisor-to-quireforge" | "quireforge-to-advisor",
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<TaskHandoffSnapshot> {
+  return taskHandoffSnapshotSchema.parse(
+    await invokeFunction(TASK_HANDOFF_ACCEPT_COMMAND, { direction }),
+  );
+}
+export async function cancelTaskHandoff(
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<TaskHandoffSnapshot> {
+  return taskHandoffSnapshotSchema.parse(
+    await invokeFunction(TASK_HANDOFF_CANCEL_COMMAND),
   );
 }
 
