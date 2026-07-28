@@ -31,6 +31,7 @@ static void result(const char *status) {
 }
 
 int main(void) {
+  int input = -1;
   /* The sealed sample is executed only through this process's anonymous FD.
    * Mount a private procfs so /proc/self/fd resolves inside the disposable
    * guest; no host filesystem is mounted. */
@@ -39,7 +40,7 @@ int main(void) {
     goto done;
   }
   unsigned char header[16];
-  int input = open("/dev/vda", O_RDONLY | O_CLOEXEC | O_NOFOLLOW);
+  input = open("/dev/vda", O_RDONLY | O_CLOEXEC | O_NOFOLLOW);
   if (input < 0 || read(input, header, sizeof(header)) != sizeof(header) ||
       memcmp(header, "QFELF001", 8) != 0) { result("setup-failed"); goto done; }
   uint64_t size = 0; memcpy(&size, header + 8, sizeof(size));
