@@ -53,6 +53,8 @@ implementation position and [Roadmap](ROADMAP.md) for approved sequencing.
 - [Milestone 44 — Unified Single Attachment Entry](MILESTONE_44_UNIFIED_SINGLE_ATTACHMENT_ENTRY.md)
   — one compact entry that routes only to existing closed native attachment
   handlers.
+- [Milestone 45 — Bounded Multi-Attachment Proposal](MILESTONE_45_MULTI_ATTACHMENT_PROPOSAL.md)
+  — proposed three-item atomic collection contract awaiting approval.
 - [Post-M41 packaging-efficiency checkpoint](PACKAGING_EFFICIENCY_CHECKPOINT.md)
   — checksum-verified immutable guest-input caching within the authoritative
   Ubuntu 22.04 release workflow.

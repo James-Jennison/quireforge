@@ -100,7 +100,7 @@ boundary is the command façade, app/plugin wiring, native dialogs/openers/
 notifications, and one native drop-capture path. React/TypeScript/Vite remains
 the current presentation layer and calls that façade through its bridge.
 
-## Next action
+## Completed milestone history
 
 Milestone 30 — **Advisor Bounded Text/Data Content Ingestion and Reviewed
 Single-File Export** is complete in the integrated `0.1.0-beta.18` candidate.
@@ -259,6 +259,15 @@ handlers. It adds no generic upload, drag-and-drop, new type, collection,
 transport, persistence, or authority. Full source validation, bundle ceilings,
 provenance/ABI, lifecycle, container and installed smoke, and visible-launch
 gates passed.
+
+## Next action
+
+Milestone 45 — **Bounded Multi-Attachment Proposal** is ready for the required
+explicit product/security decision. It recommends an atomic, one-use,
+native-memory-only collection of at most three existing typed attachments with
+at most one image, a 40 MiB aggregate source ceiling, and no generic file or
+new transport path. See
+[Milestone 45](MILESTONE_45_MULTI_ATTACHMENT_PROPOSAL.md).
 
 Milestone 27 — **Unified Conversation Engine** is complete. It adds strict
 Rust/Zod Chat/Codex capability profiles, a Settings navigation foundation,

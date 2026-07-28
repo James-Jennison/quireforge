@@ -1208,6 +1208,12 @@ collection manifest, collection digest, aggregate limits, atomic confirmation,
 failure, claim, and disposal behavior for already supported closed types. This
 is a capability-boundary decision gate with no package change.
 
+**Recommendation awaiting approval:** adopt the closed, at-most-three,
+at-most-one-image `advisor-attachment-collection-v1` contract defined in the
+[Milestone 45 proposal](MILESTONE_45_MULTI_ATTACHMENT_PROPOSAL.md). It uses
+only existing typed handlers and the documented app-server input list; M46 may
+not begin until explicitly approved.
+
 ### 46 — Bounded Multi-Attachment
 
 Only after M45 approval, add a closed ordered collection of approved existing
