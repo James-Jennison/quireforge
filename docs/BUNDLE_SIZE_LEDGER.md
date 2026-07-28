@@ -17,6 +17,7 @@ gate must establish strict permanent ceilings before product readiness.
 
 | Milestone | Version | Commit | JavaScript | CSS | Ceiling | Change | Explanation |
 | --- | --- | --- | ---: | ---: | --- | --- | --- |
+| M52 | 0.1.0-beta.46 | 6df055999d2ad01d2385096a14bc71f8aada2a8c | 975,149 | 114,186 | entry 262,144 / shell 458,752 / JS 1,572,864 / CSS 163,840 | +16,625 JS / +2,040 CSS from M50 | Durable local task catalogue and alternate-plan workbench controls; the 194,984-byte entry and 333,785-byte shell remain within their unchanged ceilings, and no execution authority is added. |
 | M50 | 0.1.0-beta.45 | 1cc7c50ceed6d2b6c2f91274110471d71fe6292a | 958,524 | 112,146 | entry 262,144 / shell 458,752 / JS 1,572,864 / CSS 163,840 | +3,402 JS / +987 CSS from M49 | Bounded layout-preference chunk and accessible review/terminal resize controls; task surface remains dominant and no authority added. |
 | M49 | 0.1.0-beta.44 | f1a44324859faa2ed43f24ab60db12b58e6c6836 | 955,122 | 111,159 | entry 262,144 / shell 458,752 / JS 1,572,864 / CSS 163,840 | +30,333 JS / +1,113 CSS from M48 | Closed, separately lazy review shell plus six pane chunks; startup entry unchanged and no authority added. |
 | M48 | 0.1.0-beta.43 | 5d483d0c068c450bbc779ee07b048fe848c7e1f0 | 924,789 | 110,046 | entry 262,144 / shell 458,752 / JS 1,572,864 / CSS 163,840 | within all temporary ceilings | Native-owned generated-artifact cards and bounded text preview/save controls; no ceiling increase or authority expansion. |

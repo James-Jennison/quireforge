@@ -1,6 +1,7 @@
 # Milestone 52 — Durable Task Records and Alternate Plans
 
-Status: implementation complete; immutable package evidence pending.
+Status: complete at source commit
+`6df055999d2ad01d2385096a14bc71f8aada2a8c`.
 
 M52 implements the separately approved
 [M51 proposal](MILESTONE_51_DURABLE_TASK_RECORDS_ALTERNATE_PLAN_PROPOSAL.md)
@@ -81,15 +82,48 @@ connector authorization, or external project mutation. The M52 suite covers:
   creation focus, read-only archives, empty/unavailable rendering, and
   attachment-clear-before-plan-select ordering.
 
-The pre-version full repository gate passed with 57 desktop test files and 298
-frontend tests, 272 native library tests (269 passed and three documented
-manual probes ignored), two sandbox-worker tests, strict formatting/lint,
-TypeScript/Astro checks, production builds, distribution budgets, Cargo check,
-Clippy with warnings denied, and repository/package contract validation.
+The final full repository gate passed with 15 package tests, 57 desktop test
+files and 298 frontend tests, seven website tests, 272 native library tests
+(269 passed and three documented manual probes ignored), two sandbox-worker
+tests, strict formatting/lint, TypeScript/Astro checks, production builds,
+distribution budgets, Cargo check, Clippy with warnings denied, and
+repository/package contract validation.
+
+The browser gate covered 48 desktop and eight website checks. All M52 desktop
+and mobile workbench, accessibility, keyboard, dialog, and overflow checks
+passed. One unchanged desktop screenshot-tour check timed out at 30 seconds
+while the full browser suite and repository gate competed for host resources;
+the exact check passed independently without a source change in 11.1 seconds.
+The combined verified browser result is therefore all 56 checks passing, with
+that resource-contention rerun recorded rather than concealed.
 
 ## Package evidence
 
-The implementation source must be committed cleanly before the authoritative
-pinned Ubuntu 22.04 Debian/worker lifecycle can bind evidence to an immutable
-commit. Artifact names, sizes, hashes, ABI, lifecycle, bundle totals, and the
-restricted installed-host result will replace this paragraph after that gate.
+The authoritative pinned Ubuntu 22.04 package workflow ran from clean source
+commit `6df055999d2ad01d2385096a14bc71f8aada2a8c` and passed build, package
+contract, install/upgrade/remove/reinstall lifecycle, AppStream, desktop/icon,
+visible-launch, sandbox-worker, provenance, ABI, and final artifact validation.
+The builder was
+`ubuntu:22.04@sha256:0e0a0fc6d18feda9db1590da249ac93e8d5abfea8f4c3c0c849ce512b5ef8982`.
+
+| Artifact | Bytes | SHA-256 |
+| --- | ---: | --- |
+| `quireforge_0.1.0.beta.46_amd64.deb` | 5,537,352 | `3b32fd097c9b5a7bcc7eae62c0133bd9bdc17f834954128c0b4f73adf7db1ad6` |
+| `quireforge-sandboxd_0.1.0.beta.46_amd64.deb` | 3,233,384 | `b51734bdd458aada3d8d870ba03218fd25f7a8229325ba7ae9f66ea338a90c29` |
+
+Both packages require at most `GLIBC_2.34`, within the pinned Ubuntu 22.04
+`GLIBC_2.35` ceiling. The worker retains Firecracker/jailer 1.15.1, Linux
+6.1.178, disabled guest networking, no guest mounts, and the
+static-ELF64-x86_64-only runtime.
+
+The final desktop distribution contains 975,149 bytes of JavaScript and
+114,186 bytes of CSS. Its 194,984-byte startup entry and 333,785-byte
+application shell remain within the 262,144-byte and 458,752-byte ceilings.
+The total JavaScript and CSS remain within the 1,572,864-byte and 163,840-byte
+temporary construction ceilings.
+
+The restricted installed-host validator accepted the exact desktop artifact
+and upgraded the host package from beta.45 to `quireforge 0.1.0~beta.46`.
+An initial wrapper call without its required package-path argument exited with
+usage status 64; the corrected exact-artifact invocation passed without
+weakening or bypassing the validator.

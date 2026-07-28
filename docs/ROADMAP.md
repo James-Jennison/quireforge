@@ -1306,10 +1306,13 @@ reference must be explicit, bounded, testable, and separately scoped for
 Advisor and QuireForge. The provisional package candidate is
 `0.1.0-beta.46`.
 
-**Implementation complete; package evidence pending:** migration 11, native
+**Complete:** source commit
+`6df055999d2ad01d2385096a14bc71f8aada2a8c` implements migration 11, native
 storage and transactions, strict Rust/Zod commands, accessible compact
-workbench controls, deterministic isolation/failure/capacity tests, and
-beta.46 source alignment are implemented. See the
+workbench controls, and deterministic isolation/failure/capacity tests. Its
+clean beta.46 desktop and worker Debian artifacts passed the authoritative
+pinned Ubuntu 22.04 package, visible-launch, provenance, ABI, sandbox-worker,
+artifact, and restricted installed-host gates. See the
 [M52 report](MILESTONE_52_DURABLE_TASK_RECORDS.md).
 
 ### 53 — Local Artifact and Design Review Proposal
