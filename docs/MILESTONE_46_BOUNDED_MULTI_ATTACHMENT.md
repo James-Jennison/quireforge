@@ -14,13 +14,17 @@ The collection confirmation enumerates every staged manifest and requires an
 explicit confirmation for all entries. No generic upload, drag-and-drop, new
 type, new endpoint, hidden reuse, persistence, or authority is introduced.
 
-The pinned Ubuntu 22.04 workflow passed checksum, provenance/ABI (`GLIBC_2.34`
-within `GLIBC_2.35`), a disposable Debian lifecycle, extracted-package smoke,
-and a visible X11 launch gate inside the pinned container.
-Subsequent installed-host evidence upgraded the live `quireforge` Debian
-package from beta.40 to `0.1.0~beta.42`; `/usr/bin/quireforge` SHA-256 is
-`5960d8cb972959d6b68138ff802bbdd7c5cf83ab8b2e77ffbec7343851b091fc` and passed
-the visible installed-package smoke. `quireforge_0.1.0.beta.42_amd64.deb` is 5,483,760 bytes
-with SHA-256 `033536248fd5cf3d26410376f93b4db083c3e125f4466653a525d6d1998013bd`;
-the worker Debian is 3,233,210 bytes with SHA-256
-`79e55a20948410798249d74c15a285ad82fa09aa5ec57696871850b34eb21c22`.
+The latest pinned Ubuntu 22.04 workflow, from clean source commit
+`eb7ac2ee5842ec442dfc9201e15594fe4acb8fe3`, passed checksums,
+provenance/ABI (`GLIBC_2.34` within `GLIBC_2.35`), a disposable Debian
+lifecycle, extracted-package smoke, and a visible X11 launch gate. The desktop
+Debian is 5,482,500 bytes with SHA-256
+`71a41f5973f6bccd25db9f9bab0e6aba1e089d1fc5f81698486b5cd64e7bf042`; the
+worker Debian is 3,234,846 bytes with SHA-256
+`4987413c9cc42f2019fb3b7d73abeced6c1b678e34472aa2f460d3f685f79a36`.
+
+The installed `quireforge` Debian package is `0.1.0~beta.42`.
+`/usr/bin/quireforge` has SHA-256
+`5960d8cb972959d6b68138ff802bbdd7c5cf83ab8b2e77ffbec7343851b091fc`, exactly
+matching the desktop binary extracted from the latest package, and passed the
+visible installed-package smoke.
