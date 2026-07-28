@@ -55,6 +55,7 @@ import {
   detachProject,
   interruptConversation,
   interruptAdvisorConversation,
+  loadAdvisorGeneratedArtifacts,
   loadAdvisorConversation,
   loadActiveConversations,
   loadCodexAuth,
@@ -81,6 +82,7 @@ import {
   pickProjectDirectory,
   pickProjectRelink,
   preflightProject,
+  previewAdvisorGeneratedArtifact,
   previewGitMutation,
   previewIntegrationMutation,
   previewIntegrationControl,
@@ -244,6 +246,12 @@ import "./styles.css";
 
 const TerminalWorkspace = lazy(() =>
   import("./TerminalWorkspace").then(({ TerminalWorkspace: workspace }) => ({
+    default: workspace,
+  })),
+);
+
+const ReviewPanes = lazy(() =>
+  import("./ReviewPanes").then(({ ReviewPanes: workspace }) => ({
     default: workspace,
   })),
 );
@@ -1093,6 +1101,7 @@ export default function App({
     useState<WorkbenchDrawerTab>("diff");
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [terminalDockOpen, setTerminalDockOpen] = useState(false);
+  const [reviewPanesOpen, setReviewPanesOpen] = useState(false);
   const [sidebarCompact, setSidebarCompact] = useState(initialSidebarCompact);
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
   const workspaceMainRef = useRef<HTMLElement>(null);
@@ -1880,6 +1889,7 @@ export default function App({
     setInspectorOpen(false);
     setCommandPaletteOpen(false);
     setTerminalDockOpen(false);
+    setReviewPanesOpen(false);
   }
 
   function closeCommandPalette() {
@@ -3780,6 +3790,18 @@ export default function App({
                 ⌘ Actions
               </button>
             )}
+            {conversationMode === "codex" &&
+              workspaceLocation.route === "conversation" && (
+                <button
+                  className="topbar-button"
+                  type="button"
+                  aria-expanded={reviewPanesOpen}
+                  aria-controls="review-panes-title"
+                  onClick={() => setReviewPanesOpen((current) => !current)}
+                >
+                  Review panes
+                </button>
+              )}
             {workspaceLocation.route === "home" && (
               <button
                 className="topbar-button topbar-button--primary"
@@ -4208,6 +4230,29 @@ export default function App({
                 )}
               </section>
             </WorkspaceView>
+
+            {reviewPanesOpen && workspaceLocation.route === "conversation" && (
+              <Suspense
+                fallback={
+                  <aside className="review-panes" aria-label="Review panes">
+                    <p role="status">Loading review panes…</p>
+                  </aside>
+                }
+              >
+                <ReviewPanes
+                  projectId={currentProject?.id ?? null}
+                  projectName={currentProject?.displayName ?? null}
+                  filePreview={filePreview}
+                  conversation={conversation}
+                  conversationEvents={conversationEvents}
+                  loadGitStatus={loadGitStatusTask}
+                  loadGitDiff={loadGitDiffTask}
+                  loadArtifacts={loadAdvisorGeneratedArtifacts}
+                  previewArtifact={previewAdvisorGeneratedArtifact}
+                  onClose={() => setReviewPanesOpen(false)}
+                />
+              </Suspense>
+            )}
 
             <WorkspaceView
               route="settings"

@@ -1,6 +1,13 @@
 # Changelog
 
-## Unreleased — 0.1.0-beta.43
+## Unreleased — 0.1.0-beta.44
+
+### Added
+
+- Add M49's closed-by-default, independently lazy Files, Diff, Git, Preview,
+  Activity, and Approval review panes. They consume only existing typed,
+  bounded evidence services and request Git or generated-artifact data only
+  after the corresponding pane opens.
 
 ### Added
 

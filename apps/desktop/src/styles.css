@@ -6052,6 +6052,77 @@ body,
   cursor: pointer;
 }
 
+.review-panes {
+  position: fixed;
+  z-index: 30;
+  inset: 5.5rem 1rem 1rem auto;
+  width: min(34rem, calc(100vw - 2rem));
+  overflow: auto;
+  border: 1px solid var(--line-strong);
+  border-radius: 1rem;
+  background: var(--surface-raised);
+  box-shadow: 0 1.5rem 4rem rgb(0 0 0 / 24%);
+}
+
+.review-panes > header,
+.review-panes > [role="tablist"] {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.8rem 1rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.review-panes > header {
+  justify-content: space-between;
+}
+.review-panes > header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+.review-panes > header .eyebrow {
+  margin: 0 0 0.2rem;
+}
+.review-panes > [role="tablist"] {
+  overflow-x: auto;
+}
+.review-panes [role="tab"] {
+  white-space: nowrap;
+}
+.review-panes [role="tab"][aria-selected="true"] {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 0.3rem;
+}
+.review-panes > [role="tabpanel"] {
+  min-height: 10rem;
+  padding: 1rem;
+}
+.review-pane-card,
+.review-pane-list {
+  overflow: auto;
+}
+.review-pane-card pre,
+.review-pane-list pre {
+  max-height: 22rem;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+.review-pane-list {
+  margin: 0;
+  padding-inline-start: 1.2rem;
+}
+.review-pane-list li {
+  margin-block: 0.5rem;
+}
+
+@media (max-width: 520px) {
+  .review-panes {
+    inset: 4.5rem 0.5rem 0.5rem;
+    width: auto;
+  }
+}
+
 .context-section {
   display: grid;
   gap: 13px;

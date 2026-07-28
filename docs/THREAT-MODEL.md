@@ -689,6 +689,16 @@ write/synchronization/publication fails closed. Native Save is the only write
 boundary; no path, directory, content-at-save, overwrite, opener, persistence,
 or project/worktree authority crosses the webview bridge.
 
+## M49 review-pane boundary
+
+Review panes are read-only evidence views. Lazy frontend modules may call only
+the pre-existing typed Git status/diff and generated-artifact snapshot/preview
+commands after a user opens a pane. They cannot open files, mutate Git or a
+project, execute a terminal, navigate a browser, decide approvals, dispatch
+Advisor work, retain task records, subscribe, or poll. Missing, stale,
+truncated, and failed evidence remains visibly unavailable rather than being
+retried in the background.
+
 - OS keyring use for app-owned non-Codex secrets, if any are ever required.
 - Package signing identity and key custody.
 - Update channel design and rollback.

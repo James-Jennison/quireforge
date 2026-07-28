@@ -1107,6 +1107,16 @@ On Linux the save transaction writes a private 0600 same-directory temporary
 file, synchronizes it, uses `renameat2(RENAME_NOREPLACE)`, and synchronizes the
 parent directory before one successful claim is consumed.
 
+### M49 review panes
+
+M49 is a presentation-only review shell over existing normalized snapshots.
+Its shell and each pane are separate lazy frontend modules. The only deferred
+queries are the existing read-only Git status/diff and M48 artifact snapshot/
+preview calls, issued after explicit pane selection; the Files, Activity, and
+Approval panes receive already bounded task state. Closing unmounts the pane;
+there are no timers, subscriptions, polling, new Tauri commands, or authority
+changes.
+
 - Adapter contracts from generated schemas and sanitized fixtures.
 - In-memory/mock process transport for event streams and approvals.
 - Temporary Git repositories/worktrees.
