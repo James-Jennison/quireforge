@@ -26,6 +26,7 @@ curl --fail --location --retry 3 --output "$work/firecracker.tgz" "https://githu
 echo "${FIRECRACKER_X86_64_SHA256}  ${work}/firecracker.tgz" | sha256sum --check --status
 mkdir -p "$work/firecracker"
 tar --extract --gzip --file "$work/firecracker.tgz" --directory "$work/firecracker"
-install -m 0755 "$(find "$work/firecracker" -type f -name firecracker -print -quit)" "$output/firecracker"
-install -m 0755 "$(find "$work/firecracker" -type f -name jailer -print -quit)" "$output/jailer"
+release_dir="$work/firecracker/release-v${FIRECRACKER_VERSION}-x86_64"
+install -m 0755 "$release_dir/firecracker-v${FIRECRACKER_VERSION}-x86_64" "$output/firecracker"
+install -m 0755 "$release_dir/jailer-v${FIRECRACKER_VERSION}-x86_64" "$output/jailer"
 sha256sum "$output"/* > "$output/SHA256SUMS"
