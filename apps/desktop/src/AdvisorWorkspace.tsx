@@ -306,11 +306,15 @@ export function AdvisorWorkspace({
   }, []);
 
   useEffect(() => {
-    void loadAdvisorGeneratedArtifacts().then(setGeneratedArtifacts).catch(() =>
-      setArtifactStatus("Generated artifacts are temporarily unavailable."),
-    );
+    void loadAdvisorGeneratedArtifacts()
+      .then(setGeneratedArtifacts)
+      .catch(() =>
+        setArtifactStatus("Generated artifacts are temporarily unavailable."),
+      );
     const timer = window.setInterval(() => {
-      void loadAdvisorGeneratedArtifacts().then(setGeneratedArtifacts).catch(() => undefined);
+      void loadAdvisorGeneratedArtifacts()
+        .then(setGeneratedArtifacts)
+        .catch(() => undefined);
     }, 60_000);
     return () => window.clearInterval(timer);
   }, []);
@@ -616,34 +620,93 @@ export function AdvisorWorkspace({
     ...[...latestReply.matchAll(/```([A-Za-z0-9_-]+)\n([\s\S]*?)```/gu)]
       .map((match) => {
         const language = (match[1] ?? "").toLowerCase();
-        const classes = { text: "text", txt: "text", markdown: "markdown", md: "markdown", json: "json", csv: "csv", python: "python", py: "python" } as const;
+        const classes = {
+          text: "text",
+          txt: "text",
+          markdown: "markdown",
+          md: "markdown",
+          json: "json",
+          csv: "csv",
+          python: "python",
+          py: "python",
+        } as const;
         const artifactClass = classes[language as keyof typeof classes];
         if (!artifactClass) return null;
-        const suffix = artifactClass === "markdown" ? "md" : artifactClass === "python" ? "py" : artifactClass;
-        return { class: artifactClass, sourceKind: "visible-fenced-block" as const, displayLabel: `Visible ${artifactClass} fenced block`, suggestedFilename: `advisor-output.${suffix}`, content: match[2] ?? "" };
+        const suffix =
+          artifactClass === "markdown"
+            ? "md"
+            : artifactClass === "python"
+              ? "py"
+              : artifactClass;
+        return {
+          class: artifactClass,
+          sourceKind: "visible-fenced-block" as const,
+          displayLabel: `Visible ${artifactClass} fenced block`,
+          suggestedFilename: `advisor-output.${suffix}`,
+          content: match[2] ?? "",
+        };
       })
-      .filter((candidate): candidate is NonNullable<typeof candidate> => Boolean(candidate)),
+      .filter((candidate): candidate is NonNullable<typeof candidate> =>
+        Boolean(candidate),
+      ),
   ].filter((candidate) => candidate.content.length > 0);
 
-  async function createGeneratedArtifact(candidate: (typeof artifactCandidates)[number]) {
+  async function createGeneratedArtifact(
+    candidate: (typeof artifactCandidates)[number],
+  ) {
     setArtifactStatus("");
     try {
       await createAdvisorGeneratedArtifact(candidate);
       setGeneratedArtifacts(await loadAdvisorGeneratedArtifacts());
       setArtifactStatus(`Created ${candidate.suggestedFilename}.`);
-    } catch { setArtifactStatus("Could not create the selected generated artifact."); }
+    } catch {
+      setArtifactStatus("Could not create the selected generated artifact.");
+    }
   }
   async function previewGeneratedArtifact(artifact: GeneratedArtifactManifest) {
-    try { const preview = await previewAdvisorGeneratedArtifact({ artifactId: artifact.artifactId, manifestSha256: artifact.sha256 }); setArtifactPreview({ artifactId: artifact.artifactId, text: preview.text }); }
-    catch { setArtifactStatus("Could not preview the generated artifact."); }
+    try {
+      const preview = await previewAdvisorGeneratedArtifact({
+        artifactId: artifact.artifactId,
+        manifestSha256: artifact.sha256,
+      });
+      setArtifactPreview({
+        artifactId: artifact.artifactId,
+        text: preview.text,
+      });
+    } catch {
+      setArtifactStatus("Could not preview the generated artifact.");
+    }
   }
   async function discardGeneratedArtifact(artifact: GeneratedArtifactManifest) {
-    try { setGeneratedArtifacts(await discardAdvisorGeneratedArtifact({ artifactId: artifact.artifactId, manifestSha256: artifact.sha256 })); if (artifactPreview?.artifactId === artifact.artifactId) setArtifactPreview(null); setArtifactStatus(`Discarded ${artifact.suggestedFilename}.`); }
-    catch { setArtifactStatus("Could not discard the generated artifact."); }
+    try {
+      setGeneratedArtifacts(
+        await discardAdvisorGeneratedArtifact({
+          artifactId: artifact.artifactId,
+          manifestSha256: artifact.sha256,
+        }),
+      );
+      if (artifactPreview?.artifactId === artifact.artifactId)
+        setArtifactPreview(null);
+      setArtifactStatus(`Discarded ${artifact.suggestedFilename}.`);
+    } catch {
+      setArtifactStatus("Could not discard the generated artifact.");
+    }
   }
   async function saveGeneratedArtifact(artifact: GeneratedArtifactManifest) {
-    try { const receipt = await saveAdvisorGeneratedArtifact({ artifactId: artifact.artifactId, manifestSha256: artifact.sha256 }); setGeneratedArtifacts(await loadAdvisorGeneratedArtifacts()); setArtifactStatus(receipt ? `Saved ${receipt.filename}.` : "Save cancelled."); }
-    catch { setArtifactStatus("Save failed. Select a different unused filename and try again."); }
+    try {
+      const receipt = await saveAdvisorGeneratedArtifact({
+        artifactId: artifact.artifactId,
+        manifestSha256: artifact.sha256,
+      });
+      setGeneratedArtifacts(await loadAdvisorGeneratedArtifacts());
+      setArtifactStatus(
+        receipt ? `Saved ${receipt.filename}.` : "Save cancelled.",
+      );
+    } catch {
+      setArtifactStatus(
+        "Save failed. Select a different unused filename and try again.",
+      );
+    }
   }
 
   async function exportLatestReply() {
@@ -1251,47 +1314,116 @@ export function AdvisorWorkspace({
           )}
           {conversation.state === "completed" && latestReply && (
             <>
-            <div className="conversation-actions">
-              {exportCandidates.length > 1 && (
-                <label>
-                  Output to save
-                  <select
-                    value={exportCandidateIndex}
-                    onChange={(event) =>
-                      setExportCandidateIndex(Number(event.target.value))
-                    }
-                  >
-                    {exportCandidates.map((candidate, index) => (
-                      <option
-                        key={`${candidate.suggestedName}-${index}`}
-                        value={index}
-                      >
-                        {candidate.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              )}
-              <button type="button" onClick={() => void exportLatestReply()}>
-                Save selected Advisor output
-              </button>
-            </div>
-            <section className="generated-artifacts" aria-labelledby="generated-artifacts-heading">
-              <h2 id="generated-artifacts-heading">Generated artifacts</h2>
-              <p>Explicit, transient text artifacts from this completed reply. Saving opens one native Save dialog.</p>
-              <div className="generated-artifact-create">
-                {artifactCandidates.map((candidate, index) => <button type="button" key={`${candidate.suggestedFilename}-${index}`} onClick={() => void createGeneratedArtifact(candidate)}>Create {candidate.suggestedFilename}</button>)}
+              <div className="conversation-actions">
+                {exportCandidates.length > 1 && (
+                  <label>
+                    Output to save
+                    <select
+                      value={exportCandidateIndex}
+                      onChange={(event) =>
+                        setExportCandidateIndex(Number(event.target.value))
+                      }
+                    >
+                      {exportCandidates.map((candidate, index) => (
+                        <option
+                          key={`${candidate.suggestedName}-${index}`}
+                          value={index}
+                        >
+                          {candidate.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+                <button type="button" onClick={() => void exportLatestReply()}>
+                  Save selected Advisor output
+                </button>
               </div>
-              <p className="sr-only" role="status">{artifactStatus}</p>
-              {generatedArtifacts.artifacts.map((artifact) => (
-                <article className="generated-artifact-card" key={artifact.artifactId}>
-                  <h3>{artifact.displayLabel}</h3>
-                  <dl><dt>Class</dt><dd>{artifact.class}</dd><dt>Filename</dt><dd>{artifact.suggestedFilename}</dd><dt>Size</dt><dd>{artifact.byteSize} bytes</dd><dt>SHA-256</dt><dd><code>{artifact.sha256}</code><button type="button" aria-label={`Copy SHA-256 for ${artifact.suggestedFilename}`} onClick={() => void navigator.clipboard?.writeText(artifact.sha256)}>Copy hash</button></dd><dt>State</dt><dd>{artifact.state}</dd></dl>
-                  <div className="generated-artifact-actions"><button type="button" onClick={() => void previewGeneratedArtifact(artifact)}>Preview {artifact.suggestedFilename}</button><button type="button" onClick={() => void saveGeneratedArtifact(artifact)} disabled={artifact.state !== "ready"}>Save {artifact.suggestedFilename}</button><button type="button" onClick={() => void discardGeneratedArtifact(artifact)} disabled={artifact.state !== "ready"}>Discard {artifact.suggestedFilename}</button></div>
-                  {artifactPreview?.artifactId === artifact.artifactId && <pre className="generated-artifact-preview" aria-label={`Text preview for ${artifact.suggestedFilename}`}>{artifactPreview.text}</pre>}
-                </article>
-              ))}
-            </section>
+              <section
+                className="generated-artifacts"
+                aria-labelledby="generated-artifacts-heading"
+              >
+                <h2 id="generated-artifacts-heading">Generated artifacts</h2>
+                <p>
+                  Explicit, transient text artifacts from this completed reply.
+                  Saving opens one native Save dialog.
+                </p>
+                <div className="generated-artifact-create">
+                  {artifactCandidates.map((candidate, index) => (
+                    <button
+                      type="button"
+                      key={`${candidate.suggestedFilename}-${index}`}
+                      onClick={() => void createGeneratedArtifact(candidate)}
+                    >
+                      Create {candidate.suggestedFilename}
+                    </button>
+                  ))}
+                </div>
+                <p className="sr-only" role="status">
+                  {artifactStatus}
+                </p>
+                {generatedArtifacts.artifacts.map((artifact) => (
+                  <article
+                    className="generated-artifact-card"
+                    key={artifact.artifactId}
+                  >
+                    <h3>{artifact.displayLabel}</h3>
+                    <dl>
+                      <dt>Class</dt>
+                      <dd>{artifact.class}</dd>
+                      <dt>Filename</dt>
+                      <dd>{artifact.suggestedFilename}</dd>
+                      <dt>Size</dt>
+                      <dd>{artifact.byteSize} bytes</dd>
+                      <dt>SHA-256</dt>
+                      <dd>
+                        <code>{artifact.sha256}</code>
+                        <button
+                          type="button"
+                          aria-label={`Copy SHA-256 for ${artifact.suggestedFilename}`}
+                          onClick={() =>
+                            void navigator.clipboard?.writeText(artifact.sha256)
+                          }
+                        >
+                          Copy hash
+                        </button>
+                      </dd>
+                      <dt>State</dt>
+                      <dd>{artifact.state}</dd>
+                    </dl>
+                    <div className="generated-artifact-actions">
+                      <button
+                        type="button"
+                        onClick={() => void previewGeneratedArtifact(artifact)}
+                      >
+                        Preview {artifact.suggestedFilename}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void saveGeneratedArtifact(artifact)}
+                        disabled={artifact.state !== "ready"}
+                      >
+                        Save {artifact.suggestedFilename}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void discardGeneratedArtifact(artifact)}
+                        disabled={artifact.state !== "ready"}
+                      >
+                        Discard {artifact.suggestedFilename}
+                      </button>
+                    </div>
+                    {artifactPreview?.artifactId === artifact.artifactId && (
+                      <pre
+                        className="generated-artifact-preview"
+                        aria-label={`Text preview for ${artifact.suggestedFilename}`}
+                      >
+                        {artifactPreview.text}
+                      </pre>
+                    )}
+                  </article>
+                ))}
+              </section>
             </>
           )}
           <div className="conversation-composer">
