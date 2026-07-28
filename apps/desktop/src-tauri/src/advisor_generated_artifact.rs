@@ -611,4 +611,35 @@ mod tests {
         service.discard(claim).unwrap();
         assert_eq!(service.snapshot().artifacts.len(), 4);
     }
+    #[test]
+    fn atomically_saves_exact_bytes_once_without_overwrite() {
+        let service = AdvisorGeneratedArtifactService::default();
+        let manifest = service
+            .create(GeneratedArtifactCreateRequest {
+                class: GeneratedArtifactClass::Text,
+                source_kind: GeneratedArtifactSourceKind::VisibleCompletedReply,
+                display_label: "Output".into(),
+                suggested_filename: "advisor-response.txt".into(),
+                content: "saved\ntext".into(),
+            })
+            .unwrap();
+        let claim = GeneratedArtifactClaimRequest {
+            artifact_id: manifest.artifact_id.clone(),
+            manifest_sha256: manifest.sha256.clone(),
+        };
+        let reservation = service.reserve(&claim).unwrap();
+        let root =
+            std::env::temp_dir().join(format!("quireforge-artifact-test-{}", Uuid::now_v7()));
+        fs::create_dir(&root).unwrap();
+        let target = root.join("advisor-response.txt");
+        let filename = save_reserved(&reservation, &target).unwrap();
+        let receipt = service.consume(&reservation, filename).unwrap();
+        assert_eq!(fs::read(&target).unwrap(), b"saved\ntext");
+        assert_eq!(digest(&fs::read(&target).unwrap()), receipt.sha256);
+        assert_eq!(
+            save_reserved(&reservation, &target),
+            Err(GeneratedArtifactDiagnosticCode::FileExists)
+        );
+        fs::remove_dir_all(root).unwrap();
+    }
 }
