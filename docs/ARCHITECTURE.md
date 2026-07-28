@@ -1117,6 +1117,10 @@ Approval panes receive already bounded task state. Closing unmounts the pane;
 there are no timers, subscriptions, polling, new Tauri commands, or authority
 changes.
 
+### M50 workbench layout preferences
+
+M50 adds one strict browser-local presentation record, separate from native metadata and Codex state. It has fixed schema version 1 keys for a bounded review-shell width, bounded terminal-dock height, and last selected existing review pane. Invalid or unknown records fail to defaults. Secondary surfaces remain unmounted while closed; their resize controls are labelled, bounded separators with pointer and keyboard operation. No preference represents task, execution, terminal content, approval, Git, project, path, credential, or provider state.
+
 - Adapter contracts from generated schemas and sanitized fixtures.
 - In-memory/mock process transport for event streams and approvals.
 - Temporary Git repositories/worktrees.

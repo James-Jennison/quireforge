@@ -1277,6 +1277,10 @@ approvals, credentials, and capability state. This does not create a shell,
 PTY, command-launch, execution, or context-transfer path. The provisional
 package candidate is `0.1.0-beta.45`.
 
+**In progress:** beta.45 limits local state to bounded task-evidence width,
+terminal-dock height, and last selected existing review pane. M51 behavior is
+not included.
+
 ### 51 — Durable Task Records and Alternate-Plan Proposal
 
 Produce a separate persistence, privacy, and lifecycle decision for minimal

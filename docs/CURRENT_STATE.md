@@ -285,6 +285,11 @@ Preview, Activity, and Approval panes retain the existing typed read-only
 boundaries and make no new authority available. See
 [Milestone 49](MILESTONE_49_REVIEW_PANES.md).
 
+Milestone 50 — **QuireForge Workbench Layout Refinement** is in progress as
+the `0.1.0-beta.45` candidate. It is limited to bounded local presentation
+preferences and accessible existing review-shell/terminal-dock ergonomics;
+M51 durable task records and alternate plans have not begun.
+
 Milestone 27 — **Unified Conversation Engine** is complete. It adds strict
 Rust/Zod Chat/Codex capability profiles, a Settings navigation foundation,
 bounded mode-aware metadata, a fixed no-project native Chat bridge, and an

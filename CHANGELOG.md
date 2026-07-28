@@ -1,6 +1,14 @@
 # Changelog
 
-## Unreleased — 0.1.0-beta.44
+## Unreleased — 0.1.0-beta.45
+
+### Changed
+
+- Refine M50's existing workbench with bounded, keyboard and pointer operable
+  task-evidence and terminal-dock resizing, explicit collapse/restore controls,
+  and a strict local presentation-only layout preference record. No execution,
+  terminal, review-pane, task, path, transcript, approval, Git, or provider
+  authority changes.
 
 ### Added
 

@@ -35,6 +35,13 @@ import { SessionWorkspace } from "./SessionWorkspace";
 import { SettingsWorkspace } from "./SettingsWorkspace";
 import { UsagePanel } from "./UsagePanel";
 import {
+  clampLayoutDimension,
+  layoutPreferenceStorageKey,
+  restoreWorkbenchLayoutPreferences,
+  terminalDockHeightMaximum,
+  terminalDockHeightMinimum,
+} from "./layoutPreferences";
+import {
   WorktreeWorkspace,
   type WorktreeExecutionView,
 } from "./WorktreeWorkspace";
@@ -280,6 +287,12 @@ const workspaceBoundaryAcknowledgmentStorageKey =
 const workspaceBoundaryPolicyVersion = "advisor-quireforge-boundary-v1";
 const inspectorWidthMinimum = 280;
 const inspectorWidthMaximum = 520;
+
+function initialWorkbenchLayoutPreferences() {
+  return restoreWorkbenchLayoutPreferences(
+    window.localStorage.getItem(layoutPreferenceStorageKey),
+  );
+}
 
 interface AppProps {
   loadBootstrap?: () => Promise<DesktopBootstrap>;
@@ -1102,6 +1115,10 @@ export default function App({
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [terminalDockOpen, setTerminalDockOpen] = useState(false);
   const [reviewPanesOpen, setReviewPanesOpen] = useState(false);
+  const [workbenchLayout, setWorkbenchLayout] = useState(
+    initialWorkbenchLayoutPreferences,
+  );
+  const terminalResizeCleanup = useRef<(() => void) | null>(null);
   const [sidebarCompact, setSidebarCompact] = useState(initialSidebarCompact);
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
   const workspaceMainRef = useRef<HTMLElement>(null);
@@ -1838,6 +1855,15 @@ export default function App({
   }, [sidebarCompact]);
 
   useEffect(() => {
+    window.localStorage.setItem(
+      layoutPreferenceStorageKey,
+      JSON.stringify(workbenchLayout),
+    );
+  }, [workbenchLayout]);
+
+  useEffect(() => () => terminalResizeCleanup.current?.(), []);
+
+  useEffect(() => {
     if (!mobileNavigationOpen) return;
     const previous = document.activeElement as HTMLElement | null;
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -1897,6 +1923,47 @@ export default function App({
     window.requestAnimationFrame(() =>
       commandPaletteTriggerRef.current?.focus(),
     );
+  }
+
+  function beginTerminalDockResize(event: ReactPointerEvent<HTMLDivElement>) {
+    event.preventDefault();
+    const resize = (pointerEvent: PointerEvent) =>
+      setWorkbenchLayout((current) => ({
+        ...current,
+        terminalDockHeight: clampLayoutDimension(
+          window.innerHeight - pointerEvent.clientY,
+          terminalDockHeightMinimum,
+          terminalDockHeightMaximum,
+        ),
+      }));
+    const stop = () => {
+      document.removeEventListener("pointermove", resize);
+      document.removeEventListener("pointerup", stop);
+      document.removeEventListener("pointercancel", stop);
+      terminalResizeCleanup.current = null;
+    };
+    terminalResizeCleanup.current?.();
+    terminalResizeCleanup.current = stop;
+    document.addEventListener("pointermove", resize);
+    document.addEventListener("pointerup", stop, { once: true });
+    document.addEventListener("pointercancel", stop, { once: true });
+  }
+
+  function resizeTerminalDockFromKeyboard(
+    event: ReactKeyboardEvent<HTMLDivElement>,
+  ) {
+    const delta =
+      event.key === "ArrowUp" ? 20 : event.key === "ArrowDown" ? -20 : 0;
+    if (!delta) return;
+    event.preventDefault();
+    setWorkbenchLayout((current) => ({
+      ...current,
+      terminalDockHeight: clampLayoutDimension(
+        current.terminalDockHeight + delta,
+        terminalDockHeightMinimum,
+        terminalDockHeightMaximum,
+      ),
+    }));
   }
 
   function clearAdvisorTransientState() {
@@ -4204,6 +4271,11 @@ export default function App({
                   <section
                     className="workbench-terminal-dock"
                     aria-label="Terminal dock"
+                    style={
+                      {
+                        "--terminal-dock-height": `${workbenchLayout.terminalDockHeight}px`,
+                      } as CSSProperties
+                    }
                   >
                     <div className="workbench-terminal-dock__header">
                       <div>
@@ -4213,6 +4285,7 @@ export default function App({
                       <button
                         type="button"
                         aria-expanded={terminalDockOpen}
+                        aria-controls="terminal-dock-content"
                         onClick={() =>
                           setTerminalDockOpen((current) => !current)
                         }
@@ -4223,9 +4296,28 @@ export default function App({
                       </button>
                     </div>
                     {terminalDockOpen &&
-                    workspaceLocation.route === "conversation"
-                      ? terminalWorkspace
-                      : null}
+                    workspaceLocation.route === "conversation" ? (
+                      <>
+                        <div
+                          className="workbench-terminal-dock__resize"
+                          role="separator"
+                          aria-label="Resize terminal dock"
+                          aria-orientation="horizontal"
+                          aria-valuemin={terminalDockHeightMinimum}
+                          aria-valuemax={terminalDockHeightMaximum}
+                          aria-valuenow={workbenchLayout.terminalDockHeight}
+                          tabIndex={0}
+                          onPointerDown={beginTerminalDockResize}
+                          onKeyDown={resizeTerminalDockFromKeyboard}
+                        />
+                        <div
+                          id="terminal-dock-content"
+                          className="workbench-terminal-dock__content"
+                        >
+                          {terminalWorkspace}
+                        </div>
+                      </>
+                    ) : null}
                   </section>
                 )}
               </section>
@@ -4249,6 +4341,20 @@ export default function App({
                   loadGitDiff={loadGitDiffTask}
                   loadArtifacts={loadAdvisorGeneratedArtifacts}
                   previewArtifact={previewAdvisorGeneratedArtifact}
+                  width={workbenchLayout.reviewPaneWidth}
+                  selectedPane={workbenchLayout.selectedReviewPane}
+                  onWidthChange={(reviewPaneWidth) =>
+                    setWorkbenchLayout((current) => ({
+                      ...current,
+                      reviewPaneWidth,
+                    }))
+                  }
+                  onSelectedPaneChange={(selectedReviewPane) =>
+                    setWorkbenchLayout((current) => ({
+                      ...current,
+                      selectedReviewPane,
+                    }))
+                  }
                   onClose={() => setReviewPanesOpen(false)}
                 />
               </Suspense>

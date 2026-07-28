@@ -1,7 +1,9 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import { ReviewPanes } from "./ReviewPanes";
+import type { ReviewPaneId } from "./review-panes/types";
 import { scaffoldConversation } from "./lib/conversation";
 import { scaffoldFilePreview } from "./lib/filePreview";
 import { scaffoldGitWorkspace } from "./lib/git";
@@ -18,25 +20,40 @@ function renderPanes() {
   });
   const previewArtifact = vi.fn();
   const onClose = vi.fn();
-  render(
-    <ReviewPanes
-      projectId={projectId}
-      projectName="QuireForge"
-      filePreview={scaffoldFilePreview}
-      conversation={scaffoldConversation}
-      conversationEvents={[]}
-      loadGitStatus={loadGitStatus}
-      loadGitDiff={loadGitDiff}
-      loadArtifacts={loadArtifacts}
-      previewArtifact={previewArtifact}
-      onClose={onClose}
-    />,
-  );
+  const onWidthChange = vi.fn();
+  const onSelectedPaneChange = vi.fn();
+  function Harness() {
+    const [selectedPane, setSelectedPane] = useState<ReviewPaneId>("files");
+    return (
+      <ReviewPanes
+        projectId={projectId}
+        projectName="QuireForge"
+        filePreview={scaffoldFilePreview}
+        conversation={scaffoldConversation}
+        conversationEvents={[]}
+        loadGitStatus={loadGitStatus}
+        loadGitDiff={loadGitDiff}
+        loadArtifacts={loadArtifacts}
+        previewArtifact={previewArtifact}
+        width={480}
+        selectedPane={selectedPane}
+        onWidthChange={onWidthChange}
+        onSelectedPaneChange={(pane) => {
+          onSelectedPaneChange(pane);
+          setSelectedPane(pane);
+        }}
+        onClose={onClose}
+      />
+    );
+  }
+  render(<Harness />);
   return {
     loadArtifacts,
     loadGitDiff,
     loadGitStatus,
     onClose,
+    onSelectedPaneChange,
+    onWidthChange,
     previewArtifact,
   };
 }
@@ -75,8 +92,28 @@ describe("review panes", () => {
     ]) {
       expect(screen.getByRole("tab", { name })).toBeVisible();
     }
-    fireEvent.click(screen.getByRole("button", { name: "Close review panes" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Close task evidence" }),
+    );
     expect(calls.onClose).toHaveBeenCalledTimes(1);
     document.body.removeChild(trigger);
+  });
+
+  it("bounds keyboard and pointer resizing and removes drag listeners", () => {
+    const remove = vi.spyOn(document, "removeEventListener");
+    const calls = renderPanes();
+    const separator = screen.getByRole("separator", {
+      name: "Resize task evidence",
+    });
+    expect(separator).toHaveAttribute("aria-valuemin", "360");
+    expect(separator).toHaveAttribute("aria-valuemax", "560");
+    fireEvent.keyDown(separator, { key: "ArrowLeft" });
+    expect(calls.onWidthChange).toHaveBeenLastCalledWith(500);
+    fireEvent.pointerDown(separator, { clientX: 10 });
+    fireEvent.pointerMove(document, { clientX: -100 });
+    expect(calls.onWidthChange).toHaveBeenLastCalledWith(560);
+    fireEvent.pointerUp(document);
+    expect(remove).toHaveBeenCalledWith("pointermove", expect.any(Function));
+    remove.mockRestore();
   });
 });

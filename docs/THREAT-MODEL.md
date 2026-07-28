@@ -699,6 +699,10 @@ Advisor work, retain task records, subscribe, or poll. Missing, stale,
 truncated, and failed evidence remains visibly unavailable rather than being
 retried in the background.
 
+## M50 layout-preference boundary
+
+The M50 browser-local layout record is a fixed, size-capped JSON schema with three presentation values only: review width, terminal height, and an existing review-pane identifier. Strict integer bounds and exact keys reject corrupt, unknown, oversized, or capability-bearing input. Closed review and terminal surfaces unmount, so layout state neither retains data nor sustains a subscription, timer, terminal, or hidden execution. Resize handling listens only during an active pointer drag and removes listeners on release, cancel, and unmount. No stored value can encode a path, CSS, content, authority, or cross-project/account synchronization.
+
 - OS keyring use for app-owned non-Codex secrets, if any are ever required.
 - Package signing identity and key custody.
 - Update channel design and rollback.

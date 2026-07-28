@@ -35,8 +35,8 @@ def build(output: Path) -> tuple[Path, dict[str, object]]:
     """Build the worker into an authoritative release-candidate directory."""
     assert_authoritative_release_builder()
     version = source_version()
-    if version != "0.1.0-beta.44":
-        raise RuntimeError("M49 requires beta.44")
+    if version != "0.1.0-beta.45":
+        raise RuntimeError("M50 requires beta.45")
     if shutil.which("docker") is None and os.environ.get("QUIRE_FORGE_RELEASE_BUILDER") != "pinned-ubuntu-22.04":
         raise RuntimeError("sandbox worker builds only inside the authoritative container")
     run(["cargo", "build", "--release", "-p", "quireforge-sandboxd"])
