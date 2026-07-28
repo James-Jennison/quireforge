@@ -27,7 +27,7 @@ from scripts.release_contract import (
 
 class PackageContractTests(unittest.TestCase):
     def test_all_source_versions_match_the_beta_candidate(self) -> None:
-        self.assertEqual(source_version(), "0.1.0-beta.39")
+        self.assertEqual(source_version(), "0.1.0-beta.40")
 
     def test_temporary_desktop_bundle_envelope_is_closed_and_bounded(self) -> None:
         budget = json.loads(
@@ -39,9 +39,9 @@ class PackageContractTests(unittest.TestCase):
             budget,
             {
                 "entryBytes": 256 * 1024,
-                "appShellBytes": 384 * 1024,
-                "totalJavaScriptBytes": 1280 * 1024,
-                "stylesheetsBytes": 134 * 1024,
+                "appShellBytes": 448 * 1024,
+                "totalJavaScriptBytes": 1536 * 1024,
+                "stylesheetsBytes": 160 * 1024,
             },
         )
         self.assertLess(budget["appShellBytes"], budget["totalJavaScriptBytes"])

@@ -1,12 +1,13 @@
 # Changelog
 
-## Unreleased — 0.1.0-beta.39
+## Unreleased — 0.1.0-beta.40
 
 ### Changed
 
-- Add a temporary, roadmap-informed construction-period bundle envelope. The
-  application-shell ceiling is now 384 KiB; the startup-entry, total-JavaScript,
-  and CSS ceilings remain unchanged. All limits remain enforced and require a
+- Replace the preliminary beta.39 envelope with one bounded, full M44–M58
+  construction-period policy: 448 KiB application shell, 1.5 MiB total
+  JavaScript, and 160 KiB CSS. The 256 KiB startup entry remains unchanged.
+  All limits remain enforced, do not increase automatically, and require a
   future evidence-based permanent-budget reconciliation before product readiness.
 
 ## 0.1.0-beta.38

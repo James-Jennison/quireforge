@@ -1164,16 +1164,20 @@ approved type-specific collection contract.
 
 ### Post-M43 Temporary Bundle Construction-Envelope Checkpoint
 
-Replace reactive small application-shell budget increases with one measured,
-temporary construction-period envelope. The 384 KiB application-shell ceiling
-is based on the beta.38 309,489-byte shell plus 27.1% headroom for the approved
-M44–M50 UI work; the 256 KiB startup-entry, 1.25 MiB total-JavaScript, and 134
-KiB CSS ceilings remain unchanged because their measured beta.38 headroom is
-already 34.5%, 39.2%, and 26.5%. Every limit remains enforced, reported with
-largest assets, and closed to automatic escalation. This packaging-only
-checkpoint is the next unique `0.1.0-beta.39` candidate and shifts later
-provisional package identities without changing their product scope. The
-post-workbench permanent-budget reconciliation remains mandatory.
+Replace reactive small bundle-budget changes with one measured, temporary
+construction-period envelope. The 256 KiB startup-entry ceiling remains
+unchanged because its beta.38 194,943-byte baseline retains 34.5% headroom.
+The 448 KiB application-shell, 1.5 MiB total-JavaScript, and 160 KiB CSS
+ceilings use binary allocation boundaries to cover M44–M58: M44–M50 work plus,
+if separately approved, M52 durable-task records, M54 local artifact/design
+review, and M56 local templates. M51, M53, M55, M57, and M58 are decision-only
+and add no shipped bundle by themselves. Every limit remains enforced, reported
+with largest assets, and closed to automatic escalation. The preliminary
+beta.39 release set was superseded locally before integration because it covered
+only M44–M50. This corrected packaging-only checkpoint is the next unique
+`0.1.0-beta.40` candidate and shifts later provisional package identities by
+one without changing product scope. The post-workbench permanent-budget
+reconciliation remains mandatory.
 
 ### 44 — Unified Single Attachment Entry
 
@@ -1182,7 +1186,7 @@ type-specific native pickers and validators. Native code remains authoritative
 for type determination. The UI gains a compact bounded attachment tray without
 adding generic upload, drag-and-drop, a new file type, multi-attachment
 collection, changed transport, or relaxed confirmation/disposal rules. The
-provisional package candidate is `0.1.0-beta.40`.
+provisional package candidate is `0.1.0-beta.41`.
 
 ### 45 — Bounded Multi-Attachment Proposal
 
@@ -1197,7 +1201,7 @@ Only after M45 approval, add a closed ordered collection of approved existing
 attachment types. Every member retains its own manifest, confirmation,
 expiration, one-use claim, and disposal; any invalid member fails the whole
 request without silent omission or partial reuse. This is not generic upload.
-The provisional package candidate is `0.1.0-beta.41`.
+The provisional package candidate is `0.1.0-beta.42`.
 
 ### 47 — Generated Artifact Workflow Proposal
 
@@ -1212,7 +1216,7 @@ paths, and content persistence. No package changes here.
 After M47 approval, provide typed inline artifact cards and independent,
 explicit native Save dialogs. Saving remains one artifact at a time and never
 opens, runs, imports, writes to a project automatically, or transfers
-authority. The provisional package candidate is `0.1.0-beta.42`.
+authority. The provisional package candidate is `0.1.0-beta.43`.
 
 ### 49 — QuireForge Review Panes
 
@@ -1221,7 +1225,7 @@ Git, Preview, Activity, and Approval panes over existing typed native services.
 Background events may badge but never steal focus; stale data invalidates on
 project/worktree changes. No new Git, project-write, shell, terminal, dispatch,
 execution, browser, or provider authority is added. The provisional package
-candidate is `0.1.0-beta.43`.
+candidate is `0.1.0-beta.44`.
 
 ### 50 — QuireForge Workbench Layout Refinement
 
@@ -1230,7 +1234,7 @@ layout preferences, and managed-terminal-dock ergonomics over existing PTY
 ownership. Preferences must exclude paths, transcripts, terminal output,
 approvals, credentials, and capability state. This does not create a shell,
 PTY, command-launch, execution, or context-transfer path. The provisional
-package candidate is `0.1.0-beta.44`.
+package candidate is `0.1.0-beta.45`.
 
 ### 51 — Durable Task Records and Alternate-Plan Proposal
 
@@ -1249,7 +1253,7 @@ Only after M51 approval, implement the approved closed record schema and
 lifecycle. Retention, deletion, search, archive/restore, and any handoff
 reference must be explicit, bounded, testable, and separately scoped for
 Advisor and QuireForge. The provisional package candidate is
-`0.1.0-beta.45`.
+`0.1.0-beta.46`.
 
 ### 53 — Local Artifact and Design Review Proposal
 
@@ -1267,7 +1271,7 @@ Only after M53 approval, implement the approved local review surfaces by
 reusing the M48 typed artifact boundary and M49 preview/review services.
 Artifact lifecycle, selection, comparison, accessibility, and no-path/no-
 persistence boundaries must be deterministic. The provisional package
-candidate is `0.1.0-beta.46`.
+candidate is `0.1.0-beta.47`.
 
 ### 55 — Research Reports and Inspectable Task Templates Proposal
 
@@ -1284,7 +1288,7 @@ no package change.
 Only after the template portion of M55 is approved, implement inspectable
 local task templates using approved context only. Research, external providers,
 connectors, browser access, and hidden retrieval remain excluded. The
-provisional package candidate is `0.1.0-beta.47`.
+provisional package candidate is `0.1.0-beta.48`.
 
 ### 57 — Per-Project Connector and MCP Governance Proposal
 

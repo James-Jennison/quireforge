@@ -238,13 +238,14 @@ it does not transfer transcripts, attachments, project, terminal, Git,
 approval, dispatch, execution, path, or authority state.
 
 The post-beta.38 **Temporary Bundle Construction-Envelope Checkpoint** is the
-next packaging-only candidate: `0.1.0-beta.39`. It raises only the temporary
-application-shell ceiling from 320 KiB to 384 KiB after measuring the 309,489
-byte beta.38 shell; startup-entry, total-JavaScript, and CSS ceilings remain
-unchanged. It covers only the approved M44–M50 UI-construction period and does
-not add a product capability, dependency, authority, transport, provider,
-connector, release, or deployment behavior. The existing post-workbench
-permanent-budget reconciliation remains required.
+next packaging-only candidate: `0.1.0-beta.40`. A preliminary beta.39 package
+set was superseded locally before integration after the approved roadmap was
+confirmed through M58. The corrected temporary limits are 256 KiB startup
+entry, 448 KiB application shell, 1.5 MiB total JavaScript, and 160 KiB CSS.
+They cover approved M44–M58 UI construction without adding a product capability,
+dependency, authority, transport, provider, connector, release, or deployment
+behavior. The existing post-workbench permanent-budget reconciliation remains
+required.
 
 Milestone 27 — **Unified Conversation Engine** is complete. It adds strict
 Rust/Zod Chat/Codex capability profiles, a Settings navigation foundation,

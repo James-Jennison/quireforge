@@ -2,10 +2,10 @@
 
 ## Purpose
 
-This packaging-only checkpoint replaces repeated reactive application-shell
-budget increases during the approved M44–M50 Advisor/QuireForge UI-construction
-period. It does not add product functionality, dependencies, authority,
-transport, providers, connectors, file handling, or release/deployment scope.
+This packaging-only checkpoint replaces repeated reactive bundle-budget changes
+during the approved M44–M58 Advisor/QuireForge construction period. It does not
+add product functionality, dependencies, authority, transport, providers,
+connectors, file handling, or release/deployment scope.
 
 ## Measured baseline and enforced limits
 
@@ -18,15 +18,21 @@ The verified beta.38 production desktop output measured:
 | Total JavaScript | 941,807 | 1,310,720 | 368,913 (39.2%) |
 | Total CSS | 108,515 | 137,216 | 28,701 (26.5%) |
 
-Only the application shell lacked a stable construction-period margin. The
-checkpoint sets that limit to 393,216 bytes (384 KiB): a 64-KiB allocation
-increase and 83,727 bytes (27.1%) above the verified shell baseline. The
-result is bounded, remains substantially below the total-JavaScript limit, and
-matches the already documented temporary CSS policy's roughly 30% construction
-margin without changing the other independently adequate limits.
+The startup entry remains 262,144 bytes (256 KiB): its 67,201-byte (34.5%)
+margin is adequate because it must stay a small bootstrap boundary. The three
+limits that can grow through the remaining approved UI work are set once to
+binary allocation boundaries: application shell 458,752 bytes (448 KiB), total
+JavaScript 1,572,864 bytes (1.5 MiB), and CSS 163,840 bytes (160 KiB).
 
-The startup-entry, total-JavaScript, and CSS ceilings remain exactly 256 KiB,
-1,280 KiB, and 134 KiB. Their limits were not relaxed.
+Those limits add, respectively, 149,263 bytes (48.2%), 631,057 bytes (67.0%),
+and 55,325 bytes (51.0%) above the verified beta.38 baseline. The 64-KiB shell
+increment covers shared drawer, task, and artifact components; the 256-KiB
+total-JavaScript increment covers separately loaded attachment, artifact,
+review, durable-task, and template UI while preserving route/pane splitting;
+and the 32-KiB CSS increment covers responsive workbench, review, and artifact
+states. M51, M53, M55, M57, and M58 are decision-only and add no shipped bundle
+by themselves; M52, M54, and M56 are the additional implementation packages
+that make the total-JavaScript and CSS headroom necessary.
 
 ## Policy contract
 
@@ -35,9 +41,11 @@ The startup-entry, total-JavaScript, and CSS ceilings remain exactly 256 KiB,
   exceeded limit.
 - The package-contract test asserts the exact bounded envelope. No automatic
   ceiling increase exists.
-- The envelope covers only the approved M44–M50 UI work: unified attachment
-  presentation, a separately approved multi-attachment sequence, artifact
-  review/save, typed review panes, and presentation-only workbench refinement.
+- The envelope covers only the approved M44–M58 construction scope: unified
+  attachment presentation, a separately approved multi-attachment sequence,
+  artifact review/save, typed review panes, presentation-only workbench
+  refinement, and—only if their separate proposals are approved—durable task
+  records, local artifact/design review, and inspectable local templates.
 - A fresh measured case and separate approval are required for any increase.
 - The existing post-workbench reconciliation gate remains mandatory. It must
   analyze route/chunk and stylesheet costs, lazy loading, duplicated code/CSS,
@@ -46,8 +54,10 @@ The startup-entry, total-JavaScript, and CSS ceilings remain exactly 256 KiB,
 
 ## Package and evidence boundary
 
-The checkpoint uses the unique `0.1.0-beta.39` package identity. Its Debian
-release evidence must be bound to the clean policy commit and include the
-measured JavaScript/CSS totals, provenance, checksums, ABI, lifecycle,
-installed-smoke, and visible-launch results. M44 and later provisional package
-identities shift by one without changing their product scope.
+The preliminary beta.39 locally generated release set is superseded before
+integration because it covered only M44–M50. This corrected checkpoint uses
+the unique `0.1.0-beta.40` package identity. Its Debian release evidence must
+be bound to the clean policy commit and include measured JavaScript/CSS totals,
+provenance, checksums, ABI, lifecycle, installed-smoke, and visible-launch
+results. M44 and later provisional package identities shift by one without
+changing their product scope.
