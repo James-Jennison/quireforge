@@ -1077,6 +1077,12 @@ collection, or file-type behavior. The package gate requires a fresh
 screen-reader, desktop, narrow-layout, 200%-zoom, bundle-ceiling, provenance,
 ABI, lifecycle, installed-smoke, and visible-launch evidence.
 
+**Complete:** integrated at `98fa8fa26d740572095c2dcd9d4c1f579156817b` with
+the clean `0.1.0-beta.35` Debian-only desktop and worker release set. The
+source, keyboard/focus, accessibility, desktop/narrow-layout, bundle,
+provenance/ABI, container lifecycle/smoke, and installed-host visible-launch
+gates passed. See the [Milestone 40 report](MILESTONE_40_TASK_WORKBENCH_SHELL.md).
+
 ### Advisor Approval/Dispatch Phases A–B3 (completed capability history)
 
 The approved Phase A/B1 controller is an editable, transient draft and explicit,
