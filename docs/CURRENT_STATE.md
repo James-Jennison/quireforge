@@ -272,8 +272,11 @@ and new authority remain out of scope. See
 [Milestone 46](MILESTONE_46_BOUNDED_MULTI_ATTACHMENT.md).
 
 Milestone 47 — **Generated Artifact Workflow Proposal** is the next genuine
-proposal decision. It must define a bounded transient artifact registry and
-explicit native save boundary without beginning package-changing M48 work.
+proposal decision. Its decision-ready recommendation is documented in
+[Milestone 47](MILESTONE_47_GENERATED_ARTIFACT_WORKFLOW_PROPOSAL.md): a bounded
+native-memory-only generated-artifact registry and explicit no-replace native
+save boundary. It begins no package-changing M48 work and awaits explicit
+approval.
 
 Milestone 27 — **Unified Conversation Engine** is complete. It adds strict
 Rust/Zod Chat/Codex capability profiles, a Settings navigation foundation,

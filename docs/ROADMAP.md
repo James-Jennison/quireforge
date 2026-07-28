@@ -1236,6 +1236,13 @@ type-specific validation, and an explicit native save boundary for `.txt`,
 save, execution, project writes, overwrite, Git actions, retained destination
 paths, and content persistence. No package changes here.
 
+**Decision-ready proposal:** [Milestone 47](MILESTONE_47_GENERATED_ARTIFACT_WORKFLOW_PROPOSAL.md)
+recommends the closed five-entry, native-memory-only
+`advisor-generated-artifact-registry-v1` with a 512 KiB per-artifact, 2 MiB
+aggregate, 15-minute lifecycle and one-artifact native atomic no-replace Save
+boundary. M48 remains blocked pending explicit approval; no package or product
+behavior changed in this proposal milestone.
+
 ### 48 — Generated Artifacts and Explicit Save
 
 After M47 approval, provide typed inline artifact cards and independent,

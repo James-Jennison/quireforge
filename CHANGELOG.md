@@ -8,6 +8,10 @@
   existing typed attachments, one image at most, native aggregate preflight,
   and one explicit collection confirmation. No generic upload, new file type,
   new app-server method, persistence, or authority is added.
+- Record Milestone 47's decision-ready generated-artifact workflow proposal:
+  a bounded transient text/data registry and explicit atomic no-replace native
+  Save boundary for later approval. This documentation-only milestone changes
+  no desktop package or runtime behavior.
 
 ## 0.1.0-beta.41
 

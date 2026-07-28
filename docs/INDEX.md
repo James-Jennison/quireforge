@@ -57,6 +57,8 @@ implementation position and [Roadmap](ROADMAP.md) for approved sequencing.
   — approved three-item atomic collection contract used by M46.
 - [Milestone 46 — Bounded Multi-Attachment](MILESTONE_46_BOUNDED_MULTI_ATTACHMENT.md)
   — verified closed Advisor collection of up to three existing typed entries.
+- [Milestone 47 — Generated Artifact Workflow Proposal](MILESTONE_47_GENERATED_ARTIFACT_WORKFLOW_PROPOSAL.md)
+  — decision-ready bounded transient generated-artifact and native Save-boundary contract.
 - [Post-M41 packaging-efficiency checkpoint](PACKAGING_EFFICIENCY_CHECKPOINT.md)
   — checksum-verified immutable guest-input caching within the authoritative
   Ubuntu 22.04 release workflow.
