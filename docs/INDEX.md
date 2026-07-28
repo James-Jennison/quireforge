@@ -59,6 +59,8 @@ implementation position and [Roadmap](ROADMAP.md) for approved sequencing.
   — verified closed Advisor collection of up to three existing typed entries.
 - [Milestone 47 — Generated Artifact Workflow Proposal](MILESTONE_47_GENERATED_ARTIFACT_WORKFLOW_PROPOSAL.md)
   — decision-ready bounded transient generated-artifact and native Save-boundary contract.
+- [Milestone 48 — Generated Artifacts and Explicit Save](MILESTONE_48_GENERATED_ARTIFACTS_AND_EXPLICIT_SAVE.md)
+  — completed native-memory-only generated-artifact registry and explicit no-replace Save evidence.
 - [Post-M41 packaging-efficiency checkpoint](PACKAGING_EFFICIENCY_CHECKPOINT.md)
   — checksum-verified immutable guest-input caching within the authoritative
   Ubuntu 22.04 release workflow.

@@ -1250,8 +1250,10 @@ explicit native Save dialogs. Saving remains one artifact at a time and never
 opens, runs, imports, writes to a project automatically, or transfers
 authority. The provisional package candidate is `0.1.0-beta.43`.
 
-**In implementation:** only the approved M47 contract. Fresh beta.43 package
-evidence remains required before this milestone can be recorded complete.
+**Complete:** `advisor-generated-artifact-registry-v1` is integrated at
+`5d483d0c068c450bbc779ee07b048fe848c7e1f0` with verified `0.1.0-beta.43`
+Debian and worker evidence. See the
+[Milestone 48 report](MILESTONE_48_GENERATED_ARTIFACTS_AND_EXPLICIT_SAVE.md).
 
 ### 49 — QuireForge Review Panes
 

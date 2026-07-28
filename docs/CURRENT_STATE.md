@@ -271,10 +271,12 @@ plus optional `localImage` transport is retained; generic upload, persistence,
 and new authority remain out of scope. See
 [Milestone 46](MILESTONE_46_BOUNDED_MULTI_ATTACHMENT.md).
 
-Milestone 48 — **Generated Artifacts and Explicit Save** is implementing only
-the approved [M47](MILESTONE_47_GENERATED_ARTIFACT_WORKFLOW_PROPOSAL.md)
-`advisor-generated-artifact-registry-v1` contract. Its unique candidate is
-`0.1.0-beta.43`; package evidence remains pending.
+Milestone 48 — **Generated Artifacts and Explicit Save** is complete at
+`5d483d0c068c450bbc779ee07b048fe848c7e1f0` with verified
+`0.1.0-beta.43` Debian and worker evidence. It implements only the approved
+[M47](MILESTONE_47_GENERATED_ARTIFACT_WORKFLOW_PROPOSAL.md)
+`advisor-generated-artifact-registry-v1` contract. See
+[Milestone 48](MILESTONE_48_GENERATED_ARTIFACTS_AND_EXPLICIT_SAVE.md).
 
 Milestone 27 — **Unified Conversation Engine** is complete. It adds strict
 Rust/Zod Chat/Codex capability profiles, a Settings navigation foundation,
