@@ -1093,6 +1093,20 @@ set, and the full acceptance record are documented in the
 
 ## Testing seams
 
+### M48 generated artifacts
+
+`AdvisorGeneratedArtifactService` is a separate native, process-local service.
+It retains only normalized UTF-8 bytes, a manifest, native monotonic expiry,
+and a brief save reservation. Its fixed commands accept no path except the
+native Save dialog result during one synchronous transaction. The webview sees
+only strict path-free manifests, bounded text previews, and path-free receipts;
+it never owns a destination or a file handle. The service is not an attachment,
+SQLite, Project, Worktree, approval, dispatch, terminal, or Codex service.
+
+On Linux the save transaction writes a private 0600 same-directory temporary
+file, synchronizes it, uses `renameat2(RENAME_NOREPLACE)`, and synchronizes the
+parent directory before one successful claim is consumed.
+
 - Adapter contracts from generated schemas and sanitized fixtures.
 - In-memory/mock process transport for event streams and approvals.
 - Temporary Git repositories/worktrees.

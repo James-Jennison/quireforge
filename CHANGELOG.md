@@ -1,6 +1,12 @@
 # Changelog
 
-## Unreleased — 0.1.0-beta.42
+## Unreleased — 0.1.0-beta.43
+
+### Added
+
+- Implement M48 `advisor-generated-artifact-registry-v1`: a native-only,
+  process-local, five-class text registry with bounded preview, discard,
+  expiry, and explicit one-time no-replace native Save.
 
 ### Added
 

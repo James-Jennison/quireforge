@@ -3,6 +3,7 @@ mod advisor_archive_attachment;
 mod advisor_attachment;
 mod advisor_binary_attachment;
 mod advisor_document_attachment;
+mod advisor_generated_artifact;
 mod advisor_image_attachment;
 mod attachment;
 mod codex;
@@ -34,6 +35,11 @@ use advisor_binary_attachment::{
 use advisor_document_attachment::{
     AdvisorDocumentAttachmentClaimRequest, AdvisorDocumentAttachmentService,
     AdvisorDocumentAttachmentSnapshot,
+};
+use advisor_generated_artifact::{
+    save_reserved, AdvisorGeneratedArtifactService, GeneratedArtifactClaimRequest,
+    GeneratedArtifactCreateRequest, GeneratedArtifactPreviewV1, GeneratedArtifactSaveReceiptV1,
+    GeneratedArtifactSnapshotV1,
 };
 use advisor_image_attachment::{
     AdvisorImageAttachmentClaimRequest, AdvisorImageAttachmentService,
@@ -811,6 +817,76 @@ async fn advisor_text_export_save(
     };
     let path = selected.into_path().map_err(|_| ())?;
     advisor_attachment::save_export(path, &request).map_err(|_| ())
+}
+
+#[tauri::command]
+fn advisor_generated_artifact_create(
+    request: GeneratedArtifactCreateRequest,
+    service: tauri::State<'_, AdvisorGeneratedArtifactService>,
+) -> Result<advisor_generated_artifact::GeneratedArtifactManifestV1, ()> {
+    service.create(request).map_err(|_| ())
+}
+
+#[tauri::command]
+fn advisor_generated_artifact_snapshot(
+    service: tauri::State<'_, AdvisorGeneratedArtifactService>,
+) -> GeneratedArtifactSnapshotV1 {
+    service.snapshot()
+}
+
+#[tauri::command]
+fn advisor_generated_artifact_preview(
+    request: GeneratedArtifactClaimRequest,
+    service: tauri::State<'_, AdvisorGeneratedArtifactService>,
+) -> Result<GeneratedArtifactPreviewV1, ()> {
+    service.preview(&request).map_err(|_| ())
+}
+
+#[tauri::command]
+fn advisor_generated_artifact_discard(
+    request: GeneratedArtifactClaimRequest,
+    service: tauri::State<'_, AdvisorGeneratedArtifactService>,
+) -> Result<GeneratedArtifactSnapshotV1, ()> {
+    service.discard(request).map_err(|_| ())?;
+    Ok(service.snapshot())
+}
+
+#[tauri::command]
+async fn advisor_generated_artifact_save(
+    request: GeneratedArtifactClaimRequest,
+    app: tauri::AppHandle,
+    service: tauri::State<'_, AdvisorGeneratedArtifactService>,
+) -> Result<Option<GeneratedArtifactSaveReceiptV1>, ()> {
+    let reservation = service.reserve(&request).map_err(|_| ())?;
+    let extension = reservation.class().suffix().trim_start_matches('.');
+    let selected = app
+        .dialog()
+        .file()
+        .set_title("Save generated Advisor artifact")
+        .add_filter("Generated artifact", &[extension])
+        .set_file_name(reservation.suggested_filename())
+        .blocking_save_file();
+    let Some(selected) = selected else {
+        service.release(&reservation);
+        return Ok(None);
+    };
+    let path = match selected.into_path() {
+        Ok(path) => path,
+        Err(_) => {
+            service.release(&reservation);
+            return Err(());
+        }
+    };
+    match save_reserved(&reservation, &path) {
+        Ok(filename) => service
+            .consume(&reservation, filename)
+            .map(Some)
+            .map_err(|_| ()),
+        Err(_) => {
+            service.release(&reservation);
+            Err(())
+        }
+    }
 }
 
 #[tauri::command]
@@ -1903,6 +1979,7 @@ pub fn run() {
         .manage(ChatConversationService::default())
         .manage(AdvisorConversationService::default())
         .manage(AdvisorTextAttachmentService::default())
+        .manage(AdvisorGeneratedArtifactService::default())
         .manage(AdvisorImageAttachmentService::default())
         .manage(AdvisorDocumentAttachmentService::default())
         .manage(AdvisorArchiveAttachmentService::default())
@@ -2002,6 +2079,11 @@ pub fn run() {
             advisor_binary_attachment_pick,
             advisor_binary_attachment_cancel,
             advisor_text_export_save,
+            advisor_generated_artifact_create,
+            advisor_generated_artifact_snapshot,
+            advisor_generated_artifact_preview,
+            advisor_generated_artifact_discard,
+            advisor_generated_artifact_save,
             codex_auth_start,
             codex_auth_cancel,
             codex_auth_logout,

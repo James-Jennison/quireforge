@@ -120,6 +120,20 @@ import {
   type AdvisorTextExportRequest,
 } from "./advisorAttachment";
 import {
+  generatedArtifactClaimRequestSchema,
+  generatedArtifactCreateRequestSchema,
+  generatedArtifactManifestSchema,
+  generatedArtifactPreviewSchema,
+  generatedArtifactReceiptSchema,
+  generatedArtifactSnapshotSchema,
+  type GeneratedArtifactClaimRequest,
+  type GeneratedArtifactCreateRequest,
+  type GeneratedArtifactManifest,
+  type GeneratedArtifactPreview,
+  type GeneratedArtifactReceipt,
+  type GeneratedArtifactSnapshot,
+} from "./advisorGeneratedArtifact";
+import {
   advisorImageAttachmentSnapshotSchema,
   type AdvisorImageAttachmentSnapshot,
 } from "./advisorImageAttachment";
@@ -308,6 +322,11 @@ export const ADVISOR_TEXT_ATTACHMENT_PICK_COMMAND =
 export const ADVISOR_TEXT_ATTACHMENT_CANCEL_COMMAND =
   "advisor_text_attachment_cancel";
 export const ADVISOR_TEXT_EXPORT_SAVE_COMMAND = "advisor_text_export_save";
+export const ADVISOR_GENERATED_ARTIFACT_CREATE_COMMAND = "advisor_generated_artifact_create";
+export const ADVISOR_GENERATED_ARTIFACT_SNAPSHOT_COMMAND = "advisor_generated_artifact_snapshot";
+export const ADVISOR_GENERATED_ARTIFACT_PREVIEW_COMMAND = "advisor_generated_artifact_preview";
+export const ADVISOR_GENERATED_ARTIFACT_DISCARD_COMMAND = "advisor_generated_artifact_discard";
+export const ADVISOR_GENERATED_ARTIFACT_SAVE_COMMAND = "advisor_generated_artifact_save";
 export const ADVISOR_IMAGE_ATTACHMENT_STATUS_COMMAND =
   "advisor_image_attachment_status";
 export const ADVISOR_IMAGE_ATTACHMENT_PICK_COMMAND =
@@ -627,6 +646,12 @@ export async function saveAdvisorTextExport(
     request: advisorTextExportRequestSchema.parse(request),
   });
 }
+
+export async function createAdvisorGeneratedArtifact(request: GeneratedArtifactCreateRequest, invokeFunction: InvokeFunction = invokeTauri): Promise<GeneratedArtifactManifest> { return generatedArtifactManifestSchema.parse(await invokeFunction(ADVISOR_GENERATED_ARTIFACT_CREATE_COMMAND, { request: generatedArtifactCreateRequestSchema.parse(request) })); }
+export async function loadAdvisorGeneratedArtifacts(invokeFunction: InvokeFunction = invokeTauri): Promise<GeneratedArtifactSnapshot> { return generatedArtifactSnapshotSchema.parse(await invokeFunction(ADVISOR_GENERATED_ARTIFACT_SNAPSHOT_COMMAND)); }
+export async function previewAdvisorGeneratedArtifact(request: GeneratedArtifactClaimRequest, invokeFunction: InvokeFunction = invokeTauri): Promise<GeneratedArtifactPreview> { return generatedArtifactPreviewSchema.parse(await invokeFunction(ADVISOR_GENERATED_ARTIFACT_PREVIEW_COMMAND, { request: generatedArtifactClaimRequestSchema.parse(request) })); }
+export async function discardAdvisorGeneratedArtifact(request: GeneratedArtifactClaimRequest, invokeFunction: InvokeFunction = invokeTauri): Promise<GeneratedArtifactSnapshot> { return generatedArtifactSnapshotSchema.parse(await invokeFunction(ADVISOR_GENERATED_ARTIFACT_DISCARD_COMMAND, { request: generatedArtifactClaimRequestSchema.parse(request) })); }
+export async function saveAdvisorGeneratedArtifact(request: GeneratedArtifactClaimRequest, invokeFunction: InvokeFunction = invokeTauri): Promise<GeneratedArtifactReceipt | null> { const payload = await invokeFunction(ADVISOR_GENERATED_ARTIFACT_SAVE_COMMAND, { request: generatedArtifactClaimRequestSchema.parse(request) }); return payload === null ? null : generatedArtifactReceiptSchema.parse(payload); }
 
 export async function loadAdvisorImageAttachment(
   invokeFunction: InvokeFunction = invokeTauri,

@@ -679,6 +679,16 @@ Controls:
 
 ## Deferred questions
 
+## M48 generated-artifact boundary
+
+Generated Advisor artifacts are untrusted text/data, never executable input.
+The native registry limits class, UTF-8 bytes, aggregate size, count, lifetime,
+names, hashes, and single-save claims. A forged or stale ID/hash, unsafe name,
+invalid JSON/CSV, expired entry, existing target, symlink target, or failed
+write/synchronization/publication fails closed. Native Save is the only write
+boundary; no path, directory, content-at-save, overwrite, opener, persistence,
+or project/worktree authority crosses the webview bridge.
+
 - OS keyring use for app-owned non-Codex secrets, if any are ever required.
 - Package signing identity and key custody.
 - Update channel design and rollback.

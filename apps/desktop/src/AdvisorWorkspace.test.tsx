@@ -53,6 +53,15 @@ const advisorDraftBridge = vi.hoisted(() => ({
   pickAdvisorBinaryAttachment: vi.fn(),
   cancelAdvisorBinaryAttachment: vi.fn(),
   saveAdvisorTextExport: vi.fn(),
+  loadAdvisorGeneratedArtifacts: vi.fn().mockResolvedValue({
+    schemaVersion: 1,
+    artifacts: [],
+    diagnosticCode: null,
+  }),
+  createAdvisorGeneratedArtifact: vi.fn(),
+  previewAdvisorGeneratedArtifact: vi.fn(),
+  discardAdvisorGeneratedArtifact: vi.fn(),
+  saveAdvisorGeneratedArtifact: vi.fn(),
 }));
 
 vi.mock("./lib/bridge", () => advisorDraftBridge);

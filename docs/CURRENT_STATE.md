@@ -271,12 +271,10 @@ plus optional `localImage` transport is retained; generic upload, persistence,
 and new authority remain out of scope. See
 [Milestone 46](MILESTONE_46_BOUNDED_MULTI_ATTACHMENT.md).
 
-Milestone 47 — **Generated Artifact Workflow Proposal** is the next genuine
-proposal decision. Its decision-ready recommendation is documented in
-[Milestone 47](MILESTONE_47_GENERATED_ARTIFACT_WORKFLOW_PROPOSAL.md): a bounded
-native-memory-only generated-artifact registry and explicit no-replace native
-save boundary. It begins no package-changing M48 work and awaits explicit
-approval.
+Milestone 48 — **Generated Artifacts and Explicit Save** is implementing only
+the approved [M47](MILESTONE_47_GENERATED_ARTIFACT_WORKFLOW_PROPOSAL.md)
+`advisor-generated-artifact-registry-v1` contract. Its unique candidate is
+`0.1.0-beta.43`; package evidence remains pending.
 
 Milestone 27 — **Unified Conversation Engine** is complete. It adds strict
 Rust/Zod Chat/Codex capability profiles, a Settings navigation foundation,
