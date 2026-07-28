@@ -16,8 +16,11 @@ type, new endpoint, hidden reuse, persistence, or authority is introduced.
 
 The pinned Ubuntu 22.04 workflow passed checksum, provenance/ABI (`GLIBC_2.34`
 within `GLIBC_2.35`), a disposable Debian lifecycle, extracted-package smoke,
-and a visible X11 launch gate inside the pinned container. It did not install
-or replace the live host package. `quireforge_0.1.0.beta.42_amd64.deb` is 5,483,760 bytes
+and a visible X11 launch gate inside the pinned container.
+Subsequent installed-host evidence upgraded the live `quireforge` Debian
+package from beta.40 to `0.1.0~beta.42`; `/usr/bin/quireforge` SHA-256 is
+`5960d8cb972959d6b68138ff802bbdd7c5cf83ab8b2e77ffbec7343851b091fc` and passed
+the visible installed-package smoke. `quireforge_0.1.0.beta.42_amd64.deb` is 5,483,760 bytes
 with SHA-256 `033536248fd5cf3d26410376f93b4db083c3e125f4466653a525d6d1998013bd`;
 the worker Debian is 3,233,210 bytes with SHA-256
 `79e55a20948410798249d74c15a285ad82fa09aa5ec57696871850b34eb21c22`.
