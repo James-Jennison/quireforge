@@ -19,6 +19,7 @@ from release_contract import (
     LEGACY_DESKTOP,
     RELEASE_WORKFLOW_COMMAND,
     ROOT,
+    TAURI_BUNDLE_BASENAME,
     assert_authoritative_release_builder,
     architectures,
     builder_record,
