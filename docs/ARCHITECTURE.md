@@ -1132,6 +1132,25 @@ Advisor state. Plan selection is organizational only and must clear/exclude
 transient capability state; it cannot start, restore, clone, or imply any
 operation. The M50 browser-local layout record remains independent.
 
+### M52 durable-task storage and UI
+
+M52 implements migration 11 in the existing private `metadata.sqlite3`. The
+task-record boundary in `ProjectService` and `ProjectRepository` owns UUIDv7
+generation, normalized validation, immediate transactions, lifecycle
+transitions, selected-plan repair, title/label-only search, capacity accounting,
+and closed diagnostics.
+The only new tables are `task_records` and `task_plans`; the frontend receives
+strict path-free summaries and at most four bodies for the explicitly selected
+task.
+
+The compact task catalogue is part of the opt-in workbench context beside the
+dominant conversation. It does not bind a task or plan to a project,
+conversation, session, review pane, terminal, approval, artifact, dispatch,
+execution, Git operation, browser, connector, credential, provider, or Advisor
+context. Before selecting another plan, the application clears any current
+conversation-attachment tray through its existing bounded native cancellation
+command. A failed clear leaves the existing plan selected.
+
 - Adapter contracts from generated schemas and sanitized fixtures.
 - In-memory/mock process transport for event streams and approvals.
 - Temporary Git repositories/worktrees.

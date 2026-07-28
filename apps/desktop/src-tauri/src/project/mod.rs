@@ -15,7 +15,8 @@ pub(crate) use storage::{StoredConversationReference, StoredTerminalSession};
 use types::{
     DirectoryAccessibilityState, DirectorySummary, GitSummary, PendingAttachmentKind,
     PendingAttachmentPreview, ProjectDiagnosticCode, ProjectPreflightSnapshot, ProjectSummary,
-    ProjectWorkspaceSnapshot, ProjectWorkspaceState, PROJECT_SCHEMA_VERSION,
+    ProjectWorkspaceSnapshot, ProjectWorkspaceState, TaskCatalogListRequest, TaskCatalogSnapshot,
+    TaskCatalogState, TaskDiagnosticCode, PROJECT_SCHEMA_VERSION, TASK_RECORD_SCHEMA_VERSION,
 };
 use uuid::Uuid;
 
@@ -152,6 +153,149 @@ pub(crate) struct ConversationPendingSelection<'a> {
 }
 
 impl ProjectService {
+    pub fn task_catalog(&self, request: TaskCatalogListRequest) -> TaskCatalogSnapshot {
+        if request
+            .selected_task_id
+            .as_deref()
+            .is_some_and(|id| !valid_id(id))
+        {
+            return TaskCatalogSnapshot {
+                diagnostic_code: Some(TaskDiagnosticCode::InvalidRequest),
+                ..task_catalog_unavailable()
+            };
+        }
+        let mut repository = match self.repository.lock() {
+            Ok(value) => value,
+            Err(_) => return task_catalog_unavailable(),
+        };
+        let Some(repository) = repository.as_mut() else {
+            return task_catalog_unavailable();
+        };
+        let selected = request
+            .selected_task_id
+            .as_deref()
+            .filter(|id| valid_id(id));
+        match repository.task_catalog(selected, request.include_archived, request.query.as_deref())
+        {
+            Ok((tasks, selected_task, plans, task_count, payload_bytes, corrupt_rows)) => {
+                TaskCatalogSnapshot {
+                    schema_version: TASK_RECORD_SCHEMA_VERSION,
+                    state: if tasks.is_empty() {
+                        TaskCatalogState::Empty
+                    } else {
+                        TaskCatalogState::Ready
+                    },
+                    tasks,
+                    selected_task,
+                    plans,
+                    task_count,
+                    payload_bytes,
+                    warning: task_count >= 160 || payload_bytes >= 6 * 1024 * 1024,
+                    diagnostic_code: corrupt_rows.then_some(TaskDiagnosticCode::InvalidStoredValue),
+                }
+            }
+            Err(error) => TaskCatalogSnapshot {
+                diagnostic_code: Some(map_task_storage_error(&error)),
+                ..task_catalog_unavailable()
+            },
+        }
+    }
+
+    pub fn create_task_record(&self) -> TaskCatalogSnapshot {
+        let result = {
+            let mut repository = match self.repository.lock() {
+                Ok(value) => value,
+                Err(_) => return task_catalog_unavailable(),
+            };
+            let Some(repository) = repository.as_mut() else {
+                return task_catalog_unavailable();
+            };
+            repository.create_task()
+        };
+        match result {
+            Ok(id) => self.task_catalog(TaskCatalogListRequest {
+                query: None,
+                include_archived: false,
+                selected_task_id: Some(id),
+            }),
+            Err(error) => self.task_snapshot_with_diagnostic(None, error),
+        }
+    }
+    pub fn task_action(
+        &self,
+        task_id: String,
+        action: impl FnOnce(&mut ProjectRepository, &str) -> Result<(), StorageError>,
+    ) -> TaskCatalogSnapshot {
+        if !valid_id(&task_id) {
+            return TaskCatalogSnapshot {
+                diagnostic_code: Some(TaskDiagnosticCode::InvalidRequest),
+                ..task_catalog_unavailable()
+            };
+        }
+        let result = {
+            let mut guard = match self.repository.lock() {
+                Ok(value) => value,
+                Err(_) => return task_catalog_unavailable(),
+            };
+            let Some(repository) = guard.as_mut() else {
+                return task_catalog_unavailable();
+            };
+            action(repository, &task_id)
+        };
+        match result {
+            Ok(()) => self.task_catalog(TaskCatalogListRequest {
+                query: None,
+                include_archived: false,
+                selected_task_id: Some(task_id),
+            }),
+            Err(error) => self.task_snapshot_with_diagnostic(Some(task_id), error),
+        }
+    }
+    pub fn create_task_plan(
+        &self,
+        task_id: String,
+        copy_primary_body: bool,
+    ) -> TaskCatalogSnapshot {
+        if !valid_id(&task_id) {
+            return TaskCatalogSnapshot {
+                diagnostic_code: Some(TaskDiagnosticCode::InvalidRequest),
+                ..task_catalog_unavailable()
+            };
+        }
+        let result = {
+            let mut guard = match self.repository.lock() {
+                Ok(value) => value,
+                Err(_) => return task_catalog_unavailable(),
+            };
+            let Some(repo) = guard.as_mut() else {
+                return task_catalog_unavailable();
+            };
+            repo.create_plan(&task_id, copy_primary_body)
+        };
+        match result {
+            Ok(_) => self.task_catalog(TaskCatalogListRequest {
+                query: None,
+                include_archived: false,
+                selected_task_id: Some(task_id),
+            }),
+            Err(error) => self.task_snapshot_with_diagnostic(Some(task_id), error),
+        }
+    }
+
+    fn task_snapshot_with_diagnostic(
+        &self,
+        selected_task_id: Option<String>,
+        error: StorageError,
+    ) -> TaskCatalogSnapshot {
+        let diagnostic = map_task_storage_error(&error);
+        let mut snapshot = self.task_catalog(TaskCatalogListRequest {
+            query: None,
+            include_archived: false,
+            selected_task_id,
+        });
+        snapshot.diagnostic_code = Some(diagnostic);
+        snapshot
+    }
     pub fn unavailable() -> Self {
         Self {
             repository: Mutex::new(None),
@@ -1393,7 +1537,42 @@ fn directory_display_name(path: &Path) -> String {
 }
 
 fn valid_id(value: &str) -> bool {
-    Uuid::parse_str(value).is_ok() && value.len() == 36
+    value.len() == 36
+        && value == value.to_ascii_lowercase()
+        && Uuid::parse_str(value).is_ok_and(|id| id.get_version_num() == 7)
+}
+
+fn task_catalog_unavailable() -> TaskCatalogSnapshot {
+    TaskCatalogSnapshot {
+        schema_version: TASK_RECORD_SCHEMA_VERSION,
+        state: TaskCatalogState::Unavailable,
+        tasks: Vec::new(),
+        selected_task: None,
+        plans: Vec::new(),
+        task_count: 0,
+        payload_bytes: 0,
+        warning: false,
+        diagnostic_code: Some(TaskDiagnosticCode::MetadataUnavailable),
+    }
+}
+
+fn map_task_storage_error(error: &StorageError) -> TaskDiagnosticCode {
+    match error {
+        StorageError::TaskCapacity | StorageError::PlanCapacity => {
+            TaskDiagnosticCode::CapacityReached
+        }
+        StorageError::TaskNotFound => TaskDiagnosticCode::TaskNotFound,
+        StorageError::TaskArchived => TaskDiagnosticCode::TaskArchived,
+        StorageError::PlanNotFound => TaskDiagnosticCode::PlanNotFound,
+        StorageError::InvalidStatusTransition => TaskDiagnosticCode::InvalidStatusTransition,
+        StorageError::DuplicateId => TaskDiagnosticCode::DuplicateId,
+        StorageError::InvalidStoredValue => TaskDiagnosticCode::InvalidStoredValue,
+        StorageError::DuplicateDirectory
+        | StorageError::ProjectNotFound
+        | StorageError::FutureSchema
+        | StorageError::Filesystem
+        | StorageError::Sqlite(_) => TaskDiagnosticCode::MetadataUnavailable,
+    }
 }
 
 fn map_storage_error(error: &StorageError) -> ProjectDiagnosticCode {
@@ -1404,6 +1583,13 @@ fn map_storage_error(error: &StorageError) -> ProjectDiagnosticCode {
         | StorageError::FutureSchema
         | StorageError::Filesystem
         | StorageError::Sqlite(_) => ProjectDiagnosticCode::MetadataUnavailable,
+        StorageError::TaskCapacity
+        | StorageError::PlanCapacity
+        | StorageError::TaskArchived
+        | StorageError::PlanNotFound
+        | StorageError::InvalidStatusTransition
+        | StorageError::DuplicateId => ProjectDiagnosticCode::MetadataUnavailable,
+        StorageError::TaskNotFound => ProjectDiagnosticCode::ProjectNotFound,
     }
 }
 
@@ -1414,7 +1600,14 @@ fn map_project_execution_storage_error(error: StorageError) -> ProjectExecutionE
         | StorageError::InvalidStoredValue
         | StorageError::FutureSchema
         | StorageError::Filesystem
-        | StorageError::Sqlite(_) => ProjectExecutionError::MetadataUnavailable,
+        | StorageError::Sqlite(_)
+        | StorageError::TaskCapacity
+        | StorageError::PlanCapacity
+        | StorageError::TaskNotFound
+        | StorageError::TaskArchived
+        | StorageError::PlanNotFound
+        | StorageError::InvalidStatusTransition
+        | StorageError::DuplicateId => ProjectExecutionError::MetadataUnavailable,
     }
 }
 

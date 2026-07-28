@@ -1,13 +1,22 @@
 # Changelog
 
-## Unreleased — 0.1.0-beta.45
+## Unreleased — 0.1.0-beta.46
 
 ### Added
 
+- Implement M52's native-owned local task catalogue with migration 11, opaque
+  UUIDv7 task and plan identities, explicit status/archive/delete lifecycle,
+  bounded title/label search, one to four visible plan records, closed capacity
+  limits, and an accessible compact workbench surface. Plans retain no
+  conversation, path, attachment/artifact history, approval, dispatch,
+  execution, terminal, Git, credential, provider, browser, or Advisor state.
+- Clear the current transient conversation-attachment selection before a plan
+  switch and keep every other task-plan authority excluded. Switching a plan
+  cannot start, resume, clone, save, dispatch, approve, execute, or transport
+  anything.
 - Record M51's decision-ready durable-task and alternate-plan proposal. It
   selects bounded local SQLite organizational records and strict plan authority
-  isolation only; no M52 runtime behavior, package identity, or evidence is
-  changed.
+  isolation. M52 now implements that separately approved contract.
 
 ### Changed
 

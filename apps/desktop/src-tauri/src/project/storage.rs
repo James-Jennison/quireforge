@@ -1,4 +1,5 @@
 use std::{
+    collections::HashSet,
     fs,
     os::unix::fs::PermissionsExt,
     path::Path,
@@ -7,6 +8,7 @@ use std::{
 
 use rusqlite::{params, Connection, OptionalExtension, Transaction, TransactionBehavior};
 use thiserror::Error;
+use unicode_casefold::{Locale, UnicodeCaseFold, Variant};
 use uuid::Uuid;
 
 use crate::advisor::{
@@ -16,6 +18,7 @@ use crate::advisor::{
     AdvisorTrust,
 };
 
+use super::types::{TaskPlanSummary, TaskRecordSummary, TaskStatus};
 use super::{
     identity::DirectoryIdentity,
     types::{DirectoryAccessibilityState, ExpectedAccess},
@@ -307,6 +310,38 @@ ALTER TABLE advisor_dispatch_records
     ADD COLUMN execution_conversation_id TEXT CHECK(execution_conversation_id IS NULL OR length(execution_conversation_id) = 36);
 "#;
 
+// M52 deliberately adds only local organisational metadata.  In particular,
+// neither table has a project, conversation, attachment, artifact, approval,
+// dispatch, terminal, browser, connector, credential, or Advisor column.
+const DURABLE_TASK_RECORDS_MIGRATION: &str = r#"
+CREATE TABLE task_records (
+    id TEXT PRIMARY KEY NOT NULL CHECK(length(id) = 36),
+    schema_version INTEGER NOT NULL CHECK(schema_version = 1),
+    title TEXT NOT NULL CHECK(length(title) BETWEEN 1 AND 120),
+    status TEXT NOT NULL CHECK(status IN ('active', 'paused', 'completed')),
+    created_at_ms INTEGER NOT NULL CHECK(created_at_ms >= 0),
+    updated_at_ms INTEGER NOT NULL CHECK(updated_at_ms >= 0),
+    archived_at_ms INTEGER CHECK(archived_at_ms >= 0),
+    last_opened_at_ms INTEGER CHECK(last_opened_at_ms >= 0),
+    selected_plan_id TEXT NOT NULL CHECK(length(selected_plan_id) = 36)
+);
+CREATE TABLE task_plans (
+    id TEXT PRIMARY KEY NOT NULL CHECK(length(id) = 36),
+    schema_version INTEGER NOT NULL CHECK(schema_version = 1),
+    task_id TEXT NOT NULL CHECK(length(task_id) = 36)
+      REFERENCES task_records(id) ON DELETE CASCADE,
+    label TEXT NOT NULL CHECK(length(label) BETWEEN 1 AND 80),
+    position INTEGER NOT NULL CHECK(position BETWEEN 0 AND 3),
+    body TEXT NOT NULL CHECK(length(body) <= 8192),
+    created_at_ms INTEGER NOT NULL CHECK(created_at_ms >= 0),
+    updated_at_ms INTEGER NOT NULL CHECK(updated_at_ms >= 0),
+    UNIQUE(task_id, position)
+);
+CREATE INDEX task_records_visible_recent ON task_records(archived_at_ms, updated_at_ms DESC, id);
+CREATE INDEX task_records_status_recent ON task_records(archived_at_ms, status, updated_at_ms DESC, id);
+CREATE INDEX task_plans_task_position ON task_plans(task_id, position, id);
+"#;
+
 const MIGRATIONS: &[(i64, &str, &str)] = &[
     (1, "projects-and-directory-associations", INITIAL_MIGRATION),
     (
@@ -338,6 +373,11 @@ const MIGRATIONS: &[(i64, &str, &str)] = &[
         "advisor-one-time-dispatch",
         ADVISOR_ONE_TIME_DISPATCH_MIGRATION,
     ),
+    (
+        11,
+        "durable-task-records-v1",
+        DURABLE_TASK_RECORDS_MIGRATION,
+    ),
 ];
 
 #[derive(Debug, Error)]
@@ -354,6 +394,187 @@ pub(crate) enum StorageError {
     DuplicateDirectory,
     #[error("project was not found")]
     ProjectNotFound,
+    #[error("task capacity reached")]
+    TaskCapacity,
+    #[error("task was not found")]
+    TaskNotFound,
+    #[error("task is archived")]
+    TaskArchived,
+    #[error("plan was not found")]
+    PlanNotFound,
+    #[error("plan capacity reached")]
+    PlanCapacity,
+    #[error("task status transition is invalid")]
+    InvalidStatusTransition,
+    #[error("generated task identifier collided")]
+    DuplicateId,
+}
+
+fn task_status(value: &str) -> Result<TaskStatus, StorageError> {
+    match value {
+        "active" => Ok(TaskStatus::Active),
+        "paused" => Ok(TaskStatus::Paused),
+        "completed" => Ok(TaskStatus::Completed),
+        _ => Err(StorageError::InvalidStoredValue),
+    }
+}
+
+fn normalize_task_text(
+    value: &str,
+    char_limit: usize,
+    byte_limit: usize,
+) -> Result<String, StorageError> {
+    let normalized = value.split_whitespace().collect::<Vec<_>>().join(" ");
+    if normalized.is_empty()
+        || normalized.chars().count() > char_limit
+        || normalized.len() > byte_limit
+        || normalized
+            .chars()
+            .any(|c| c.is_control() || is_bidirectional_format_control(c))
+    {
+        return Err(StorageError::InvalidStoredValue);
+    }
+    Ok(normalized)
+}
+
+fn validate_plan_body(value: &str) -> Result<(), StorageError> {
+    if value.chars().count() > 8_192
+        || value.len() > 32 * 1024
+        || value.chars().any(|character| {
+            (character.is_control() && !matches!(character, '\n' | '\t'))
+                || is_bidirectional_format_control(character)
+        })
+    {
+        return Err(StorageError::InvalidStoredValue);
+    }
+    Ok(())
+}
+
+fn is_bidirectional_format_control(character: char) -> bool {
+    matches!(
+        character,
+        '\u{061C}'
+            | '\u{200E}'
+            | '\u{200F}'
+            | '\u{202A}'..='\u{202E}'
+            | '\u{2066}'..='\u{2069}'
+    )
+}
+
+fn simple_case_fold(value: &str) -> String {
+    value
+        .case_fold_with(Variant::Simple, Locale::NonTurkic)
+        .collect()
+}
+
+fn valid_task_id(value: &str) -> bool {
+    value.len() == 36
+        && value == value.to_ascii_lowercase()
+        && Uuid::parse_str(value).is_ok_and(|identifier| identifier.get_version_num() == 7)
+}
+
+const TASK_COUNT_LIMIT: i64 = 200;
+const TASK_PLAN_LIMIT: i64 = 4;
+const TASK_PAYLOAD_LIMIT: i64 = 8 * 1024 * 1024;
+const TASK_RECORD_PAYLOAD_LIMIT: i64 = 48 * 1024;
+const TASK_CLEANUP_AGE_MS: i64 = 180 * 24 * 60 * 60 * 1_000;
+const ID_GENERATION_ATTEMPTS: usize = 4;
+
+fn task_payload_bytes(connection: &Connection, task_id: Option<&str>) -> Result<i64, StorageError> {
+    let value = if let Some(task_id) = task_id {
+        connection.query_row(
+            "SELECT COALESCE(
+                length(CAST(id AS BLOB)) + length(CAST(title AS BLOB))
+                + length(CAST(status AS BLOB)) + length(CAST(selected_plan_id AS BLOB)) + 64
+                + (SELECT COALESCE(sum(
+                    length(CAST(id AS BLOB)) + length(CAST(task_id AS BLOB))
+                    + length(CAST(label AS BLOB)) + length(CAST(body AS BLOB)) + 48
+                  ), 0)
+                  FROM task_plans WHERE task_id = task_records.id),
+                0)
+             FROM task_records WHERE id = ?1",
+            [task_id],
+            |row| row.get(0),
+        )?
+    } else {
+        connection.query_row(
+            "SELECT COALESCE(sum(
+                length(CAST(id AS BLOB)) + length(CAST(title AS BLOB))
+                + length(CAST(status AS BLOB)) + length(CAST(selected_plan_id AS BLOB)) + 64
+                + (SELECT COALESCE(sum(
+                    length(CAST(id AS BLOB)) + length(CAST(task_id AS BLOB))
+                    + length(CAST(label AS BLOB)) + length(CAST(body AS BLOB)) + 48
+                  ), 0)
+                  FROM task_plans WHERE task_id = task_records.id)
+              ), 0)
+             FROM task_records",
+            [],
+            |row| row.get(0),
+        )?
+    };
+    Ok(value)
+}
+
+fn unique_task_id(
+    transaction: &Transaction<'_>,
+    generate: &mut impl FnMut() -> String,
+    reserved: &mut HashSet<String>,
+) -> Result<String, StorageError> {
+    for _ in 0..ID_GENERATION_ATTEMPTS {
+        let candidate = generate();
+        if !valid_task_id(&candidate) || reserved.contains(&candidate) {
+            continue;
+        }
+        let exists: bool = transaction.query_row(
+            "SELECT EXISTS(
+                SELECT 1 FROM task_records WHERE id = ?1
+                UNION ALL
+                SELECT 1 FROM task_plans WHERE id = ?1
+             )",
+            [&candidate],
+            |row| row.get(0),
+        )?;
+        if !exists {
+            reserved.insert(candidate.clone());
+            return Ok(candidate);
+        }
+    }
+    Err(StorageError::DuplicateId)
+}
+
+fn task_status_value(status: TaskStatus) -> &'static str {
+    match status {
+        TaskStatus::Active => "active",
+        TaskStatus::Paused => "paused",
+        TaskStatus::Completed => "completed",
+    }
+}
+
+fn ensure_editable_task(
+    transaction: &Transaction<'_>,
+    task_id: &str,
+) -> Result<String, StorageError> {
+    let state: Option<(String, Option<i64>)> = transaction
+        .query_row(
+            "SELECT status, archived_at_ms FROM task_records WHERE id = ?1",
+            [task_id],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .optional()?;
+    match state {
+        None => Err(StorageError::TaskNotFound),
+        Some((_, Some(_))) => Err(StorageError::TaskArchived),
+        Some((status, None)) => Ok(status),
+    }
+}
+
+fn ensure_task_capacity(transaction: &Transaction<'_>, task_id: &str) -> Result<(), StorageError> {
+    if task_payload_bytes(transaction, Some(task_id))? > TASK_RECORD_PAYLOAD_LIMIT
+        || task_payload_bytes(transaction, None)? > TASK_PAYLOAD_LIMIT
+    {
+        return Err(StorageError::TaskCapacity);
+    }
+    Ok(())
 }
 
 #[derive(Clone, Debug)]
@@ -428,11 +649,535 @@ pub(crate) struct StoredWorktreeRelation {
     pub branch_name: Option<String>,
 }
 
+type TaskCatalogProjection = (
+    Vec<TaskRecordSummary>,
+    Option<TaskRecordSummary>,
+    Vec<TaskPlanSummary>,
+    u16,
+    u64,
+    bool,
+);
+
 pub(crate) struct ProjectRepository {
     connection: Connection,
 }
 
 impl ProjectRepository {
+    pub(crate) fn create_task(&mut self) -> Result<String, StorageError> {
+        let now = now_millis();
+        self.create_task_with(now, || Uuid::now_v7().to_string())
+    }
+
+    fn create_task_with(
+        &mut self,
+        now: i64,
+        mut generate: impl FnMut() -> String,
+    ) -> Result<String, StorageError> {
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let count: i64 = tx.query_row("SELECT count(*) FROM task_records", [], |row| row.get(0))?;
+        if count >= TASK_COUNT_LIMIT {
+            return Err(StorageError::TaskCapacity);
+        }
+        let mut reserved = HashSet::new();
+        let task_id = unique_task_id(&tx, &mut generate, &mut reserved)?;
+        let plan_id = unique_task_id(&tx, &mut generate, &mut reserved)?;
+        tx.execute(
+            "INSERT INTO task_records (
+                id, schema_version, title, status, created_at_ms, updated_at_ms,
+                archived_at_ms, last_opened_at_ms, selected_plan_id
+             ) VALUES (?1, 1, 'Untitled task', 'active', ?2, ?2, NULL, ?2, ?3)",
+            params![task_id, now, plan_id],
+        )?;
+        tx.execute(
+            "INSERT INTO task_plans (
+                id, schema_version, task_id, label, position, body,
+                created_at_ms, updated_at_ms
+             ) VALUES (?1, 1, ?2, 'Primary plan', 0, '', ?3, ?3)",
+            params![plan_id, task_id, now],
+        )?;
+        if task_payload_bytes(&tx, Some(&task_id))? > TASK_RECORD_PAYLOAD_LIMIT
+            || task_payload_bytes(&tx, None)? > TASK_PAYLOAD_LIMIT
+        {
+            return Err(StorageError::TaskCapacity);
+        }
+        tx.commit()?;
+        Ok(task_id)
+    }
+
+    pub(crate) fn task_catalog(
+        &mut self,
+        selected: Option<&str>,
+        include_archived: bool,
+        query: Option<&str>,
+    ) -> Result<TaskCatalogProjection, StorageError> {
+        self.task_catalog_at(selected, include_archived, query, now_millis())
+    }
+
+    fn task_catalog_at(
+        &mut self,
+        selected: Option<&str>,
+        include_archived: bool,
+        query: Option<&str>,
+        now: i64,
+    ) -> Result<TaskCatalogProjection, StorageError> {
+        let search = simple_case_fold(&match query {
+            Some(value) if !value.trim().is_empty() => normalize_task_text(value, 120, 480)?,
+            _ => String::new(),
+        });
+        if let Some(selected) = selected {
+            self.repair_selected_plan(selected)?;
+        }
+        let mut stmt = self.connection.prepare(
+            "SELECT t.id, t.schema_version, t.title, t.status, t.archived_at_ms,
+                    t.selected_plan_id, t.updated_at_ms,
+                    (SELECT count(*) FROM task_plans p WHERE p.task_id = t.id)
+             FROM task_records t
+             WHERE (?1 OR t.archived_at_ms IS NULL)
+             ORDER BY t.archived_at_ms IS NOT NULL, t.updated_at_ms DESC, t.id",
+        )?;
+        let rows = stmt.query_map([include_archived], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, i64>(1)?,
+                row.get::<_, String>(2)?,
+                row.get::<_, String>(3)?,
+                row.get::<_, Option<i64>>(4)?,
+                row.get::<_, String>(5)?,
+                row.get::<_, i64>(6)?,
+                row.get::<_, i64>(7)?,
+            ))
+        })?;
+        let mut tasks = Vec::new();
+        let mut corrupt = false;
+        for row in rows {
+            let Ok((
+                id,
+                schema_version,
+                title,
+                status,
+                archived_at,
+                selected_plan_id,
+                updated,
+                plan_count,
+            )) = row
+            else {
+                corrupt = true;
+                continue;
+            };
+            let normalized_title = normalize_task_text(&title, 120, 480);
+            let parsed_status = task_status(&status);
+            let valid = schema_version == 1
+                && valid_task_id(&id)
+                && valid_task_id(&selected_plan_id)
+                && normalized_title.as_ref().is_ok_and(|value| value == &title)
+                && parsed_status.is_ok()
+                && archived_at.is_none_or(|value| value >= 0)
+                && updated >= 0
+                && (1..=TASK_PLAN_LIMIT).contains(&plan_count);
+            if !valid {
+                corrupt = true;
+                continue;
+            }
+            let mut labels = self
+                .connection
+                .prepare("SELECT label FROM task_plans WHERE task_id = ?1 LIMIT 4")?;
+            let label_rows = labels.query_map([&id], |row| row.get::<_, String>(0))?;
+            let mut label_match = search.is_empty() || simple_case_fold(&title).contains(&search);
+            let mut task_corrupt = false;
+            for label in label_rows {
+                match label {
+                    Ok(label)
+                        if normalize_task_text(&label, 80, 320)
+                            .is_ok_and(|normalized| normalized == label) =>
+                    {
+                        label_match |= simple_case_fold(&label).contains(&search);
+                    }
+                    _ => {
+                        corrupt = true;
+                        task_corrupt = true;
+                    }
+                }
+            }
+            if task_corrupt || !label_match {
+                continue;
+            }
+            tasks.push(TaskRecordSummary {
+                id,
+                title,
+                status: parsed_status.expect("validated task status"),
+                archived: archived_at.is_some(),
+                selected_plan_id,
+                plan_count: plan_count as u8,
+                updated_at_ms: updated,
+                cleanup_eligible: (archived_at.is_some() || status == "completed")
+                    && now.saturating_sub(updated) >= TASK_CLEANUP_AGE_MS,
+            });
+            if tasks.len() == 50 {
+                break;
+            }
+        }
+        let mut selected_task =
+            selected.and_then(|id| tasks.iter().find(|task| task.id == id).cloned());
+        let plans = if let Some(task) = &selected_task {
+            let mut plans = Vec::new();
+            let mut statement = self.connection.prepare(
+                "SELECT id, schema_version, label, position, body
+                 FROM task_plans WHERE task_id = ?1
+                 ORDER BY position, id LIMIT 4",
+            )?;
+            for row in statement.query_map([&task.id], |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, i64>(1)?,
+                    row.get::<_, String>(2)?,
+                    row.get::<_, i64>(3)?,
+                    row.get::<_, String>(4)?,
+                ))
+            })? {
+                let Ok((id, schema_version, label, position, body)) = row else {
+                    corrupt = true;
+                    continue;
+                };
+                if schema_version != 1
+                    || !valid_task_id(&id)
+                    || !normalize_task_text(&label, 80, 320)
+                        .is_ok_and(|normalized| normalized == label)
+                    || !(0..=3).contains(&position)
+                    || validate_plan_body(&body).is_err()
+                {
+                    corrupt = true;
+                    continue;
+                }
+                plans.push(TaskPlanSummary {
+                    id,
+                    label,
+                    position: position as u8,
+                    body,
+                });
+            }
+            if plans.len() != task.plan_count as usize
+                || !plans.iter().any(|plan| plan.id == task.selected_plan_id)
+            {
+                corrupt = true;
+                Vec::new()
+            } else {
+                plans
+            }
+        } else {
+            Vec::new()
+        };
+        if plans.is_empty() {
+            if let Some(selected) = selected_task.take() {
+                tasks.retain(|task| task.id != selected.id);
+            }
+        }
+        let count: u16 =
+            self.connection
+                .query_row("SELECT count(*) FROM task_records", [], |r| r.get(0))?;
+        let bytes = task_payload_bytes(&self.connection, None)?;
+        Ok((
+            tasks,
+            selected_task,
+            plans,
+            count,
+            bytes.max(0) as u64,
+            corrupt,
+        ))
+    }
+
+    pub(crate) fn rename_task(&mut self, id: &str, title: &str) -> Result<(), StorageError> {
+        let title = normalize_task_text(title, 120, 480)?;
+        let now = now_millis();
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        ensure_editable_task(&tx, id)?;
+        tx.execute(
+            "UPDATE task_records SET title = ?1, updated_at_ms = ?2 WHERE id = ?3",
+            params![title, now, id],
+        )?;
+        ensure_task_capacity(&tx, id)?;
+        tx.commit()?;
+        Ok(())
+    }
+
+    pub(crate) fn set_task_status(
+        &mut self,
+        id: &str,
+        status: TaskStatus,
+    ) -> Result<(), StorageError> {
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let current = ensure_editable_task(&tx, id)?;
+        let allowed = matches!(
+            (current.as_str(), status),
+            ("active", TaskStatus::Paused | TaskStatus::Completed)
+                | ("paused", TaskStatus::Active | TaskStatus::Completed)
+                | ("completed", TaskStatus::Active)
+        );
+        if !allowed {
+            return Err(StorageError::InvalidStatusTransition);
+        }
+        tx.execute(
+            "UPDATE task_records SET status = ?1, updated_at_ms = ?2 WHERE id = ?3",
+            params![task_status_value(status), now_millis(), id],
+        )?;
+        tx.commit()?;
+        Ok(())
+    }
+
+    pub(crate) fn archive_task(&mut self, id: &str, restore: bool) -> Result<(), StorageError> {
+        let now = now_millis();
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let archived_at: Option<Option<i64>> = tx
+            .query_row(
+                "SELECT archived_at_ms FROM task_records WHERE id = ?1",
+                [id],
+                |row| row.get(0),
+            )
+            .optional()?;
+        let Some(archived_at) = archived_at else {
+            return Err(StorageError::TaskNotFound);
+        };
+        if restore == archived_at.is_none() {
+            return Err(if restore {
+                StorageError::TaskNotFound
+            } else {
+                StorageError::TaskArchived
+            });
+        }
+        let sql = if restore {
+            "UPDATE task_records SET archived_at_ms = NULL, updated_at_ms = ?1 WHERE id = ?2"
+        } else {
+            "UPDATE task_records SET archived_at_ms = ?1, updated_at_ms = ?1 WHERE id = ?2"
+        };
+        tx.execute(sql, params![now, id])?;
+        tx.commit()?;
+        Ok(())
+    }
+
+    pub(crate) fn delete_task(&mut self, id: &str) -> Result<(), StorageError> {
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        if tx.execute("DELETE FROM task_records WHERE id = ?1", [id])? != 1 {
+            return Err(StorageError::TaskNotFound);
+        }
+        tx.commit()?;
+        Ok(())
+    }
+
+    pub(crate) fn create_plan(
+        &mut self,
+        task_id: &str,
+        copy: bool,
+    ) -> Result<String, StorageError> {
+        let now = now_millis();
+        self.create_plan_with(task_id, copy, now, || Uuid::now_v7().to_string())
+    }
+
+    fn create_plan_with(
+        &mut self,
+        task_id: &str,
+        copy: bool,
+        now: i64,
+        mut generate: impl FnMut() -> String,
+    ) -> Result<String, StorageError> {
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        ensure_editable_task(&tx, task_id)?;
+        let (count, primary_body, next_position): (i64, String, i64) = tx.query_row(
+            "SELECT count(*),
+                    COALESCE((SELECT body FROM task_plans WHERE task_id = ?1 AND position = 0), ''),
+                    COALESCE(max(position), -1) + 1
+             FROM task_plans WHERE task_id = ?1",
+            [task_id],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+        )?;
+        if count >= TASK_PLAN_LIMIT || next_position > 3 {
+            return Err(StorageError::PlanCapacity);
+        }
+        let mut reserved = HashSet::new();
+        let id = unique_task_id(&tx, &mut generate, &mut reserved)?;
+        tx.execute(
+            "INSERT INTO task_plans (
+                id, schema_version, task_id, label, position, body,
+                created_at_ms, updated_at_ms
+             ) VALUES (?1, 1, ?2, ?3, ?4, ?5, ?6, ?6)",
+            params![
+                id,
+                task_id,
+                format!("Alternate plan {count}"),
+                next_position,
+                if copy { primary_body } else { String::new() },
+                now
+            ],
+        )?;
+        ensure_task_capacity(&tx, task_id)?;
+        tx.execute(
+            "UPDATE task_records
+             SET selected_plan_id = ?1, last_opened_at_ms = ?2, updated_at_ms = ?2
+             WHERE id = ?3",
+            params![id, now, task_id],
+        )?;
+        tx.commit()?;
+        Ok(id)
+    }
+
+    pub(crate) fn select_plan(&mut self, task_id: &str, plan_id: &str) -> Result<(), StorageError> {
+        let now = now_millis();
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        ensure_editable_task(&tx, task_id)?;
+        let exists: bool = tx.query_row(
+            "SELECT EXISTS(SELECT 1 FROM task_plans WHERE id = ?1 AND task_id = ?2)",
+            params![plan_id, task_id],
+            |row| row.get(0),
+        )?;
+        if !exists {
+            return Err(StorageError::PlanNotFound);
+        }
+        tx.execute(
+            "UPDATE task_records
+             SET selected_plan_id = ?1, last_opened_at_ms = ?2, updated_at_ms = ?2
+             WHERE id = ?3",
+            params![plan_id, now, task_id],
+        )?;
+        tx.commit()?;
+        Ok(())
+    }
+
+    pub(crate) fn edit_plan(
+        &mut self,
+        task_id: &str,
+        plan_id: &str,
+        label: &str,
+        body: &str,
+    ) -> Result<(), StorageError> {
+        let label = normalize_task_text(label, 80, 320)?;
+        validate_plan_body(body)?;
+        let now = now_millis();
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        ensure_editable_task(&tx, task_id)?;
+        if tx.execute(
+            "UPDATE task_plans SET label = ?1, body = ?2, updated_at_ms = ?3
+             WHERE id = ?4 AND task_id = ?5",
+            params![label, body, now, plan_id, task_id],
+        )? != 1
+        {
+            return Err(StorageError::PlanNotFound);
+        }
+        ensure_task_capacity(&tx, task_id)?;
+        tx.execute(
+            "UPDATE task_records SET updated_at_ms = ?1 WHERE id = ?2",
+            params![now, task_id],
+        )?;
+        tx.commit()?;
+        Ok(())
+    }
+    pub(crate) fn delete_plan(&mut self, task_id: &str, plan_id: &str) -> Result<(), StorageError> {
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        ensure_editable_task(&tx, task_id)?;
+        let count: i64 = tx.query_row(
+            "SELECT count(*) FROM task_plans WHERE task_id = ?1",
+            [task_id],
+            |row| row.get(0),
+        )?;
+        if count <= 1 {
+            return Err(StorageError::PlanCapacity);
+        }
+        if tx.execute(
+            "DELETE FROM task_plans WHERE id = ?1 AND task_id = ?2",
+            params![plan_id, task_id],
+        )? != 1
+        {
+            return Err(StorageError::PlanNotFound);
+        }
+        let selected: String = tx.query_row(
+            "SELECT selected_plan_id FROM task_records WHERE id = ?1",
+            [task_id],
+            |row| row.get(0),
+        )?;
+        let remaining: Vec<String> = {
+            let mut statement =
+                tx.prepare("SELECT id FROM task_plans WHERE task_id = ?1 ORDER BY position, id")?;
+            let rows = statement
+                .query_map([task_id], |row| row.get(0))?
+                .collect::<Result<_, _>>()?;
+            rows
+        };
+        for (position, remaining_id) in remaining.iter().enumerate() {
+            tx.execute(
+                "UPDATE task_plans SET position = ?1 WHERE id = ?2 AND task_id = ?3",
+                params![position as i64, remaining_id, task_id],
+            )?;
+        }
+        let selected = if selected == plan_id {
+            remaining.first().ok_or(StorageError::InvalidStoredValue)?
+        } else {
+            &selected
+        };
+        let now = now_millis();
+        tx.execute(
+            "UPDATE task_records SET selected_plan_id = ?1, updated_at_ms = ?2 WHERE id = ?3",
+            params![selected, now, task_id],
+        )?;
+        tx.commit()?;
+        Ok(())
+    }
+
+    fn repair_selected_plan(&mut self, task_id: &str) -> Result<(), StorageError> {
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let selected: Option<String> = tx
+            .query_row(
+                "SELECT selected_plan_id FROM task_records WHERE id = ?1",
+                [task_id],
+                |row| row.get(0),
+            )
+            .optional()?;
+        let Some(selected) = selected else {
+            return Ok(());
+        };
+        let selected_exists: bool = tx.query_row(
+            "SELECT EXISTS(
+                SELECT 1 FROM task_plans WHERE id = ?1 AND task_id = ?2
+             )",
+            params![selected, task_id],
+            |row| row.get(0),
+        )?;
+        if !selected_exists {
+            let fallback: Option<String> = tx
+                .query_row(
+                    "SELECT id FROM task_plans
+                     WHERE task_id = ?1 ORDER BY position, id LIMIT 1",
+                    [task_id],
+                    |row| row.get(0),
+                )
+                .optional()?;
+            let Some(fallback) = fallback else {
+                return Err(StorageError::InvalidStoredValue);
+            };
+            tx.execute(
+                "UPDATE task_records SET selected_plan_id = ?1 WHERE id = ?2",
+                params![fallback, task_id],
+            )?;
+        }
+        tx.commit()?;
+        Ok(())
+    }
     pub(crate) fn open(path: &Path) -> Result<Self, StorageError> {
         let parent = path.parent().ok_or(StorageError::Filesystem)?;
         fs::create_dir_all(parent).map_err(|_| StorageError::Filesystem)?;
@@ -1721,6 +2466,8 @@ fn verify_schema(connection: &Connection) -> Result<(), StorageError> {
         "advisor_dispatch_records",
         "worktree_relations",
         "terminal_sessions",
+        "task_records",
+        "task_plans",
     ] {
         let exists = connection
             .query_row(
@@ -1932,12 +2679,16 @@ fn now_millis() -> i64 {
 
 #[cfg(test)]
 mod tests {
-    use std::{fs, os::unix::fs::PermissionsExt};
+    use std::{collections::VecDeque, fs, os::unix::fs::PermissionsExt};
 
     use rusqlite::{params, Connection};
     use uuid::Uuid;
 
-    use super::{ProjectRepository, StorageError, INITIAL_MIGRATION};
+    use super::{
+        ProjectRepository, StorageError, INITIAL_MIGRATION, MIGRATIONS, TASK_CLEANUP_AGE_MS,
+        TASK_COUNT_LIMIT, TASK_PAYLOAD_LIMIT,
+    };
+    use crate::project::types::TaskStatus;
     use crate::project::{
         ChatConversationMetadata, ConversationPendingSelection, ConversationReference,
         ConversationSelectionMetadata,
@@ -1999,12 +2750,15 @@ mod tests {
                     OR (version = 5 AND name = 'terminal-sessions')
                     OR (version = 6 AND name = 'model-selection')
                     OR (version = 7 AND name = 'unified-conversation-metadata')
-                    OR (version = 8 AND name = 'advisor-reference-foundation')",
+                    OR (version = 8 AND name = 'advisor-reference-foundation')
+                    OR (version = 9 AND name = 'advisor-approval-controller')
+                    OR (version = 10 AND name = 'advisor-one-time-dispatch')
+                    OR (version = 11 AND name = 'durable-task-records-v1')",
                 [],
                 |row| row.get(0),
             )
             .expect("migration ledger must be queryable");
-        assert_eq!(migrated, 7);
+        assert_eq!(migrated, 10);
         let lifecycle_columns: i64 = repository
             .connection
             .query_row(
@@ -2163,6 +2917,8 @@ mod tests {
                 "directory_associations".to_owned(),
                 "projects".to_owned(),
                 "schema_migrations".to_owned(),
+                "task_plans".to_owned(),
+                "task_records".to_owned(),
                 "terminal_sessions".to_owned(),
                 "unified_conversation_metadata".to_owned(),
                 "worktree_relations".to_owned(),
@@ -2487,5 +3243,644 @@ mod tests {
         }
         drop(reopened);
         fs::remove_dir_all(root).expect("terminal storage fixture must be removed");
+    }
+
+    #[test]
+    fn task_records_are_local_bounded_and_plan_switches_are_metadata_only() {
+        let mut repository = ProjectRepository::in_memory().expect("schema must migrate");
+        let task = repository.create_task().expect("task must create");
+        repository
+            .rename_task(&task, "  Local\tplan — release  ")
+            .expect("title must normalize");
+        assert!(matches!(
+            repository.rename_task(&task, "unsafe\u{202e}title"),
+            Err(StorageError::InvalidStoredValue)
+        ));
+        let plan = repository
+            .create_plan(&task, true)
+            .expect("alternate must create");
+        repository
+            .select_plan(&task, &plan)
+            .expect("switch must persist");
+        repository
+            .edit_plan(&task, &plan, "Alternative", "visible text")
+            .expect("edit must persist");
+        let (tasks, selected, plans, count, _, corrupt) = repository
+            .task_catalog(Some(&task), false, Some("alternative"))
+            .expect("search must read");
+        assert!(!corrupt);
+        assert_eq!(count, 1);
+        assert_eq!(tasks[0].title, "Local plan — release");
+        assert_eq!(selected.expect("selection").selected_plan_id, plan);
+        assert_eq!(plans.len(), 2);
+        repository
+            .archive_task(&task, false)
+            .expect("archive must persist");
+        assert!(repository
+            .task_catalog(Some(&task), false, None)
+            .expect("list")
+            .0
+            .is_empty());
+        repository
+            .archive_task(&task, true)
+            .expect("restore must persist");
+        repository
+            .delete_plan(&task, &plan)
+            .expect("alternate must delete");
+        repository.delete_task(&task).expect("task must delete");
+        assert_eq!(
+            repository.task_catalog(None, true, None).expect("list").3,
+            0
+        );
+    }
+
+    #[test]
+    fn task_ids_retry_collisions_and_fail_closed_after_the_bound() {
+        let mut repository = ProjectRepository::in_memory().expect("schema must migrate");
+        let first_task = "018f0000-0000-7000-8000-000000000001".to_owned();
+        let first_plan = "018f0000-0000-7000-8000-000000000002".to_owned();
+        let mut initial = VecDeque::from([first_task.clone(), first_plan.clone()]);
+        repository
+            .create_task_with(10, || initial.pop_front().expect("fixture id"))
+            .expect("first task must create");
+
+        let second_task = "018f0000-0000-7000-8000-000000000003".to_owned();
+        let second_plan = "018f0000-0000-7000-8000-000000000004".to_owned();
+        let mut retry = VecDeque::from([
+            first_task.clone(),
+            second_task.clone(),
+            first_plan.clone(),
+            second_plan,
+        ]);
+        assert_eq!(
+            repository
+                .create_task_with(20, || retry.pop_front().expect("fixture id"))
+                .expect("collisions must retry"),
+            second_task
+        );
+
+        assert!(matches!(
+            repository.create_task_with(30, || first_task.clone()),
+            Err(StorageError::DuplicateId)
+        ));
+        assert_eq!(
+            repository
+                .connection
+                .query_row("SELECT count(*) FROM task_records", [], |row| row
+                    .get::<_, i64>(0))
+                .expect("task count"),
+            2
+        );
+    }
+
+    #[test]
+    fn failed_task_migration_rolls_back_without_rewriting_the_prior_schema() {
+        let root =
+            std::env::temp_dir().join(format!("quireforge-task-migration-{}", Uuid::now_v7()));
+        fs::create_dir_all(&root).expect("fixture root");
+        let database = root.join("metadata.sqlite3");
+        let connection = Connection::open(&database).expect("database opens");
+        connection
+            .execute_batch(
+                "CREATE TABLE schema_migrations (
+                    version INTEGER PRIMARY KEY NOT NULL,
+                    name TEXT NOT NULL,
+                    applied_at_ms INTEGER NOT NULL
+                 );",
+            )
+            .expect("ledger");
+        for (version, name, sql) in MIGRATIONS.iter().take(10) {
+            connection.execute_batch(sql).expect("prior migration");
+            connection
+                .execute(
+                    "INSERT INTO schema_migrations VALUES (?1, ?2, 1)",
+                    params![version, name],
+                )
+                .expect("prior ledger row");
+        }
+        connection
+            .execute_batch("CREATE TABLE task_records (marker TEXT NOT NULL);")
+            .expect("conflicting partial fixture");
+        drop(connection);
+
+        let connection = Connection::open(&database).expect("database reopens");
+        assert!(matches!(
+            ProjectRepository::from_test_connection(connection),
+            Err(StorageError::Sqlite(_))
+        ));
+        let verification = Connection::open(&database).expect("verification opens");
+        assert_eq!(
+            verification
+                .query_row("SELECT max(version) FROM schema_migrations", [], |row| {
+                    row.get::<_, i64>(0)
+                })
+                .expect("prior ledger remains"),
+            10
+        );
+        assert_eq!(
+            verification
+                .query_row(
+                    "SELECT count(*) FROM pragma_table_info('task_records') WHERE name = 'marker'",
+                    [],
+                    |row| row.get::<_, i64>(0),
+                )
+                .expect("conflicting table remains"),
+            1
+        );
+        assert_eq!(
+            verification
+                .query_row(
+                    "SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name = 'task_plans'",
+                    [],
+                    |row| row.get::<_, i64>(0),
+                )
+                .expect("task plan table remains absent"),
+            0
+        );
+        drop(verification);
+        fs::remove_file(database).expect("database cleanup");
+        fs::remove_dir(root).expect("fixture root cleanup");
+    }
+
+    #[test]
+    fn task_schema_is_closed_and_restart_preserves_only_task_metadata() {
+        let root = std::env::temp_dir().join(format!("quireforge-task-restart-{}", Uuid::now_v7()));
+        let database = root.join("data/metadata.sqlite3");
+        let mut repository = ProjectRepository::open(&database).expect("metadata opens");
+        let task = repository.create_task().expect("task creates");
+        repository
+            .rename_task(&task, "Restart-safe")
+            .expect("title saves");
+        drop(repository);
+
+        let mut reopened = ProjectRepository::open(&database).expect("metadata reopens");
+        let snapshot = reopened
+            .task_catalog(Some(&task), false, None)
+            .expect("task catalog reloads");
+        assert_eq!(snapshot.1.expect("selected task").title, "Restart-safe");
+
+        let task_columns: Vec<String> = reopened
+            .connection
+            .prepare("SELECT name FROM pragma_table_info('task_records') ORDER BY cid")
+            .expect("task columns")
+            .query_map([], |row| row.get(0))
+            .expect("task column rows")
+            .collect::<Result<_, _>>()
+            .expect("valid task columns");
+        assert_eq!(
+            task_columns,
+            vec![
+                "id",
+                "schema_version",
+                "title",
+                "status",
+                "created_at_ms",
+                "updated_at_ms",
+                "archived_at_ms",
+                "last_opened_at_ms",
+                "selected_plan_id",
+            ]
+        );
+        let plan_columns: Vec<String> = reopened
+            .connection
+            .prepare("SELECT name FROM pragma_table_info('task_plans') ORDER BY cid")
+            .expect("plan columns")
+            .query_map([], |row| row.get(0))
+            .expect("plan column rows")
+            .collect::<Result<_, _>>()
+            .expect("valid plan columns");
+        assert_eq!(
+            plan_columns,
+            vec![
+                "id",
+                "schema_version",
+                "task_id",
+                "label",
+                "position",
+                "body",
+                "created_at_ms",
+                "updated_at_ms",
+            ]
+        );
+        let all_columns = task_columns
+            .iter()
+            .chain(plan_columns.iter())
+            .cloned()
+            .collect::<Vec<_>>();
+        for forbidden in [
+            "path",
+            "project_id",
+            "conversation_id",
+            "approval_id",
+            "dispatch_id",
+            "execution_id",
+            "terminal_id",
+            "attachment_id",
+            "artifact_id",
+            "credential",
+            "provider",
+            "transcript",
+            "prompt",
+        ] {
+            assert!(!all_columns.iter().any(|column| column == forbidden));
+        }
+        drop(reopened);
+        fs::remove_file(database).expect("database cleanup");
+        fs::remove_dir_all(root).expect("fixture root cleanup");
+    }
+
+    #[test]
+    fn task_status_archive_and_restore_follow_the_closed_lifecycle() {
+        let mut repository = ProjectRepository::in_memory().expect("schema must migrate");
+        let task = repository.create_task().expect("task must create");
+        assert!(matches!(
+            repository.set_task_status(&task, TaskStatus::Active),
+            Err(StorageError::InvalidStatusTransition)
+        ));
+        repository
+            .set_task_status(&task, TaskStatus::Paused)
+            .expect("active may pause");
+        repository
+            .set_task_status(&task, TaskStatus::Completed)
+            .expect("paused may complete");
+        assert!(matches!(
+            repository.set_task_status(&task, TaskStatus::Paused),
+            Err(StorageError::InvalidStatusTransition)
+        ));
+        repository
+            .set_task_status(&task, TaskStatus::Active)
+            .expect("completed may explicitly reopen");
+        repository
+            .archive_task(&task, false)
+            .expect("task may archive");
+        assert!(matches!(
+            repository.rename_task(&task, "Blocked"),
+            Err(StorageError::TaskArchived)
+        ));
+        assert!(matches!(
+            repository.create_plan(&task, false),
+            Err(StorageError::TaskArchived)
+        ));
+        repository
+            .archive_task(&task, true)
+            .expect("task may restore");
+        repository
+            .rename_task(&task, "Restored")
+            .expect("restored task may edit");
+    }
+
+    #[test]
+    fn task_search_is_unicode_label_only_and_cleanup_is_deterministic() {
+        let mut repository = ProjectRepository::in_memory().expect("schema must migrate");
+        let mut ids = VecDeque::from([
+            "018f0000-0000-7000-8000-000000000011".to_owned(),
+            "018f0000-0000-7000-8000-000000000012".to_owned(),
+        ]);
+        let task = repository
+            .create_task_with(100, || ids.pop_front().expect("fixture id"))
+            .expect("task must create");
+        repository
+            .rename_task(&task, "Résumé planning ΟΣ")
+            .expect("unicode title must persist");
+        let plan = repository
+            .create_plan(&task, false)
+            .expect("alternate must create");
+        repository
+            .edit_plan(
+                &task,
+                &plan,
+                "Überprüfung",
+                "secret body-only search marker\nsecond line",
+            )
+            .expect("multiline body must persist");
+
+        assert_eq!(
+            repository
+                .task_catalog_at(Some(&task), false, Some("RÉSUMÉ"), 100)
+                .expect("unicode title search")
+                .0
+                .len(),
+            1
+        );
+        assert_eq!(
+            repository
+                .task_catalog_at(Some(&task), false, Some("ÜBER"), 100)
+                .expect("unicode label search")
+                .0
+                .len(),
+            1
+        );
+        assert_eq!(
+            repository
+                .task_catalog_at(Some(&task), false, Some("οσ"), 100)
+                .expect("Unicode simple-fold search")
+                .0
+                .len(),
+            1
+        );
+        assert!(repository
+            .task_catalog_at(Some(&task), false, Some("secret body-only"), 100)
+            .expect("body must not be indexed")
+            .0
+            .is_empty());
+
+        repository
+            .set_task_status(&task, TaskStatus::Completed)
+            .expect("task may complete");
+        let updated: i64 = repository
+            .connection
+            .query_row(
+                "SELECT updated_at_ms FROM task_records WHERE id = ?1",
+                [&task],
+                |row| row.get(0),
+            )
+            .expect("updated time");
+        assert!(
+            !repository
+                .task_catalog_at(Some(&task), false, None, updated + TASK_CLEANUP_AGE_MS - 1,)
+                .expect("catalog")
+                .0[0]
+                .cleanup_eligible
+        );
+        assert!(
+            repository
+                .task_catalog_at(Some(&task), false, None, updated + TASK_CLEANUP_AGE_MS,)
+                .expect("catalog")
+                .0[0]
+                .cleanup_eligible
+        );
+    }
+
+    #[test]
+    fn plan_capacity_copy_delete_and_selected_repair_are_atomic() {
+        let mut repository = ProjectRepository::in_memory().expect("schema must migrate");
+        let task = repository.create_task().expect("task must create");
+        let primary: String = repository
+            .connection
+            .query_row(
+                "SELECT selected_plan_id FROM task_records WHERE id = ?1",
+                [&task],
+                |row| row.get(0),
+            )
+            .expect("primary id");
+        repository
+            .edit_plan(&task, &primary, "Primary plan", "visible primary text")
+            .expect("primary text must save");
+        let copied = repository
+            .create_plan(&task, true)
+            .expect("copy must create");
+        let copied_body: String = repository
+            .connection
+            .query_row(
+                "SELECT body FROM task_plans WHERE id = ?1",
+                [&copied],
+                |row| row.get(0),
+            )
+            .expect("copied body");
+        assert_eq!(copied_body, "visible primary text");
+        let third = repository.create_plan(&task, false).expect("third plan");
+        repository.create_plan(&task, false).expect("fourth plan");
+        assert!(matches!(
+            repository.create_plan(&task, false),
+            Err(StorageError::PlanCapacity)
+        ));
+        repository
+            .delete_plan(&task, &copied)
+            .expect("selected or non-selected plan may delete");
+        let positions: Vec<i64> = repository
+            .connection
+            .prepare("SELECT position FROM task_plans WHERE task_id = ?1 ORDER BY position")
+            .expect("positions query")
+            .query_map([&task], |row| row.get(0))
+            .expect("position rows")
+            .collect::<Result<_, _>>()
+            .expect("valid positions");
+        assert_eq!(positions, vec![0, 1, 2]);
+
+        repository
+            .connection
+            .execute(
+                "UPDATE task_records SET selected_plan_id = ?1 WHERE id = ?2",
+                params!["018f0000-0000-7000-8000-000000000099", task],
+            )
+            .expect("stale selection fixture");
+        let selected = repository
+            .task_catalog(Some(&task), false, None)
+            .expect("selection must repair")
+            .1
+            .expect("task remains selected");
+        assert_eq!(selected.selected_plan_id, primary);
+        assert!(repository.delete_plan(&task, &third).is_ok());
+    }
+
+    #[test]
+    fn task_capacity_refuses_without_eviction_or_partial_mutation() {
+        let mut repository = ProjectRepository::in_memory().expect("schema must migrate");
+        for _ in 0..TASK_COUNT_LIMIT {
+            repository.create_task().expect("bounded task must create");
+        }
+        assert!(matches!(
+            repository.create_task(),
+            Err(StorageError::TaskCapacity)
+        ));
+        assert_eq!(
+            repository
+                .connection
+                .query_row("SELECT count(*) FROM task_records", [], |row| row
+                    .get::<_, i64>(0))
+                .expect("count"),
+            TASK_COUNT_LIMIT
+        );
+
+        let first: String = repository
+            .connection
+            .query_row(
+                "SELECT id FROM task_records ORDER BY created_at_ms, id LIMIT 1",
+                [],
+                |row| row.get(0),
+            )
+            .expect("first task");
+        let primary: String = repository
+            .connection
+            .query_row(
+                "SELECT selected_plan_id FROM task_records WHERE id = ?1",
+                [&first],
+                |row| row.get(0),
+            )
+            .expect("primary");
+        repository
+            .edit_plan(&first, &primary, "Primary plan", &"🦀".repeat(7_500))
+            .expect("first body fits");
+        let alternate = repository
+            .create_plan(&first, false)
+            .expect("alternate fits");
+        assert!(matches!(
+            repository.edit_plan(&first, &alternate, "Alternate plan", &"界".repeat(7_500)),
+            Err(StorageError::TaskCapacity)
+        ));
+        let body: String = repository
+            .connection
+            .query_row(
+                "SELECT body FROM task_plans WHERE id = ?1",
+                [&alternate],
+                |row| row.get(0),
+            )
+            .expect("rolled-back body");
+        assert!(body.is_empty());
+    }
+
+    #[test]
+    fn aggregate_payload_uses_utf8_bytes_and_refuses_at_eight_mib() {
+        let mut repository = ProjectRepository::in_memory().expect("schema must migrate");
+        let large = "🦀".repeat(8_000);
+        let smaller = "界".repeat(4_000);
+        for _ in 0..190 {
+            let task = Uuid::now_v7().to_string();
+            let primary = Uuid::now_v7().to_string();
+            let alternate = Uuid::now_v7().to_string();
+            repository
+                .connection
+                .execute(
+                    "INSERT INTO task_records (
+                        id, schema_version, title, status, created_at_ms, updated_at_ms,
+                        archived_at_ms, last_opened_at_ms, selected_plan_id
+                     ) VALUES (?1, 1, 'Payload', 'active', 1, 1, NULL, 1, ?2)",
+                    params![task, primary],
+                )
+                .expect("task fixture");
+            repository
+                .connection
+                .execute(
+                    "INSERT INTO task_plans (
+                        id, schema_version, task_id, label, position, body,
+                        created_at_ms, updated_at_ms
+                     ) VALUES (?1, 1, ?2, 'Primary plan', 0, ?3, 1, 1),
+                              (?4, 1, ?2, 'Alternate plan 1', 1, ?5, 1, 1)",
+                    params![primary, task, large, alternate, smaller],
+                )
+                .expect("plan fixtures");
+        }
+        let bytes = super::task_payload_bytes(&repository.connection, None)
+            .expect("payload bytes must calculate");
+        assert!(bytes > TASK_PAYLOAD_LIMIT);
+        assert!(matches!(
+            repository.create_task(),
+            Err(StorageError::TaskCapacity)
+        ));
+        assert_eq!(
+            repository
+                .connection
+                .query_row("SELECT count(*) FROM task_records", [], |row| row
+                    .get::<_, i64>(0))
+                .expect("count"),
+            190
+        );
+    }
+
+    #[test]
+    fn corrupt_task_rows_are_omitted_with_one_bounded_warning() {
+        let mut repository = ProjectRepository::in_memory().expect("schema must migrate");
+        let task = repository.create_task().expect("task must create");
+        repository
+            .connection
+            .execute_batch("PRAGMA ignore_check_constraints = ON;")
+            .expect("constraint bypass");
+        repository
+            .connection
+            .execute(
+                "UPDATE task_records SET status = 'unsafe' WHERE id = ?1",
+                [&task],
+            )
+            .expect("corrupt fixture");
+        let (tasks, selected, plans, count, _, corrupt) = repository
+            .task_catalog(Some(&task), false, None)
+            .expect("bounded catalog read");
+        assert!(tasks.is_empty());
+        assert!(selected.is_none());
+        assert!(plans.is_empty());
+        assert_eq!(count, 1);
+        assert!(corrupt);
+    }
+
+    #[test]
+    fn task_deletion_cascades_only_plans_and_preserves_external_files() {
+        let root = std::env::temp_dir().join(format!("quireforge-task-delete-{}", Uuid::now_v7()));
+        fs::create_dir_all(&root).expect("fixture root");
+        let external = root.join("project-source.txt");
+        fs::write(&external, "must remain").expect("external fixture");
+
+        let mut repository = ProjectRepository::in_memory().expect("schema must migrate");
+        let task = repository.create_task().expect("task must create");
+        repository.create_plan(&task, false).expect("alternate");
+        repository.delete_task(&task).expect("task must delete");
+        assert_eq!(
+            repository
+                .connection
+                .query_row(
+                    "SELECT count(*) FROM task_plans WHERE task_id = ?1",
+                    [&task],
+                    |row| row.get::<_, i64>(0),
+                )
+                .expect("plan count"),
+            0
+        );
+        assert_eq!(
+            fs::read_to_string(&external).expect("external file remains"),
+            "must remain"
+        );
+        fs::remove_file(external).expect("fixture file cleanup");
+        fs::remove_dir(root).expect("fixture directory cleanup");
+    }
+
+    #[test]
+    fn failed_task_deletion_rolls_back_task_and_all_plans() {
+        let mut repository = ProjectRepository::in_memory().expect("schema must migrate");
+        let task = repository.create_task().expect("task must create");
+        repository.create_plan(&task, false).expect("alternate");
+        repository
+            .connection
+            .execute_batch(
+                "CREATE TRIGGER reject_task_plan_delete
+                 BEFORE DELETE ON task_plans
+                 BEGIN
+                   SELECT RAISE(ABORT, 'injected-delete-failure');
+                 END;",
+            )
+            .expect("failure trigger");
+
+        assert!(matches!(
+            repository.delete_task(&task),
+            Err(StorageError::Sqlite(_))
+        ));
+        assert_eq!(
+            repository
+                .connection
+                .query_row(
+                    "SELECT count(*) FROM task_records WHERE id = ?1",
+                    [&task],
+                    |row| row.get::<_, i64>(0),
+                )
+                .expect("task count"),
+            1
+        );
+        assert_eq!(
+            repository
+                .connection
+                .query_row(
+                    "SELECT count(*) FROM task_plans WHERE task_id = ?1",
+                    [&task],
+                    |row| row.get::<_, i64>(0),
+                )
+                .expect("plan count"),
+            2
+        );
+
+        repository
+            .connection
+            .execute_batch("DROP TRIGGER reject_task_plan_delete;")
+            .expect("failure trigger cleanup");
+        repository
+            .delete_task(&task)
+            .expect("recovered deletion must commit");
     }
 }

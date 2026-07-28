@@ -34,6 +34,7 @@ import { ScheduledWorkspace } from "./ScheduledWorkspace";
 import { SessionWorkspace } from "./SessionWorkspace";
 import { SettingsWorkspace } from "./SettingsWorkspace";
 import { UsagePanel } from "./UsagePanel";
+import { TaskCatalog } from "./TaskCatalog";
 import {
   clampLayoutDimension,
   layoutPreferenceStorageKey,
@@ -123,11 +124,26 @@ import {
   prepareAdvisorTaskHandoff as prepareAdvisorTaskHandoffNative,
   prepareTaskCompletionReceipt,
   writeTerminal,
+  archiveTaskRecord,
+  createTaskPlan,
+  createTaskRecord,
+  deleteTaskPlan,
+  deleteTaskRecord,
+  editTaskPlan,
+  loadTaskCatalog,
+  renameTaskRecord,
+  restoreTaskRecord,
+  selectTaskPlan,
+  setTaskRecordStatus,
 } from "./lib/bridge";
 import type {
   TaskHandoffCreateRequest,
   TaskHandoffSnapshot,
 } from "./lib/taskHandoff";
+import {
+  scaffoldTaskCatalog,
+  type TaskCatalogSnapshot,
+} from "./lib/taskRecords";
 import type {
   AdvisorProjectStateReadRequest,
   AdvisorSelectedProjectStateSnapshot,
@@ -306,6 +322,15 @@ interface AppProps {
   loadUsage?: () => Promise<CodexUsageSnapshot>;
   refreshUsage?: () => Promise<CodexUsageSnapshot>;
   loadProjects?: () => Promise<ProjectWorkspaceSnapshot>;
+  loadTaskCatalogTask?: (request: {
+    query: string | null;
+    includeArchived: boolean;
+    selectedTaskId: string | null;
+  }) => Promise<TaskCatalogSnapshot>;
+  selectTaskPlanTask?: (request: {
+    taskId: string;
+    planId: string;
+  }) => Promise<TaskCatalogSnapshot>;
   loadRepositoryStateTask?: (
     request: RepositoryStateReadRequest,
   ) => Promise<RepositoryStateReadSnapshot>;
@@ -901,6 +926,8 @@ export default function App({
   loadUsage = loadCodexUsage,
   refreshUsage = refreshCodexUsage,
   loadProjects = loadProjectWorkspace,
+  loadTaskCatalogTask = loadTaskCatalog,
+  selectTaskPlanTask = selectTaskPlan,
   loadRepositoryStateTask = readRepositoryState,
   loadAdvisorSnapshotTask = loadAdvisorSnapshot,
   readAdvisorProjectStateSnapshotTask = readAdvisorProjectStateSnapshot,
@@ -1115,6 +1142,9 @@ export default function App({
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [terminalDockOpen, setTerminalDockOpen] = useState(false);
   const [reviewPanesOpen, setReviewPanesOpen] = useState(false);
+  const [taskCatalog, setTaskCatalog] =
+    useState<TaskCatalogSnapshot>(scaffoldTaskCatalog);
+  const [taskCatalogBusy, setTaskCatalogBusy] = useState(false);
   const [workbenchLayout, setWorkbenchLayout] = useState(
     initialWorkbenchLayoutPreferences,
   );
@@ -1254,6 +1284,25 @@ export default function App({
       active = false;
     };
   }, [accessGranted, loadProjects]);
+
+  useEffect(() => {
+    if (!accessGranted) return;
+    let active = true;
+    void loadTaskCatalogTask({
+      query: null,
+      includeArchived: false,
+      selectedTaskId: null,
+    })
+      .then((snapshot) => {
+        if (active) setTaskCatalog(snapshot);
+      })
+      .catch(() => {
+        if (active) setTaskCatalog(scaffoldTaskCatalog);
+      });
+    return () => {
+      active = false;
+    };
+  }, [accessGranted, loadTaskCatalogTask]);
 
   useEffect(() => {
     if (!accessGranted) return;
@@ -1964,6 +2013,52 @@ export default function App({
         terminalDockHeightMaximum,
       ),
     }));
+  }
+
+  async function refreshTaskCatalog(request: {
+    query: string | null;
+    includeArchived: boolean;
+    selectedTaskId: string | null;
+  }) {
+    setTaskCatalogBusy(true);
+    try {
+      const snapshot = await loadTaskCatalogTask(request);
+      setTaskCatalog(snapshot);
+    } finally {
+      setTaskCatalogBusy(false);
+    }
+  }
+
+  async function applyTaskCatalogMutation(
+    mutate: () => Promise<TaskCatalogSnapshot>,
+  ) {
+    setTaskCatalogBusy(true);
+    try {
+      const snapshot = await mutate();
+      setTaskCatalog(snapshot);
+      return snapshot;
+    } finally {
+      setTaskCatalogBusy(false);
+    }
+  }
+
+  async function selectDurableTaskPlan(taskId: string, planId: string) {
+    if (
+      conversationAttachments.state === "ready" &&
+      conversationAttachments.projectId
+    ) {
+      const cleared = await cancelConversationAttachmentsTask({
+        projectId: conversationAttachments.projectId,
+        attachmentIds: conversationAttachments.attachments.map(
+          (attachment) => attachment.attachmentId,
+        ),
+      });
+      setConversationAttachments(cleared);
+      setConversationAttachmentActionError(false);
+    }
+    return applyTaskCatalogMutation(() =>
+      selectTaskPlanTask({ taskId, planId }),
+    );
   }
 
   function clearAdvisorTransientState() {
@@ -3244,6 +3339,49 @@ export default function App({
       case "conversation":
         return (
           <>
+            <TaskCatalog
+              snapshot={taskCatalog}
+              busy={taskCatalogBusy}
+              onLoad={refreshTaskCatalog}
+              onCreate={() => applyTaskCatalogMutation(createTaskRecord)}
+              onRename={(taskId, title) => () =>
+                applyTaskCatalogMutation(() =>
+                  renameTaskRecord({ taskId, title }),
+                )
+              }
+              onStatus={(taskId, status) => () =>
+                applyTaskCatalogMutation(() =>
+                  setTaskRecordStatus({ taskId, status }),
+                )
+              }
+              onArchive={(taskId) => () =>
+                applyTaskCatalogMutation(() => archiveTaskRecord({ taskId }))
+              }
+              onRestore={(taskId) => () =>
+                applyTaskCatalogMutation(() => restoreTaskRecord({ taskId }))
+              }
+              onDelete={(taskId) => () =>
+                applyTaskCatalogMutation(() => deleteTaskRecord({ taskId }))
+              }
+              onPlanCreate={(taskId, copyPrimaryBody) => () =>
+                applyTaskCatalogMutation(() =>
+                  createTaskPlan({ taskId, copyPrimaryBody }),
+                )
+              }
+              onPlanSelect={(taskId, planId) => () =>
+                selectDurableTaskPlan(taskId, planId)
+              }
+              onPlanEdit={(taskId, planId, label, body) => () =>
+                applyTaskCatalogMutation(() =>
+                  editTaskPlan({ taskId, planId, label, body }),
+                )
+              }
+              onPlanDelete={(taskId, planId) => () =>
+                applyTaskCatalogMutation(() =>
+                  deleteTaskPlan({ taskId, planId }),
+                )
+              }
+            />
             <div
               className="workbench-context-tabs"
               role="tablist"

@@ -1553,6 +1553,7 @@ export function AdvisorWorkspace({
             </div>
             <div
               className="advisor-text-attachment"
+              role="group"
               aria-label="Optional text attachment"
             >
               {textAttachment.state === "ready" && textAttachment.attachment ? (
@@ -1582,6 +1583,7 @@ export function AdvisorWorkspace({
             </div>
             <div
               className="advisor-text-attachment"
+              role="group"
               aria-label="Optional image attachment"
             >
               {imageAttachment.state === "ready" &&
@@ -1620,6 +1622,7 @@ export function AdvisorWorkspace({
             </div>
             <div
               className="advisor-text-attachment"
+              role="group"
               aria-label="Optional PDF document attachment"
             >
               {documentAttachment.state === "ready" &&
@@ -1670,6 +1673,7 @@ export function AdvisorWorkspace({
             </div>
             <div
               className="advisor-text-attachment"
+              role="group"
               aria-label="Optional ZIP archive attachment"
             >
               {archiveAttachment.state === "ready" &&
@@ -1716,6 +1720,7 @@ export function AdvisorWorkspace({
             </div>
             <div
               className="advisor-text-attachment"
+              role="group"
               aria-label="Optional ELF static-binary attachment"
             >
               {binaryAttachment.state === "ready" &&

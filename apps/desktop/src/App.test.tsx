@@ -22,6 +22,7 @@ import {
   conversationSnapshotSchema,
   scaffoldConversation,
 } from "./lib/conversation";
+import { taskCatalogSchema } from "./lib/taskRecords";
 import {
   projectWorkspaceSchema,
   scaffoldProjectWorkspace,
@@ -70,6 +71,50 @@ const advisorProjectStateFixture = parseAdvisorSelectedProjectStateSnapshot({
   provenanceSource: "project-state-snapshot",
   worktree: "clean",
   diagnosticCount: 0,
+});
+const durableTaskCatalogFixture = taskCatalogSchema.parse({
+  schemaVersion: 1,
+  state: "ready",
+  tasks: [
+    {
+      id: "018f0000-0000-7000-8000-000000000020",
+      title: "Local durable task",
+      status: "active",
+      archived: false,
+      selectedPlanId: "018f0000-0000-7000-8000-000000000021",
+      planCount: 2,
+      updatedAtMs: 1,
+      cleanupEligible: false,
+    },
+  ],
+  selectedTask: {
+    id: "018f0000-0000-7000-8000-000000000020",
+    title: "Local durable task",
+    status: "active",
+    archived: false,
+    selectedPlanId: "018f0000-0000-7000-8000-000000000021",
+    planCount: 2,
+    updatedAtMs: 1,
+    cleanupEligible: false,
+  },
+  plans: [
+    {
+      id: "018f0000-0000-7000-8000-000000000021",
+      label: "Primary",
+      position: 0,
+      body: "Primary visible body",
+    },
+    {
+      id: "018f0000-0000-7000-8000-000000000022",
+      label: "Alternate",
+      position: 1,
+      body: "Alternate visible body",
+    },
+  ],
+  taskCount: 1,
+  payloadBytes: 256,
+  warning: false,
+  diagnosticCode: null,
 });
 function modelSelection(reasoningEffort = "high") {
   return {
@@ -1004,6 +1049,78 @@ describe("QuireForge desktop shell", () => {
     expect(JSON.stringify(startConversationTask.mock.calls)).not.toContain(
       "/private/",
     );
+  });
+
+  it("clears transient attachments before switching a durable task plan", async () => {
+    const attachmentSnapshot = {
+      ...sharedConversationAttachmentFixture,
+      projectId,
+    };
+    const pickConversationAttachmentsTask = vi
+      .fn()
+      .mockResolvedValue(attachmentSnapshot);
+    const cancelConversationAttachmentsTask = vi.fn().mockResolvedValue({
+      schemaVersion: 1,
+      state: "empty",
+      projectId: null,
+      attachments: [],
+      diagnosticCode: null,
+    });
+    const switchedCatalog = taskCatalogSchema.parse({
+      ...durableTaskCatalogFixture,
+      tasks: durableTaskCatalogFixture.tasks.map((task) => ({
+        ...task,
+        selectedPlanId: "018f0000-0000-7000-8000-000000000022",
+      })),
+      selectedTask: {
+        ...durableTaskCatalogFixture.selectedTask!,
+        selectedPlanId: "018f0000-0000-7000-8000-000000000022",
+      },
+    });
+    const selectTaskPlanTask = vi.fn().mockResolvedValue(switchedCatalog);
+
+    render(
+      <App
+        loadBootstrap={() => Promise.resolve(scaffoldBootstrap)}
+        loadRuntime={() => Promise.resolve(scaffoldCodexRuntime)}
+        loadAuth={() => Promise.resolve(authenticatedAuth)}
+        loadProjects={() => Promise.resolve(attachedProject)}
+        loadConversation={() => Promise.resolve(scaffoldConversation)}
+        loadTaskCatalogTask={() => Promise.resolve(durableTaskCatalogFixture)}
+        selectTaskPlanTask={selectTaskPlanTask}
+        pickConversationAttachmentsTask={pickConversationAttachmentsTask}
+        cancelConversationAttachmentsTask={cancelConversationAttachmentsTask}
+      />,
+    );
+
+    await navigateTo("New task");
+    const chooseImages = await screen.findByRole("button", {
+      name: "Choose images",
+    });
+    await waitFor(() => expect(chooseImages).toBeEnabled());
+    fireEvent.click(chooseImages);
+    expect(await screen.findByText("review.png")).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Show workbench context" }),
+    );
+    fireEvent.click(await screen.findByRole("tab", { name: "Alternate" }));
+
+    await waitFor(() =>
+      expect(cancelConversationAttachmentsTask).toHaveBeenCalledWith({
+        projectId,
+        attachmentIds: [
+          sharedConversationAttachmentFixture.attachments[0]!.attachmentId,
+        ],
+      }),
+    );
+    expect(selectTaskPlanTask).toHaveBeenCalledWith({
+      taskId: "018f0000-0000-7000-8000-000000000020",
+      planId: "018f0000-0000-7000-8000-000000000022",
+    });
+    expect(
+      cancelConversationAttachmentsTask.mock.invocationCallOrder[0],
+    ).toBeLessThan(selectTaskPlanTask.mock.invocationCallOrder[0]!);
+    expect(screen.queryByText("review.png")).not.toBeInTheDocument();
   });
 
   it("renders a device-code handoff and cancels through fixed actions", async () => {

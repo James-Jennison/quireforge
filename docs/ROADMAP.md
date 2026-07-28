@@ -1292,11 +1292,11 @@ permissions, credentials, or execution state shared by default; an alternate
 plan never clones execution state or authority. This is a decision-only gate
 with no package change.
 
-**Decision-ready proposal:** [M51 durable task records and alternate-plan
+**Approved proposal:** [M51 durable task records and alternate-plan
 proposal](MILESTONE_51_DURABLE_TASK_RECORDS_ALTERNATE_PLAN_PROPOSAL.md)
 selects a bounded local SQLite task catalogue, four non-authoritative plans per
-task, explicit archive/restore/deletion, and no transient-state import. M52
-remains blocked on explicit approval of that proposal.
+task, explicit archive/restore/deletion, and no transient-state import. Its
+closed contract was explicitly approved for M52.
 
 ### 52 — Durable Task Records and Alternate Plans
 
@@ -1305,6 +1305,12 @@ lifecycle. Retention, deletion, search, archive/restore, and any handoff
 reference must be explicit, bounded, testable, and separately scoped for
 Advisor and QuireForge. The provisional package candidate is
 `0.1.0-beta.46`.
+
+**Implementation complete; package evidence pending:** migration 11, native
+storage and transactions, strict Rust/Zod commands, accessible compact
+workbench controls, deterministic isolation/failure/capacity tests, and
+beta.46 source alignment are implemented. See the
+[M52 report](MILESTONE_52_DURABLE_TASK_RECORDS.md).
 
 ### 53 — Local Artifact and Design Review Proposal
 

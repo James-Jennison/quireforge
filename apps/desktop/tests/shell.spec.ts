@@ -8,6 +8,7 @@ import filePreviewFixture from "../fixtures/file-preview.json" with { type: "jso
 import conversationAttachmentFixture from "../fixtures/conversation-attachments.json" with { type: "json" };
 import usageFixture from "../fixtures/codex-usage.json" with { type: "json" };
 import projectStateFixtures from "../fixtures/project-state.json" with { type: "json" };
+import taskCatalogFixture from "../fixtures/task-catalog.json" with { type: "json" };
 
 const nativeIntegrationCatalog = {
   ...integrationCatalogFixture,
@@ -330,6 +331,8 @@ const nativeResponses = {
     pendingAttachment: null,
     diagnosticCode: null,
   },
+  task_catalog_status: taskCatalogFixture,
+  task_plan_select: taskCatalogFixture,
   advisor_snapshot_read: advisorWorkspaceFixture,
   advisor_project_state_snapshot_read: advisorProjectStateFixture,
   advisor_conversation_status: {
@@ -1199,6 +1202,33 @@ test("QuireForge workbench controls remain optional, keyboard-operable, and boun
   await expect(
     page.getByRole("button", { name: "Open terminal dock" }),
   ).toHaveAttribute("aria-expanded", "false");
+  const taskList = page.getByRole("navigation", { name: "Task list" });
+  await expect(taskList).toBeVisible();
+  await expect(
+    taskList.getByRole("button", {
+      name: /Review local task records, active, not archived, 2 plans/u,
+    }),
+  ).toHaveAttribute("aria-current", "page");
+  const primaryPlan = page.getByRole("tab", { name: "Primary plan" });
+  await primaryPlan.focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(
+    page.getByRole("tab", { name: "Alternate plan 1" }),
+  ).toBeFocused();
+  await expect(
+    page.getByText("Plan selected. Transient task-plan state was cleared."),
+  ).toBeVisible();
+
+  const deleteTask = page.getByRole("button", { name: "Delete task" });
+  await deleteTask.click();
+  const confirmation = page.getByRole("dialog", {
+    name: "Delete “Review local task records”?",
+  });
+  await expect(
+    confirmation.getByRole("button", { name: "Cancel", exact: true }),
+  ).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(deleteTask).toBeFocused();
 
   const accessibility = await new AxeBuilder({ page }).analyze();
   expect(accessibility.violations).toEqual([]);

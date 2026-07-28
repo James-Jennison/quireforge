@@ -1,4 +1,4 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 pub const PROJECT_SCHEMA_VERSION: u16 = 1;
 
@@ -174,4 +174,118 @@ pub struct ProjectPreflightSnapshot {
     pub display_path: Option<String>,
     pub state: DirectoryAccessibilityState,
     pub diagnostic_code: Option<ProjectDiagnosticCode>,
+}
+
+pub const TASK_RECORD_SCHEMA_VERSION: u16 = 1;
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum TaskStatus {
+    Active,
+    Paused,
+    Completed,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TaskPlanSummary {
+    pub id: String,
+    pub label: String,
+    pub position: u8,
+    pub body: String,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TaskRecordSummary {
+    pub id: String,
+    pub title: String,
+    pub status: TaskStatus,
+    pub archived: bool,
+    pub selected_plan_id: String,
+    pub plan_count: u8,
+    pub updated_at_ms: i64,
+    pub cleanup_eligible: bool,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TaskCatalogSnapshot {
+    pub schema_version: u16,
+    pub state: TaskCatalogState,
+    pub tasks: Vec<TaskRecordSummary>,
+    pub selected_task: Option<TaskRecordSummary>,
+    pub plans: Vec<TaskPlanSummary>,
+    pub task_count: u16,
+    pub payload_bytes: u64,
+    pub warning: bool,
+    pub diagnostic_code: Option<TaskDiagnosticCode>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum TaskCatalogState {
+    Empty,
+    Ready,
+    Unavailable,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum TaskDiagnosticCode {
+    MetadataUnavailable,
+    InvalidRequest,
+    CapacityReached,
+    TaskNotFound,
+    TaskArchived,
+    PlanNotFound,
+    InvalidStatusTransition,
+    DuplicateId,
+    InvalidStoredValue,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct TaskCatalogListRequest {
+    pub query: Option<String>,
+    pub include_archived: bool,
+    pub selected_task_id: Option<String>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct TaskIdRequest {
+    pub task_id: String,
+}
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct TaskTitleRequest {
+    pub task_id: String,
+    pub title: String,
+}
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct TaskStatusRequest {
+    pub task_id: String,
+    pub status: TaskStatus,
+}
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct PlanCreateRequest {
+    pub task_id: String,
+    pub copy_primary_body: bool,
+}
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct PlanIdRequest {
+    pub task_id: String,
+    pub plan_id: String,
+}
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct PlanEditRequest {
+    pub task_id: String,
+    pub plan_id: String,
+    pub label: String,
+    pub body: String,
 }

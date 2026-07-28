@@ -184,6 +184,17 @@ import {
   type ProjectPreflightSnapshot,
   type ProjectWorkspaceSnapshot,
 } from "./project";
+import {
+  planCreateRequestSchema,
+  planEditRequestSchema,
+  planIdRequestSchema,
+  taskCatalogRequestSchema,
+  taskCatalogSchema,
+  taskIdRequestSchema,
+  taskStatusRequestSchema,
+  taskTitleRequestSchema,
+  type TaskCatalogSnapshot,
+} from "./taskRecords";
 import type {
   RepositoryStateReadRequest,
   RepositoryStateReadSnapshot,
@@ -254,6 +265,17 @@ export const INTEGRATION_MUTATION_PREVIEW_COMMAND =
 export const INTEGRATION_MUTATION_CONFIRM_COMMAND =
   "integration_mutation_confirm";
 export const PROJECT_WORKSPACE_STATUS_COMMAND = "project_workspace_status";
+export const TASK_CATALOG_STATUS_COMMAND = "task_catalog_status";
+export const TASK_CATALOG_CREATE_COMMAND = "task_catalog_create";
+export const TASK_CATALOG_RENAME_COMMAND = "task_catalog_rename";
+export const TASK_CATALOG_STATUS_SET_COMMAND = "task_catalog_status_set";
+export const TASK_CATALOG_ARCHIVE_COMMAND = "task_catalog_archive";
+export const TASK_CATALOG_RESTORE_COMMAND = "task_catalog_restore";
+export const TASK_CATALOG_DELETE_COMMAND = "task_catalog_delete";
+export const TASK_PLAN_CREATE_COMMAND = "task_plan_create";
+export const TASK_PLAN_SELECT_COMMAND = "task_plan_select";
+export const TASK_PLAN_EDIT_COMMAND = "task_plan_edit";
+export const TASK_PLAN_DELETE_COMMAND = "task_plan_delete";
 export const ADVISOR_SNAPSHOT_READ_COMMAND = "advisor_snapshot_read";
 export const ADVISOR_PROJECT_STATE_SNAPSHOT_READ_COMMAND =
   "advisor_project_state_snapshot_read";
@@ -889,6 +911,126 @@ export function loadProjectWorkspace(
     invokeFunction,
   );
 }
+
+export async function loadTaskCatalog(
+  request: unknown,
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<TaskCatalogSnapshot> {
+  return taskCatalogSchema.parse(
+    await invokeFunction(TASK_CATALOG_STATUS_COMMAND, {
+      request: taskCatalogRequestSchema.parse(request),
+    }),
+  );
+}
+
+export async function createTaskRecord(
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<TaskCatalogSnapshot> {
+  return taskCatalogSchema.parse(
+    await invokeFunction(TASK_CATALOG_CREATE_COMMAND),
+  );
+}
+
+async function taskCatalogMutation(
+  command: string,
+  request: unknown,
+  schema: z.ZodType,
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<TaskCatalogSnapshot> {
+  return taskCatalogSchema.parse(
+    await invokeFunction(command, { request: schema.parse(request) }),
+  );
+}
+export const renameTaskRecord = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+) =>
+  taskCatalogMutation(
+    TASK_CATALOG_RENAME_COMMAND,
+    request,
+    taskTitleRequestSchema,
+    invokeFunction,
+  );
+export const setTaskRecordStatus = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+) =>
+  taskCatalogMutation(
+    TASK_CATALOG_STATUS_SET_COMMAND,
+    request,
+    taskStatusRequestSchema,
+    invokeFunction,
+  );
+export const archiveTaskRecord = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+) =>
+  taskCatalogMutation(
+    TASK_CATALOG_ARCHIVE_COMMAND,
+    request,
+    taskIdRequestSchema,
+    invokeFunction,
+  );
+export const restoreTaskRecord = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+) =>
+  taskCatalogMutation(
+    TASK_CATALOG_RESTORE_COMMAND,
+    request,
+    taskIdRequestSchema,
+    invokeFunction,
+  );
+export const deleteTaskRecord = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+) =>
+  taskCatalogMutation(
+    TASK_CATALOG_DELETE_COMMAND,
+    request,
+    taskIdRequestSchema,
+    invokeFunction,
+  );
+export const createTaskPlan = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+) =>
+  taskCatalogMutation(
+    TASK_PLAN_CREATE_COMMAND,
+    request,
+    planCreateRequestSchema,
+    invokeFunction,
+  );
+export const selectTaskPlan = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+) =>
+  taskCatalogMutation(
+    TASK_PLAN_SELECT_COMMAND,
+    request,
+    planIdRequestSchema,
+    invokeFunction,
+  );
+export const editTaskPlan = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+) =>
+  taskCatalogMutation(
+    TASK_PLAN_EDIT_COMMAND,
+    request,
+    planEditRequestSchema,
+    invokeFunction,
+  );
+export const deleteTaskPlan = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+) =>
+  taskCatalogMutation(
+    TASK_PLAN_DELETE_COMMAND,
+    request,
+    planIdRequestSchema,
+    invokeFunction,
+  );
 
 /**
  * Reads only local Advisor reference metadata. This fixed command has no

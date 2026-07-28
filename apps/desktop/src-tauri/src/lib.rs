@@ -94,7 +94,11 @@ use preview::{
     FilePreviewService,
 };
 use project::{
-    types::{ProjectPreflightSnapshot, ProjectWorkspaceSnapshot},
+    types::{
+        PlanCreateRequest, PlanEditRequest, PlanIdRequest, ProjectPreflightSnapshot,
+        ProjectWorkspaceSnapshot, TaskCatalogListRequest, TaskCatalogSnapshot, TaskIdRequest,
+        TaskStatusRequest, TaskTitleRequest,
+    },
     ProjectService,
 };
 use task_handoff::{
@@ -1225,6 +1229,91 @@ fn project_workspace_status(service: tauri::State<'_, ProjectService>) -> Projec
     service.status()
 }
 
+#[tauri::command]
+fn task_catalog_status(
+    request: TaskCatalogListRequest,
+    service: tauri::State<'_, ProjectService>,
+) -> TaskCatalogSnapshot {
+    service.task_catalog(request)
+}
+
+#[tauri::command]
+fn task_catalog_create(service: tauri::State<'_, ProjectService>) -> TaskCatalogSnapshot {
+    service.create_task_record()
+}
+#[tauri::command]
+fn task_catalog_rename(
+    request: TaskTitleRequest,
+    service: tauri::State<'_, ProjectService>,
+) -> TaskCatalogSnapshot {
+    service.task_action(request.task_id, |repo, id| {
+        repo.rename_task(id, &request.title)
+    })
+}
+#[tauri::command]
+fn task_catalog_status_set(
+    request: TaskStatusRequest,
+    service: tauri::State<'_, ProjectService>,
+) -> TaskCatalogSnapshot {
+    service.task_action(request.task_id, |repo, id| {
+        repo.set_task_status(id, request.status)
+    })
+}
+#[tauri::command]
+fn task_catalog_archive(
+    request: TaskIdRequest,
+    service: tauri::State<'_, ProjectService>,
+) -> TaskCatalogSnapshot {
+    service.task_action(request.task_id, |repo, id| repo.archive_task(id, false))
+}
+#[tauri::command]
+fn task_catalog_restore(
+    request: TaskIdRequest,
+    service: tauri::State<'_, ProjectService>,
+) -> TaskCatalogSnapshot {
+    service.task_action(request.task_id, |repo, id| repo.archive_task(id, true))
+}
+#[tauri::command]
+fn task_catalog_delete(
+    request: TaskIdRequest,
+    service: tauri::State<'_, ProjectService>,
+) -> TaskCatalogSnapshot {
+    service.task_action(request.task_id, |repo, id| repo.delete_task(id))
+}
+#[tauri::command]
+fn task_plan_create(
+    request: PlanCreateRequest,
+    service: tauri::State<'_, ProjectService>,
+) -> TaskCatalogSnapshot {
+    service.create_task_plan(request.task_id, request.copy_primary_body)
+}
+#[tauri::command]
+fn task_plan_select(
+    request: PlanIdRequest,
+    service: tauri::State<'_, ProjectService>,
+) -> TaskCatalogSnapshot {
+    let plan = request.plan_id;
+    service.task_action(request.task_id, |repo, task| repo.select_plan(task, &plan))
+}
+#[tauri::command]
+fn task_plan_edit(
+    request: PlanEditRequest,
+    service: tauri::State<'_, ProjectService>,
+) -> TaskCatalogSnapshot {
+    let (plan, label, body) = (request.plan_id, request.label, request.body);
+    service.task_action(request.task_id, |repo, task| {
+        repo.edit_plan(task, &plan, &label, &body)
+    })
+}
+#[tauri::command]
+fn task_plan_delete(
+    request: PlanIdRequest,
+    service: tauri::State<'_, ProjectService>,
+) -> TaskCatalogSnapshot {
+    let plan = request.plan_id;
+    service.task_action(request.task_id, |repo, task| repo.delete_plan(task, &plan))
+}
+
 /// Reads QuireForge-owned Advisor reference metadata only. It accepts no
 /// caller input and cannot read a project, start a turn, or dispatch work.
 #[tauri::command]
@@ -2091,6 +2180,17 @@ pub fn run() {
             codex_usage_status,
             codex_usage_refresh,
             project_workspace_status,
+            task_catalog_status,
+            task_catalog_create,
+            task_catalog_rename,
+            task_catalog_status_set,
+            task_catalog_archive,
+            task_catalog_restore,
+            task_catalog_delete,
+            task_plan_create,
+            task_plan_select,
+            task_plan_edit,
+            task_plan_delete,
             advisor_snapshot_read,
             advisor_project_state_snapshot_read,
             advisor_draft_create,

@@ -292,12 +292,20 @@ and accessible existing review-shell/terminal-dock ergonomics; durable task
 records and alternate plans were not part of M50.
 
 Milestone 51 — **Durable Task Records and Alternate-Plan Proposal** is
-decision-ready at the current documentation checkpoint. It selects a bounded,
+approved. It selects a bounded,
 local-only SQLite task catalogue with separate non-authoritative plan records;
 it retains no conversation, path, attachment, artifact, approval, dispatch,
-execution, terminal, Git, provider, or Advisor state. It does not implement
-M52, alter the `0.1.0-beta.45` package, or create package evidence. See
+execution, terminal, Git, provider, or Advisor state. See
 [Milestone 51](MILESTONE_51_DURABLE_TASK_RECORDS_ALTERNATE_PLAN_PROPOSAL.md).
+
+Milestone 52 — **Durable Task Records and Alternate Plans** is implemented as
+the `0.1.0-beta.46` source candidate; immutable package evidence is pending.
+Migration 11 adds only private local organizational task/plan metadata. The
+compact workbench surface provides bounded search, explicit lifecycle actions,
+capacity/cleanup feedback, and up to four user-controlled plans. Plan switching
+clears the current transient attachment selection and never imports or
+activates authority. See
+[Milestone 52](MILESTONE_52_DURABLE_TASK_RECORDS.md).
 
 Milestone 27 — **Unified Conversation Engine** is complete. It adds strict
 Rust/Zod Chat/Codex capability profiles, a Settings navigation foundation,

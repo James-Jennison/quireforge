@@ -718,6 +718,27 @@ irreversible but does not claim secure physical erasure from journals, media,
 or external backups. This decision adds no runtime persistence until M52
 approval.
 
+## M52 durable-task implementation boundary
+
+M52 stores only bounded user-controlled organizational text and lifecycle
+metadata in the existing private mode-0600 SQLite database. Native UUIDv7
+identity, strict normalization, immediate transactions, foreign keys, closed
+status transitions, selected-plan repair, 200-task/four-plan/per-task/aggregate
+caps, and fail-closed diagnostics mitigate identifier confusion, malformed
+rows, partial mutation, stale selection, and resource exhaustion. Search reads
+only normalized titles and plan labels and returns at most 50 task summaries;
+plan bodies are loaded only for the selected task and are never indexed.
+
+Archive, restore, plan deletion, and task deletion are explicit. Task deletion
+cascades only to its plan rows and cannot delete source files, worktrees, Git
+history, Codex sessions, attachments, artifacts, or package evidence. It is
+application-irreversible but does not claim physical erasure from SQLite
+journals, storage media, or backups. Task data is excluded from support
+bundles and diagnostics. Plan switching clears only the existing transient
+attachment tray selection; every capability-bearing state remains outside the
+task schema and cannot be cloned, inferred, or activated by task status or plan
+selection.
+
 - OS keyring use for app-owned non-Codex secrets, if any are ever required.
 - Package signing identity and key custody.
 - Update channel design and rollback.

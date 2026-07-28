@@ -63,6 +63,9 @@ implementation position and [Roadmap](ROADMAP.md) for approved sequencing.
   — completed native-memory-only generated-artifact registry and explicit no-replace Save evidence.
 - [Milestone 49 — QuireForge Review Panes](MILESTONE_49_REVIEW_PANES.md)
   — closed, independently lazy inspection panes over existing typed evidence.
+- [Milestone 52 — Durable Task Records and Alternate Plans](MILESTONE_52_DURABLE_TASK_RECORDS.md)
+  — bounded native-owned local organizational records and non-authoritative
+  alternate plans.
 - [Post-M41 packaging-efficiency checkpoint](PACKAGING_EFFICIENCY_CHECKPOINT.md)
   — checksum-verified immutable guest-input caching within the authoritative
   Ubuntu 22.04 release workflow.

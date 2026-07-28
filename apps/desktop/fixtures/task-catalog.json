@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "state": "ready",
+  "tasks": [
+    {
+      "id": "018f0000-0000-7000-8000-000000000001",
+      "title": "Review local task records",
+      "status": "active",
+      "archived": false,
+      "selectedPlanId": "018f0000-0000-7000-8000-000000000002",
+      "planCount": 2,
+      "updatedAtMs": 1721000000000,
+      "cleanupEligible": false
+    }
+  ],
+  "selectedTask": {
+    "id": "018f0000-0000-7000-8000-000000000001",
+    "title": "Review local task records",
+    "status": "active",
+    "archived": false,
+    "selectedPlanId": "018f0000-0000-7000-8000-000000000002",
+    "planCount": 2,
+    "updatedAtMs": 1721000000000,
+    "cleanupEligible": false
+  },
+  "plans": [
+    {
+      "id": "018f0000-0000-7000-8000-000000000002",
+      "label": "Primary plan",
+      "position": 0,
+      "body": "Inspect the bounded local task-record contract."
+    },
+    {
+      "id": "018f0000-0000-7000-8000-000000000003",
+      "label": "Alternate plan 1",
+      "position": 1,
+      "body": "Verify authority isolation and explicit lifecycle actions."
+    }
+  ],
+  "taskCount": 1,
+  "payloadBytes": 512,
+  "warning": false,
+  "diagnosticCode": null
+}
