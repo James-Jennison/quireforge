@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { basename, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import limits from "./bundle-budget.json" with { type: "json" };
 
 const appRoot = fileURLToPath(new URL("..", import.meta.url));
 const distRoot = join(appRoot, "dist");
@@ -31,48 +32,29 @@ const stylesheetBytes = stylesheets.reduce(
   0,
 );
 
-const limits = {
-  entry: 256 * 1024,
-  // The M40–M43 task/workspace UI construction period retains a bounded
-  // application shell. This is a temporary per-chunk ceiling beneath the
-  // approved 1.25 MiB total-JavaScript ceiling and must be reconciled before
-  // product readiness; it is not a performance improvement claim.
-  app: 320 * 1024,
-  // M27's native Chat/Codex capability contracts, the eight closed M26
-  // palettes, M28's explicitly confirmed safe snapshot boundary, and M29's
-  // bounded managed Advisor conversation, its digest-bound approval controller,
-  // one-time B2 handoff, bounded B3 status return, the managed-initializer
-  // compatibility hotfix, M33's bounded PDF projection contract, and the
-  // Temporary UI-construction ceilings through the Advisor/QuireForge workspace
-  // redesign. They remain enforced and are reconciled to strict evidence-based
-  // permanent targets before product readiness.
-  javascript: 1280 * 1024,
-  stylesheets: 134 * 1024,
-};
-
 const failures = [];
-if (entryBytes > limits.entry) {
+if (entryBytes > limits.entryBytes) {
   failures.push(
-    `initial JavaScript is ${entryBytes} bytes; limit is ${limits.entry}`,
+    `initial JavaScript is ${entryBytes} bytes; limit is ${limits.entryBytes}`,
   );
 }
 if (appBytes === null) {
   failures.push(
     "application shell must remain outside the startup entry for native WebKit rendering",
   );
-} else if (appBytes > limits.app) {
+} else if (appBytes > limits.appShellBytes) {
   failures.push(
-    `application shell is ${appBytes} bytes; limit is ${limits.app}`,
+    `application shell is ${appBytes} bytes; limit is ${limits.appShellBytes}`,
   );
 }
-if (javascriptBytes > limits.javascript) {
+if (javascriptBytes > limits.totalJavaScriptBytes) {
   failures.push(
-    `total JavaScript is ${javascriptBytes} bytes; limit is ${limits.javascript}`,
+    `total JavaScript is ${javascriptBytes} bytes; limit is ${limits.totalJavaScriptBytes}`,
   );
 }
-if (stylesheetBytes > limits.stylesheets) {
+if (stylesheetBytes > limits.stylesheetsBytes) {
   failures.push(
-    `total CSS is ${stylesheetBytes} bytes; limit is ${limits.stylesheets}`,
+    `total CSS is ${stylesheetBytes} bytes; limit is ${limits.stylesheetsBytes}`,
   );
 }
 if (!javascript.some((name) => name.startsWith("TerminalWorkspace-"))) {

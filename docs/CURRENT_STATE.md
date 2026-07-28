@@ -237,6 +237,15 @@ launch. It adds only a user-approved, one-use transient brief/receipt envelope;
 it does not transfer transcripts, attachments, project, terminal, Git,
 approval, dispatch, execution, path, or authority state.
 
+The post-beta.38 **Temporary Bundle Construction-Envelope Checkpoint** is the
+next packaging-only candidate: `0.1.0-beta.39`. It raises only the temporary
+application-shell ceiling from 320 KiB to 384 KiB after measuring the 309,489
+byte beta.38 shell; startup-entry, total-JavaScript, and CSS ceilings remain
+unchanged. It covers only the approved M44–M50 UI-construction period and does
+not add a product capability, dependency, authority, transport, provider,
+connector, release, or deployment behavior. The existing post-workbench
+permanent-budget reconciliation remains required.
+
 Milestone 27 — **Unified Conversation Engine** is complete. It adds strict
 Rust/Zod Chat/Codex capability profiles, a Settings navigation foundation,
 bounded mode-aware metadata, a fixed no-project native Chat bridge, and an
