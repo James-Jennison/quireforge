@@ -29,4 +29,4 @@ tar --extract --gzip --file "$work/firecracker.tgz" --directory "$work/firecrack
 release_dir="$work/firecracker/release-v${FIRECRACKER_VERSION}-x86_64"
 install -m 0755 "$release_dir/firecracker-v${FIRECRACKER_VERSION}-x86_64" "$output/firecracker"
 install -m 0755 "$release_dir/jailer-v${FIRECRACKER_VERSION}-x86_64" "$output/jailer"
-sha256sum "$output"/* > "$output/SHA256SUMS"
+(cd "$output" && sha256sum firecracker jailer vmlinux initramfs.cpio.gz) > "$output/SHA256SUMS"
