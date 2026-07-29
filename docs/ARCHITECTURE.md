@@ -1151,6 +1151,27 @@ context. Before selecting another plan, the application clears any current
 conversation-attachment tray through its existing bounded native cancellation
 command. A failed clear leaves the existing plan selected.
 
+### M53 approved M54 local-review proposal
+
+M53 is a proposal-only decision for the future M54
+`local-review-collection-v1` feature; it is not implemented in the current
+application. M54 will add one native-owned `LocalReviewService` and a bounded
+migration in the existing private mode-0600 `metadata.sqlite3`, with strict
+path-free frontend projections. Immutable task context and optional selected-or-
+alternate-plan context do not confer retention, approval, dispatch, execution,
+or promotion authority. The closed payload set is normalized UTF-8 text,
+validated static PNG/JPEG mockups, and copied typed evidence envelopes.
+
+M54 will reuse the M48 generated-artifact boundary only through explicit
+digest-bound copy into M48; review promotion is separate from M48 Save and from
+approval, dispatch, and execution. It will reuse M49/M50’s existing lazy
+ReviewPanes shell as a seventh `local-review` tab, with no second panel or
+layout-persisted review data. The proposal permits inert preview, local item-
+level notes, and non-Git same-format pairwise text comparison; it grants no
+filesystem traversal, shell, terminal, Git, network, provider, connector,
+browser, publishing, or deployment authority. The complete approved contract
+and M54 criteria are in [Milestone 53](MILESTONE_53_LOCAL_ARTIFACT_DESIGN_REVIEW_PROPOSAL.md).
+
 - Adapter contracts from generated schemas and sanitized fixtures.
 - In-memory/mock process transport for event streams and approvals.
 - Temporary Git repositories/worktrees.

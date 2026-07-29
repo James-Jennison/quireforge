@@ -739,6 +739,30 @@ attachment tray selection; every capability-bearing state remains outside the
 task schema and cannot be cloned, inferred, or activated by task status or plan
 selection.
 
+## M53 approved M54 local-review boundary
+
+The following are required M54 controls from M53’s approved proposal; they are
+not claims about the current beta.46 runtime. A future native-owned review
+service must persist only bounded path-free records in the existing private
+mode-0600 SQLite database. UUIDv7 references, SHA-256 binding, strict
+normalization, immediate transactions, stale-write rejection, revalidation on
+restart, bounded quotas, and closed diagnostics address forged task/plan links,
+stale references, digest confusion, corrupt rows, quota exhaustion, and
+crash/restart behavior. Task/plan context does not grant retention, approval,
+dispatch, execution, or promotion authority.
+
+Required M54 controls reject arbitrary paths and directory traversal; never
+project paths to the frontend; validate static PNG/JPEG bytes and pixel bounds;
+reject SVG/HTML/PDF and arbitrary binary; render all previews inertly; and
+prohibit remote resource loading, links, scripts, iframes, browser automation,
+providers, connectors, Git, terminal/shell, dispatch, and execution. Activity,
+errors, and logs must redact paths, content, command output, credentials, and
+approval bodies. Annotation is bounded local metadata; comparison is native
+non-Git read-only computation. Promotion is a five-minute, explicit,
+digest-bound copy into M48—not M48 Save, approval, execution, publishing, or
+deployment—and expires across restart. Full controls and residual risks are
+defined in [Milestone 53](MILESTONE_53_LOCAL_ARTIFACT_DESIGN_REVIEW_PROPOSAL.md).
+
 - OS keyring use for app-owned non-Codex secrets, if any are ever required.
 - Package signing identity and key custody.
 - Update channel design and rollback.

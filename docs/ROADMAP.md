@@ -1330,8 +1330,11 @@ selects task-scoped private-SQLite collections of bounded copied text, static
 image mockups, and typed evidence snapshots. **M53-C interaction contract:**
 [Local review interaction contract](MILESTONE_53C_REVIEW_INTERACTION_CONTRACT.md)
 selects the bounded Review-tab interaction, accessibility, state presentation,
-and deterministic M54 test design. M53-D remains required before M54 can
-begin.
+and deterministic M54 test design. **Complete:** [M53 local artifact and
+design review proposal](MILESTONE_53_LOCAL_ARTIFACT_DESIGN_REVIEW_PROPOSAL.md)
+reconciles all four M53 phases and approves the bounded M54 target
+`0.1.0-beta.47` / `0.1.0~beta.47`. M54 is not started and requires its single
+explicit approval gate.
 
 ### 54 — Local Artifact and Design Review
 
