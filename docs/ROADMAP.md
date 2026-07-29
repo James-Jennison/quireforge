@@ -1325,6 +1325,11 @@ repository scraping, automatic execution, external publishing, deployment,
 and direct third-party connectors, including Figma. This is a decision-only
 gate with no package change.
 
+**M53-B core contract:** [Local review core contract](MILESTONE_53B_CORE_REVIEW_CONTRACT.md)
+selects task-scoped private-SQLite collections of bounded copied text, static
+image mockups, and typed evidence snapshots; M53-C and M53-D remain required
+before M54 can begin.
+
 ### 54 — Local Artifact and Design Review
 
 Only after M53 approval, implement the approved local review surfaces by
