@@ -1344,9 +1344,12 @@ Artifact lifecycle, selection, comparison, accessibility, and no-path/no-
 persistence boundaries must be deterministic. The provisional package
 candidate is `0.1.0-beta.47`.
 
-**In progress:** M54 is explicitly approved and has begun locally. It is not
-complete until its full source, package, and installed-host validation evidence
-is recorded; no release or deployment is authorized.
+**In progress:** M54 is explicitly approved. Its clean beta.47 Debian and
+sandbox-worker candidate passed source, pinned-container lifecycle/smoke,
+provenance, checksum, and ABI validation (`GLIBC_2.34` within the Ubuntu 22.04
+`GLIBC_2.35` ceiling). It is not complete until separately approval-gated
+restricted installed-host evidence is recorded; no release or deployment is
+authorized.
 
 ### 55 — Research Reports and Inspectable Task Templates Proposal
 
