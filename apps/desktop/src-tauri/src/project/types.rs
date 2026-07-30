@@ -351,7 +351,7 @@ pub struct LocalReviewSafePreviewMetadataDetails {
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
-#[expect(
+#[allow(
     dead_code,
     reason = "The closed evidence vocabulary is intentionally defined before a native source-specific capture claim exists."
 )]
@@ -362,7 +362,7 @@ pub enum LocalReviewEvidenceWorkspaceState {
     Unavailable,
 }
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-#[expect(
+#[allow(
     dead_code,
     reason = "Git-status evidence is reserved by the closed source contract and has no capture command in this slice."
 )]
@@ -385,7 +385,7 @@ pub struct LocalReviewGitStatusDiffSummaryDetails {
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-#[expect(
+#[allow(
     dead_code,
     reason = "Activity evidence is reserved by the closed source contract and has no capture command in this slice."
 )]
@@ -403,7 +403,7 @@ pub struct LocalReviewActivityPresentationDetails {
     pub truncated: bool,
 }
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
-#[expect(
+#[allow(
     dead_code,
     reason = "The activity scope is reserved together with its closed evidence envelope."
 )]
@@ -413,7 +413,7 @@ pub enum LocalReviewActivityScope {
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
-#[expect(
+#[allow(
     dead_code,
     reason = "Approval evidence is reserved by the closed source contract and remains unavailable to review capture."
 )]
@@ -427,7 +427,7 @@ pub enum LocalReviewEvidenceApprovalState {
     Unavailable,
 }
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-#[expect(
+#[allow(
     dead_code,
     reason = "Approval presentation is reserved by the closed source contract and has no capture command in this slice."
 )]
@@ -449,7 +449,7 @@ pub enum LocalReviewEvidenceCheckState {
     Unavailable,
 }
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-#[expect(
+#[allow(
     dead_code,
     reason = "Package-manifest evidence is reserved by the closed source contract and has no capture command in this slice."
 )]
