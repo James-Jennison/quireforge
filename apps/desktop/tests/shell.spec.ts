@@ -798,6 +798,316 @@ const approvedConversation = {
   ],
 } as const;
 
+const localReviewBrowserId = "018f0000-0000-7000-8000-000000000101";
+const localReviewBrowserItemId = "018f0000-0000-7000-8000-000000000102";
+const localReviewBrowserSha = "a".repeat(64);
+const localReviewBrowserSnapshot = {
+  schemaVersion: 1,
+  collections: [
+    {
+      collectionId: localReviewBrowserId,
+      taskId: localReviewBrowserId,
+      planId: null,
+      title: "Browser review",
+      state: "active",
+      itemCount: 1,
+      payloadBytes: 12,
+      updatedAtMs: 1,
+      warning: false,
+      annotationCountWarning: false,
+      annotationByteWarning: false,
+      comparisonCountWarning: false,
+    },
+  ],
+  selectedCollection: {
+    collectionId: localReviewBrowserId,
+    taskId: localReviewBrowserId,
+    planId: null,
+    title: "Browser review",
+    state: "active",
+    itemCount: 1,
+    payloadBytes: 12,
+    updatedAtMs: 1,
+    warning: false,
+    annotationCountWarning: false,
+    annotationByteWarning: false,
+    comparisonCountWarning: false,
+  },
+  items: [
+    {
+      itemId: localReviewBrowserItemId,
+      class: "text",
+      textFormat: "plain",
+      sourceKind: "user-authored-text",
+      state: "ready",
+      title: "Browser text",
+      mimeType: "text/plain",
+      width: null,
+      height: null,
+      byteSize: 12,
+      lineCount: 1,
+      sha256: localReviewBrowserSha,
+      createdAtMs: 1,
+      annotations: [],
+    },
+  ],
+  comparisons: [],
+  collectionCount: 1,
+  payloadBytes: 12,
+  warning: false,
+  diagnosticCode: null,
+} as const;
+
+test("Local Review uses the real shell with a deterministic path-free native fixture", async ({
+  page,
+}) => {
+  const requests: string[] = [];
+  page.on("request", (request) => requests.push(request.url()));
+  await installNativeFixture(page, {
+    ...nativeResponses,
+    local_review_status: localReviewBrowserSnapshot,
+  });
+  await page.goto("/");
+  await openWorkspace(page, "New task");
+  await page.getByRole("button", { name: "Review panes" }).click();
+  const reviewTab = page.getByRole("tab", { name: "Review", exact: true });
+  await expect(reviewTab).toBeVisible();
+  await reviewTab.click();
+  await expect(
+    page.getByRole("heading", { name: "Collections" }),
+  ).toBeVisible();
+  const compactReview = await page.evaluate(
+    () => window.innerWidth <= 760 || window.innerHeight <= 520,
+  );
+  if (compactReview) {
+    await expect(
+      page.getByRole("button", { name: /Browser review — active/ }),
+    ).toBeVisible();
+  } else {
+    await expect(
+      page.getByRole("button", { name: /Browser text/ }),
+    ).toBeVisible();
+  }
+  await expect(page.locator('input[type="file"]')).toHaveCount(0);
+  if (compactReview) {
+    await expect(
+      page.getByRole("separator", { name: "Resize task evidence" }),
+    ).toHaveCount(0);
+  } else {
+    await expect(
+      page.getByRole("separator", { name: "Resize task evidence" }),
+    ).toBeVisible();
+  }
+  expect(
+    requests.every((url) => url.startsWith("http://127.0.0.1:1420/")),
+  ).toBe(true);
+});
+
+test("Local Review uses the compact overlay in a narrow desktop window", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 720, height: 900 });
+  await installNativeFixture(page, {
+    ...nativeResponses,
+    local_review_status: localReviewBrowserSnapshot,
+  });
+  await page.goto("/");
+  expect(await page.evaluate(() => window.innerWidth)).toBe(720);
+  await page.getByRole("button", { name: "Open navigation" }).click();
+  await page.getByRole("button", { name: "QuireForge", exact: true }).click();
+  const quireForgeWorkspace = page.getByRole("menuitemradio", {
+    name: /QuireForge/u,
+  });
+  await expect(quireForgeWorkspace).toHaveAttribute("aria-checked", "true");
+  await quireForgeWorkspace.click();
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".app-shell--mobile-navigation-open")).toHaveCount(
+    0,
+  );
+  await openWorkspace(page, "New task");
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".app-shell--mobile-navigation-open")).toHaveCount(
+    0,
+  );
+  await expect(
+    page.getByRole("button", { name: "Review panes" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Review panes" }).click();
+  await page.getByRole("tab", { name: "Review", exact: true }).click();
+  const collection = page.getByRole("button", {
+    name: /Browser review — active/,
+  });
+  await collection.click();
+  await expect(
+    page.getByRole("button", { name: "Back to collections" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("separator", { name: "Resize task evidence" }),
+  ).toHaveCount(0);
+  await page.getByRole("button", { name: "Back to collections" }).click();
+  await expect(collection).toBeFocused();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+});
+
+test("Local Review remains reachable in a short desktop window", async ({
+  page,
+}) => {
+  const requests: string[] = [];
+  page.on("request", (request) => requests.push(request.url()));
+  await page.setViewportSize({ width: 1280, height: 500 });
+  await installNativeFixture(page, {
+    ...nativeResponses,
+    local_review_status: localReviewBrowserSnapshot,
+  });
+  await page.goto("/");
+  expect(await page.evaluate(() => window.innerHeight)).toBe(500);
+  await openWorkspace(page, "New task");
+  const reviewTrigger = page.getByRole("button", { name: "Review panes" });
+  await expect(reviewTrigger).toBeVisible();
+  await reviewTrigger.click();
+  const reviewTab = page.getByRole("tab", { name: "Review", exact: true });
+  await reviewTab.click();
+  await expect(reviewTab).toHaveAttribute("aria-selected", "true");
+  await expect(
+    page.getByRole("heading", { name: "Collections" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("separator", { name: "Resize task evidence" }),
+  ).toHaveCount(0);
+  const reviewShell = page.getByRole("complementary", {
+    name: "Task evidence",
+  });
+  const shellBox = await reviewShell.boundingBox();
+  expect(shellBox).not.toBeNull();
+  expect(shellBox!.y).toBeGreaterThanOrEqual(0);
+  expect(shellBox!.y + shellBox!.height).toBeLessThanOrEqual(500);
+
+  const collection = page.getByRole("button", {
+    name: /Browser review — active/,
+  });
+  await collection.click();
+  await expect(
+    page.getByRole("button", { name: "Back to collections" }),
+  ).toBeVisible();
+  const items = page.getByRole("list", { name: "Review items" });
+  await expect(items).toBeVisible();
+  await expect(items).toHaveCSS("overflow-y", "auto");
+  const item = page.getByRole("button", { name: /Browser text/ });
+  await item.click();
+  await expect(
+    page.getByRole("button", { name: "Back to items" }),
+  ).toBeVisible();
+  await expect(page.getByRole("region", { name: "Annotations" })).toBeVisible();
+  await page.getByRole("button", { name: "Back to items" }).click();
+  await expect(item).toBeFocused();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  await expect(page.locator('input[type="file"]')).toHaveCount(0);
+  expect(
+    requests.every((url) => url.startsWith("http://127.0.0.1:1420/")),
+  ).toBe(true);
+});
+
+test("Local Review remains usable at effective 200% desktop reflow", async ({
+  page,
+}) => {
+  // 640 × 450 CSS pixels models a 1280 × 900 desktop window at 200% layout
+  // scale. This remains ordinary desktop Chromium; it is not device emulation.
+  const requests: string[] = [];
+  page.on("request", (request) => requests.push(request.url()));
+  await page.setViewportSize({ width: 640, height: 450 });
+  await installNativeFixture(page, {
+    ...nativeResponses,
+    local_review_status: localReviewBrowserSnapshot,
+  });
+  await page.goto("/");
+  expect(
+    await page.evaluate(() => [window.innerWidth, window.innerHeight]),
+  ).toEqual([640, 450]);
+
+  await page.getByRole("button", { name: "Open navigation" }).click();
+  await page.getByRole("button", { name: "QuireForge", exact: true }).click();
+  const quireForgeWorkspace = page.getByRole("menuitemradio", {
+    name: /QuireForge/u,
+  });
+  await expect(quireForgeWorkspace).toHaveAttribute("aria-checked", "true");
+  await quireForgeWorkspace.click();
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".app-shell--mobile-navigation-open")).toHaveCount(
+    0,
+  );
+  await openWorkspace(page, "New task");
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".app-shell--mobile-navigation-open")).toHaveCount(
+    0,
+  );
+
+  const reviewTrigger = page.getByRole("button", { name: "Review panes" });
+  await expect(reviewTrigger).toBeVisible();
+  await reviewTrigger.click();
+  const reviewTab = page.getByRole("tab", { name: "Review", exact: true });
+  await reviewTab.click();
+  await expect(reviewTab).toHaveAttribute("aria-selected", "true");
+  await expect(
+    page.getByRole("heading", { name: "Collections" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("separator", { name: "Resize task evidence" }),
+  ).toHaveCount(0);
+
+  const reviewShell = page.getByRole("complementary", {
+    name: "Task evidence",
+  });
+  const shellBox = await reviewShell.boundingBox();
+  expect(shellBox).not.toBeNull();
+  expect(shellBox!.x).toBeGreaterThanOrEqual(0);
+  expect(shellBox!.y).toBeGreaterThanOrEqual(0);
+  expect(shellBox!.x + shellBox!.width).toBeLessThanOrEqual(640);
+  expect(shellBox!.y + shellBox!.height).toBeLessThanOrEqual(450);
+
+  const collection = page.getByRole("button", {
+    name: /Browser review — active/,
+  });
+  await collection.click();
+  await expect(
+    page.getByRole("button", { name: "Back to collections" }),
+  ).toBeVisible();
+  const items = page.getByRole("list", { name: "Review items" });
+  await expect(items).toBeVisible();
+  await expect(items).toHaveCSS("overflow-y", "auto");
+  const item = page.getByRole("button", { name: /Browser text/ });
+  await item.click();
+  const backToItems = page.getByRole("button", { name: "Back to items" });
+  await expect(backToItems).toBeVisible();
+  await expect(page.getByRole("region", { name: "Annotations" })).toBeVisible();
+  const backBox = await backToItems.boundingBox();
+  expect(backBox).not.toBeNull();
+  expect(backBox!.y + backBox!.height).toBeLessThanOrEqual(450);
+  await backToItems.click();
+  await expect(item).toBeFocused();
+
+  expect(
+    await page.evaluate(() => {
+      const shell = document.querySelector<HTMLElement>(".app-shell");
+      return (
+        document.documentElement.scrollWidth <= window.innerWidth &&
+        (!shell || shell.scrollWidth <= shell.clientWidth)
+      );
+    }),
+  ).toBe(true);
+  await expect(page.locator('input[type="file"]')).toHaveCount(0);
+  expect(
+    requests.every((url) => url.startsWith("http://127.0.0.1:1420/")),
+  ).toBe(true);
+});
+
 test("desktop preview renders the honest semantic shell", async ({ page }) => {
   const response = await page.goto("/");
 

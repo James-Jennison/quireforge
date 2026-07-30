@@ -35,6 +35,25 @@ describe("generated artifact bridge contract", () => {
       }),
     ).toThrow();
   });
+  it("parses explicit review promotion as a closed provenance kind", () => {
+    expect(() =>
+      generatedArtifactManifestSchema.parse({
+        schemaVersion: 1,
+        artifactId: id,
+        class: "text",
+        mimeType: "text/plain; charset=utf-8",
+        sourceKind: "explicit-review-promotion",
+        displayLabel: "Review text",
+        suggestedFilename: "review-promotion.txt",
+        byteSize: 1,
+        sha256: hash,
+        createdAt: 0,
+        expiresAt: 1,
+        state: "ready",
+        disposal: "transient-memory-one-successful-save",
+      }),
+    ).not.toThrow();
+  });
   it("requires UUID/hash claims and rejects path-bearing manifests", () => {
     expect(() =>
       generatedArtifactClaimRequestSchema.parse({

@@ -3998,7 +3998,7 @@ export default function App({
             {conversationMode === "codex" &&
               workspaceLocation.route === "conversation" && (
                 <button
-                  className="topbar-button"
+                  className="topbar-button topbar-button--review-panes"
                   type="button"
                   aria-expanded={reviewPanesOpen}
                   aria-controls="review-panes-title"
@@ -4475,6 +4475,7 @@ export default function App({
                   filePreview={filePreview}
                   conversation={conversation}
                   conversationEvents={conversationEvents}
+                  taskCatalog={taskCatalog}
                   loadGitStatus={loadGitStatusTask}
                   loadGitDiff={loadGitDiffTask}
                   loadArtifacts={loadAdvisorGeneratedArtifacts}

@@ -28,6 +28,7 @@ const reviewPaneIds = new Set<ReviewPaneId>([
   "preview",
   "activity",
   "approval",
+  "review",
 ]);
 
 function validDimension(

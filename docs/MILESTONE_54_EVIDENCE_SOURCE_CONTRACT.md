@@ -1,0 +1,49 @@
+# M54 closed evidence-source contract
+
+This implementation addendum ratifies the `evidence` source set selected by
+[M53-B](MILESTONE_53B_CORE_REVIEW_CONTRACT.md). It does not authorize capture
+from a path, URL, raw protocol, command output, approval body, Git object, or
+live reference.
+
+## Envelope
+
+Every copied `EvidenceEnvelopeV1` is canonical UTF-8 JSON with this field
+order: `schemaVersion`, `source`, `sourceSchemaVersion`, `title`, `summary`,
+`details`. It has schema versions `1`, normalized LF title/summary, no unknown
+fields, and a SHA-256 over the exact bytes. The item is UUIDv7,
+`typed-evidence-snapshot`, and is bound only to its target collection.
+
+The envelope ceiling is 16 KiB (warning at 12 KiB); collections permit six
+evidence items (warning at five), subject to the existing collection/global
+payload limits. Labels remain 120 code points / 480 bytes. There is no separate
+evidence line or code-point allowance beyond the canonical envelope ceiling.
+
+Creation is deliberate and validates the active collection/task/observed-plan
+binding. It never resumes a collection. Copied evidence remains readable as
+read-only recovery in frozen/orphaned collections; malformed, unavailable, or
+digest-mismatched stored evidence withholds content with a closed diagnostic.
+Preview is inert bounded copied-envelope fields only.
+
+## Closed sources and details
+
+| Source | Details | Association rule |
+| --- | --- | --- |
+| `manual-validation-summary` | `validationState`: `passed`, `failed`, `mixed`, `not-run` | User supplies only the bounded explanation; target collection binding applies. |
+| `m48-generated-artifact-metadata` | `artifactState`, `artifactKind`, `format`, `byteLength`, `truncated`, `manifestSha256` | M48 is source-unbound; capture binds only the target collection and never claims task origin. |
+| `safe-preview-metadata` | `previewState`, `kind`, `rendering`, `mediaType`, `byteLength`, `truncated`, nullable `widthPx`/`heightPx` | Source-unbound unless native preview has a task binding; otherwise target collection only. |
+| `git-status-diff-summary` | aggregate workspace/change/addition/deletion/diff availability values | Native project/workspace must match the target task project, or capture is unavailable. |
+| `activity-presentation` | `scope: current-session`, bounded local-review aggregate counters, `truncated` | Only activity already owned by the target collection/task is eligible. |
+| `approval-presentation` | `approvalState`, `requestPresent`, `decisionPresent`, `dispatchPresent`, `executionPresent` | Native presentation must already match target task/plan context, or capture is unavailable. |
+| `package-manifest-summary` | application/Debian version, closed validation states, artifact count, completion | Native project identity must match the target task project, or capture is unavailable. |
+
+All numeric detail values are bounded non-negative integers. No details object
+may contain a filename, path, URL, source commit/object ID, raw diff, command,
+command output, approval body/action ID, receipt, remote handle, file bytes, or
+authority. Approval presentation is descriptive only and cannot approve,
+dispatch, or execute.
+
+`manual-validation-summary`, `m48-generated-artifact-metadata`, and
+`safe-preview-metadata` capture are implemented through fixed native,
+redacted source-specific claims. The remaining listed sources have no capture
+command in this slice. Frontend snapshots and generic filesystem, Git, or
+approval inputs are not evidence APIs.

@@ -1,8 +1,16 @@
 # Changelog
 
-## Unreleased — 0.1.0-beta.46
+## Unreleased — 0.1.0-beta.47
 
 ### Added
+
+- Begin the approved M54 local-review implementation: native-owned, bounded
+  task-scoped SQLite collections for copied text, static image mockups, and
+  typed evidence; inert previews; local annotations; non-Git text comparison;
+  and explicit, digest-bound one-time promotion into the existing transient
+  M48 artifact registry. Review remains unable to access paths, arbitrary
+  files, network, Git, terminal, browser, provider, approval, dispatch,
+  execution, publishing, or deployment authority.
 
 - Implement M52's native-owned local task catalogue with migration 11, opaque
   UUIDv7 task and plan identities, explicit status/archive/delete lifecycle,

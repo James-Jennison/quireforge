@@ -316,11 +316,12 @@ SQLite review collections with path-free copied text, validated static image
 mockups, typed evidence envelopes, inert preview, local item-level notes,
 non-Git text comparison, and explicit digest-bound M48 promotion. Review does
 not confer filesystem, network, Git, terminal, provider, approval, dispatch,
-execution, publishing, or deployment authority. M54 is next, is not started,
-and requires explicit approval; its target is `0.1.0-beta.47` /
-`0.1.0~beta.47`, while the current implemented and validated package remains
-`0.1.0-beta.46` / `0.1.0~beta.46`. No M53 package, release, publication, or
-deployment occurred. See [Milestone 53](MILESTONE_53_LOCAL_ARTIFACT_DESIGN_REVIEW_PROPOSAL.md).
+execution, publishing, or deployment authority. M54 is explicitly approved
+and in progress locally, targeting `0.1.0-beta.47` / `0.1.0~beta.47`; it has
+not yet produced package or installed-host evidence. The last implemented and
+validated package remains `0.1.0-beta.46` / `0.1.0~beta.46`. No M53 package,
+release, publication, or deployment occurred. See
+[Milestone 53](MILESTONE_53_LOCAL_ARTIFACT_DESIGN_REVIEW_PROPOSAL.md).
 
 Milestone 27 — **Unified Conversation Engine** is complete. It adds strict
 Rust/Zod Chat/Codex capability profiles, a Settings navigation foundation,

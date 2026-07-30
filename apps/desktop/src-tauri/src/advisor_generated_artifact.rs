@@ -51,6 +51,7 @@ impl GeneratedArtifactClass {
 pub enum GeneratedArtifactSourceKind {
     VisibleCompletedReply,
     VisibleFencedBlock,
+    ExplicitReviewPromotion,
 }
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "kebab-case")]
@@ -157,6 +158,24 @@ pub struct SaveReservation {
     suggested_filename: String,
     bytes: Vec<u8>,
 }
+/// A verified, in-memory M48 artifact copy source. This is deliberately not
+/// serializable: Local Review receives only native-owned canonical bytes.
+pub(crate) struct LocalReviewArtifactCopySource {
+    pub artifact_id: String,
+    pub class: GeneratedArtifactClass,
+    pub display_label: String,
+    pub sha256: String,
+    pub bytes: Vec<u8>,
+}
+/// A verified, metadata-only M48 source for Local Review evidence. It omits
+/// content, filenames, paths, and save information by construction.
+pub(crate) struct LocalReviewArtifactMetadataSource {
+    pub class: GeneratedArtifactClass,
+    pub display_label: String,
+    pub byte_size: u64,
+    pub sha256: String,
+    pub state: GeneratedArtifactState,
+}
 pub struct AdvisorGeneratedArtifactService {
     state: Mutex<VecDeque<Entry>>,
     epoch: Instant,
@@ -244,6 +263,75 @@ impl AdvisorGeneratedArtifactService {
                 sha256: entry.sha256.clone(),
                 text: String::from_utf8_lossy(&entry.bytes).into_owned(),
             })
+    }
+    pub(crate) fn local_review_copy_source(
+        &self,
+        claim: &GeneratedArtifactClaimRequest,
+    ) -> Result<LocalReviewArtifactCopySource, GeneratedArtifactDiagnosticCode> {
+        if !valid_uuid_v7(&claim.artifact_id) || !valid_hash(&claim.manifest_sha256) {
+            return Err(GeneratedArtifactDiagnosticCode::InvalidRequest);
+        }
+        let mut state = self
+            .state
+            .lock()
+            .map_err(|_| GeneratedArtifactDiagnosticCode::SaveFailed)?;
+        self.expire_locked(&mut state);
+        let entry = state
+            .iter()
+            .find(|item| item.manifest.artifact_id == claim.artifact_id)
+            .ok_or(GeneratedArtifactDiagnosticCode::ArtifactNotFound)?;
+        if entry.manifest.sha256 != claim.manifest_sha256
+            || entry.manifest.state != GeneratedArtifactState::Ready
+            || entry.saving
+            || entry.manifest.byte_size != entry.bytes.len() as u64
+            || digest(&entry.bytes) != entry.manifest.sha256
+        {
+            return Err(GeneratedArtifactDiagnosticCode::ManifestMismatch);
+        }
+        validate_content(
+            entry.manifest.class,
+            std::str::from_utf8(&entry.bytes)
+                .map_err(|_| GeneratedArtifactDiagnosticCode::InvalidContent)?,
+        )?;
+        Ok(LocalReviewArtifactCopySource {
+            artifact_id: entry.manifest.artifact_id.clone(),
+            class: entry.manifest.class,
+            display_label: entry.manifest.display_label.clone(),
+            sha256: entry.manifest.sha256.clone(),
+            bytes: entry.bytes.clone(),
+        })
+    }
+    pub(crate) fn local_review_metadata_source(
+        &self,
+        claim: &GeneratedArtifactClaimRequest,
+    ) -> Result<LocalReviewArtifactMetadataSource, GeneratedArtifactDiagnosticCode> {
+        if !valid_uuid_v7(&claim.artifact_id) || !valid_hash(&claim.manifest_sha256) {
+            return Err(GeneratedArtifactDiagnosticCode::InvalidRequest);
+        }
+        let mut state = self
+            .state
+            .lock()
+            .map_err(|_| GeneratedArtifactDiagnosticCode::SaveFailed)?;
+        self.expire_locked(&mut state);
+        let entry = state
+            .iter()
+            .find(|item| item.manifest.artifact_id == claim.artifact_id)
+            .ok_or(GeneratedArtifactDiagnosticCode::ArtifactNotFound)?;
+        if entry.manifest.sha256 != claim.manifest_sha256
+            || entry.manifest.state != GeneratedArtifactState::Ready
+            || entry.saving
+            || entry.manifest.byte_size != entry.bytes.len() as u64
+            || digest(&entry.bytes) != entry.manifest.sha256
+        {
+            return Err(GeneratedArtifactDiagnosticCode::ManifestMismatch);
+        }
+        Ok(LocalReviewArtifactMetadataSource {
+            class: entry.manifest.class,
+            display_label: entry.manifest.display_label.clone(),
+            byte_size: entry.manifest.byte_size,
+            sha256: entry.manifest.sha256.clone(),
+            state: entry.manifest.state,
+        })
     }
     pub fn discard(
         &self,

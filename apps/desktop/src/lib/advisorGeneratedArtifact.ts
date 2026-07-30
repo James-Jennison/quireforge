@@ -10,6 +10,7 @@ export const generatedArtifactClassSchema = z.enum([
 export const generatedArtifactSourceKindSchema = z.enum([
   "visible-completed-reply",
   "visible-fenced-block",
+  "explicit-review-promotion",
 ]);
 export const generatedArtifactStateSchema = z.enum([
   "ready",

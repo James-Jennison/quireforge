@@ -3,6 +3,7 @@ import type {
   ConversationSnapshot,
 } from "../lib/conversation";
 import type { FilePreviewSnapshot } from "../lib/filePreview";
+import type { TaskCatalogSnapshot } from "../lib/taskRecords";
 import type { GitDiffSnapshot, GitWorkspaceSnapshot } from "../lib/git";
 import type {
   GeneratedArtifactPreview,
@@ -16,6 +17,7 @@ export const reviewPaneIds = [
   "preview",
   "activity",
   "approval",
+  "review",
 ] as const;
 
 export type ReviewPaneId = (typeof reviewPaneIds)[number];
@@ -26,6 +28,7 @@ export interface ReviewPaneData {
   filePreview: FilePreviewSnapshot;
   conversation: ConversationSnapshot;
   conversationEvents: ConversationEvent[];
+  taskCatalog: TaskCatalogSnapshot;
   loadGitStatus: (projectId: string) => Promise<GitWorkspaceSnapshot>;
   loadGitDiff: (request: {
     projectId: string;

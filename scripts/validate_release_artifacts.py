@@ -100,17 +100,8 @@ def validate_glibc_baseline(path: Path) -> tuple[int, int]:
     return glibc_requirement(path)
 
 
-def validate_manifest(
-    artifact_dir: Path,
-    require_publishable: bool,
-    expected_tag: str | None,
-) -> tuple[dict[str, object], dict[str, Path]]:
-    manifest_path = artifact_dir / "release-manifest.json"
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    version = source_version()
-    if manifest.get("schemaVersion") != 3 or manifest.get("version") != version:
-        raise RuntimeError("release manifest schema or version mismatch")
-
+def validate_manifest_provenance(manifest: dict[str, object]) -> dict[str, object]:
+    """Validate the fixed release-candidate provenance contract."""
     source = manifest.get("source")
     builder = manifest.get("builder")
     if not isinstance(source, dict) or not isinstance(builder, dict):
@@ -136,6 +127,40 @@ def validate_manifest(
         or manifest.get("provenance") != required_provenance
     ):
         raise RuntimeError("release artifacts require clean pinned-container provenance")
+    return source
+
+
+def validate_sandboxd_provenance(
+    manifest: dict[str, object], artifacts: dict[str, Path], version: str
+) -> None:
+    source = manifest.get("source")
+    sandboxd = manifest.get("sandboxd")
+    if not isinstance(sandboxd, dict):
+        raise RuntimeError("sandbox worker provenance is absent")
+    artifact = sandboxd.get("artifact")
+    if (
+        sandboxd.get("version") != version
+        or sandboxd.get("source") != source
+        or not isinstance(artifact, dict)
+        or artifact.get("filename") != artifacts["sandboxd-deb"].name
+        or artifact.get("sha256") != sha256(artifacts["sandboxd-deb"])
+        or artifact.get("size") != artifacts["sandboxd-deb"].stat().st_size
+    ):
+        raise RuntimeError("sandbox worker provenance is malformed or inconsistent")
+
+
+def validate_manifest(
+    artifact_dir: Path,
+    require_publishable: bool,
+    expected_tag: str | None,
+) -> tuple[dict[str, object], dict[str, Path]]:
+    manifest_path = artifact_dir / "release-manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    version = source_version()
+    if manifest.get("schemaVersion") != 3 or manifest.get("version") != version:
+        raise RuntimeError("release manifest schema or version mismatch")
+
+    validate_manifest_provenance(manifest)
 
     if require_publishable:
         if expected_tag != f"v{version}":
@@ -406,20 +431,7 @@ def main() -> int:
     version = str(manifest["version"])
     debian_glibc = validate_debian(artifacts["deb"], version)
     sandboxd_glibc = validate_sandboxd(artifacts["sandboxd-deb"], version)
-    sandboxd = manifest.get("sandboxd")
-    if not isinstance(sandboxd, dict):
-        raise RuntimeError("sandbox worker provenance is absent")
-    source = manifest.get("source")
-    artifact = sandboxd.get("artifact")
-    if (
-        sandboxd.get("version") != version
-        or sandboxd.get("source") != source
-        or not isinstance(artifact, dict)
-        or artifact.get("filename") != artifacts["sandboxd-deb"].name
-        or artifact.get("sha256") != sha256(artifacts["sandboxd-deb"])
-        or artifact.get("size") != artifacts["sandboxd-deb"].stat().st_size
-    ):
-        raise RuntimeError("sandbox worker provenance is malformed or inconsistent")
+    validate_sandboxd_provenance(manifest, artifacts, version)
     validate_abi_evidence(manifest, debian_glibc, sandboxd_glibc)
     if arguments.lifecycle:
         lifecycle(artifacts["deb"], debian_version(version))

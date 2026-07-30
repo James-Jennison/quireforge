@@ -1,0 +1,7 @@
+# Install as /etc/sudoers.d/quireforge-validate-deb: root:root, mode 0440.
+# The helper itself must be /usr/local/sbin/quireforge-validate-deb: root:root,
+# mode 0755 or stricter. Validate before installation: visudo -cf <this-file>.
+Defaults! /usr/local/sbin/quireforge-validate-deb env_reset
+Defaults! /usr/local/sbin/quireforge-validate-deb secure_path="/usr/sbin:/usr/bin:/sbin:/bin"
+Cmnd_Alias QUIREFORGE_VALIDATE_DEB = /usr/local/sbin/quireforge-validate-deb ""
+%quireforge-package-validation ALL=(root) NOPASSWD:NOSETENV: QUIREFORGE_VALIDATE_DEB

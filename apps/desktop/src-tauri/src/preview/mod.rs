@@ -12,6 +12,8 @@ use std::{
 };
 
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
+use serde::Serialize;
+use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
 use crate::project::{ProjectExecutionError, ProjectService};
@@ -29,6 +31,8 @@ const MAX_IMAGE_PIXELS: u64 = 16_000_000;
 const SNIFF_BYTES: usize = 32 * 1024;
 const HANDOFF_TTL: Duration = Duration::from_secs(5 * 60);
 const MAX_PENDING_HANDOFFS: usize = 16;
+const SAFE_METADATA_CLAIM_TTL: Duration = Duration::from_secs(5 * 60);
+const MAX_SAFE_METADATA_CLAIMS: usize = 16;
 
 #[derive(Default)]
 pub struct FilePreviewService {
@@ -38,6 +42,40 @@ pub struct FilePreviewService {
 #[derive(Default)]
 struct FilePreviewServiceState {
     pending: HashMap<String, PendingFileHandoff>,
+    latest_metadata: Option<SafePreviewMetadata>,
+    metadata_claims: HashMap<String, PendingSafePreviewMetadataClaim>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct SafePreviewMetadataClaim {
+    pub claim_id: String,
+    pub claim_sha256: String,
+    pub preview_state: FilePreviewState,
+    pub kind: FilePreviewKind,
+    pub rendering: FilePreviewRendering,
+    pub media_type: String,
+    pub byte_length: u64,
+    pub truncated: bool,
+    pub width_px: Option<u32>,
+    pub height_px: Option<u32>,
+}
+
+#[derive(Clone)]
+struct SafePreviewMetadata {
+    preview_state: FilePreviewState,
+    kind: FilePreviewKind,
+    rendering: FilePreviewRendering,
+    media_type: String,
+    byte_length: u64,
+    truncated: bool,
+    width_px: Option<u32>,
+    height_px: Option<u32>,
+}
+
+struct PendingSafePreviewMetadataClaim {
+    claim: SafePreviewMetadataClaim,
+    created_at: Instant,
 }
 
 struct PendingFileHandoff {
@@ -127,6 +165,7 @@ impl FilePreviewService {
                         FilePreviewDiagnosticCode::ReadFailed,
                     );
                 }
+                self.set_latest_metadata(&snapshot);
                 snapshot
             }
             Err(code) => FilePreviewSnapshot::unavailable(Some(project_id), code),
@@ -188,6 +227,79 @@ impl FilePreviewService {
             state
                 .pending
                 .retain(|_, pending| pending.project_id != project_id);
+            state.latest_metadata = None;
+            state.metadata_claims.clear();
+        }
+    }
+
+    pub(crate) fn issue_safe_metadata_claim(&self) -> Option<SafePreviewMetadataClaim> {
+        let mut state = self.state.lock().ok()?;
+        state.remove_expired();
+        let metadata = state.latest_metadata.clone()?;
+        let claim_id = Uuid::now_v7().to_string();
+        let mut claim = SafePreviewMetadataClaim {
+            claim_id: claim_id.clone(),
+            claim_sha256: String::new(),
+            preview_state: metadata.preview_state,
+            kind: metadata.kind,
+            rendering: metadata.rendering,
+            media_type: metadata.media_type,
+            byte_length: metadata.byte_length,
+            truncated: metadata.truncated,
+            width_px: metadata.width_px,
+            height_px: metadata.height_px,
+        };
+        claim.claim_sha256 = safe_metadata_claim_digest(&claim)?;
+        if state.metadata_claims.len() >= MAX_SAFE_METADATA_CLAIMS {
+            if let Some(oldest) = state
+                .metadata_claims
+                .iter()
+                .min_by_key(|(_, pending)| pending.created_at)
+                .map(|(id, _)| id.clone())
+            {
+                state.metadata_claims.remove(&oldest);
+            }
+        }
+        state.metadata_claims.insert(
+            claim_id,
+            PendingSafePreviewMetadataClaim {
+                claim: claim.clone(),
+                created_at: Instant::now(),
+            },
+        );
+        Some(claim)
+    }
+
+    pub(crate) fn safe_metadata_claim(
+        &self,
+        claim_id: &str,
+        claim_sha256: &str,
+    ) -> Option<SafePreviewMetadataClaim> {
+        if !valid_project_id(claim_id) || claim_sha256.len() != 64 {
+            return None;
+        }
+        let mut state = self.state.lock().ok()?;
+        state.remove_expired();
+        let claim = state.metadata_claims.get(claim_id)?.claim.clone();
+        (claim.claim_sha256 == claim_sha256).then_some(claim)
+    }
+
+    pub(crate) fn consume_safe_metadata_claim(&self, claim_id: &str, claim_sha256: &str) -> bool {
+        let Ok(mut state) = self.state.lock() else {
+            return false;
+        };
+        state.remove_expired();
+        state
+            .metadata_claims
+            .remove(claim_id)
+            .is_some_and(|pending| pending.claim.claim_sha256 == claim_sha256)
+    }
+
+    fn set_latest_metadata(&self, snapshot: &FilePreviewSnapshot) {
+        let metadata = safe_preview_metadata(snapshot);
+        if let Ok(mut state) = self.state.lock() {
+            state.latest_metadata = metadata;
+            state.metadata_claims.clear();
         }
     }
 
@@ -212,6 +324,8 @@ impl FilePreviewServiceState {
     fn remove_expired(&mut self) {
         self.pending
             .retain(|_, pending| pending.created_at.elapsed() < HANDOFF_TTL);
+        self.metadata_claims
+            .retain(|_, pending| pending.created_at.elapsed() < SAFE_METADATA_CLAIM_TTL);
     }
 
     fn make_room(&mut self) {
@@ -730,6 +844,50 @@ fn map_project_error(error: ProjectExecutionError) -> FilePreviewDiagnosticCode 
     }
 }
 
+fn safe_preview_metadata(snapshot: &FilePreviewSnapshot) -> Option<SafePreviewMetadata> {
+    (snapshot.state == FilePreviewState::Ready).then_some(())?;
+    Some(SafePreviewMetadata {
+        preview_state: snapshot.state,
+        kind: snapshot.kind?,
+        rendering: snapshot.rendering?,
+        media_type: snapshot.mime_type.clone()?,
+        byte_length: snapshot.byte_size?,
+        truncated: snapshot.truncated,
+        width_px: snapshot.image_width,
+        height_px: snapshot.image_height,
+    })
+}
+
+fn safe_metadata_claim_digest(claim: &SafePreviewMetadataClaim) -> Option<String> {
+    #[derive(Serialize)]
+    #[serde(rename_all = "camelCase")]
+    struct DigestInput<'a> {
+        claim_id: &'a str,
+        preview_state: FilePreviewState,
+        kind: FilePreviewKind,
+        rendering: FilePreviewRendering,
+        media_type: &'a str,
+        byte_length: u64,
+        truncated: bool,
+        width_px: Option<u32>,
+        height_px: Option<u32>,
+    }
+    let input = DigestInput {
+        claim_id: &claim.claim_id,
+        preview_state: claim.preview_state,
+        kind: claim.kind,
+        rendering: claim.rendering,
+        media_type: &claim.media_type,
+        byte_length: claim.byte_length,
+        truncated: claim.truncated,
+        width_px: claim.width_px,
+        height_px: claim.height_px,
+    };
+    serde_json::to_vec(&input)
+        .ok()
+        .map(|bytes| format!("{:x}", Sha256::digest(bytes)))
+}
+
 #[cfg(test)]
 mod tests {
     use std::{fs, os::unix::fs::symlink};
@@ -998,5 +1156,40 @@ mod tests {
             }))
             .is_err()
         );
+    }
+
+    #[test]
+    fn safe_metadata_claim_is_redacted_and_replay_safe() {
+        let service = FilePreviewService::default();
+        let snapshot = FilePreviewSnapshot {
+            schema_version: 1,
+            state: FilePreviewState::Ready,
+            project_id: Some("018f0000-0000-7000-8000-000000000001".to_owned()),
+            display_path: Some("private/source.txt".to_owned()),
+            kind: Some(FilePreviewKind::Text),
+            rendering: Some(FilePreviewRendering::NormalizedText),
+            mime_type: Some("text/plain; charset=utf-8".to_owned()),
+            byte_size: Some(4),
+            truncated: false,
+            text_content: Some("secret".to_owned()),
+            image_data_url: None,
+            image_width: None,
+            image_height: None,
+            open_action_id: Some("018f0000-0000-7000-8000-000000000002".to_owned()),
+            diagnostic_code: None,
+        };
+        service.set_latest_metadata(&snapshot);
+        let claim = service.issue_safe_metadata_claim().expect("claim");
+        let json = serde_json::to_string(&claim).expect("JSON");
+        assert!(!json.contains("private/source"));
+        assert!(!json.contains("secret"));
+        assert!(!json.contains("openAction"));
+        assert!(service
+            .safe_metadata_claim(&claim.claim_id, &claim.claim_sha256)
+            .is_some());
+        assert!(service.consume_safe_metadata_claim(&claim.claim_id, &claim.claim_sha256));
+        assert!(service
+            .safe_metadata_claim(&claim.claim_id, &claim.claim_sha256)
+            .is_none());
     }
 }

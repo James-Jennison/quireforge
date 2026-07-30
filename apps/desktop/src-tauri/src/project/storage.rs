@@ -6,7 +6,9 @@ use std::{
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
+use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use rusqlite::{params, Connection, OptionalExtension, Transaction, TransactionBehavior};
+use sha2::{Digest, Sha256};
 use thiserror::Error;
 use unicode_casefold::{Locale, UnicodeCaseFold, Variant};
 use uuid::Uuid;
@@ -17,8 +19,21 @@ use crate::advisor::{
     AdvisorFoundationSnapshot, AdvisorFreshness, AdvisorProvenance, AdvisorProvenanceSource,
     AdvisorTrust,
 };
+use crate::preview::validate_attachment_image;
 
-use super::types::{TaskPlanSummary, TaskRecordSummary, TaskStatus};
+use super::types::{
+    EvidenceEnvelopeV1, LocalReviewAnnotationState, LocalReviewAnnotationSummary,
+    LocalReviewCollectionState, LocalReviewCollectionSummary, LocalReviewComparisonState,
+    LocalReviewComparisonSummary, LocalReviewDiagnosticCode, LocalReviewEvidenceCheckState,
+    LocalReviewEvidenceSource, LocalReviewImagePreview, LocalReviewItemClass, LocalReviewItemState,
+    LocalReviewItemSummary, LocalReviewLineComparison, LocalReviewLineKind, LocalReviewLineRecord,
+    LocalReviewM48GeneratedArtifactMetadataDetails,
+    LocalReviewM48GeneratedArtifactMetadataEvidencePreview, LocalReviewManualEvidencePreview,
+    LocalReviewManualValidationDetails, LocalReviewSafePreviewMetadataDetails,
+    LocalReviewSafePreviewMetadataEvidencePreview, LocalReviewSourceKind, LocalReviewTextFormat,
+    LocalReviewTextPreview, LocalReviewValidationState, TaskPlanSummary, TaskRecordSummary,
+    TaskStatus,
+};
 use super::{
     identity::DirectoryIdentity,
     types::{DirectoryAccessibilityState, ExpectedAccess},
@@ -310,9 +325,10 @@ ALTER TABLE advisor_dispatch_records
     ADD COLUMN execution_conversation_id TEXT CHECK(execution_conversation_id IS NULL OR length(execution_conversation_id) = 36);
 "#;
 
-// M52 deliberately adds only local organisational metadata.  In particular,
-// neither table has a project, conversation, attachment, artifact, approval,
-// dispatch, terminal, browser, connector, credential, or Advisor column.
+// M52 deliberately added only local organisational metadata. Migration 14
+// later adds an immutable nullable native project binding to task records;
+// neither task table retains conversation, attachment, artifact, approval,
+// dispatch, terminal, browser, connector, credential, or Advisor data.
 const DURABLE_TASK_RECORDS_MIGRATION: &str = r#"
 CREATE TABLE task_records (
     id TEXT PRIMARY KEY NOT NULL CHECK(length(id) = 36),
@@ -340,6 +356,289 @@ CREATE TABLE task_plans (
 CREATE INDEX task_records_visible_recent ON task_records(archived_at_ms, updated_at_ms DESC, id);
 CREATE INDEX task_records_status_recent ON task_records(archived_at_ms, status, updated_at_ms DESC, id);
 CREATE INDEX task_plans_task_position ON task_plans(task_id, position, id);
+"#;
+
+// M54 review records are deliberately task-contextual but do not have a
+// foreign-key cascade to task records: deleting a task must orphan review
+// content rather than erase it. The schema contains copied bounded payloads
+// and opaque identifiers only; it never retains source paths, URLs, approval,
+// dispatch, execution, provider, or browser state.
+const LOCAL_REVIEW_COLLECTIONS_MIGRATION: &str = r#"
+CREATE TABLE local_review_collections (
+    id TEXT PRIMARY KEY NOT NULL CHECK(length(id) = 36),
+    schema_version INTEGER NOT NULL CHECK(schema_version = 1),
+    task_id TEXT NOT NULL CHECK(length(task_id) = 36),
+    plan_id TEXT CHECK(plan_id IS NULL OR length(plan_id) = 36),
+    observed_plan_updated_at_ms INTEGER CHECK(observed_plan_updated_at_ms IS NULL OR observed_plan_updated_at_ms >= 0),
+    state TEXT NOT NULL CHECK(state IN ('active', 'frozen', 'orphaned', 'unavailable', 'discarded')),
+    title TEXT NOT NULL CHECK(length(title) BETWEEN 1 AND 480),
+    created_at_ms INTEGER NOT NULL CHECK(created_at_ms >= 0),
+    updated_at_ms INTEGER NOT NULL CHECK(updated_at_ms >= 0),
+    discarded_at_ms INTEGER CHECK(discarded_at_ms >= 0)
+);
+CREATE TABLE local_review_items (
+    id TEXT PRIMARY KEY NOT NULL CHECK(length(id) = 36),
+    schema_version INTEGER NOT NULL CHECK(schema_version = 1),
+    collection_id TEXT NOT NULL REFERENCES local_review_collections(id) ON DELETE CASCADE,
+    class TEXT NOT NULL CHECK(class IN ('text', 'image-mockup', 'evidence')),
+    text_format TEXT CHECK(text_format IS NULL OR text_format IN ('plain', 'markdown', 'json', 'csv', 'python')),
+    mime_type TEXT NOT NULL CHECK(mime_type IN (
+        'text/plain; charset=utf-8', 'text/markdown; charset=utf-8',
+        'application/json', 'text/csv; charset=utf-8', 'text/x-python',
+        'image/png', 'image/jpeg', 'application/json; profile=evidence-envelope-v1'
+    )),
+    width INTEGER CHECK(width IS NULL OR width BETWEEN 1 AND 4096),
+    height INTEGER CHECK(height IS NULL OR height BETWEEN 1 AND 4096),
+    state TEXT NOT NULL CHECK(state IN ('ready', 'stale', 'unavailable', 'discarded')),
+    title TEXT NOT NULL CHECK(length(title) BETWEEN 1 AND 480),
+    source_kind TEXT NOT NULL CHECK(source_kind IN (
+        'user-authored-text', 'm48-artifact-copy', 'native-image-input',
+        'typed-evidence-snapshot'
+    )),
+    provenance TEXT NOT NULL CHECK(length(provenance) <= 256),
+    content BLOB NOT NULL,
+    sha256 TEXT NOT NULL CHECK(length(sha256) = 64),
+    byte_size INTEGER NOT NULL CHECK(byte_size BETWEEN 1 AND 1048576),
+    created_at_ms INTEGER NOT NULL CHECK(created_at_ms >= 0),
+    updated_at_ms INTEGER NOT NULL CHECK(updated_at_ms >= 0),
+    discarded_at_ms INTEGER CHECK(discarded_at_ms >= 0),
+    CHECK(
+        (class = 'text' AND text_format IS NOT NULL AND width IS NULL AND height IS NULL
+         AND mime_type IN ('text/plain; charset=utf-8', 'text/markdown; charset=utf-8',
+             'application/json', 'text/csv; charset=utf-8', 'text/x-python')
+         AND source_kind IN ('user-authored-text', 'm48-artifact-copy')
+         AND byte_size <= 262144)
+        OR
+        (class = 'image-mockup' AND text_format IS NULL AND width IS NOT NULL AND height IS NOT NULL
+         AND mime_type IN ('image/png', 'image/jpeg') AND source_kind = 'native-image-input')
+        OR
+        (class = 'evidence' AND text_format IS NULL AND width IS NULL AND height IS NULL
+         AND mime_type = 'application/json; profile=evidence-envelope-v1'
+         AND source_kind = 'typed-evidence-snapshot' AND byte_size <= 16384)
+    )
+);
+CREATE TABLE local_review_annotations (
+    id TEXT PRIMARY KEY NOT NULL CHECK(length(id) = 36),
+    schema_version INTEGER NOT NULL CHECK(schema_version = 1),
+    item_id TEXT NOT NULL REFERENCES local_review_items(id) ON DELETE CASCADE,
+    state TEXT NOT NULL CHECK(state IN ('open', 'resolved')),
+    body TEXT NOT NULL CHECK(length(body) BETWEEN 1 AND 1024),
+    created_at_ms INTEGER NOT NULL CHECK(created_at_ms >= 0),
+    updated_at_ms INTEGER NOT NULL CHECK(updated_at_ms >= 0)
+);
+CREATE TABLE local_review_comparisons (
+    id TEXT PRIMARY KEY NOT NULL CHECK(length(id) = 36),
+    schema_version INTEGER NOT NULL CHECK(schema_version = 1),
+    collection_id TEXT NOT NULL REFERENCES local_review_collections(id) ON DELETE CASCADE,
+    left_item_id TEXT NOT NULL REFERENCES local_review_items(id) ON DELETE RESTRICT,
+    right_item_id TEXT NOT NULL REFERENCES local_review_items(id) ON DELETE RESTRICT,
+    left_sha256 TEXT NOT NULL CHECK(length(left_sha256) = 64),
+    right_sha256 TEXT NOT NULL CHECK(length(right_sha256) = 64),
+    text_format TEXT NOT NULL CHECK(text_format IN ('plain', 'markdown', 'json', 'csv', 'python')),
+    state TEXT NOT NULL CHECK(state IN ('ready', 'stale', 'unavailable')),
+    created_at_ms INTEGER NOT NULL CHECK(created_at_ms >= 0),
+    CHECK(left_item_id <> right_item_id)
+);
+CREATE INDEX local_review_collections_task_recent ON local_review_collections(task_id, updated_at_ms DESC, id);
+CREATE INDEX local_review_items_collection_recent ON local_review_items(collection_id, created_at_ms DESC, id);
+CREATE INDEX local_review_annotations_item_recent ON local_review_annotations(item_id, created_at_ms, id);
+CREATE INDEX local_review_comparisons_collection_recent ON local_review_comparisons(collection_id, created_at_ms DESC, id);
+"#;
+
+// Migration 13 adds a closed envelope source column without rebuilding the
+// existing item table. The Rust backfill below rewrites prior v12 manual rows
+// atomically to the ratified canonical envelope before the migration is
+// recorded.
+const LOCAL_REVIEW_EVIDENCE_SOURCES_MIGRATION: &str = r#"
+ALTER TABLE local_review_items ADD COLUMN evidence_source TEXT CHECK(
+    evidence_source IS NULL OR evidence_source IN (
+        'manual-validation-summary',
+        'm48-generated-artifact-metadata',
+        'safe-preview-metadata',
+        'git-status-diff-summary',
+        'activity-presentation',
+        'approval-presentation',
+        'package-manifest-summary'
+    )
+);
+CREATE TRIGGER local_review_items_evidence_source_insert
+BEFORE INSERT ON local_review_items
+BEGIN
+    SELECT CASE WHEN
+        (NEW.class = 'evidence' AND (
+            NEW.source_kind != 'typed-evidence-snapshot'
+            OR NEW.evidence_source IS NULL
+            OR NEW.provenance != NEW.evidence_source
+        ))
+        OR (NEW.class != 'evidence' AND NEW.evidence_source IS NOT NULL)
+    THEN RAISE(ABORT, 'invalid local review evidence source') END;
+END;
+CREATE TRIGGER local_review_items_evidence_source_update
+BEFORE UPDATE OF class, source_kind, provenance, evidence_source ON local_review_items
+BEGIN
+    SELECT CASE WHEN
+        (NEW.class = 'evidence' AND (
+            NEW.source_kind != 'typed-evidence-snapshot'
+            OR NEW.evidence_source IS NULL
+            OR NEW.provenance != NEW.evidence_source
+        ))
+        OR (NEW.class != 'evidence' AND NEW.evidence_source IS NOT NULL)
+    THEN RAISE(ABORT, 'invalid local review evidence source') END;
+END;
+"#;
+
+// Task/project binding is intentionally nullable: existing and no-project
+// tasks remain unbound. A binding is written only as part of native-owned
+// context-bound task creation and is immutable thereafter.
+const TASK_PROJECT_BINDING_MIGRATION: &str = r#"
+ALTER TABLE task_records ADD COLUMN project_id TEXT
+    CHECK(project_id IS NULL OR length(project_id) = 36)
+    REFERENCES projects(id) ON DELETE RESTRICT;
+
+CREATE INDEX task_records_project_binding_idx
+    ON task_records(project_id, updated_at_ms DESC, id)
+    WHERE project_id IS NOT NULL;
+
+CREATE TRIGGER task_records_project_binding_immutable
+BEFORE UPDATE OF project_id ON task_records
+WHEN NEW.project_id IS NOT OLD.project_id
+BEGIN
+    SELECT RAISE(ABORT, 'task project binding is immutable');
+END;
+"#;
+
+// Immutable, native-owned package-validation summaries. The table stores only
+// the redacted, closed result required by a later package-evidence capture;
+// package paths, filenames, commands, diagnostics, and artifact bytes never
+// enter this schema.
+const PROJECT_PACKAGE_VALIDATION_SUMMARIES_MIGRATION: &str = r#"
+CREATE TABLE project_package_validation_summaries (
+    id TEXT PRIMARY KEY NOT NULL CHECK(length(id) = 36),
+    project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE RESTRICT,
+    application_version TEXT NOT NULL CHECK(
+        length(application_version) BETWEEN 1 AND 64
+        AND substr(application_version, 1, 1) GLOB '[0-9]'
+        AND application_version NOT GLOB '*[^0-9A-Za-z.+-]*'
+    ),
+    debian_version TEXT NOT NULL CHECK(
+        length(debian_version) BETWEEN 1 AND 64
+        AND substr(debian_version, 1, 1) GLOB '[0-9]'
+        AND debian_version NOT GLOB '*[^0-9A-Za-z.+:~-]*'
+    ),
+    manifest_state TEXT NOT NULL CHECK(manifest_state IN ('passed', 'failed', 'skipped', 'unavailable')),
+    checksum_state TEXT NOT NULL CHECK(checksum_state IN ('passed', 'failed', 'skipped', 'unavailable')),
+    abi_state TEXT NOT NULL CHECK(abi_state IN ('passed', 'failed', 'skipped', 'unavailable')),
+    provenance_state TEXT NOT NULL CHECK(provenance_state IN ('passed', 'failed', 'skipped', 'unavailable')),
+    visible_launch_state TEXT NOT NULL CHECK(visible_launch_state IN ('passed', 'failed', 'skipped', 'unavailable')),
+    installed_host_state TEXT NOT NULL CHECK(installed_host_state IN ('passed', 'failed', 'skipped', 'unavailable')),
+    artifact_count INTEGER NOT NULL CHECK(artifact_count BETWEEN 0 AND 2),
+    validation_complete INTEGER NOT NULL CHECK(validation_complete IN (0, 1)),
+    record_sha256 TEXT NOT NULL CHECK(
+        length(record_sha256) = 64
+        AND record_sha256 NOT GLOB '*[^0-9a-f]*'
+    ),
+    created_at_ms INTEGER NOT NULL CHECK(created_at_ms >= 0),
+    supersedes_record_id TEXT REFERENCES project_package_validation_summaries(id) ON DELETE RESTRICT,
+    CHECK(supersedes_record_id IS NULL OR supersedes_record_id <> id)
+);
+
+CREATE INDEX project_package_validation_summaries_project_newest
+    ON project_package_validation_summaries(project_id, created_at_ms DESC, id DESC);
+CREATE INDEX project_package_validation_summaries_project_newest_complete
+    ON project_package_validation_summaries(project_id, created_at_ms DESC, id DESC)
+    WHERE validation_complete = 1;
+CREATE INDEX project_package_validation_summaries_supersession
+    ON project_package_validation_summaries(supersedes_record_id)
+    WHERE supersedes_record_id IS NOT NULL;
+
+CREATE TRIGGER project_package_validation_summaries_immutable
+BEFORE UPDATE ON project_package_validation_summaries
+BEGIN
+    SELECT RAISE(ABORT, 'package validation summaries are immutable');
+END;
+"#;
+
+const PROJECT_PACKAGE_VALIDATION_IDENTITIES_MIGRATION: &str = r#"
+CREATE TABLE project_package_validation_candidate_identities (
+    project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE RESTRICT,
+    candidate_identity_sha256 TEXT NOT NULL CHECK(length(candidate_identity_sha256) = 64 AND candidate_identity_sha256 NOT GLOB '*[^0-9a-f]*'),
+    package_validation_summary_id TEXT NOT NULL REFERENCES project_package_validation_summaries(id) ON DELETE RESTRICT,
+    created_at_ms INTEGER NOT NULL CHECK(created_at_ms >= 0),
+    UNIQUE(project_id, candidate_identity_sha256),
+    UNIQUE(package_validation_summary_id)
+);
+CREATE TRIGGER project_package_validation_candidate_identities_immutable
+BEFORE UPDATE ON project_package_validation_candidate_identities
+BEGIN SELECT RAISE(ABORT, 'package validation candidate identities are immutable'); END;
+CREATE INDEX project_package_validation_candidate_identities_summary
+    ON project_package_validation_candidate_identities(package_validation_summary_id);
+"#;
+
+const PROJECT_PACKAGE_VALIDATION_PHASED_IDENTITIES_MIGRATION: &str = r#"
+CREATE TABLE project_package_validation_candidate_identities_v17 (
+    project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE RESTRICT,
+    candidate_identity_sha256 TEXT NOT NULL CHECK(length(candidate_identity_sha256) = 64 AND candidate_identity_sha256 NOT GLOB '*[^0-9a-f]*'),
+    validation_phase TEXT NOT NULL CHECK(validation_phase IN ('unprivileged', 'installed-host')),
+    package_validation_summary_id TEXT NOT NULL REFERENCES project_package_validation_summaries(id) ON DELETE RESTRICT,
+    created_at_ms INTEGER NOT NULL CHECK(created_at_ms >= 0),
+    UNIQUE(project_id, candidate_identity_sha256, validation_phase),
+    UNIQUE(package_validation_summary_id)
+);
+INSERT INTO project_package_validation_candidate_identities_v17 (
+    project_id, candidate_identity_sha256, validation_phase,
+    package_validation_summary_id, created_at_ms
+) SELECT project_id, candidate_identity_sha256, 'unprivileged',
+         package_validation_summary_id, created_at_ms
+  FROM project_package_validation_candidate_identities;
+DROP TABLE project_package_validation_candidate_identities;
+ALTER TABLE project_package_validation_candidate_identities_v17
+    RENAME TO project_package_validation_candidate_identities;
+CREATE TRIGGER project_package_validation_candidate_identities_immutable
+BEFORE UPDATE ON project_package_validation_candidate_identities
+BEGIN SELECT RAISE(ABORT, 'package validation candidate identities are immutable'); END;
+CREATE INDEX project_package_validation_candidate_identities_summary
+    ON project_package_validation_candidate_identities(package_validation_summary_id);
+CREATE INDEX project_package_validation_candidate_identities_lookup
+    ON project_package_validation_candidate_identities(project_id, candidate_identity_sha256, validation_phase);
+"#;
+
+const PROJECT_PACKAGE_VALIDATION_ATTEMPT_IDENTITIES_MIGRATION: &str = r#"
+CREATE TABLE project_package_validation_candidate_identities_v18 (
+    project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE RESTRICT,
+    candidate_identity_sha256 TEXT NOT NULL CHECK(length(candidate_identity_sha256) = 64 AND candidate_identity_sha256 NOT GLOB '*[^0-9a-f]*'),
+    validation_phase TEXT NOT NULL CHECK(validation_phase IN ('unprivileged', 'installed-host')),
+    attempt_identity_sha256 TEXT NOT NULL CHECK(length(attempt_identity_sha256) = 64 AND attempt_identity_sha256 NOT GLOB '*[^0-9a-f]*'),
+    package_validation_summary_id TEXT NOT NULL REFERENCES project_package_validation_summaries(id) ON DELETE RESTRICT,
+    created_at_ms INTEGER NOT NULL CHECK(created_at_ms >= 0),
+    UNIQUE(package_validation_summary_id),
+    UNIQUE(project_id, candidate_identity_sha256, validation_phase, attempt_identity_sha256)
+);
+INSERT INTO project_package_validation_candidate_identities_v18 (
+    project_id, candidate_identity_sha256, validation_phase, attempt_identity_sha256,
+    package_validation_summary_id, created_at_ms
+) SELECT identity.project_id, identity.candidate_identity_sha256, identity.validation_phase,
+         CASE WHEN identity.validation_phase = 'unprivileged'
+              THEN identity.candidate_identity_sha256 ELSE summary.record_sha256 END,
+         identity.package_validation_summary_id, identity.created_at_ms
+  FROM project_package_validation_candidate_identities AS identity
+  JOIN project_package_validation_summaries AS summary
+    ON summary.id = identity.package_validation_summary_id;
+DROP TABLE project_package_validation_candidate_identities;
+ALTER TABLE project_package_validation_candidate_identities_v18 RENAME TO project_package_validation_candidate_identities;
+CREATE TRIGGER project_package_validation_candidate_identities_immutable
+BEFORE UPDATE ON project_package_validation_candidate_identities
+BEGIN SELECT RAISE(ABORT, 'package validation candidate identities are immutable'); END;
+CREATE UNIQUE INDEX project_package_validation_candidate_identities_unprivileged
+    ON project_package_validation_candidate_identities(project_id, candidate_identity_sha256)
+    WHERE validation_phase = 'unprivileged';
+CREATE INDEX project_package_validation_candidate_identities_lookup
+    ON project_package_validation_candidate_identities(project_id, candidate_identity_sha256, validation_phase, attempt_identity_sha256);
+CREATE INDEX project_package_validation_candidate_identities_newest_attempt
+    ON project_package_validation_candidate_identities(project_id, candidate_identity_sha256, validation_phase, created_at_ms DESC, package_validation_summary_id DESC);
+CREATE INDEX project_package_validation_candidate_identities_predecessor
+    ON project_package_validation_candidate_identities(package_validation_summary_id);
+CREATE INDEX project_package_validation_candidate_identities_summary
+    ON project_package_validation_candidate_identities(package_validation_summary_id);
 "#;
 
 const MIGRATIONS: &[(i64, &str, &str)] = &[
@@ -378,6 +677,41 @@ const MIGRATIONS: &[(i64, &str, &str)] = &[
         "durable-task-records-v1",
         DURABLE_TASK_RECORDS_MIGRATION,
     ),
+    (
+        12,
+        "local-review-collections-v1",
+        LOCAL_REVIEW_COLLECTIONS_MIGRATION,
+    ),
+    (
+        13,
+        "local-review-evidence-sources-v1",
+        LOCAL_REVIEW_EVIDENCE_SOURCES_MIGRATION,
+    ),
+    (
+        14,
+        "task-project-binding-v1",
+        TASK_PROJECT_BINDING_MIGRATION,
+    ),
+    (
+        15,
+        "project-package-validation-summaries-v1",
+        PROJECT_PACKAGE_VALIDATION_SUMMARIES_MIGRATION,
+    ),
+    (
+        16,
+        "project-package-validation-candidate-identities-v1",
+        PROJECT_PACKAGE_VALIDATION_IDENTITIES_MIGRATION,
+    ),
+    (
+        17,
+        "project-package-validation-candidate-identities-phased-v1",
+        PROJECT_PACKAGE_VALIDATION_PHASED_IDENTITIES_MIGRATION,
+    ),
+    (
+        18,
+        "project-package-validation-attempt-identities-v1",
+        PROJECT_PACKAGE_VALIDATION_ATTEMPT_IDENTITIES_MIGRATION,
+    ),
 ];
 
 #[derive(Debug, Error)]
@@ -408,6 +742,79 @@ pub(crate) enum StorageError {
     InvalidStatusTransition,
     #[error("generated task identifier collided")]
     DuplicateId,
+}
+
+const PACKAGE_VALIDATION_RECORD_LIMIT: usize = 32;
+const PACKAGE_VALIDATION_PROTECTION_MS: i64 = 180 * 24 * 60 * 60 * 1000;
+const PACKAGE_ARTIFACT_COUNT_LIMIT: u8 = 2;
+const INSTALLED_HOST_ATTEMPT_LIMIT: i64 = 8;
+const INSTALLED_HOST_ATTEMPT_DOMAIN: &str = "quireforge-installed-host-attempt-v1";
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum PackageValidationPhase {
+    Unprivileged,
+    InstalledHost,
+}
+
+fn package_validation_phase_value(phase: PackageValidationPhase) -> &'static str {
+    match phase {
+        PackageValidationPhase::Unprivileged => "unprivileged",
+        PackageValidationPhase::InstalledHost => "installed-host",
+    }
+}
+
+fn package_validation_phase(value: &str) -> Result<PackageValidationPhase, StorageError> {
+    match value {
+        "unprivileged" => Ok(PackageValidationPhase::Unprivileged),
+        "installed-host" => Ok(PackageValidationPhase::InstalledHost),
+        _ => Err(StorageError::InvalidStoredValue),
+    }
+}
+
+/// Redacted result produced by the native package-validation controller. This
+/// is deliberately not deserializable and has no IPC representation.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct PackageValidationRecordInput {
+    pub candidate_identity_sha256: String,
+    pub validation_phase: PackageValidationPhase,
+    pub attempt_identity_sha256: Option<String>,
+    pub installed_host_facts: Option<PackageValidationInstalledHostFacts>,
+    pub application_version: String,
+    pub debian_version: String,
+    pub manifest_state: LocalReviewEvidenceCheckState,
+    pub checksum_state: LocalReviewEvidenceCheckState,
+    pub abi_state: LocalReviewEvidenceCheckState,
+    pub provenance_state: LocalReviewEvidenceCheckState,
+    pub visible_launch_state: LocalReviewEvidenceCheckState,
+    pub installed_host_state: LocalReviewEvidenceCheckState,
+    pub artifact_count: u8,
+    pub validation_complete: bool,
+    pub supersedes_record_id: Option<String>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct PackageValidationInstalledHostFacts {
+    pub package_state: String,
+    pub version_match: bool,
+    pub ownership_verified: bool,
+    pub permissions_safe: bool,
+    pub package_integrity_verified: bool,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct PackageValidationSummary {
+    pub(crate) id: String,
+    pub(crate) project_id: String,
+    pub(crate) input: PackageValidationRecordInput,
+    pub(crate) created_at_ms: i64,
+    pub(crate) record_sha256: String,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) enum PackageValidationRecordOutcome {
+    Created(PackageValidationSummary),
+    Existing(PackageValidationSummary),
 }
 
 fn task_status(value: &str) -> Result<TaskStatus, StorageError> {
@@ -479,6 +886,562 @@ const TASK_PAYLOAD_LIMIT: i64 = 8 * 1024 * 1024;
 const TASK_RECORD_PAYLOAD_LIMIT: i64 = 48 * 1024;
 const TASK_CLEANUP_AGE_MS: i64 = 180 * 24 * 60 * 60 * 1_000;
 const ID_GENERATION_ATTEMPTS: usize = 4;
+const REVIEW_COLLECTION_LIMIT: i64 = 24;
+const REVIEW_ACTIVE_COLLECTION_LIMIT: i64 = 12;
+const REVIEW_ITEMS_PER_COLLECTION_LIMIT: i64 = 12;
+const REVIEW_TEXT_BYTES_LIMIT: usize = 256 * 1024;
+const REVIEW_TEXT_PREVIEW_BYTES_LIMIT: usize = 128 * 1024;
+const REVIEW_TEXT_PREVIEW_LINES_LIMIT: usize = 2_000;
+const REVIEW_TEXT_PREVIEW_CODEPOINT_LIMIT: usize = 32_768;
+const REVIEW_IMAGE_BYTES_LIMIT: usize = 1024 * 1024;
+const REVIEW_EVIDENCE_BYTES_LIMIT: usize = 16 * 1024;
+const REVIEW_EVIDENCE_WARNING_BYTES: usize = 12 * 1024;
+const REVIEW_ANNOTATION_BYTES_LIMIT: usize = 1024;
+const REVIEW_ANNOTATION_CODEPOINT_LIMIT: usize = 1024;
+const REVIEW_ANNOTATIONS_PER_ITEM_LIMIT: i64 = 32;
+const REVIEW_ANNOTATIONS_WARNING_COUNT: i64 = 24;
+const REVIEW_ANNOTATION_WARNING_BYTES: usize = 768;
+const REVIEW_COLLECTION_PAYLOAD_LIMIT: i64 = 4 * 1024 * 1024;
+const REVIEW_PAYLOAD_LIMIT: i64 = 32 * 1024 * 1024;
+
+fn review_text_format_value(format: LocalReviewTextFormat) -> &'static str {
+    match format {
+        LocalReviewTextFormat::Plain => "plain",
+        LocalReviewTextFormat::Markdown => "markdown",
+        LocalReviewTextFormat::Json => "json",
+        LocalReviewTextFormat::Csv => "csv",
+        LocalReviewTextFormat::Python => "python",
+    }
+}
+
+fn review_mime_type(format: LocalReviewTextFormat) -> &'static str {
+    match format {
+        LocalReviewTextFormat::Plain => "text/plain; charset=utf-8",
+        LocalReviewTextFormat::Markdown => "text/markdown; charset=utf-8",
+        LocalReviewTextFormat::Json => "application/json",
+        LocalReviewTextFormat::Csv => "text/csv; charset=utf-8",
+        LocalReviewTextFormat::Python => "text/x-python",
+    }
+}
+
+fn review_text_format(value: &str) -> Result<LocalReviewTextFormat, StorageError> {
+    match value {
+        "plain" => Ok(LocalReviewTextFormat::Plain),
+        "markdown" => Ok(LocalReviewTextFormat::Markdown),
+        "json" => Ok(LocalReviewTextFormat::Json),
+        "csv" => Ok(LocalReviewTextFormat::Csv),
+        "python" => Ok(LocalReviewTextFormat::Python),
+        _ => Err(StorageError::InvalidStoredValue),
+    }
+}
+
+fn review_collection_state(value: &str) -> Result<LocalReviewCollectionState, StorageError> {
+    match value {
+        "active" => Ok(LocalReviewCollectionState::Active),
+        "frozen" => Ok(LocalReviewCollectionState::Frozen),
+        "orphaned" => Ok(LocalReviewCollectionState::Orphaned),
+        "unavailable" => Ok(LocalReviewCollectionState::Unavailable),
+        "discarded" => Ok(LocalReviewCollectionState::Discarded),
+        _ => Err(StorageError::InvalidStoredValue),
+    }
+}
+
+fn review_source_kind(value: &str) -> Result<LocalReviewSourceKind, StorageError> {
+    match value {
+        "user-authored-text" => Ok(LocalReviewSourceKind::UserAuthoredText),
+        "m48-artifact-copy" => Ok(LocalReviewSourceKind::M48ArtifactCopy),
+        "native-image-input" => Ok(LocalReviewSourceKind::NativeImageInput),
+        "typed-evidence-snapshot" => Ok(LocalReviewSourceKind::TypedEvidenceSnapshot),
+        _ => Err(StorageError::InvalidStoredValue),
+    }
+}
+
+fn review_evidence_source(value: &str) -> Result<LocalReviewEvidenceSource, StorageError> {
+    match value {
+        "manual-validation-summary" => Ok(LocalReviewEvidenceSource::ManualValidationSummary),
+        "m48-generated-artifact-metadata" => {
+            Ok(LocalReviewEvidenceSource::M48GeneratedArtifactMetadata)
+        }
+        "safe-preview-metadata" => Ok(LocalReviewEvidenceSource::SafePreviewMetadata),
+        "git-status-diff-summary" => Ok(LocalReviewEvidenceSource::GitStatusDiffSummary),
+        "activity-presentation" => Ok(LocalReviewEvidenceSource::ActivityPresentation),
+        "approval-presentation" => Ok(LocalReviewEvidenceSource::ApprovalPresentation),
+        "package-manifest-summary" => Ok(LocalReviewEvidenceSource::PackageManifestSummary),
+        _ => Err(StorageError::InvalidStoredValue),
+    }
+}
+
+fn manual_evidence_envelope_bytes(title: &str, summary: &str) -> Result<Vec<u8>, StorageError> {
+    serde_json::to_vec(&EvidenceEnvelopeV1 {
+        schema_version: 1,
+        source: LocalReviewEvidenceSource::ManualValidationSummary,
+        source_schema_version: 1,
+        title: title.to_owned(),
+        summary: summary.to_owned(),
+        details: LocalReviewManualValidationDetails {
+            validation_state: LocalReviewValidationState::NotRun,
+        },
+    })
+    .map_err(|_| StorageError::InvalidStoredValue)
+}
+
+fn m48_metadata_evidence_envelope_bytes(
+    title: &str,
+    summary: &str,
+    details: &LocalReviewM48GeneratedArtifactMetadataDetails,
+) -> Result<Vec<u8>, StorageError> {
+    serde_json::to_vec(&EvidenceEnvelopeV1 {
+        schema_version: 1,
+        source: LocalReviewEvidenceSource::M48GeneratedArtifactMetadata,
+        source_schema_version: 1,
+        title: title.to_owned(),
+        summary: summary.to_owned(),
+        details,
+    })
+    .map_err(|_| StorageError::InvalidStoredValue)
+}
+
+fn safe_preview_metadata_evidence_envelope_bytes(
+    title: &str,
+    summary: &str,
+    details: &LocalReviewSafePreviewMetadataDetails,
+) -> Result<Vec<u8>, StorageError> {
+    serde_json::to_vec(&EvidenceEnvelopeV1 {
+        schema_version: 1,
+        source: LocalReviewEvidenceSource::SafePreviewMetadata,
+        source_schema_version: 1,
+        title: title.to_owned(),
+        summary: summary.to_owned(),
+        details,
+    })
+    .map_err(|_| StorageError::InvalidStoredValue)
+}
+
+fn parse_manual_evidence_envelope(bytes: &[u8], title: &str) -> Result<String, StorageError> {
+    let envelope: EvidenceEnvelopeV1<LocalReviewManualValidationDetails> =
+        serde_json::from_slice(bytes).map_err(|_| StorageError::InvalidStoredValue)?;
+    if envelope.schema_version != 1
+        || envelope.source_schema_version != 1
+        || envelope.source != LocalReviewEvidenceSource::ManualValidationSummary
+        || envelope.title != title
+        || !matches!(normalize_review_label(&envelope.title), Ok(ref value) if value == &envelope.title)
+        || !matches!(normalize_review_text(&envelope.summary, LocalReviewTextFormat::Plain), Ok(ref value) if value == &envelope.summary)
+    {
+        return Err(StorageError::InvalidStoredValue);
+    }
+    Ok(envelope.summary)
+}
+
+fn parse_m48_metadata_evidence_envelope(
+    bytes: &[u8],
+    title: &str,
+) -> Result<(String, LocalReviewM48GeneratedArtifactMetadataDetails), StorageError> {
+    let envelope: EvidenceEnvelopeV1<LocalReviewM48GeneratedArtifactMetadataDetails> =
+        serde_json::from_slice(bytes).map_err(|_| StorageError::InvalidStoredValue)?;
+    if envelope.schema_version != 1
+        || envelope.source != LocalReviewEvidenceSource::M48GeneratedArtifactMetadata
+        || envelope.source_schema_version != 1
+        || envelope.title != title
+        || normalize_review_label(&envelope.title)? != envelope.title
+        || normalize_review_text(&envelope.summary, LocalReviewTextFormat::Plain)?
+            != envelope.summary
+        || !valid_review_sha256(&envelope.details.manifest_sha256)
+    {
+        return Err(StorageError::InvalidStoredValue);
+    }
+    Ok((envelope.summary, envelope.details))
+}
+
+fn parse_safe_preview_metadata_evidence_envelope(
+    bytes: &[u8],
+    title: &str,
+) -> Result<(String, LocalReviewSafePreviewMetadataDetails), StorageError> {
+    let envelope: EvidenceEnvelopeV1<LocalReviewSafePreviewMetadataDetails> =
+        serde_json::from_slice(bytes).map_err(|_| StorageError::InvalidStoredValue)?;
+    if envelope.schema_version != 1
+        || envelope.source != LocalReviewEvidenceSource::SafePreviewMetadata
+        || envelope.source_schema_version != 1
+        || envelope.title != title
+        || normalize_review_label(&envelope.title)? != envelope.title
+        || normalize_review_text(&envelope.summary, LocalReviewTextFormat::Plain)?
+            != envelope.summary
+    {
+        return Err(StorageError::InvalidStoredValue);
+    }
+    Ok((envelope.summary, envelope.details))
+}
+
+fn normalize_review_label(value: &str) -> Result<String, StorageError> {
+    let value = value.split_whitespace().collect::<Vec<_>>().join(" ");
+    if value.is_empty()
+        || value.chars().count() > 120
+        || value.len() > 480
+        || value.chars().any(|character| {
+            character.is_control()
+                || is_bidirectional_format_control(character)
+                || matches!(character, '/' | '\\')
+        })
+    {
+        return Err(StorageError::InvalidStoredValue);
+    }
+    Ok(value)
+}
+
+fn normalize_review_text(
+    value: &str,
+    format: LocalReviewTextFormat,
+) -> Result<String, StorageError> {
+    let value = value.replace("\r\n", "\n").replace('\r', "\n");
+    if value.is_empty()
+        || value.len() > REVIEW_TEXT_BYTES_LIMIT
+        || value.chars().count() > 32_768
+        || value.chars().any(|character| {
+            (character.is_control() && !matches!(character, '\n' | '\t'))
+                || is_bidirectional_format_control(character)
+        })
+    {
+        return Err(StorageError::InvalidStoredValue);
+    }
+    if format == LocalReviewTextFormat::Json
+        && serde_json::from_str::<serde_json::Value>(&value).is_err()
+    {
+        return Err(StorageError::InvalidStoredValue);
+    }
+    if format == LocalReviewTextFormat::Csv {
+        let widths: Vec<usize> = value.lines().map(|line| line.split(',').count()).collect();
+        if widths.is_empty()
+            || widths
+                .iter()
+                .any(|width| *width == 0 || *width != widths[0])
+        {
+            return Err(StorageError::InvalidStoredValue);
+        }
+    }
+    Ok(value)
+}
+
+fn normalize_review_annotation_text(value: &str) -> Result<String, StorageError> {
+    let value = value.replace("\r\n", "\n").replace('\r', "\n");
+    if value.is_empty()
+        || value.len() > REVIEW_ANNOTATION_BYTES_LIMIT
+        || value.chars().count() > REVIEW_ANNOTATION_CODEPOINT_LIMIT
+        || value.chars().any(|character| {
+            (character.is_control() && !matches!(character, '\n' | '\t'))
+                || is_bidirectional_format_control(character)
+        })
+    {
+        return Err(StorageError::InvalidStoredValue);
+    }
+    Ok(value)
+}
+
+fn review_digest(bytes: &[u8]) -> String {
+    format!("{:x}", Sha256::digest(bytes))
+}
+
+fn valid_review_sha256(value: &str) -> bool {
+    value.len() == 64
+        && value
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || matches!(byte, b'a'..=b'f'))
+}
+
+fn bounded_review_text_preview(text: &str) -> (String, u64, u16, u16, bool) {
+    let mut projected = String::new();
+    let mut lines = 0usize;
+    let mut code_points = 0usize;
+    let mut truncated = false;
+    for line in text.split_inclusive('\n') {
+        let next_lines = lines + 1;
+        let next_code_points = code_points + line.chars().count();
+        let next_bytes = projected.len() + line.len();
+        if next_lines > REVIEW_TEXT_PREVIEW_LINES_LIMIT
+            || next_code_points > REVIEW_TEXT_PREVIEW_CODEPOINT_LIMIT
+            || next_bytes > REVIEW_TEXT_PREVIEW_BYTES_LIMIT
+        {
+            truncated = true;
+            break;
+        }
+        projected.push_str(line);
+        lines = next_lines;
+        code_points = next_code_points;
+    }
+    if projected.len() < text.len() {
+        truncated = true;
+    }
+    let projected_byte_size = projected.len() as u64;
+    (
+        projected,
+        projected_byte_size,
+        u16::try_from(lines).expect("text preview line limit fits u16"),
+        u16::try_from(code_points).expect("text preview code-point limit fits u16"),
+        truncated,
+    )
+}
+
+fn unavailable_review_text_preview(
+    collection_id: &str,
+    item_id: &str,
+    diagnostic_code: LocalReviewDiagnosticCode,
+) -> LocalReviewTextPreview {
+    LocalReviewTextPreview {
+        schema_version: 1,
+        collection_id: collection_id.to_owned(),
+        item_id: item_id.to_owned(),
+        title: None,
+        text_format: None,
+        byte_size: None,
+        sha256: None,
+        created_at_ms: None,
+        state: LocalReviewItemState::Unavailable,
+        text: None,
+        projected_byte_size: 0,
+        projected_line_count: 0,
+        projected_code_point_count: 0,
+        truncated: false,
+        diagnostic_code: Some(diagnostic_code),
+    }
+}
+
+fn review_payload_bytes(
+    connection: &Connection,
+    collection_id: Option<&str>,
+) -> Result<i64, StorageError> {
+    let where_clause = if collection_id.is_some() {
+        "WHERE collection_id = ?1"
+    } else {
+        ""
+    };
+    let sql = format!(
+        "SELECT
+            COALESCE(sum(length(content) + length(CAST(title AS BLOB)) + length(CAST(provenance AS BLOB)) + 256), 0)
+            + COALESCE((SELECT sum(length(CAST(body AS BLOB)) + 128)
+                FROM local_review_annotations
+                JOIN local_review_items ON local_review_items.id = local_review_annotations.item_id
+                {where_clause}), 0)
+         FROM local_review_items {where_clause}"
+    );
+    if let Some(collection_id) = collection_id {
+        Ok(connection.query_row(&sql, [collection_id], |row| row.get(0))?)
+    } else {
+        Ok(connection.query_row(&sql, [], |row| row.get(0))?)
+    }
+}
+
+const REVIEW_COMPARISON_BYTES_LIMIT: usize = 128 * 1024;
+const REVIEW_COMPARISON_LINES_LIMIT: usize = 2_000;
+const REVIEW_COMPARISONS_PER_COLLECTION_LIMIT: i64 = 8;
+const REVIEW_COMPARISONS_WARNING_COUNT: i64 = 6;
+
+fn comparison_lines(left: &str, right: &str) -> Vec<LocalReviewLineRecord> {
+    let left: Vec<&str> = left.lines().collect();
+    let right: Vec<&str> = right.lines().collect();
+    let mut table = vec![vec![0usize; right.len() + 1]; left.len() + 1];
+    for left_index in (0..left.len()).rev() {
+        for right_index in (0..right.len()).rev() {
+            table[left_index][right_index] = if left[left_index] == right[right_index] {
+                table[left_index + 1][right_index + 1] + 1
+            } else {
+                table[left_index + 1][right_index].max(table[left_index][right_index + 1])
+            };
+        }
+    }
+    let (mut left_index, mut right_index) = (0, 0);
+    let mut records = Vec::new();
+    while left_index < left.len() || right_index < right.len() {
+        if left_index < left.len()
+            && right_index < right.len()
+            && left[left_index] == right[right_index]
+        {
+            records.push(LocalReviewLineRecord {
+                kind: LocalReviewLineKind::Unchanged,
+                text: left[left_index].to_owned(),
+                left_line_number: Some((left_index + 1) as u32),
+                right_line_number: Some((right_index + 1) as u32),
+            });
+            left_index += 1;
+            right_index += 1;
+        } else if right_index < right.len()
+            && (left_index == left.len()
+                || table[left_index][right_index + 1] >= table[left_index + 1][right_index])
+        {
+            records.push(LocalReviewLineRecord {
+                kind: LocalReviewLineKind::Added,
+                text: right[right_index].to_owned(),
+                left_line_number: None,
+                right_line_number: Some((right_index + 1) as u32),
+            });
+            right_index += 1;
+        } else {
+            records.push(LocalReviewLineRecord {
+                kind: LocalReviewLineKind::Removed,
+                text: left[left_index].to_owned(),
+                left_line_number: Some((left_index + 1) as u32),
+                right_line_number: None,
+            });
+            left_index += 1;
+        }
+    }
+    records
+}
+
+/// The only lifecycle gate for Local Review mutations.  Content-changing
+/// operations must revalidate the current task and immutable plan binding in
+/// the same immediate transaction as their write.  Explicit discard is the
+/// intentional recovery exception: copied review data remains disposable even
+/// when its task or plan is no longer available.
+#[derive(Clone, Copy)]
+enum LocalReviewMutationPermission {
+    ActiveContent,
+    RecoveryDiscard,
+    ExplicitResume,
+}
+
+struct LocalReviewMutationContext {
+    task_id: String,
+    updated_at_ms: i64,
+}
+
+#[expect(
+    clippy::type_complexity,
+    reason = "The row tuple mirrors the fixed local_review_collections query and is immediately destructured."
+)]
+fn local_review_mutation_context(
+    tx: &Transaction<'_>,
+    collection_id: &str,
+    expected_updated_at_ms: Option<i64>,
+    permission: LocalReviewMutationPermission,
+) -> Result<LocalReviewMutationContext, StorageError> {
+    if !valid_task_id(collection_id)
+        || expected_updated_at_ms.is_some_and(|updated_at_ms| updated_at_ms < 0)
+    {
+        return Err(StorageError::InvalidStoredValue);
+    }
+    let collection: Option<(String, String, i64, Option<String>, Option<i64>)> = tx
+        .query_row(
+            "SELECT task_id, state, updated_at_ms, plan_id, observed_plan_updated_at_ms
+             FROM local_review_collections WHERE id = ?1 AND discarded_at_ms IS NULL",
+            [collection_id],
+            |row| {
+                Ok((
+                    row.get(0)?,
+                    row.get(1)?,
+                    row.get(2)?,
+                    row.get(3)?,
+                    row.get(4)?,
+                ))
+            },
+        )
+        .optional()?;
+    let Some((task_id, state, updated_at_ms, plan_id, observed_plan_updated_at_ms)) = collection
+    else {
+        return Err(StorageError::TaskNotFound);
+    };
+    if expected_updated_at_ms.is_some_and(|expected| expected != updated_at_ms) {
+        return Err(StorageError::InvalidStatusTransition);
+    }
+    if matches!(permission, LocalReviewMutationPermission::RecoveryDiscard) {
+        return Ok(LocalReviewMutationContext {
+            task_id,
+            updated_at_ms,
+        });
+    }
+    if matches!(permission, LocalReviewMutationPermission::ActiveContent) && state != "active" {
+        return Err(StorageError::InvalidStatusTransition);
+    }
+    let task: Option<(String, Option<i64>)> = tx
+        .query_row(
+            "SELECT status, archived_at_ms FROM task_records WHERE id = ?1",
+            [&task_id],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .optional()?;
+    let Some((status, archived_at_ms)) = task else {
+        return Err(StorageError::TaskNotFound);
+    };
+    if archived_at_ms.is_some() || !matches!(status.as_str(), "active" | "paused") {
+        return Err(StorageError::TaskArchived);
+    }
+    if let (Some(plan_id), Some(observed)) = (plan_id.as_deref(), observed_plan_updated_at_ms) {
+        let current: Option<i64> = tx
+            .query_row(
+                "SELECT updated_at_ms FROM task_plans WHERE id = ?1 AND task_id = ?2",
+                params![plan_id, task_id],
+                |row| row.get(0),
+            )
+            .optional()?;
+        if current != Some(observed) {
+            return Err(StorageError::PlanNotFound);
+        }
+    } else if plan_id.is_some() {
+        return Err(StorageError::InvalidStoredValue);
+    }
+    Ok(LocalReviewMutationContext {
+        task_id,
+        updated_at_ms,
+    })
+}
+
+fn annotation_mutation_context(
+    tx: &Transaction<'_>,
+    collection_id: &str,
+    item_id: &str,
+    annotation_id: &str,
+    expected_updated_at_ms: i64,
+    permission: LocalReviewMutationPermission,
+) -> Result<(String, i64, String, String, i64, i64), StorageError> {
+    if !valid_task_id(collection_id)
+        || !valid_task_id(item_id)
+        || !valid_task_id(annotation_id)
+        || expected_updated_at_ms < 0
+    {
+        return Err(StorageError::InvalidStoredValue);
+    }
+    let collection =
+        local_review_mutation_context(tx, collection_id, Some(expected_updated_at_ms), permission)?;
+    let item_state: Option<String> = tx
+        .query_row(
+            "SELECT state FROM local_review_items
+             WHERE id = ?1 AND collection_id = ?2 AND discarded_at_ms IS NULL",
+            params![item_id, collection_id],
+            |row| row.get(0),
+        )
+        .optional()?;
+    if !matches!(permission, LocalReviewMutationPermission::RecoveryDiscard)
+        && item_state.as_deref() != Some("ready")
+    {
+        return Err(StorageError::TaskNotFound);
+    }
+    if item_state.is_none() {
+        return Err(StorageError::TaskNotFound);
+    }
+    let annotation: Option<(String, String, i64, i64)> = tx
+        .query_row(
+            "SELECT state, body, created_at_ms, updated_at_ms
+             FROM local_review_annotations WHERE id = ?1 AND item_id = ?2",
+            params![annotation_id, item_id],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+        )
+        .optional()?;
+    let Some((state, body, created_at_ms, updated_at_ms)) = annotation else {
+        return Err(StorageError::TaskNotFound);
+    };
+    if !matches!(state.as_str(), "open" | "resolved")
+        || created_at_ms < 0
+        || updated_at_ms < created_at_ms
+        || !matches!(normalize_review_annotation_text(&body), Ok(ref normalized) if normalized == &body)
+    {
+        return Err(StorageError::InvalidStoredValue);
+    }
+    Ok((
+        state,
+        collection.updated_at_ms,
+        body,
+        collection.task_id,
+        created_at_ms,
+        updated_at_ms,
+    ))
+}
 
 fn task_payload_bytes(connection: &Connection, task_id: Option<&str>) -> Result<i64, StorageError> {
     let value = if let Some(task_id) = task_id {
@@ -662,7 +1625,1629 @@ pub(crate) struct ProjectRepository {
     connection: Connection,
 }
 
+pub(crate) struct LocalReviewPromotionSource {
+    pub collection_id: String,
+    pub item_id: String,
+    pub task_id: String,
+    pub plan_id: Option<String>,
+    pub observed_plan_updated_at_ms: Option<i64>,
+    pub title: String,
+    pub text_format: LocalReviewTextFormat,
+    pub sha256: String,
+    pub content: String,
+}
+
 impl ProjectRepository {
+    pub(crate) fn local_review_promotion_source(
+        &mut self,
+        collection_id: &str,
+        item_id: &str,
+        expected_updated_at_ms: Option<i64>,
+    ) -> Result<LocalReviewPromotionSource, StorageError> {
+        if !valid_task_id(collection_id) || !valid_task_id(item_id) {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let collection = local_review_mutation_context(
+            &tx,
+            collection_id,
+            expected_updated_at_ms,
+            LocalReviewMutationPermission::ActiveContent,
+        )?;
+        let (plan_id, observed_plan_updated_at_ms): (Option<String>, Option<i64>) = tx.query_row(
+            "SELECT plan_id, observed_plan_updated_at_ms FROM local_review_collections WHERE id = ?1",
+            [collection_id],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )?;
+        let (class, format, item_state, title, content, sha256, byte_size): (String, Option<String>, String, String, Vec<u8>, String, i64) = tx.query_row(
+            "SELECT class, text_format, state, title, content, sha256, byte_size FROM local_review_items WHERE id = ?1 AND collection_id = ?2 AND discarded_at_ms IS NULL",
+            params![item_id, collection_id],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?, row.get(5)?, row.get(6)?)),
+        )?;
+        if class != "text"
+            || item_state != "ready"
+            || byte_size < 1
+            || byte_size as usize != content.len()
+            || content.len() > 512 * 1024
+            || sha256 != review_digest(&content)
+        {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let text_format =
+            review_text_format(format.as_deref().ok_or(StorageError::InvalidStoredValue)?)?;
+        let content = String::from_utf8(content).map_err(|_| StorageError::InvalidStoredValue)?;
+        if !matches!(normalize_review_text(&content, text_format), Ok(ref normalized) if normalized == &content)
+        {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let source = LocalReviewPromotionSource {
+            collection_id: collection_id.to_owned(),
+            item_id: item_id.to_owned(),
+            task_id: collection.task_id,
+            plan_id,
+            observed_plan_updated_at_ms,
+            title,
+            text_format,
+            sha256,
+            content,
+        };
+        tx.commit()?;
+        Ok(source)
+    }
+    #[expect(
+        clippy::type_complexity,
+        reason = "This private storage projection deliberately matches the fixed LocalReview snapshot fields."
+    )]
+    pub(crate) fn local_review_snapshot(
+        &mut self,
+        selected_collection_id: Option<&str>,
+    ) -> Result<
+        (
+            Vec<LocalReviewCollectionSummary>,
+            Option<LocalReviewCollectionSummary>,
+            Vec<LocalReviewItemSummary>,
+            u8,
+            u64,
+            bool,
+        ),
+        StorageError,
+    > {
+        if selected_collection_id.is_some_and(|id| !valid_task_id(id)) {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let mut collections = Vec::new();
+        let mut statement = self.connection.prepare(
+            "SELECT id, task_id, plan_id, state, title, updated_at_ms
+             FROM local_review_collections WHERE discarded_at_ms IS NULL
+             ORDER BY updated_at_ms DESC, id LIMIT 24",
+        )?;
+        for row in statement.query_map([], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, Option<String>>(2)?,
+                row.get::<_, String>(3)?,
+                row.get::<_, String>(4)?,
+                row.get::<_, i64>(5)?,
+            ))
+        })? {
+            let (id, task_id, plan_id, state, title, updated_at_ms) = row?;
+            if !valid_task_id(&id)
+                || !valid_task_id(&task_id)
+                || plan_id.as_deref().is_some_and(|id| !valid_task_id(id))
+                || !matches!(normalize_review_label(&title), Ok(ref normalized) if normalized == &title)
+            {
+                return Err(StorageError::InvalidStoredValue);
+            }
+            let task_context: Option<(String, Option<i64>)> = self
+                .connection
+                .query_row(
+                    "SELECT status, archived_at_ms FROM task_records WHERE id = ?1",
+                    [&task_id],
+                    |row| Ok((row.get(0)?, row.get(1)?)),
+                )
+                .optional()?;
+            let state = match task_context {
+                None => LocalReviewCollectionState::Orphaned,
+                Some((status, archived)) if archived.is_some() || status == "completed" => {
+                    LocalReviewCollectionState::Frozen
+                }
+                Some((status, _)) if matches!(status.as_str(), "active" | "paused") => {
+                    review_collection_state(&state)?
+                }
+                _ => LocalReviewCollectionState::Unavailable,
+            };
+            let item_count: i64 = self.connection.query_row("SELECT count(*) FROM local_review_items WHERE collection_id = ?1 AND discarded_at_ms IS NULL", [&id], |row| row.get(0))?;
+            let payload = review_payload_bytes(&self.connection, Some(&id))?;
+            let (evidence_count, evidence_bytes): (i64, i64) = self.connection.query_row("SELECT count(*), COALESCE(sum(byte_size), 0) FROM local_review_items WHERE collection_id = ?1 AND class = 'evidence'", [&id], |row| Ok((row.get(0)?, row.get(1)?)))?;
+            let (annotation_count, annotation_max_bytes): (i64, i64) = self.connection.query_row(
+                "SELECT count(*), COALESCE(max(length(CAST(body AS BLOB))), 0)
+                 FROM local_review_annotations
+                 JOIN local_review_items ON local_review_items.id = local_review_annotations.item_id
+                 WHERE local_review_items.collection_id = ?1",
+                [&id],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )?;
+            let comparison_count: i64 = self.connection.query_row(
+                "SELECT count(*) FROM local_review_comparisons WHERE collection_id = ?1",
+                [&id],
+                |row| row.get(0),
+            )?;
+            collections.push(LocalReviewCollectionSummary {
+                collection_id: id,
+                task_id,
+                plan_id,
+                title,
+                state,
+                item_count: u8::try_from(item_count)
+                    .map_err(|_| StorageError::InvalidStoredValue)?,
+                payload_bytes: payload.max(0) as u64,
+                updated_at_ms,
+                warning: item_count >= 10
+                    || payload >= 3 * 1024 * 1024
+                    || evidence_count >= 5
+                    || evidence_bytes >= REVIEW_EVIDENCE_WARNING_BYTES as i64
+                    || annotation_count >= REVIEW_ANNOTATIONS_WARNING_COUNT
+                    || annotation_max_bytes >= REVIEW_ANNOTATION_WARNING_BYTES as i64
+                    || comparison_count >= REVIEW_COMPARISONS_WARNING_COUNT,
+                annotation_count_warning: annotation_count >= REVIEW_ANNOTATIONS_WARNING_COUNT,
+                annotation_byte_warning: annotation_max_bytes
+                    >= REVIEW_ANNOTATION_WARNING_BYTES as i64,
+                comparison_count_warning: comparison_count >= REVIEW_COMPARISONS_WARNING_COUNT,
+            });
+        }
+        let selected = selected_collection_id.and_then(|id| {
+            collections
+                .iter()
+                .find(|item| item.collection_id == id)
+                .cloned()
+        });
+        let mut items = Vec::new();
+        if let Some(collection) = &selected {
+            let mut statement = self.connection.prepare(
+                "SELECT id, class, text_format, state, title, source_kind, evidence_source, mime_type, width, height, byte_size, sha256, created_at_ms, content
+                 FROM local_review_items WHERE collection_id = ?1 AND discarded_at_ms IS NULL
+                 ORDER BY created_at_ms DESC, id LIMIT 12",
+            )?;
+            for row in statement.query_map([&collection.collection_id], |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, Option<String>>(2)?,
+                    row.get::<_, String>(3)?,
+                    row.get::<_, String>(4)?,
+                    row.get::<_, String>(5)?,
+                    row.get::<_, Option<String>>(6)?,
+                    row.get::<_, String>(7)?,
+                    row.get::<_, Option<i64>>(8)?,
+                    row.get::<_, Option<i64>>(9)?,
+                    row.get::<_, i64>(10)?,
+                    row.get::<_, String>(11)?,
+                    row.get::<_, i64>(12)?,
+                    row.get::<_, Vec<u8>>(13)?,
+                ))
+            })? {
+                let (
+                    id,
+                    class,
+                    format,
+                    state,
+                    title,
+                    source_kind,
+                    evidence_source,
+                    mime_type,
+                    width,
+                    height,
+                    byte_size,
+                    sha256,
+                    created_at_ms,
+                    content,
+                ) = row?;
+                if !valid_task_id(&id)
+                    || state != "ready"
+                    || !matches!(normalize_review_label(&title), Ok(ref normalized) if normalized == &title)
+                    || byte_size < 1
+                    || byte_size as usize != content.len()
+                    || sha256 != review_digest(&content)
+                {
+                    return Err(StorageError::InvalidStoredValue);
+                }
+                let (class, text_format, evidence_source, width, height, line_count) = match class
+                    .as_str()
+                {
+                    "text" => {
+                        let format = review_text_format(
+                            format.as_deref().ok_or(StorageError::InvalidStoredValue)?,
+                        )?;
+                        let text = std::str::from_utf8(&content)
+                            .map_err(|_| StorageError::InvalidStoredValue)?;
+                        if !matches!(normalize_review_text(text, format), Ok(ref normalized) if normalized == text)
+                            || mime_type != review_mime_type(format)
+                            || width.is_some()
+                            || height.is_some()
+                        {
+                            return Err(StorageError::InvalidStoredValue);
+                        }
+                        (
+                            LocalReviewItemClass::Text,
+                            Some(format),
+                            None,
+                            None,
+                            None,
+                            Some(
+                                u16::try_from(text.lines().count())
+                                    .map_err(|_| StorageError::InvalidStoredValue)?,
+                            ),
+                        )
+                    }
+                    "image-mockup" => {
+                        let image = validate_attachment_image(&content)
+                            .map_err(|_| StorageError::InvalidStoredValue)?;
+                        if content.len() > REVIEW_IMAGE_BYTES_LIMIT
+                            || format.is_some()
+                            || mime_type != image.mime_type
+                            || width != Some(image.width as i64)
+                            || height != Some(image.height as i64)
+                            || source_kind != "native-image-input"
+                        {
+                            return Err(StorageError::InvalidStoredValue);
+                        }
+                        (
+                            LocalReviewItemClass::ImageMockup,
+                            None,
+                            None,
+                            Some(image.width),
+                            Some(image.height),
+                            None,
+                        )
+                    }
+                    "evidence" => {
+                        let evidence_source = evidence_source
+                            .as_deref()
+                            .ok_or(StorageError::InvalidStoredValue)
+                            .and_then(review_evidence_source)?;
+                        let valid_envelope = match evidence_source {
+                            LocalReviewEvidenceSource::ManualValidationSummary => {
+                                parse_manual_evidence_envelope(&content, &title).is_ok()
+                            }
+                            LocalReviewEvidenceSource::M48GeneratedArtifactMetadata => {
+                                parse_m48_metadata_evidence_envelope(&content, &title).is_ok()
+                            }
+                            LocalReviewEvidenceSource::SafePreviewMetadata => {
+                                parse_safe_preview_metadata_evidence_envelope(&content, &title)
+                                    .is_ok()
+                            }
+                            _ => false,
+                        };
+                        if format.is_some()
+                            || width.is_some()
+                            || height.is_some()
+                            || mime_type != "application/json; profile=evidence-envelope-v1"
+                            || source_kind != "typed-evidence-snapshot"
+                            || !valid_envelope
+                        {
+                            return Err(StorageError::InvalidStoredValue);
+                        }
+                        (
+                            LocalReviewItemClass::Evidence,
+                            None,
+                            Some(evidence_source),
+                            None,
+                            None,
+                            None,
+                        )
+                    }
+                    _ => return Err(StorageError::InvalidStoredValue),
+                };
+                let mut annotations = Vec::new();
+                let mut annotations_statement = self.connection.prepare(
+                    "SELECT id, schema_version, state, body, created_at_ms, updated_at_ms
+                     FROM local_review_annotations WHERE item_id = ?1
+                     ORDER BY CASE state WHEN 'open' THEN 0 WHEN 'resolved' THEN 1 ELSE 2 END,
+                              created_at_ms, id",
+                )?;
+                for annotation in annotations_statement.query_map([&id], |row| {
+                    Ok((
+                        row.get::<_, String>(0)?,
+                        row.get::<_, i64>(1)?,
+                        row.get::<_, String>(2)?,
+                        row.get::<_, String>(3)?,
+                        row.get::<_, i64>(4)?,
+                        row.get::<_, i64>(5)?,
+                    ))
+                })? {
+                    let (
+                        annotation_id,
+                        schema_version,
+                        annotation_state,
+                        body,
+                        created_at_ms,
+                        updated_at_ms,
+                    ) = annotation?;
+                    if !valid_task_id(&annotation_id)
+                        || schema_version != 1
+                        || created_at_ms < 0
+                        || updated_at_ms < created_at_ms
+                        || !matches!(normalize_review_annotation_text(&body), Ok(ref normalized) if normalized == &body)
+                    {
+                        return Err(StorageError::InvalidStoredValue);
+                    }
+                    let state = match annotation_state.as_str() {
+                        "open" => LocalReviewAnnotationState::Open,
+                        "resolved" => LocalReviewAnnotationState::Resolved,
+                        _ => return Err(StorageError::InvalidStoredValue),
+                    };
+                    annotations.push(LocalReviewAnnotationSummary {
+                        schema_version: 1,
+                        annotation_id,
+                        item_id: id.clone(),
+                        text: body,
+                        state,
+                        created_at_ms,
+                        updated_at_ms,
+                    });
+                }
+                items.push(LocalReviewItemSummary {
+                    item_id: id,
+                    class,
+                    text_format,
+                    source_kind: review_source_kind(&source_kind)?,
+                    evidence_source,
+                    state: LocalReviewItemState::Ready,
+                    title,
+                    mime_type,
+                    width,
+                    height,
+                    byte_size: byte_size as u64,
+                    line_count,
+                    sha256,
+                    created_at_ms,
+                    annotations,
+                });
+            }
+        }
+        let count = collections.len() as u8;
+        let payload = review_payload_bytes(&self.connection, None)?.max(0) as u64;
+        Ok((
+            collections,
+            selected,
+            items,
+            count,
+            payload,
+            count >= 20 || payload >= 24 * 1024 * 1024,
+        ))
+    }
+
+    pub(crate) fn create_local_review_collection(
+        &mut self,
+        task_id: &str,
+        plan_id: Option<&str>,
+        title: &str,
+    ) -> Result<String, StorageError> {
+        if !valid_task_id(task_id) || plan_id.is_some_and(|id| !valid_task_id(id)) {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let title = normalize_review_label(title)?;
+        let now = now_millis();
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let total: i64 = tx.query_row(
+            "SELECT count(*) FROM local_review_collections WHERE discarded_at_ms IS NULL",
+            [],
+            |row| row.get(0),
+        )?;
+        if total >= REVIEW_COLLECTION_LIMIT {
+            return Err(StorageError::TaskCapacity);
+        }
+        let task: Option<(String, Option<i64>)> = tx
+            .query_row(
+                "SELECT status, archived_at_ms FROM task_records WHERE id = ?1",
+                [task_id],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .optional()?;
+        let Some((status, archived)) = task else {
+            return Err(StorageError::TaskNotFound);
+        };
+        if archived.is_some() || !matches!(status.as_str(), "active" | "paused") {
+            return Err(StorageError::TaskArchived);
+        }
+        let active: i64 = tx.query_row("SELECT count(*) FROM local_review_collections WHERE state = 'active' AND discarded_at_ms IS NULL", [], |row| row.get(0))?;
+        if active >= REVIEW_ACTIVE_COLLECTION_LIMIT {
+            return Err(StorageError::TaskCapacity);
+        }
+        let observed_plan_updated_at_ms: i64 = if let Some(plan_id) = plan_id {
+            tx.query_row(
+                "SELECT updated_at_ms FROM task_plans WHERE id = ?1 AND task_id = ?2",
+                params![plan_id, task_id],
+                |row| row.get(0),
+            )
+            .optional()?
+            .ok_or(StorageError::PlanNotFound)?
+        } else {
+            -1
+        };
+        let id = Uuid::now_v7().to_string();
+        tx.execute("INSERT INTO local_review_collections (id, schema_version, task_id, plan_id, observed_plan_updated_at_ms, state, title, created_at_ms, updated_at_ms) VALUES (?1, 1, ?2, ?3, ?4, 'active', ?5, ?6, ?6)", params![id, task_id, plan_id, (observed_plan_updated_at_ms >= 0).then_some(observed_plan_updated_at_ms), title, now])?;
+        tx.commit()?;
+        Ok(id)
+    }
+
+    pub(crate) fn create_local_review_text_item(
+        &mut self,
+        collection_id: &str,
+        expected_updated_at_ms: i64,
+        title: &str,
+        format: LocalReviewTextFormat,
+        content: &str,
+    ) -> Result<String, StorageError> {
+        if !valid_task_id(collection_id) || expected_updated_at_ms < 0 {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let title = normalize_review_label(title)?;
+        let content = normalize_review_text(content, format)?;
+        let bytes = content.as_bytes();
+        let now = now_millis();
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        local_review_mutation_context(
+            &tx,
+            collection_id,
+            Some(expected_updated_at_ms),
+            LocalReviewMutationPermission::ActiveContent,
+        )?;
+        let items: i64 = tx.query_row("SELECT count(*) FROM local_review_items WHERE collection_id = ?1 AND discarded_at_ms IS NULL", [collection_id], |row| row.get(0))?;
+        if items >= REVIEW_ITEMS_PER_COLLECTION_LIMIT {
+            return Err(StorageError::TaskCapacity);
+        }
+        let collection_payload = review_payload_bytes(&tx, Some(collection_id))?;
+        let total_payload = review_payload_bytes(&tx, None)?;
+        let added = bytes.len() as i64 + title.len() as i64 + 256;
+        if collection_payload + added > REVIEW_COLLECTION_PAYLOAD_LIMIT
+            || total_payload + added > REVIEW_PAYLOAD_LIMIT
+        {
+            return Err(StorageError::TaskCapacity);
+        }
+        let id = Uuid::now_v7().to_string();
+        tx.execute("INSERT INTO local_review_items (id, schema_version, collection_id, class, text_format, mime_type, width, height, state, title, source_kind, provenance, content, sha256, byte_size, created_at_ms, updated_at_ms) VALUES (?1, 1, ?2, 'text', ?3, ?4, NULL, NULL, 'ready', ?5, 'user-authored-text', '', ?6, ?7, ?8, ?9, ?9)", params![id, collection_id, review_text_format_value(format), review_mime_type(format), title, bytes, review_digest(bytes), bytes.len() as i64, now])?;
+        tx.execute(
+            "UPDATE local_review_collections SET updated_at_ms = CASE WHEN updated_at_ms >= ?1 THEN updated_at_ms + 1 ELSE ?1 END WHERE id = ?2",
+            params![now, collection_id],
+        )?;
+        tx.commit()?;
+        Ok(id)
+    }
+
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "The fixed M48 claim is kept scalar to avoid admitting an extensible artifact payload envelope."
+    )]
+    pub(crate) fn create_local_review_m48_artifact_copy(
+        &mut self,
+        collection_id: &str,
+        expected_updated_at_ms: i64,
+        artifact_id: &str,
+        artifact_sha256: &str,
+        title: &str,
+        format: LocalReviewTextFormat,
+        content: &str,
+    ) -> Result<String, StorageError> {
+        if !valid_task_id(collection_id)
+            || !valid_task_id(artifact_id)
+            || expected_updated_at_ms < 0
+            || artifact_sha256.len() != 64
+            || !artifact_sha256
+                .bytes()
+                .all(|byte| byte.is_ascii_digit() || matches!(byte, b'a'..=b'f'))
+        {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let title = normalize_review_label(title)?;
+        let content = normalize_review_text(content, format)?;
+        let bytes = content.as_bytes();
+        if review_digest(bytes) != artifact_sha256 {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let now = now_millis();
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        local_review_mutation_context(
+            &tx,
+            collection_id,
+            Some(expected_updated_at_ms),
+            LocalReviewMutationPermission::ActiveContent,
+        )?;
+        let items: i64 = tx.query_row(
+            "SELECT count(*) FROM local_review_items WHERE collection_id = ?1 AND discarded_at_ms IS NULL",
+            [collection_id],
+            |row| row.get(0),
+        )?;
+        if items >= REVIEW_ITEMS_PER_COLLECTION_LIMIT {
+            return Err(StorageError::TaskCapacity);
+        }
+        let collection_payload = review_payload_bytes(&tx, Some(collection_id))?;
+        let total_payload = review_payload_bytes(&tx, None)?;
+        let added = bytes.len() as i64 + title.len() as i64 + 256;
+        if collection_payload + added > REVIEW_COLLECTION_PAYLOAD_LIMIT
+            || total_payload + added > REVIEW_PAYLOAD_LIMIT
+        {
+            return Err(StorageError::TaskCapacity);
+        }
+        let id = Uuid::now_v7().to_string();
+        tx.execute(
+            "INSERT INTO local_review_items (id, schema_version, collection_id, class, text_format, mime_type, width, height, state, title, source_kind, provenance, content, sha256, byte_size, created_at_ms, updated_at_ms) VALUES (?1, 1, ?2, 'text', ?3, ?4, NULL, NULL, 'ready', ?5, 'm48-artifact-copy', '', ?6, ?7, ?8, ?9, ?9)",
+            params![id, collection_id, review_text_format_value(format), review_mime_type(format), title, bytes, artifact_sha256, bytes.len() as i64, now],
+        )?;
+        tx.execute(
+            "UPDATE local_review_collections SET updated_at_ms = CASE WHEN updated_at_ms >= ?1 THEN updated_at_ms + 1 ELSE ?1 END WHERE id = ?2",
+            params![now, collection_id],
+        )?;
+        tx.commit()?;
+        Ok(id)
+    }
+
+    pub(crate) fn create_local_review_text_comparison(
+        &mut self,
+        collection_id: &str,
+        left_item_id: &str,
+        right_item_id: &str,
+        expected_updated_at_ms: i64,
+    ) -> Result<String, StorageError> {
+        if !valid_task_id(collection_id)
+            || !valid_task_id(left_item_id)
+            || !valid_task_id(right_item_id)
+            || left_item_id == right_item_id
+            || expected_updated_at_ms < 0
+        {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let now = now_millis();
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        local_review_mutation_context(
+            &tx,
+            collection_id,
+            Some(expected_updated_at_ms),
+            LocalReviewMutationPermission::ActiveContent,
+        )?;
+        let comparison_count: i64 = tx.query_row(
+            "SELECT count(*) FROM local_review_comparisons WHERE collection_id = ?1",
+            [collection_id],
+            |row| row.get(0),
+        )?;
+        if comparison_count >= REVIEW_COMPARISONS_PER_COLLECTION_LIMIT {
+            return Err(StorageError::TaskCapacity);
+        }
+        #[expect(
+            clippy::type_complexity,
+            reason = "The closed comparison query returns a fixed six-field item record."
+        )]
+        let read_item = |item_id: &str| -> Result<
+            (String, String, String, Vec<u8>, String, i64),
+            StorageError,
+        > {
+            tx.query_row(
+                "SELECT class, COALESCE(text_format, ''), state, content, sha256, byte_size FROM local_review_items
+                 WHERE id = ?1 AND collection_id = ?2 AND discarded_at_ms IS NULL",
+                params![item_id, collection_id],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?, row.get(5)?)),
+            ).map_err(StorageError::from)
+        };
+        let left = read_item(left_item_id)?;
+        let right = read_item(right_item_id)?;
+        let validate = |item: &(String, String, String, Vec<u8>, String, i64)| -> Result<LocalReviewTextFormat, StorageError> {
+            if item.0 != "text" || item.2 != "ready" || item.5 < 1 || item.5 as usize != item.3.len() || item.3.len() > REVIEW_COMPARISON_BYTES_LIMIT || item.4 != review_digest(&item.3) {
+                return Err(StorageError::InvalidStoredValue);
+            }
+            let format = review_text_format(&item.1)?;
+            let text = std::str::from_utf8(&item.3).map_err(|_| StorageError::InvalidStoredValue)?;
+            if !matches!(normalize_review_text(text, format), Ok(ref normalized) if normalized == text) || text.lines().count() > REVIEW_COMPARISON_LINES_LIMIT {
+                return Err(StorageError::InvalidStoredValue);
+            }
+            Ok(format)
+        };
+        let left_format = validate(&left)?;
+        let right_format = validate(&right)?;
+        if left_format != right_format {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let id = Uuid::now_v7().to_string();
+        tx.execute(
+            "INSERT INTO local_review_comparisons (id, schema_version, collection_id, left_item_id, right_item_id, left_sha256, right_sha256, text_format, state, created_at_ms)
+             VALUES (?1, 1, ?2, ?3, ?4, ?5, ?6, ?7, 'ready', ?8)",
+            params![id, collection_id, left_item_id, right_item_id, left.4, right.4, review_text_format_value(left_format), now],
+        )?;
+        tx.execute(
+            "UPDATE local_review_collections SET updated_at_ms = CASE WHEN updated_at_ms >= ?1 THEN updated_at_ms + 1 ELSE ?1 END WHERE id = ?2",
+            params![now, collection_id],
+        )?;
+        tx.commit()?;
+        Ok(id)
+    }
+
+    pub(crate) fn discard_local_review_text_comparison(
+        &mut self,
+        collection_id: &str,
+        comparison_id: &str,
+        expected_updated_at_ms: i64,
+    ) -> Result<(), StorageError> {
+        if !valid_task_id(collection_id)
+            || !valid_task_id(comparison_id)
+            || expected_updated_at_ms < 0
+        {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let now = now_millis();
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        local_review_mutation_context(
+            &tx,
+            collection_id,
+            Some(expected_updated_at_ms),
+            LocalReviewMutationPermission::RecoveryDiscard,
+        )?;
+        if tx.execute(
+            "DELETE FROM local_review_comparisons WHERE id = ?1 AND collection_id = ?2",
+            params![comparison_id, collection_id],
+        )? != 1
+        {
+            return Err(StorageError::TaskNotFound);
+        }
+        tx.execute(
+            "UPDATE local_review_collections SET updated_at_ms = CASE WHEN updated_at_ms >= ?1 THEN updated_at_ms + 1 ELSE ?1 END WHERE id = ?2",
+            params![now, collection_id],
+        )?;
+        tx.commit()?;
+        Ok(())
+    }
+
+    pub(crate) fn local_review_comparisons(
+        &self,
+        collection_id: &str,
+    ) -> Result<Vec<LocalReviewComparisonSummary>, StorageError> {
+        if !valid_task_id(collection_id) {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let mut statement = self.connection.prepare(
+            "SELECT id, left_item_id, right_item_id, left_sha256, right_sha256, text_format, created_at_ms
+             FROM local_review_comparisons WHERE collection_id = ?1 ORDER BY created_at_ms, id",
+        )?;
+        let mut comparisons = Vec::new();
+        for row in statement.query_map([collection_id], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, String>(2)?,
+                row.get::<_, String>(3)?,
+                row.get::<_, String>(4)?,
+                row.get::<_, String>(5)?,
+                row.get::<_, i64>(6)?,
+            ))
+        })? {
+            let (id, left_item_id, right_item_id, left_sha256, right_sha256, format, created_at_ms) =
+                row?;
+            let text_format = review_text_format(&format)?;
+            #[expect(
+                clippy::type_complexity,
+                reason = "The closed comparison-state query returns a fixed six-field item record."
+            )]
+            let current = |item_id: &str| -> Result<
+                Option<(String, String, String, Vec<u8>, String, i64)>,
+                StorageError,
+            > {
+                self.connection.query_row(
+                    "SELECT class, COALESCE(text_format, ''), state, content, sha256, byte_size FROM local_review_items WHERE id = ?1 AND collection_id = ?2 AND discarded_at_ms IS NULL",
+                    params![item_id, collection_id],
+                    |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?, row.get(5)?)),
+                ).optional().map_err(StorageError::from)
+            };
+            let state = match (current(&left_item_id)?, current(&right_item_id)?) {
+                (Some(left), Some(right))
+                    if left.0 == "text"
+                        && right.0 == "text"
+                        && left.1 == format
+                        && right.1 == format
+                        && left.2 == "ready"
+                        && right.2 == "ready"
+                        && left.5 == left.3.len() as i64
+                        && right.5 == right.3.len() as i64
+                        && left.4 == review_digest(&left.3)
+                        && right.4 == review_digest(&right.3) =>
+                {
+                    if left.4 == left_sha256 && right.4 == right_sha256 {
+                        LocalReviewComparisonState::Ready
+                    } else {
+                        LocalReviewComparisonState::Stale
+                    }
+                }
+                (Some(_), Some(_)) => LocalReviewComparisonState::Unavailable,
+                _ => LocalReviewComparisonState::Unavailable,
+            };
+            comparisons.push(LocalReviewComparisonSummary {
+                schema_version: 1,
+                comparison_id: id,
+                collection_id: collection_id.to_owned(),
+                left_item_id,
+                right_item_id,
+                left_sha256,
+                right_sha256,
+                text_format,
+                state,
+                created_at_ms,
+            });
+        }
+        Ok(comparisons)
+    }
+
+    pub(crate) fn local_review_line_comparison(
+        &self,
+        comparison_id: &str,
+    ) -> Result<LocalReviewLineComparison, StorageError> {
+        if !valid_task_id(comparison_id) {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let (collection_id, left_item_id, right_item_id, left_sha256, right_sha256, format): (String, String, String, String, String, String) = self.connection.query_row(
+            "SELECT collection_id, left_item_id, right_item_id, left_sha256, right_sha256, text_format FROM local_review_comparisons WHERE id = ?1",
+            [comparison_id], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?, row.get(5)?))
+        )?;
+        let state = self
+            .local_review_comparisons(&collection_id)?
+            .iter()
+            .find(|comparison| comparison.comparison_id == comparison_id)
+            .map(|comparison| comparison.state)
+            .ok_or(StorageError::TaskNotFound)?;
+        if state != LocalReviewComparisonState::Ready {
+            return Ok(LocalReviewLineComparison {
+                comparison_id: comparison_id.to_owned(),
+                left_item_id,
+                left_sha256,
+                right_item_id,
+                right_sha256,
+                text_format: review_text_format(&format)?,
+                state,
+                lines: Vec::new(),
+            });
+        }
+        let read = |item_id: &str| -> Result<String, StorageError> {
+            self.connection
+                .query_row(
+                    "SELECT content FROM local_review_items WHERE id = ?1",
+                    [item_id],
+                    |row| row.get::<_, Vec<u8>>(0),
+                )
+                .and_then(|bytes| {
+                    String::from_utf8(bytes).map_err(|_| rusqlite::Error::InvalidQuery)
+                })
+                .map_err(StorageError::from)
+        };
+        let lines = comparison_lines(&read(&left_item_id)?, &read(&right_item_id)?);
+        Ok(LocalReviewLineComparison {
+            comparison_id: comparison_id.to_owned(),
+            left_item_id,
+            left_sha256,
+            right_item_id,
+            right_sha256,
+            text_format: review_text_format(&format)?,
+            state: LocalReviewComparisonState::Ready,
+            lines,
+        })
+    }
+
+    pub(crate) fn create_local_review_annotation(
+        &mut self,
+        collection_id: &str,
+        item_id: &str,
+        expected_updated_at_ms: i64,
+        text: &str,
+    ) -> Result<String, StorageError> {
+        if !valid_task_id(collection_id) || !valid_task_id(item_id) || expected_updated_at_ms < 0 {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let text = normalize_review_annotation_text(text)?;
+        let now = now_millis();
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        local_review_mutation_context(
+            &tx,
+            collection_id,
+            Some(expected_updated_at_ms),
+            LocalReviewMutationPermission::ActiveContent,
+        )?;
+        let item_state: Option<String> = tx
+            .query_row(
+                "SELECT state FROM local_review_items
+                 WHERE id = ?1 AND collection_id = ?2 AND discarded_at_ms IS NULL",
+                params![item_id, collection_id],
+                |row| row.get(0),
+            )
+            .optional()?;
+        if item_state.as_deref() != Some("ready") {
+            return Err(StorageError::TaskNotFound);
+        }
+        let annotation_count: i64 = tx.query_row(
+            "SELECT count(*) FROM local_review_annotations WHERE item_id = ?1",
+            [item_id],
+            |row| row.get(0),
+        )?;
+        if annotation_count >= REVIEW_ANNOTATIONS_PER_ITEM_LIMIT {
+            return Err(StorageError::TaskCapacity);
+        }
+        let added = text.len() as i64 + 128;
+        if review_payload_bytes(&tx, Some(collection_id))? + added > REVIEW_COLLECTION_PAYLOAD_LIMIT
+            || review_payload_bytes(&tx, None)? + added > REVIEW_PAYLOAD_LIMIT
+        {
+            return Err(StorageError::TaskCapacity);
+        }
+        let annotation_id = Uuid::now_v7().to_string();
+        tx.execute(
+            "INSERT INTO local_review_annotations (
+                id, schema_version, item_id, state, body, created_at_ms, updated_at_ms
+             ) VALUES (?1, 1, ?2, 'open', ?3, ?4, ?4)",
+            params![annotation_id, item_id, text, now],
+        )?;
+        tx.execute(
+            "UPDATE local_review_collections
+             SET updated_at_ms = CASE WHEN updated_at_ms >= ?1 THEN updated_at_ms + 1 ELSE ?1 END
+             WHERE id = ?2",
+            params![now, collection_id],
+        )?;
+        tx.commit()?;
+        Ok(annotation_id)
+    }
+
+    pub(crate) fn edit_local_review_annotation(
+        &mut self,
+        collection_id: &str,
+        item_id: &str,
+        annotation_id: &str,
+        expected_updated_at_ms: i64,
+        text: &str,
+    ) -> Result<(), StorageError> {
+        let text = normalize_review_annotation_text(text)?;
+        let now = now_millis();
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let (
+            _state,
+            collection_updated_at_ms,
+            previous_text,
+            _task_id,
+            _created_at_ms,
+            updated_at_ms,
+        ) = annotation_mutation_context(
+            &tx,
+            collection_id,
+            item_id,
+            annotation_id,
+            expected_updated_at_ms,
+            LocalReviewMutationPermission::ActiveContent,
+        )?;
+        let delta = text.len() as i64 - previous_text.len() as i64;
+        if delta > 0
+            && (review_payload_bytes(&tx, Some(collection_id))? + delta
+                > REVIEW_COLLECTION_PAYLOAD_LIMIT
+                || review_payload_bytes(&tx, None)? + delta > REVIEW_PAYLOAD_LIMIT)
+        {
+            return Err(StorageError::TaskCapacity);
+        }
+        let next_annotation_updated_at_ms = now.max(updated_at_ms + 1);
+        let next_collection_updated_at_ms = now.max(collection_updated_at_ms + 1);
+        tx.execute(
+            "UPDATE local_review_annotations SET body = ?1, updated_at_ms = ?2 WHERE id = ?3 AND item_id = ?4",
+            params![text, next_annotation_updated_at_ms, annotation_id, item_id],
+        )?;
+        tx.execute(
+            "UPDATE local_review_collections SET updated_at_ms = ?1 WHERE id = ?2",
+            params![next_collection_updated_at_ms, collection_id],
+        )?;
+        tx.commit()?;
+        Ok(())
+    }
+
+    fn transition_local_review_annotation(
+        &mut self,
+        collection_id: &str,
+        item_id: &str,
+        annotation_id: &str,
+        expected_updated_at_ms: i64,
+        from: &str,
+        to: &str,
+    ) -> Result<(), StorageError> {
+        let now = now_millis();
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let (state, collection_updated_at_ms, _body, _task_id, _created_at_ms, updated_at_ms) =
+            annotation_mutation_context(
+                &tx,
+                collection_id,
+                item_id,
+                annotation_id,
+                expected_updated_at_ms,
+                LocalReviewMutationPermission::ActiveContent,
+            )?;
+        if state != from {
+            return Err(StorageError::InvalidStatusTransition);
+        }
+        let next_annotation_updated_at_ms = now.max(updated_at_ms + 1);
+        let next_collection_updated_at_ms = now.max(collection_updated_at_ms + 1);
+        tx.execute(
+            "UPDATE local_review_annotations SET state = ?1, updated_at_ms = ?2 WHERE id = ?3 AND item_id = ?4",
+            params![to, next_annotation_updated_at_ms, annotation_id, item_id],
+        )?;
+        tx.execute(
+            "UPDATE local_review_collections SET updated_at_ms = ?1 WHERE id = ?2",
+            params![next_collection_updated_at_ms, collection_id],
+        )?;
+        tx.commit()?;
+        Ok(())
+    }
+
+    pub(crate) fn resolve_local_review_annotation(
+        &mut self,
+        collection_id: &str,
+        item_id: &str,
+        annotation_id: &str,
+        expected_updated_at_ms: i64,
+    ) -> Result<(), StorageError> {
+        self.transition_local_review_annotation(
+            collection_id,
+            item_id,
+            annotation_id,
+            expected_updated_at_ms,
+            "open",
+            "resolved",
+        )
+    }
+
+    pub(crate) fn reopen_local_review_annotation(
+        &mut self,
+        collection_id: &str,
+        item_id: &str,
+        annotation_id: &str,
+        expected_updated_at_ms: i64,
+    ) -> Result<(), StorageError> {
+        self.transition_local_review_annotation(
+            collection_id,
+            item_id,
+            annotation_id,
+            expected_updated_at_ms,
+            "resolved",
+            "open",
+        )
+    }
+
+    pub(crate) fn delete_local_review_annotation(
+        &mut self,
+        collection_id: &str,
+        item_id: &str,
+        annotation_id: &str,
+        expected_updated_at_ms: i64,
+    ) -> Result<(), StorageError> {
+        let now = now_millis();
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let (_state, collection_updated_at_ms, _body, _task_id, _created_at_ms, _updated_at_ms) =
+            annotation_mutation_context(
+                &tx,
+                collection_id,
+                item_id,
+                annotation_id,
+                expected_updated_at_ms,
+                LocalReviewMutationPermission::RecoveryDiscard,
+            )?;
+        if tx.execute(
+            "DELETE FROM local_review_annotations WHERE id = ?1 AND item_id = ?2",
+            params![annotation_id, item_id],
+        )? != 1
+        {
+            return Err(StorageError::TaskNotFound);
+        }
+        tx.execute(
+            "UPDATE local_review_collections SET updated_at_ms = ?1 WHERE id = ?2",
+            params![now.max(collection_updated_at_ms + 1), collection_id],
+        )?;
+        tx.commit()?;
+        Ok(())
+    }
+
+    pub(crate) fn create_local_review_image_item(
+        &mut self,
+        collection_id: &str,
+        expected_updated_at_ms: i64,
+        title: &str,
+        bytes: &[u8],
+    ) -> Result<String, StorageError> {
+        if !valid_task_id(collection_id)
+            || expected_updated_at_ms < 0
+            || bytes.is_empty()
+            || bytes.len() > REVIEW_IMAGE_BYTES_LIMIT
+        {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let title = normalize_review_label(title)?;
+        let image =
+            validate_attachment_image(bytes).map_err(|_| StorageError::InvalidStoredValue)?;
+        let now = now_millis();
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        local_review_mutation_context(
+            &tx,
+            collection_id,
+            Some(expected_updated_at_ms),
+            LocalReviewMutationPermission::ActiveContent,
+        )?;
+        let count: i64 = tx.query_row("SELECT count(*) FROM local_review_items WHERE collection_id = ?1 AND class = 'image-mockup'", [collection_id], |row| row.get(0))?;
+        if count >= 3 {
+            return Err(StorageError::TaskCapacity);
+        }
+        let payload = review_payload_bytes(&tx, Some(collection_id))?;
+        let total = review_payload_bytes(&tx, None)?;
+        let added = bytes.len() as i64 + title.len() as i64 + 256;
+        if payload + added > REVIEW_COLLECTION_PAYLOAD_LIMIT || total + added > REVIEW_PAYLOAD_LIMIT
+        {
+            return Err(StorageError::TaskCapacity);
+        }
+        let id = Uuid::now_v7().to_string();
+        tx.execute("INSERT INTO local_review_items (id, schema_version, collection_id, class, text_format, mime_type, width, height, state, title, source_kind, provenance, content, sha256, byte_size, created_at_ms, updated_at_ms) VALUES (?1, 1, ?2, 'image-mockup', NULL, ?3, ?4, ?5, 'ready', ?6, 'native-image-input', '', ?7, ?8, ?9, ?10, ?10)", params![id, collection_id, image.mime_type, image.width, image.height, title, bytes, review_digest(bytes), bytes.len() as i64, now])?;
+        tx.execute(
+            "UPDATE local_review_collections SET updated_at_ms = CASE WHEN updated_at_ms >= ?1 THEN updated_at_ms + 1 ELSE ?1 END WHERE id = ?2",
+            params![now, collection_id],
+        )?;
+        tx.commit()?;
+        Ok(id)
+    }
+
+    pub(crate) fn create_local_review_manual_evidence_item(
+        &mut self,
+        collection_id: &str,
+        expected_updated_at_ms: i64,
+        title: &str,
+        summary: &str,
+    ) -> Result<String, StorageError> {
+        if !valid_task_id(collection_id) || expected_updated_at_ms < 0 {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let title = normalize_review_label(title)?;
+        let summary = normalize_review_text(summary, LocalReviewTextFormat::Plain)?;
+        if summary.contains('/') || summary.contains("://") {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let bytes = manual_evidence_envelope_bytes(&title, &summary)?;
+        if bytes.len() > REVIEW_EVIDENCE_BYTES_LIMIT {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let now = now_millis();
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        local_review_mutation_context(
+            &tx,
+            collection_id,
+            Some(expected_updated_at_ms),
+            LocalReviewMutationPermission::ActiveContent,
+        )?;
+        let evidence_count: i64 = tx.query_row("SELECT count(*) FROM local_review_items WHERE collection_id = ?1 AND class = 'evidence'", [collection_id], |row| row.get(0))?;
+        if evidence_count >= 6 {
+            return Err(StorageError::TaskCapacity);
+        }
+        let added = bytes.len() as i64 + title.len() as i64 + 256;
+        if review_payload_bytes(&tx, Some(collection_id))? + added > REVIEW_COLLECTION_PAYLOAD_LIMIT
+            || review_payload_bytes(&tx, None)? + added > REVIEW_PAYLOAD_LIMIT
+        {
+            return Err(StorageError::TaskCapacity);
+        }
+        let id = Uuid::now_v7().to_string();
+        tx.execute("INSERT INTO local_review_items (id, schema_version, collection_id, class, text_format, mime_type, width, height, state, title, source_kind, provenance, evidence_source, content, sha256, byte_size, created_at_ms, updated_at_ms) VALUES (?1, 1, ?2, 'evidence', NULL, 'application/json; profile=evidence-envelope-v1', NULL, NULL, 'ready', ?3, 'typed-evidence-snapshot', 'manual-validation-summary', 'manual-validation-summary', ?4, ?5, ?6, ?7, ?7)", params![id, collection_id, title, bytes, review_digest(&bytes), bytes.len() as i64, now])?;
+        tx.execute(
+            "UPDATE local_review_collections SET updated_at_ms = CASE WHEN updated_at_ms >= ?1 THEN updated_at_ms + 1 ELSE ?1 END WHERE id = ?2",
+            params![now, collection_id],
+        )?;
+        tx.commit()?;
+        Ok(id)
+    }
+
+    pub(crate) fn create_local_review_m48_generated_artifact_metadata_evidence_item(
+        &mut self,
+        collection_id: &str,
+        expected_updated_at_ms: i64,
+        title: &str,
+        summary: &str,
+        details: &LocalReviewM48GeneratedArtifactMetadataDetails,
+    ) -> Result<String, StorageError> {
+        if !valid_task_id(collection_id) || expected_updated_at_ms < 0 {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let title = normalize_review_label(title)?;
+        let summary = normalize_review_text(summary, LocalReviewTextFormat::Plain)?;
+        let bytes = m48_metadata_evidence_envelope_bytes(&title, &summary, details)?;
+        if bytes.len() > REVIEW_EVIDENCE_BYTES_LIMIT {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let now = now_millis();
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        local_review_mutation_context(
+            &tx,
+            collection_id,
+            Some(expected_updated_at_ms),
+            LocalReviewMutationPermission::ActiveContent,
+        )?;
+        let evidence_count: i64 = tx.query_row(
+            "SELECT count(*) FROM local_review_items WHERE collection_id = ?1 AND class = 'evidence'",
+            [collection_id],
+            |row| row.get(0),
+        )?;
+        if evidence_count >= 6 {
+            return Err(StorageError::TaskCapacity);
+        }
+        let added = bytes.len() as i64 + title.len() as i64 + 256;
+        if review_payload_bytes(&tx, Some(collection_id))? + added > REVIEW_COLLECTION_PAYLOAD_LIMIT
+            || review_payload_bytes(&tx, None)? + added > REVIEW_PAYLOAD_LIMIT
+        {
+            return Err(StorageError::TaskCapacity);
+        }
+        let id = Uuid::now_v7().to_string();
+        tx.execute(
+            "INSERT INTO local_review_items (id, schema_version, collection_id, class, text_format, mime_type, width, height, state, title, source_kind, provenance, evidence_source, content, sha256, byte_size, created_at_ms, updated_at_ms) VALUES (?1, 1, ?2, 'evidence', NULL, 'application/json; profile=evidence-envelope-v1', NULL, NULL, 'ready', ?3, 'typed-evidence-snapshot', 'm48-generated-artifact-metadata', 'm48-generated-artifact-metadata', ?4, ?5, ?6, ?7, ?7)",
+            params![id, collection_id, title, bytes, review_digest(&bytes), bytes.len() as i64, now],
+        )?;
+        tx.execute(
+            "UPDATE local_review_collections SET updated_at_ms = CASE WHEN updated_at_ms >= ?1 THEN updated_at_ms + 1 ELSE ?1 END WHERE id = ?2",
+            params![now, collection_id],
+        )?;
+        tx.commit()?;
+        Ok(id)
+    }
+
+    pub(crate) fn local_review_manual_evidence_preview(
+        &self,
+        item_id: &str,
+        sha256: &str,
+    ) -> Result<LocalReviewManualEvidencePreview, StorageError> {
+        if !valid_task_id(item_id) || sha256.len() != 64 {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let (title, source_kind, provenance, evidence_source, content, stored_sha, byte_size, created_at_ms): (String, String, String, Option<String>, Vec<u8>, String, i64, i64) = self.connection.query_row("SELECT title, source_kind, provenance, evidence_source, content, sha256, byte_size, created_at_ms FROM local_review_items WHERE id = ?1 AND class = 'evidence' AND state = 'ready'", [item_id], |row| Ok((row.get(0)?,row.get(1)?,row.get(2)?,row.get(3)?,row.get(4)?,row.get(5)?,row.get(6)?,row.get(7)?)))?;
+        if source_kind != "typed-evidence-snapshot"
+            || provenance != "manual-validation-summary"
+            || evidence_source.as_deref() != Some("manual-validation-summary")
+            || sha256 != stored_sha
+            || byte_size != content.len() as i64
+            || content.len() > REVIEW_EVIDENCE_BYTES_LIMIT
+            || stored_sha != review_digest(&content)
+        {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let summary = parse_manual_evidence_envelope(&content, &title)?;
+        Ok(LocalReviewManualEvidencePreview {
+            schema_version: 1,
+            item_id: item_id.to_owned(),
+            source: "manual-validation-summary".to_owned(),
+            title,
+            summary,
+            byte_size: byte_size as u64,
+            sha256: stored_sha,
+            created_at_ms,
+        })
+    }
+
+    pub(crate) fn local_review_m48_generated_artifact_metadata_evidence_preview(
+        &self,
+        item_id: &str,
+        sha256: &str,
+    ) -> Result<LocalReviewM48GeneratedArtifactMetadataEvidencePreview, StorageError> {
+        if !valid_task_id(item_id) || !valid_review_sha256(sha256) {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let (title, source_kind, provenance, evidence_source, content, stored_sha, byte_size, created_at_ms): (String, String, String, Option<String>, Vec<u8>, String, i64, i64) = self.connection.query_row("SELECT title, source_kind, provenance, evidence_source, content, sha256, byte_size, created_at_ms FROM local_review_items WHERE id = ?1 AND class = 'evidence' AND state = 'ready'", [item_id], |row| Ok((row.get(0)?,row.get(1)?,row.get(2)?,row.get(3)?,row.get(4)?,row.get(5)?,row.get(6)?,row.get(7)?)))?;
+        if source_kind != "typed-evidence-snapshot"
+            || provenance != "m48-generated-artifact-metadata"
+            || evidence_source.as_deref() != Some("m48-generated-artifact-metadata")
+            || sha256 != stored_sha
+            || byte_size != content.len() as i64
+            || content.len() > REVIEW_EVIDENCE_BYTES_LIMIT
+            || stored_sha != review_digest(&content)
+        {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let (summary, details) = parse_m48_metadata_evidence_envelope(&content, &title)?;
+        Ok(LocalReviewM48GeneratedArtifactMetadataEvidencePreview {
+            schema_version: 1,
+            item_id: item_id.to_owned(),
+            source: LocalReviewEvidenceSource::M48GeneratedArtifactMetadata,
+            title,
+            summary,
+            details,
+            byte_size: byte_size as u64,
+            sha256: stored_sha,
+            created_at_ms,
+        })
+    }
+
+    pub(crate) fn create_local_review_safe_preview_metadata_evidence_item(
+        &mut self,
+        collection_id: &str,
+        expected_updated_at_ms: i64,
+        title: &str,
+        summary: &str,
+        details: &LocalReviewSafePreviewMetadataDetails,
+    ) -> Result<String, StorageError> {
+        if !valid_task_id(collection_id) || expected_updated_at_ms < 0 {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let title = normalize_review_label(title)?;
+        let summary = normalize_review_text(summary, LocalReviewTextFormat::Plain)?;
+        let bytes = safe_preview_metadata_evidence_envelope_bytes(&title, &summary, details)?;
+        if bytes.len() > REVIEW_EVIDENCE_BYTES_LIMIT {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let now = now_millis();
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        local_review_mutation_context(
+            &tx,
+            collection_id,
+            Some(expected_updated_at_ms),
+            LocalReviewMutationPermission::ActiveContent,
+        )?;
+        let evidence_count: i64 = tx.query_row("SELECT count(*) FROM local_review_items WHERE collection_id = ?1 AND class = 'evidence'", [collection_id], |row| row.get(0))?;
+        if evidence_count >= 6 {
+            return Err(StorageError::TaskCapacity);
+        }
+        let added = bytes.len() as i64 + title.len() as i64 + 256;
+        if review_payload_bytes(&tx, Some(collection_id))? + added > REVIEW_COLLECTION_PAYLOAD_LIMIT
+            || review_payload_bytes(&tx, None)? + added > REVIEW_PAYLOAD_LIMIT
+        {
+            return Err(StorageError::TaskCapacity);
+        }
+        let id = Uuid::now_v7().to_string();
+        tx.execute("INSERT INTO local_review_items (id, schema_version, collection_id, class, text_format, mime_type, width, height, state, title, source_kind, provenance, evidence_source, content, sha256, byte_size, created_at_ms, updated_at_ms) VALUES (?1, 1, ?2, 'evidence', NULL, 'application/json; profile=evidence-envelope-v1', NULL, NULL, 'ready', ?3, 'typed-evidence-snapshot', 'safe-preview-metadata', 'safe-preview-metadata', ?4, ?5, ?6, ?7, ?7)", params![id, collection_id, title, bytes, review_digest(&bytes), bytes.len() as i64, now])?;
+        tx.execute("UPDATE local_review_collections SET updated_at_ms = CASE WHEN updated_at_ms >= ?1 THEN updated_at_ms + 1 ELSE ?1 END WHERE id = ?2", params![now, collection_id])?;
+        tx.commit()?;
+        Ok(id)
+    }
+
+    pub(crate) fn local_review_safe_preview_metadata_evidence_preview(
+        &self,
+        item_id: &str,
+        sha256: &str,
+    ) -> Result<LocalReviewSafePreviewMetadataEvidencePreview, StorageError> {
+        if !valid_task_id(item_id) || !valid_review_sha256(sha256) {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let (title, source_kind, provenance, evidence_source, content, stored_sha, byte_size, created_at_ms): (String, String, String, Option<String>, Vec<u8>, String, i64, i64) = self.connection.query_row("SELECT title, source_kind, provenance, evidence_source, content, sha256, byte_size, created_at_ms FROM local_review_items WHERE id = ?1 AND class = 'evidence' AND state = 'ready'", [item_id], |row| Ok((row.get(0)?,row.get(1)?,row.get(2)?,row.get(3)?,row.get(4)?,row.get(5)?,row.get(6)?,row.get(7)?)))?;
+        if source_kind != "typed-evidence-snapshot"
+            || provenance != "safe-preview-metadata"
+            || evidence_source.as_deref() != Some("safe-preview-metadata")
+            || sha256 != stored_sha
+            || byte_size != content.len() as i64
+            || content.len() > REVIEW_EVIDENCE_BYTES_LIMIT
+            || stored_sha != review_digest(&content)
+        {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let (summary, details) = parse_safe_preview_metadata_evidence_envelope(&content, &title)?;
+        Ok(LocalReviewSafePreviewMetadataEvidencePreview {
+            schema_version: 1,
+            item_id: item_id.to_owned(),
+            source: LocalReviewEvidenceSource::SafePreviewMetadata,
+            title,
+            summary,
+            details,
+            byte_size: byte_size as u64,
+            sha256: stored_sha,
+            created_at_ms,
+        })
+    }
+
+    #[expect(
+        clippy::type_complexity,
+        reason = "The private preview query is immediately destructured into the fixed path-free projection."
+    )]
+    pub(crate) fn local_review_text_preview(
+        &self,
+        collection_id: &str,
+        item_id: &str,
+        sha256: &str,
+    ) -> Result<LocalReviewTextPreview, StorageError> {
+        if !valid_task_id(collection_id) || !valid_task_id(item_id) || !valid_review_sha256(sha256)
+        {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let row: Option<(
+            String,
+            String,
+            Option<String>,
+            String,
+            String,
+            String,
+            Option<i64>,
+            Option<i64>,
+            Vec<u8>,
+            String,
+            i64,
+            i64,
+        )> = self
+            .connection
+            .query_row(
+                "SELECT collection_id, class, text_format, state, title, source_kind, width, height, content, sha256, byte_size, created_at_ms FROM local_review_items WHERE id = ?1 AND collection_id = ?2 AND discarded_at_ms IS NULL",
+                params![item_id, collection_id],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?, row.get(5)?, row.get(6)?, row.get(7)?, row.get(8)?, row.get(9)?, row.get(10)?, row.get(11)?)),
+            )
+            .optional()?;
+        let Some((
+            stored_collection_id,
+            class,
+            text_format,
+            state,
+            title,
+            source_kind,
+            width,
+            height,
+            content,
+            stored_sha,
+            byte_size,
+            created_at_ms,
+        )) = row
+        else {
+            return Ok(unavailable_review_text_preview(
+                collection_id,
+                item_id,
+                LocalReviewDiagnosticCode::ItemNotFound,
+            ));
+        };
+        if stored_collection_id != collection_id || state == "discarded" {
+            return Ok(unavailable_review_text_preview(
+                collection_id,
+                item_id,
+                LocalReviewDiagnosticCode::ItemNotFound,
+            ));
+        }
+        let collection_state: Option<String> = self
+            .connection
+            .query_row(
+                "SELECT state FROM local_review_collections WHERE id = ?1 AND discarded_at_ms IS NULL",
+                [collection_id],
+                |row| row.get(0),
+            )
+            .optional()?;
+        if !matches!(
+            collection_state.as_deref(),
+            Some("active" | "frozen" | "orphaned")
+        ) {
+            return Ok(unavailable_review_text_preview(
+                collection_id,
+                item_id,
+                LocalReviewDiagnosticCode::CollectionNotFound,
+            ));
+        }
+        let format = match text_format
+            .as_deref()
+            .and_then(|value| review_text_format(value).ok())
+        {
+            Some(value) => value,
+            None => {
+                return Ok(unavailable_review_text_preview(
+                    collection_id,
+                    item_id,
+                    LocalReviewDiagnosticCode::InvalidReference,
+                ))
+            }
+        };
+        if class != "text"
+            || !matches!(
+                source_kind.as_str(),
+                "user-authored-text" | "m48-artifact-copy"
+            )
+            || width.is_some()
+            || height.is_some()
+            || !matches!(normalize_review_label(&title), Ok(ref normalized) if normalized == &title)
+            || sha256 != stored_sha
+            || !valid_review_sha256(&stored_sha)
+            || byte_size < 1
+            || created_at_ms < 0
+            || byte_size as usize != content.len()
+            || content.len() > REVIEW_TEXT_BYTES_LIMIT
+            || stored_sha != review_digest(&content)
+        {
+            return Ok(unavailable_review_text_preview(
+                collection_id,
+                item_id,
+                LocalReviewDiagnosticCode::IntegrityFailed,
+            ));
+        }
+        let canonical_text = match std::str::from_utf8(&content) {
+            Ok(value) if matches!(normalize_review_text(value, format), Ok(ref normalized) if normalized == value) => {
+                value
+            }
+            _ => {
+                return Ok(unavailable_review_text_preview(
+                    collection_id,
+                    item_id,
+                    LocalReviewDiagnosticCode::IntegrityFailed,
+                ))
+            }
+        };
+        if state == "stale" {
+            return Ok(LocalReviewTextPreview {
+                schema_version: 1,
+                collection_id: collection_id.to_owned(),
+                item_id: item_id.to_owned(),
+                title: Some(title),
+                text_format: Some(format),
+                byte_size: Some(byte_size as u64),
+                sha256: Some(stored_sha),
+                created_at_ms: Some(created_at_ms),
+                state: LocalReviewItemState::Stale,
+                text: None,
+                projected_byte_size: 0,
+                projected_line_count: 0,
+                projected_code_point_count: 0,
+                truncated: false,
+                diagnostic_code: None,
+            });
+        }
+        if state != "ready" {
+            return Ok(unavailable_review_text_preview(
+                collection_id,
+                item_id,
+                LocalReviewDiagnosticCode::IntegrityFailed,
+            ));
+        }
+        let (
+            text,
+            projected_byte_size,
+            projected_line_count,
+            projected_code_point_count,
+            truncated,
+        ) = bounded_review_text_preview(canonical_text);
+        Ok(LocalReviewTextPreview {
+            schema_version: 1,
+            collection_id: collection_id.to_owned(),
+            item_id: item_id.to_owned(),
+            title: Some(title),
+            text_format: Some(format),
+            byte_size: Some(byte_size as u64),
+            sha256: Some(stored_sha),
+            created_at_ms: Some(created_at_ms),
+            state: LocalReviewItemState::Ready,
+            text: Some(text),
+            projected_byte_size,
+            projected_line_count,
+            projected_code_point_count,
+            truncated,
+            diagnostic_code: None,
+        })
+    }
+
+    pub(crate) fn local_review_image_preview(
+        &self,
+        item_id: &str,
+        sha256: &str,
+    ) -> Result<LocalReviewImagePreview, StorageError> {
+        if !valid_task_id(item_id) || sha256.len() != 64 {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let (mime_type, width, height, byte_size, stored_sha, bytes): (String, i64, i64, i64, String, Vec<u8>) = self.connection.query_row("SELECT mime_type, width, height, byte_size, sha256, content FROM local_review_items WHERE id = ?1 AND class = 'image-mockup' AND state = 'ready'", [item_id], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?, row.get(5)?)))?;
+        let image =
+            validate_attachment_image(&bytes).map_err(|_| StorageError::InvalidStoredValue)?;
+        if sha256 != stored_sha
+            || stored_sha != review_digest(&bytes)
+            || byte_size != bytes.len() as i64
+            || mime_type != image.mime_type
+            || width != image.width as i64
+            || height != image.height as i64
+            || bytes.len() > REVIEW_IMAGE_BYTES_LIMIT
+        {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        Ok(LocalReviewImagePreview {
+            schema_version: 1,
+            item_id: item_id.to_owned(),
+            mime_type,
+            width: image.width,
+            height: image.height,
+            byte_size: byte_size as u64,
+            sha256: stored_sha,
+            data_url: format!("data:{};base64,{}", image.mime_type, BASE64.encode(bytes)),
+        })
+    }
+
+    pub(crate) fn resume_local_review_collection(
+        &mut self,
+        collection_id: &str,
+        expected_updated_at_ms: i64,
+    ) -> Result<(), StorageError> {
+        if !valid_task_id(collection_id) || expected_updated_at_ms < 0 {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        local_review_mutation_context(
+            &tx,
+            collection_id,
+            Some(expected_updated_at_ms),
+            LocalReviewMutationPermission::ExplicitResume,
+        )?;
+        tx.execute("UPDATE local_review_collections SET state = 'active', updated_at_ms = ?1 WHERE id = ?2", params![now_millis(), collection_id])?;
+        tx.commit()?;
+        Ok(())
+    }
+
+    pub(crate) fn discard_local_review_collection(
+        &mut self,
+        collection_id: &str,
+        expected_updated_at_ms: i64,
+    ) -> Result<(), StorageError> {
+        if !valid_task_id(collection_id) || expected_updated_at_ms < 0 {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        local_review_mutation_context(
+            &tx,
+            collection_id,
+            Some(expected_updated_at_ms),
+            LocalReviewMutationPermission::RecoveryDiscard,
+        )?;
+        tx.execute(
+            "DELETE FROM local_review_collections WHERE id = ?1",
+            [collection_id],
+        )?;
+        tx.commit()?;
+        Ok(())
+    }
+
+    pub(crate) fn discard_local_review_item(
+        &mut self,
+        collection_id: &str,
+        item_id: &str,
+        expected_updated_at_ms: i64,
+    ) -> Result<(), StorageError> {
+        if !valid_task_id(collection_id) || !valid_task_id(item_id) || expected_updated_at_ms < 0 {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let now = now_millis();
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        local_review_mutation_context(
+            &tx,
+            collection_id,
+            Some(expected_updated_at_ms),
+            LocalReviewMutationPermission::RecoveryDiscard,
+        )?;
+        if tx.execute(
+            "DELETE FROM local_review_items WHERE id = ?1 AND collection_id = ?2",
+            params![item_id, collection_id],
+        )? != 1
+        {
+            return Err(StorageError::TaskNotFound);
+        }
+        tx.execute(
+            "UPDATE local_review_collections SET updated_at_ms = ?1 WHERE id = ?2",
+            params![now, collection_id],
+        )?;
+        tx.commit()?;
+        Ok(())
+    }
+
     pub(crate) fn create_task(&mut self) -> Result<String, StorageError> {
         let now = now_millis();
         self.create_task_with(now, || Uuid::now_v7().to_string())
@@ -676,19 +3261,65 @@ impl ProjectRepository {
         let tx = self
             .connection
             .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let task_id = Self::create_task_in_transaction(&tx, now, None, &mut generate)?;
+        tx.commit()?;
+        Ok(task_id)
+    }
+
+    pub(crate) fn create_task_from_conversation_context(
+        &mut self,
+        conversation_id: &str,
+    ) -> Result<String, StorageError> {
+        if !is_uuid_v7(conversation_id) {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let now = now_millis();
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let project_id = task_context_project_id(&tx, conversation_id)?;
+        let task_id =
+            Self::create_task_in_transaction(&tx, now, Some(project_id.as_str()), &mut || {
+                Uuid::now_v7().to_string()
+            })?;
+        tx.commit()?;
+        Ok(task_id)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn task_project_binding(
+        &self,
+        task_id: &str,
+    ) -> Result<Option<String>, StorageError> {
+        self.connection
+            .query_row(
+                "SELECT project_id FROM task_records WHERE id = ?1",
+                [task_id],
+                |row| row.get(0),
+            )
+            .optional()?
+            .ok_or(StorageError::TaskNotFound)
+    }
+
+    fn create_task_in_transaction(
+        tx: &Transaction<'_>,
+        now: i64,
+        project_id: Option<&str>,
+        mut generate: &mut impl FnMut() -> String,
+    ) -> Result<String, StorageError> {
         let count: i64 = tx.query_row("SELECT count(*) FROM task_records", [], |row| row.get(0))?;
         if count >= TASK_COUNT_LIMIT {
             return Err(StorageError::TaskCapacity);
         }
         let mut reserved = HashSet::new();
-        let task_id = unique_task_id(&tx, &mut generate, &mut reserved)?;
-        let plan_id = unique_task_id(&tx, &mut generate, &mut reserved)?;
+        let task_id = unique_task_id(tx, &mut generate, &mut reserved)?;
+        let plan_id = unique_task_id(tx, &mut generate, &mut reserved)?;
         tx.execute(
             "INSERT INTO task_records (
                 id, schema_version, title, status, created_at_ms, updated_at_ms,
-                archived_at_ms, last_opened_at_ms, selected_plan_id
-             ) VALUES (?1, 1, 'Untitled task', 'active', ?2, ?2, NULL, ?2, ?3)",
-            params![task_id, now, plan_id],
+                archived_at_ms, last_opened_at_ms, selected_plan_id, project_id
+             ) VALUES (?1, 1, 'Untitled task', 'active', ?2, ?2, NULL, ?2, ?3, ?4)",
+            params![task_id, now, plan_id, project_id],
         )?;
         tx.execute(
             "INSERT INTO task_plans (
@@ -697,12 +3328,11 @@ impl ProjectRepository {
              ) VALUES (?1, 1, ?2, 'Primary plan', 0, '', ?3, ?3)",
             params![plan_id, task_id, now],
         )?;
-        if task_payload_bytes(&tx, Some(&task_id))? > TASK_RECORD_PAYLOAD_LIMIT
-            || task_payload_bytes(&tx, None)? > TASK_PAYLOAD_LIMIT
+        if task_payload_bytes(tx, Some(&task_id))? > TASK_RECORD_PAYLOAD_LIMIT
+            || task_payload_bytes(tx, None)? > TASK_PAYLOAD_LIMIT
         {
             return Err(StorageError::TaskCapacity);
         }
-        tx.commit()?;
         Ok(task_id)
     }
 
@@ -908,6 +3538,7 @@ impl ProjectRepository {
         id: &str,
         status: TaskStatus,
     ) -> Result<(), StorageError> {
+        let now = now_millis();
         let tx = self
             .connection
             .transaction_with_behavior(TransactionBehavior::Immediate)?;
@@ -923,8 +3554,16 @@ impl ProjectRepository {
         }
         tx.execute(
             "UPDATE task_records SET status = ?1, updated_at_ms = ?2 WHERE id = ?3",
-            params![task_status_value(status), now_millis(), id],
+            params![task_status_value(status), now, id],
         )?;
+        if status == TaskStatus::Completed {
+            tx.execute(
+                "UPDATE local_review_collections
+                 SET state = 'frozen', updated_at_ms = CASE WHEN updated_at_ms >= ?1 THEN updated_at_ms + 1 ELSE ?1 END
+                 WHERE task_id = ?2 AND discarded_at_ms IS NULL",
+                params![now, id],
+            )?;
+        }
         tx.commit()?;
         Ok(())
     }
@@ -957,6 +3596,14 @@ impl ProjectRepository {
             "UPDATE task_records SET archived_at_ms = ?1, updated_at_ms = ?1 WHERE id = ?2"
         };
         tx.execute(sql, params![now, id])?;
+        if !restore {
+            tx.execute(
+                "UPDATE local_review_collections
+                 SET state = 'frozen', updated_at_ms = CASE WHEN updated_at_ms >= ?1 THEN updated_at_ms + 1 ELSE ?1 END
+                 WHERE task_id = ?2 AND discarded_at_ms IS NULL",
+                params![now, id],
+            )?;
+        }
         tx.commit()?;
         Ok(())
     }
@@ -1481,6 +4128,307 @@ impl ProjectRepository {
             .into_iter()
             .find(|project| project.id == project_id)
             .ok_or(StorageError::ProjectNotFound)
+    }
+
+    /// Internal-only writer for results that a native package-validation
+    /// controller has already validated. No command or frontend surface calls
+    /// this method.
+    #[allow(dead_code)] // Reserved exclusively for the native package-validation controller.
+    pub(crate) fn record_package_validation_summary(
+        &mut self,
+        project_id: &str,
+        input: PackageValidationRecordInput,
+    ) -> Result<PackageValidationRecordOutcome, StorageError> {
+        self.record_package_validation_summary_at(project_id, input, now_millis())
+    }
+
+    fn record_package_validation_summary_at(
+        &mut self,
+        project_id: &str,
+        input: PackageValidationRecordInput,
+        now: i64,
+    ) -> Result<PackageValidationRecordOutcome, StorageError> {
+        if !is_uuid_v7(project_id) || now < 0 {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let mut input = input;
+        if input.validation_phase == PackageValidationPhase::InstalledHost {
+            let derived = installed_host_attempt_identity(
+                &input.candidate_identity_sha256,
+                input.installed_host_state,
+                input.installed_host_facts.as_ref(),
+            )?;
+            if input
+                .attempt_identity_sha256
+                .as_deref()
+                .is_some_and(|value| value != derived)
+            {
+                return Err(StorageError::InvalidStoredValue);
+            }
+            input.attempt_identity_sha256 = Some(derived);
+        }
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        validate_package_validation_input(&input)?;
+        let project_available = tx
+            .query_row(
+                "SELECT 1
+                 FROM projects AS project
+                 JOIN directory_associations AS association
+                   ON association.id = project.active_directory_association_id
+                 WHERE project.id = ?1
+                   AND project.archived_at_ms IS NULL
+                   AND association.detached_at_ms IS NULL",
+                [project_id],
+                |_| Ok(()),
+            )
+            .optional()?
+            .is_some();
+        if !project_available {
+            return Err(StorageError::ProjectNotFound);
+        }
+
+        if let Some(summary_id) = tx
+            .query_row(
+                "SELECT package_validation_summary_id
+                 FROM project_package_validation_candidate_identities
+                 WHERE project_id = ?1 AND candidate_identity_sha256 = ?2
+                   AND validation_phase = ?3 AND attempt_identity_sha256 = ?4",
+                params![
+                    project_id,
+                    input.candidate_identity_sha256,
+                    package_validation_phase_value(input.validation_phase),
+                    input
+                        .attempt_identity_sha256
+                        .as_deref()
+                        .unwrap_or(&input.candidate_identity_sha256),
+                ],
+                |row| row.get::<_, String>(0),
+            )
+            .optional()?
+        {
+            let summary = package_validation_summary_record(&tx, &summary_id)?;
+            if summary.project_id != project_id
+                || summary.input.candidate_identity_sha256 != input.candidate_identity_sha256
+                || summary.input.validation_phase != input.validation_phase
+                || summary.input.attempt_identity_sha256 != input.attempt_identity_sha256
+            {
+                return Err(StorageError::InvalidStoredValue);
+            }
+            return Ok(PackageValidationRecordOutcome::Existing(summary));
+        }
+
+        let mut created_at_ms = now;
+        match input.validation_phase {
+            PackageValidationPhase::Unprivileged => {}
+            PackageValidationPhase::InstalledHost => {
+                if tx.query_row(
+                    "SELECT 1 FROM project_package_validation_candidate_identities AS identity
+                     JOIN project_package_validation_summaries AS summary
+                       ON summary.id = identity.package_validation_summary_id
+                     WHERE identity.project_id = ?1 AND identity.candidate_identity_sha256 = ?2
+                       AND identity.validation_phase = 'installed-host' AND summary.validation_complete = 1",
+                    params![project_id, input.candidate_identity_sha256], |_| Ok(())
+                ).optional()?.is_some() {
+                    return Err(StorageError::InvalidStoredValue);
+                }
+                let attempts: i64 = tx.query_row(
+                    "SELECT count(*) FROM project_package_validation_candidate_identities
+                     WHERE project_id = ?1 AND candidate_identity_sha256 = ?2 AND validation_phase = 'installed-host'",
+                    params![project_id, input.candidate_identity_sha256], |row| row.get(0)
+                )?;
+                if attempts >= INSTALLED_HOST_ATTEMPT_LIMIT {
+                    return Err(StorageError::TaskCapacity);
+                }
+                let supersedes_id = input
+                    .supersedes_record_id
+                    .as_deref()
+                    .ok_or(StorageError::InvalidStoredValue)?;
+                let previous = package_validation_summary_record(&tx, supersedes_id)?;
+                let predecessor_phase: String = tx.query_row(
+                    "SELECT validation_phase FROM project_package_validation_candidate_identities
+                     WHERE project_id = ?1 AND candidate_identity_sha256 = ?2
+                       AND package_validation_summary_id = ?3",
+                    params![project_id, input.candidate_identity_sha256, supersedes_id],
+                    |row| row.get(0),
+                )?;
+                let predecessor_phase = package_validation_phase(&predecessor_phase)?;
+                let newest: Option<String> = tx.query_row(
+                    "SELECT package_validation_summary_id FROM project_package_validation_candidate_identities
+                     WHERE project_id = ?1 AND candidate_identity_sha256 = ?2
+                     ORDER BY CASE validation_phase WHEN 'installed-host' THEN 1 ELSE 0 END DESC, created_at_ms DESC, package_validation_summary_id DESC LIMIT 1",
+                    params![project_id, input.candidate_identity_sha256], |row| row.get(0)
+                ).optional()?;
+                if previous.project_id != project_id
+                    || !matches!(
+                        predecessor_phase,
+                        PackageValidationPhase::Unprivileged
+                            | PackageValidationPhase::InstalledHost
+                    )
+                    || newest.as_deref() != Some(supersedes_id)
+                    || previous.input.application_version != input.application_version
+                    || previous.input.debian_version != input.debian_version
+                    || previous.input.artifact_count != input.artifact_count
+                    || previous.input.manifest_state != input.manifest_state
+                    || previous.input.checksum_state != input.checksum_state
+                    || previous.input.abi_state != input.abi_state
+                    || previous.input.provenance_state != input.provenance_state
+                    || previous.input.visible_launch_state != input.visible_launch_state
+                {
+                    return Err(StorageError::InvalidStoredValue);
+                }
+                created_at_ms = created_at_ms.max(previous.created_at_ms.saturating_add(1));
+            }
+        }
+
+        prune_package_validation_summaries(
+            &tx,
+            project_id,
+            created_at_ms,
+            input.supersedes_record_id.as_deref(),
+        )?;
+        let count: i64 = tx.query_row(
+            "SELECT count(*) FROM project_package_validation_summaries WHERE project_id = ?1",
+            [project_id],
+            |row| row.get(0),
+        )?;
+        if count >= PACKAGE_VALIDATION_RECORD_LIMIT as i64 {
+            return Err(StorageError::TaskCapacity);
+        }
+
+        let id = Uuid::now_v7().to_string();
+        let record_sha256 =
+            package_validation_record_digest(&id, project_id, &input, created_at_ms)?;
+        tx.execute(
+            "INSERT INTO project_package_validation_summaries (
+                id, project_id, application_version, debian_version,
+                manifest_state, checksum_state, abi_state, provenance_state,
+                visible_launch_state, installed_host_state, artifact_count,
+                validation_complete, record_sha256, created_at_ms, supersedes_record_id
+             ) VALUES (
+                ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15
+             )",
+            params![
+                id,
+                project_id,
+                input.application_version,
+                input.debian_version,
+                package_validation_state_value(input.manifest_state),
+                package_validation_state_value(input.checksum_state),
+                package_validation_state_value(input.abi_state),
+                package_validation_state_value(input.provenance_state),
+                package_validation_state_value(input.visible_launch_state),
+                package_validation_state_value(input.installed_host_state),
+                input.artifact_count,
+                input.validation_complete,
+                record_sha256,
+                created_at_ms,
+                input.supersedes_record_id,
+            ],
+        )?;
+        tx.execute(
+            "INSERT INTO project_package_validation_candidate_identities (
+                project_id, candidate_identity_sha256, validation_phase,
+                attempt_identity_sha256, package_validation_summary_id, created_at_ms
+             ) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            params![
+                project_id,
+                input.candidate_identity_sha256,
+                package_validation_phase_value(input.validation_phase),
+                input
+                    .attempt_identity_sha256
+                    .as_deref()
+                    .unwrap_or(&input.candidate_identity_sha256),
+                id,
+                created_at_ms
+            ],
+        )?;
+        let summary = package_validation_summary_record(&tx, &id)?;
+        tx.commit()?;
+        Ok(PackageValidationRecordOutcome::Created(summary))
+    }
+
+    #[cfg(test)]
+    fn record_package_validation_summary_at_for_test(
+        &mut self,
+        project_id: &str,
+        input: PackageValidationRecordInput,
+        now: i64,
+    ) -> Result<PackageValidationRecordOutcome, StorageError> {
+        self.record_package_validation_summary_at(project_id, input, now)
+    }
+
+    #[cfg(test)]
+    fn package_validation_summary_for_test(
+        &self,
+        id: &str,
+    ) -> Result<PackageValidationSummary, StorageError> {
+        package_validation_summary_record(&self.connection, id)
+    }
+
+    pub(crate) fn package_validation_summary_for_internal(
+        &self,
+        id: &str,
+    ) -> Result<PackageValidationSummary, StorageError> {
+        package_validation_summary_record(&self.connection, id)
+    }
+
+    /// Returns the immutable tail that an installed-host result may supersede.
+    /// The caller first authenticates the supplied unprivileged receipt, then
+    /// uses this lookup to extend its one linear durable chain.
+    pub(crate) fn package_validation_installed_host_predecessor_for_internal(
+        &self,
+        project_id: &str,
+        candidate_identity_sha256: &str,
+    ) -> Result<PackageValidationSummary, StorageError> {
+        let id: String = self.connection.query_row(
+            "SELECT package_validation_summary_id
+             FROM project_package_validation_candidate_identities
+             WHERE project_id = ?1 AND candidate_identity_sha256 = ?2
+             ORDER BY CASE validation_phase WHEN 'installed-host' THEN 1 ELSE 0 END DESC,
+                      created_at_ms DESC, package_validation_summary_id DESC
+             LIMIT 1",
+            params![project_id, candidate_identity_sha256],
+            |row| row.get(0),
+        )?;
+        package_validation_summary_record(&self.connection, &id)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn package_validation_test_repository() -> (Self, String) {
+        let repository = Self::in_memory().expect("test repository");
+        let project_id = Uuid::now_v7().to_string();
+        let association_id = Uuid::now_v7().to_string();
+        let path = format!("/package-validation-test-{project_id}");
+        repository.connection.execute(
+            "INSERT INTO projects (id, display_name, active_directory_association_id, archived_at_ms, created_at_ms, updated_at_ms) VALUES (?1, 'fixture', NULL, NULL, 1, 1)", [&project_id]
+        ).expect("project");
+        repository.connection.execute(
+            "INSERT INTO directory_associations (id, project_id, selected_path, resolved_path, role, is_primary, expected_access, device_id, inode, filesystem_type, mount_id, git_common_dir, git_worktree_root, git_is_linked_worktree, has_agents_guidance, has_codex_config, accessibility_state, last_verified_at_ms, detached_at_ms, created_at_ms, updated_at_ms) VALUES (?1, ?2, ?3, ?3, 'primary', 1, 'read-write', NULL, NULL, NULL, NULL, NULL, NULL, 0, 0, 0, 'available', 1, NULL, 1, 1)",
+            params![association_id, project_id, path]
+        ).expect("association");
+        repository
+            .connection
+            .execute(
+                "UPDATE projects SET active_directory_association_id = ?1 WHERE id = ?2",
+                params![association_id, project_id],
+            )
+            .expect("active");
+        (repository, project_id)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn package_validation_phase_summary_for_test(
+        &self,
+        project_id: &str,
+        phase: PackageValidationPhase,
+    ) -> Result<PackageValidationSummary, StorageError> {
+        let id: String = self.connection.query_row(
+            "SELECT package_validation_summary_id FROM project_package_validation_candidate_identities WHERE project_id = ?1 AND validation_phase = ?2 ORDER BY created_at_ms DESC LIMIT 1",
+            params![project_id, package_validation_phase_value(phase)], |row| row.get(0)
+        )?;
+        package_validation_summary_record(&self.connection, &id)
     }
 
     pub(crate) fn ensure_directory_available(
@@ -2412,6 +5360,407 @@ fn advisor_provenance_source_value(value: AdvisorProvenanceSource) -> &'static s
     }
 }
 
+/// Resolves task creation's project binding entirely from native conversation
+/// metadata while the task insert transaction is held. A conversation must be
+/// live and its project must still have an active, attached association.
+fn task_context_project_id(
+    transaction: &Transaction<'_>,
+    conversation_id: &str,
+) -> Result<String, StorageError> {
+    transaction
+        .query_row(
+            "SELECT conversation.project_id
+             FROM conversation_references AS conversation
+             JOIN projects AS project ON project.id = conversation.project_id
+             JOIN directory_associations AS association
+               ON association.id = project.active_directory_association_id
+             WHERE conversation.id = ?1
+               AND conversation.archived_at_ms IS NULL
+               AND conversation.status IN ('thread-started', 'running')
+               AND project.archived_at_ms IS NULL
+               AND association.detached_at_ms IS NULL",
+            [conversation_id],
+            |row| row.get(0),
+        )
+        .optional()?
+        .filter(|project_id: &String| is_uuid_v7(project_id))
+        .ok_or(StorageError::ProjectNotFound)
+}
+
+fn is_uuid_v7(value: &str) -> bool {
+    Uuid::parse_str(value).is_ok_and(|uuid| uuid.get_version_num() == 7)
+}
+
+fn package_validation_state_value(value: LocalReviewEvidenceCheckState) -> &'static str {
+    match value {
+        LocalReviewEvidenceCheckState::Passed => "passed",
+        LocalReviewEvidenceCheckState::Failed => "failed",
+        LocalReviewEvidenceCheckState::Skipped => "skipped",
+        LocalReviewEvidenceCheckState::Unavailable => "unavailable",
+    }
+}
+
+fn package_validation_state(value: &str) -> Result<LocalReviewEvidenceCheckState, StorageError> {
+    match value {
+        "passed" => Ok(LocalReviewEvidenceCheckState::Passed),
+        "failed" => Ok(LocalReviewEvidenceCheckState::Failed),
+        "skipped" => Ok(LocalReviewEvidenceCheckState::Skipped),
+        "unavailable" => Ok(LocalReviewEvidenceCheckState::Unavailable),
+        _ => Err(StorageError::InvalidStoredValue),
+    }
+}
+
+fn valid_package_version(value: &str, permit_debian_tilde: bool) -> bool {
+    let allowed = |byte: u8| {
+        byte.is_ascii_alphanumeric()
+            || matches!(byte, b'.' | b'+' | b'-')
+            || (permit_debian_tilde && matches!(byte, b':' | b'~'))
+    };
+    (1..=64).contains(&value.len())
+        && value.as_bytes().first().is_some_and(u8::is_ascii_digit)
+        && value.bytes().all(allowed)
+}
+
+fn valid_lower_sha256(value: &str) -> bool {
+    value.len() == 64
+        && value
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || matches!(byte, b'a'..=b'f'))
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct CanonicalInstalledHostAttempt<'a> {
+    domain: &'static str,
+    candidate_identity_sha256: &'a str,
+    outcome: &'a str,
+    facts: CanonicalInstalledHostAttemptFacts<'a>,
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct CanonicalInstalledHostAttemptFacts<'a> {
+    kind: &'static str,
+    schema_version: u8,
+    package_state: Option<&'a str>,
+    version_match: Option<bool>,
+    ownership_verified: Option<bool>,
+    permissions_safe: Option<bool>,
+    package_integrity_verified: Option<bool>,
+}
+
+fn installed_host_attempt_identity(
+    candidate_identity_sha256: &str,
+    outcome: LocalReviewEvidenceCheckState,
+    facts: Option<&PackageValidationInstalledHostFacts>,
+) -> Result<String, StorageError> {
+    let outcome = package_validation_state_value(outcome);
+    let bytes = serde_json::to_vec(&CanonicalInstalledHostAttempt {
+        domain: INSTALLED_HOST_ATTEMPT_DOMAIN,
+        candidate_identity_sha256,
+        outcome,
+        facts: CanonicalInstalledHostAttemptFacts {
+            kind: "installed-host",
+            schema_version: 1,
+            package_state: facts.map(|value| value.package_state.as_str()),
+            version_match: facts.map(|value| value.version_match),
+            ownership_verified: facts.map(|value| value.ownership_verified),
+            permissions_safe: facts.map(|value| value.permissions_safe),
+            package_integrity_verified: facts.map(|value| value.package_integrity_verified),
+        },
+    })
+    .map_err(|_| StorageError::InvalidStoredValue)?;
+    Ok(format!("{:x}", Sha256::digest(bytes)))
+}
+
+fn validation_is_complete(input: &PackageValidationRecordInput) -> bool {
+    [
+        input.manifest_state,
+        input.checksum_state,
+        input.abi_state,
+        input.provenance_state,
+        input.visible_launch_state,
+        input.installed_host_state,
+    ]
+    .into_iter()
+    .all(|state| state == LocalReviewEvidenceCheckState::Passed)
+}
+
+fn validate_package_validation_input(
+    input: &PackageValidationRecordInput,
+) -> Result<(), StorageError> {
+    if !valid_lower_sha256(&input.candidate_identity_sha256) {
+        return Err(StorageError::InvalidStoredValue);
+    }
+    validate_package_validation_summary_input(input)
+}
+
+fn validate_package_validation_summary_input(
+    input: &PackageValidationRecordInput,
+) -> Result<(), StorageError> {
+    if !valid_package_version(&input.application_version, false)
+        || !valid_package_version(&input.debian_version, true)
+        || input.artifact_count > PACKAGE_ARTIFACT_COUNT_LIMIT
+        || input.validation_complete != validation_is_complete(input)
+        || (input.validation_complete && input.artifact_count != PACKAGE_ARTIFACT_COUNT_LIMIT)
+        || input
+            .supersedes_record_id
+            .as_deref()
+            .is_some_and(|id| !is_uuid_v7(id))
+        || matches!(input.validation_phase, PackageValidationPhase::Unprivileged)
+            && (input.installed_host_state != LocalReviewEvidenceCheckState::Unavailable
+                || input.validation_complete
+                || input.supersedes_record_id.is_some())
+        || matches!(
+            input.validation_phase,
+            PackageValidationPhase::InstalledHost
+        ) && input.supersedes_record_id.is_none()
+        || matches!(input.validation_phase, PackageValidationPhase::Unprivileged)
+            && input.attempt_identity_sha256.is_some()
+        || input
+            .attempt_identity_sha256
+            .as_deref()
+            .is_some_and(|value| !valid_lower_sha256(value))
+        || matches!(input.validation_phase, PackageValidationPhase::Unprivileged)
+            && input.installed_host_facts.is_some()
+        || matches!(
+            input.validation_phase,
+            PackageValidationPhase::InstalledHost
+        ) && input.installed_host_state == LocalReviewEvidenceCheckState::Passed
+            && input.installed_host_facts.as_ref().is_none_or(|facts| {
+                facts.package_state != "installed"
+                    || !facts.version_match
+                    || !facts.ownership_verified
+                    || !facts.permissions_safe
+                    || !facts.package_integrity_verified
+            })
+    {
+        return Err(StorageError::InvalidStoredValue);
+    }
+    Ok(())
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct CanonicalPackageValidationRecord<'a> {
+    id: &'a str,
+    project_id: &'a str,
+    application_version: &'a str,
+    debian_version: &'a str,
+    manifest_state: LocalReviewEvidenceCheckState,
+    checksum_state: LocalReviewEvidenceCheckState,
+    abi_state: LocalReviewEvidenceCheckState,
+    provenance_state: LocalReviewEvidenceCheckState,
+    visible_launch_state: LocalReviewEvidenceCheckState,
+    installed_host_state: LocalReviewEvidenceCheckState,
+    artifact_count: u8,
+    validation_complete: bool,
+    created_at_ms: i64,
+    supersedes_record_id: Option<&'a str>,
+}
+
+fn package_validation_record_digest(
+    id: &str,
+    project_id: &str,
+    input: &PackageValidationRecordInput,
+    created_at_ms: i64,
+) -> Result<String, StorageError> {
+    let bytes = serde_json::to_vec(&CanonicalPackageValidationRecord {
+        id,
+        project_id,
+        application_version: &input.application_version,
+        debian_version: &input.debian_version,
+        manifest_state: input.manifest_state,
+        checksum_state: input.checksum_state,
+        abi_state: input.abi_state,
+        provenance_state: input.provenance_state,
+        visible_launch_state: input.visible_launch_state,
+        installed_host_state: input.installed_host_state,
+        artifact_count: input.artifact_count,
+        validation_complete: input.validation_complete,
+        created_at_ms,
+        supersedes_record_id: input.supersedes_record_id.as_deref(),
+    })
+    .map_err(|_| StorageError::InvalidStoredValue)?;
+    Ok(format!("{:x}", Sha256::digest(bytes)))
+}
+
+fn package_validation_summary_record(
+    connection: &Connection,
+    id: &str,
+) -> Result<PackageValidationSummary, StorageError> {
+    let row = connection
+        .query_row(
+            "SELECT project_id, application_version, debian_version,
+                    manifest_state, checksum_state, abi_state, provenance_state,
+                    visible_launch_state, installed_host_state, artifact_count,
+                    validation_complete, record_sha256, created_at_ms, supersedes_record_id
+             FROM project_package_validation_summaries WHERE id = ?1",
+            [id],
+            |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, String>(2)?,
+                    row.get::<_, String>(3)?,
+                    row.get::<_, String>(4)?,
+                    row.get::<_, String>(5)?,
+                    row.get::<_, String>(6)?,
+                    row.get::<_, String>(7)?,
+                    row.get::<_, String>(8)?,
+                    row.get::<_, u8>(9)?,
+                    row.get::<_, bool>(10)?,
+                    row.get::<_, String>(11)?,
+                    row.get::<_, i64>(12)?,
+                    row.get::<_, Option<String>>(13)?,
+                ))
+            },
+        )
+        .optional()?
+        .ok_or(StorageError::InvalidStoredValue)?;
+    let association = connection
+        .query_row(
+            "SELECT candidate_identity_sha256, validation_phase, attempt_identity_sha256
+             FROM project_package_validation_candidate_identities
+             WHERE package_validation_summary_id = ?1",
+            [id],
+            |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, String>(2)?,
+                ))
+            },
+        )
+        .optional()?;
+    let (candidate_identity_sha256, validation_phase, attempt_identity_sha256) = match association {
+        Some((identity, phase, attempt)) => {
+            let phase = package_validation_phase(&phase)?;
+            let attempt = (phase == PackageValidationPhase::InstalledHost).then_some(attempt);
+            (identity, phase, attempt)
+        }
+        None => (String::new(), PackageValidationPhase::Unprivileged, None),
+    };
+    let input = PackageValidationRecordInput {
+        candidate_identity_sha256,
+        validation_phase,
+        attempt_identity_sha256,
+        installed_host_facts: (validation_phase == PackageValidationPhase::InstalledHost
+            && package_validation_state(&row.8)? == LocalReviewEvidenceCheckState::Passed)
+            .then(|| PackageValidationInstalledHostFacts {
+                package_state: "installed".to_owned(),
+                version_match: true,
+                ownership_verified: true,
+                permissions_safe: true,
+                package_integrity_verified: true,
+            }),
+        application_version: row.1,
+        debian_version: row.2,
+        manifest_state: package_validation_state(&row.3)?,
+        checksum_state: package_validation_state(&row.4)?,
+        abi_state: package_validation_state(&row.5)?,
+        provenance_state: package_validation_state(&row.6)?,
+        visible_launch_state: package_validation_state(&row.7)?,
+        installed_host_state: package_validation_state(&row.8)?,
+        artifact_count: row.9,
+        validation_complete: row.10,
+        supersedes_record_id: row.13,
+    };
+    if !is_uuid_v7(id)
+        || !is_uuid_v7(&row.0)
+        || row.12 < 0
+        || !valid_lower_sha256(&row.11)
+        || validate_package_validation_summary_input(&input).is_err()
+        || package_validation_record_digest(id, &row.0, &input, row.12)? != row.11
+    {
+        return Err(StorageError::InvalidStoredValue);
+    }
+    Ok(PackageValidationSummary {
+        id: id.to_owned(),
+        project_id: row.0,
+        input,
+        created_at_ms: row.12,
+        record_sha256: row.11,
+    })
+}
+
+fn prune_package_validation_summaries(
+    transaction: &Transaction<'_>,
+    project_id: &str,
+    now: i64,
+    incoming_supersedes: Option<&str>,
+) -> Result<(), StorageError> {
+    let count: i64 = transaction.query_row(
+        "SELECT count(*) FROM project_package_validation_summaries WHERE project_id = ?1",
+        [project_id],
+        |row| row.get(0),
+    )?;
+    let required = (count + 1 - PACKAGE_VALIDATION_RECORD_LIMIT as i64).max(0) as usize;
+    if required == 0 {
+        return Ok(());
+    }
+    let newest: Option<String> = transaction
+        .query_row(
+            "SELECT id FROM project_package_validation_summaries
+             WHERE project_id = ?1 ORDER BY created_at_ms DESC, id DESC LIMIT 1",
+            [project_id],
+            |row| row.get(0),
+        )
+        .optional()?;
+    let newest_complete: Option<String> = transaction
+        .query_row(
+            "SELECT id FROM project_package_validation_summaries
+             WHERE project_id = ?1 AND validation_complete = 1
+             ORDER BY created_at_ms DESC, id DESC LIMIT 1",
+            [project_id],
+            |row| row.get(0),
+        )
+        .optional()?;
+    let protected = [
+        newest,
+        newest_complete,
+        incoming_supersedes.map(str::to_owned),
+    ]
+    .into_iter()
+    .flatten()
+    .collect::<HashSet<_>>();
+    let cutoff = now.saturating_sub(PACKAGE_VALIDATION_PROTECTION_MS);
+    let mut statement = transaction.prepare(
+        "SELECT id FROM project_package_validation_summaries AS record
+         WHERE record.project_id = ?1
+           AND record.created_at_ms < ?2
+           AND NOT EXISTS (
+               SELECT 1 FROM project_package_validation_summaries AS child
+               WHERE child.supersedes_record_id = record.id
+           )
+           AND NOT EXISTS (
+               SELECT 1 FROM project_package_validation_candidate_identities AS identity
+               WHERE identity.package_validation_summary_id = record.id
+           )
+         ORDER BY record.created_at_ms, record.id",
+    )?;
+    let candidates = statement
+        .query_map(params![project_id, cutoff], |row| row.get::<_, String>(0))?
+        .collect::<Result<Vec<_>, _>>()?
+        .into_iter()
+        .filter(|id| !protected.contains(id))
+        .take(required)
+        .collect::<Vec<_>>();
+    if candidates.len() != required {
+        return Err(StorageError::TaskCapacity);
+    }
+    for id in candidates {
+        if transaction.execute(
+            "DELETE FROM project_package_validation_summaries WHERE id = ?1 AND project_id = ?2",
+            params![id, project_id],
+        )? != 1
+        {
+            return Err(StorageError::InvalidStoredValue);
+        }
+    }
+    Ok(())
+}
+
 fn apply_migrations(connection: &mut Connection) -> Result<(), StorageError> {
     let transaction = connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
     transaction.execute_batch(
@@ -2444,6 +5793,9 @@ fn apply_migrations(connection: &mut Connection) -> Result<(), StorageError> {
 
     for (version, name, sql) in MIGRATIONS.iter().skip(applied.len()) {
         transaction.execute_batch(sql)?;
+        if *version == 13 {
+            backfill_local_review_evidence_envelopes(&transaction)?;
+        }
         transaction.execute(
             "INSERT INTO schema_migrations(version, name, applied_at_ms)
              VALUES (?1, ?2, ?3)",
@@ -2451,6 +5803,70 @@ fn apply_migrations(connection: &mut Connection) -> Result<(), StorageError> {
         )?;
     }
     transaction.commit()?;
+    Ok(())
+}
+
+fn backfill_local_review_evidence_envelopes(
+    transaction: &Transaction<'_>,
+) -> Result<(), StorageError> {
+    let mut statement = transaction.prepare(
+        "SELECT id, title, content, sha256, byte_size
+         FROM local_review_items
+         WHERE class = 'evidence' AND provenance = 'manual-validation-summary'",
+    )?;
+    let rows = statement
+        .query_map([], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, Vec<u8>>(2)?,
+                row.get::<_, String>(3)?,
+                row.get::<_, i64>(4)?,
+            ))
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+    drop(statement);
+    for (id, title, content, sha256, byte_size) in rows {
+        if byte_size != content.len() as i64 || sha256 != review_digest(&content) {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let value: serde_json::Value =
+            serde_json::from_slice(&content).map_err(|_| StorageError::InvalidStoredValue)?;
+        let object = value.as_object().ok_or(StorageError::InvalidStoredValue)?;
+        if object.len() != 4
+            || object.get("schemaVersion").and_then(|value| value.as_i64()) != Some(1)
+            || object.get("source").and_then(|value| value.as_str())
+                != Some("manual-validation-summary")
+            || object.get("title").and_then(|value| value.as_str()) != Some(title.as_str())
+        {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let summary = object
+            .get("summary")
+            .and_then(|value| value.as_str())
+            .ok_or(StorageError::InvalidStoredValue)?;
+        let bytes = manual_evidence_envelope_bytes(&title, summary)?;
+        if bytes.len() > REVIEW_EVIDENCE_BYTES_LIMIT {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        transaction.execute(
+            "UPDATE local_review_items
+             SET evidence_source = 'manual-validation-summary', content = ?1,
+                 sha256 = ?2, byte_size = ?3
+             WHERE id = ?4",
+            params![bytes, review_digest(&bytes), bytes.len() as i64, id],
+        )?;
+    }
+    let invalid: i64 = transaction.query_row(
+        "SELECT count(*) FROM local_review_items
+         WHERE (class = 'evidence' AND evidence_source IS NULL)
+            OR (class != 'evidence' AND evidence_source IS NOT NULL)",
+        [],
+        |row| row.get(0),
+    )?;
+    if invalid != 0 {
+        return Err(StorageError::InvalidStoredValue);
+    }
     Ok(())
 }
 
@@ -2679,20 +6095,233 @@ fn now_millis() -> i64 {
 
 #[cfg(test)]
 mod tests {
-    use std::{collections::VecDeque, fs, os::unix::fs::PermissionsExt};
+    use std::{
+        collections::VecDeque,
+        fs,
+        os::unix::fs::PermissionsExt,
+        sync::atomic::{AtomicU64, Ordering},
+    };
 
     use rusqlite::{params, Connection};
     use uuid::Uuid;
 
     use super::{
-        ProjectRepository, StorageError, INITIAL_MIGRATION, MIGRATIONS, TASK_CLEANUP_AGE_MS,
-        TASK_COUNT_LIMIT, TASK_PAYLOAD_LIMIT,
+        apply_migrations, installed_host_attempt_identity, parse_manual_evidence_envelope,
+        review_digest, review_payload_bytes, valid_task_id, PackageValidationInstalledHostFacts,
+        PackageValidationPhase, PackageValidationRecordInput, PackageValidationRecordOutcome,
+        PackageValidationSummary, ProjectRepository, StorageError, INITIAL_MIGRATION, MIGRATIONS,
+        PACKAGE_VALIDATION_PROTECTION_MS, TASK_CLEANUP_AGE_MS, TASK_COUNT_LIMIT,
+        TASK_PAYLOAD_LIMIT,
     };
-    use crate::project::types::TaskStatus;
+    use crate::project::types::{
+        LocalReviewAnnotationState, LocalReviewCollectionState, LocalReviewComparisonState,
+        LocalReviewEvidenceCheckState, LocalReviewItemClass, LocalReviewItemState,
+        LocalReviewLineKind, LocalReviewSourceKind, LocalReviewTextFormat, TaskStatus,
+    };
     use crate::project::{
         ChatConversationMetadata, ConversationPendingSelection, ConversationReference,
         ConversationSelectionMetadata,
     };
+
+    fn png(width: u32, height: u32, animated: bool) -> Vec<u8> {
+        let mut bytes = b"\x89PNG\r\n\x1a\n".to_vec();
+        let mut chunk = |kind: &[u8; 4], payload: &[u8]| {
+            bytes.extend_from_slice(&(payload.len() as u32).to_be_bytes());
+            bytes.extend_from_slice(kind);
+            bytes.extend_from_slice(payload);
+            bytes.extend_from_slice(&[0; 4]);
+        };
+        let mut ihdr = Vec::new();
+        ihdr.extend_from_slice(&width.to_be_bytes());
+        ihdr.extend_from_slice(&height.to_be_bytes());
+        ihdr.extend_from_slice(&[8, 2, 0, 0, 0]);
+        chunk(b"IHDR", &ihdr);
+        if animated {
+            chunk(b"acTL", &[0; 8]);
+        }
+        chunk(b"IDAT", &[0]);
+        chunk(b"IEND", &[]);
+        bytes
+    }
+
+    fn jpeg(width: u16, height: u16, end: bool) -> Vec<u8> {
+        let mut bytes = vec![0xff, 0xd8, 0xff, 0xc0, 0, 11, 8];
+        bytes.extend_from_slice(&height.to_be_bytes());
+        bytes.extend_from_slice(&width.to_be_bytes());
+        bytes.extend_from_slice(&[1, 1, 0x11, 0]);
+        if end {
+            bytes.extend_from_slice(&[0xff, 0xd9]);
+        }
+        bytes
+    }
+
+    fn insert_live_task_context(repository: &ProjectRepository) -> (String, String) {
+        let project_id = "018f0000-0000-7000-8000-000000000101".to_owned();
+        let association_id = "018f0000-0000-7000-8000-000000000102";
+        let conversation_id = "018f0000-0000-7000-8000-000000000103".to_owned();
+        let thread_id = "018f0000-0000-7000-8000-000000000104";
+        repository
+            .connection
+            .execute(
+                "INSERT INTO projects (
+                    id, display_name, active_directory_association_id, archived_at_ms,
+                    created_at_ms, updated_at_ms
+                 ) VALUES (?1, 'Bound project', NULL, NULL, 1, 1)",
+                [&project_id],
+            )
+            .expect("project fixture");
+        repository
+            .connection
+            .execute(
+                "INSERT INTO directory_associations (
+                    id, project_id, selected_path, resolved_path, role, is_primary,
+                    expected_access, device_id, inode, filesystem_type, mount_id,
+                    git_common_dir, git_worktree_root, git_is_linked_worktree,
+                    has_agents_guidance, has_codex_config, accessibility_state,
+                    last_verified_at_ms, detached_at_ms, created_at_ms, updated_at_ms
+                 ) VALUES (
+                    ?1, ?2, '/fixture', '/fixture', 'primary', 1, 'read-write',
+                    NULL, NULL, NULL, NULL, NULL, NULL, 0, 0, 0, 'available',
+                    1, NULL, 1, 1
+                 )",
+                params![association_id, project_id],
+            )
+            .expect("association fixture");
+        repository
+            .connection
+            .execute(
+                "UPDATE projects SET active_directory_association_id = ?1 WHERE id = ?2",
+                params![association_id, project_id],
+            )
+            .expect("active association");
+        repository
+            .connection
+            .execute(
+                "INSERT INTO conversation_references (
+                    id, project_id, codex_thread_id, model_id, reasoning_effort,
+                    sandbox_mode, approval_policy, status, created_at_ms, updated_at_ms
+                 ) VALUES (?1, ?2, ?3, 'fixture', 'medium', 'read-only',
+                    'untrusted', 'thread-started', 1, 1)",
+                params![conversation_id, project_id, thread_id],
+            )
+            .expect("conversation fixture");
+        (project_id, conversation_id)
+    }
+
+    fn package_validation_input(
+        complete: bool,
+        supersedes_record_id: Option<String>,
+    ) -> PackageValidationRecordInput {
+        let passed = LocalReviewEvidenceCheckState::Passed;
+        static NEXT_TEST_IDENTITY: AtomicU64 = AtomicU64::new(1);
+        PackageValidationRecordInput {
+            candidate_identity_sha256: format!(
+                "{:064x}",
+                NEXT_TEST_IDENTITY.fetch_add(1, Ordering::Relaxed)
+            ),
+            validation_phase: if complete {
+                PackageValidationPhase::InstalledHost
+            } else {
+                PackageValidationPhase::Unprivileged
+            },
+            attempt_identity_sha256: None,
+            installed_host_facts: complete.then(|| PackageValidationInstalledHostFacts {
+                package_state: "installed".to_owned(),
+                version_match: true,
+                ownership_verified: true,
+                permissions_safe: true,
+                package_integrity_verified: true,
+            }),
+            application_version: "0.1.0-beta.46".to_owned(),
+            debian_version: "0.1.0~beta.46".to_owned(),
+            manifest_state: passed,
+            checksum_state: if complete {
+                passed
+            } else {
+                LocalReviewEvidenceCheckState::Skipped
+            },
+            abi_state: if complete {
+                passed
+            } else {
+                LocalReviewEvidenceCheckState::Skipped
+            },
+            provenance_state: if complete {
+                passed
+            } else {
+                LocalReviewEvidenceCheckState::Skipped
+            },
+            visible_launch_state: if complete {
+                passed
+            } else {
+                LocalReviewEvidenceCheckState::Skipped
+            },
+            installed_host_state: if complete {
+                passed
+            } else {
+                LocalReviewEvidenceCheckState::Unavailable
+            },
+            artifact_count: if complete { 2 } else { 0 },
+            validation_complete: complete,
+            supersedes_record_id,
+        }
+    }
+
+    fn package_validation_created(
+        outcome: PackageValidationRecordOutcome,
+    ) -> PackageValidationSummary {
+        match outcome {
+            PackageValidationRecordOutcome::Created(summary) => summary,
+            PackageValidationRecordOutcome::Existing(_) => panic!("expected fresh record"),
+        }
+    }
+
+    fn package_validation_input_with_identity(identity: &str) -> PackageValidationRecordInput {
+        let mut input = package_validation_input(false, None);
+        input.candidate_identity_sha256 = identity.to_owned();
+        input
+    }
+
+    fn insert_active_project(
+        repository: &ProjectRepository,
+        project_id: &str,
+        association_id: &str,
+    ) {
+        let fixture_path = format!("/fixture-{project_id}");
+        repository
+            .connection
+            .execute(
+                "INSERT INTO projects (
+                    id, display_name, active_directory_association_id, archived_at_ms,
+                    created_at_ms, updated_at_ms
+                 ) VALUES (?1, 'Second project', NULL, NULL, 1, 1)",
+                [project_id],
+            )
+            .expect("second project");
+        repository
+            .connection
+            .execute(
+                "INSERT INTO directory_associations (
+                    id, project_id, selected_path, resolved_path, role, is_primary,
+                    expected_access, device_id, inode, filesystem_type, mount_id,
+                    git_common_dir, git_worktree_root, git_is_linked_worktree,
+                    has_agents_guidance, has_codex_config, accessibility_state,
+                    last_verified_at_ms, detached_at_ms, created_at_ms, updated_at_ms
+                 ) VALUES (
+                    ?1, ?2, ?3, ?3, 'primary', 1, 'read-write',
+                    NULL, NULL, NULL, NULL, NULL, NULL, 0, 0, 0, 'available',
+                    1, NULL, 1, 1
+                 )",
+                params![association_id, project_id, fixture_path],
+            )
+            .expect("second association");
+        repository
+            .connection
+            .execute(
+                "UPDATE projects SET active_directory_association_id = ?1 WHERE id = ?2",
+                params![association_id, project_id],
+            )
+            .expect("second active association");
+    }
 
     #[test]
     fn rejects_a_database_from_a_newer_application() {
@@ -2753,12 +6382,13 @@ mod tests {
                     OR (version = 8 AND name = 'advisor-reference-foundation')
                     OR (version = 9 AND name = 'advisor-approval-controller')
                     OR (version = 10 AND name = 'advisor-one-time-dispatch')
-                    OR (version = 11 AND name = 'durable-task-records-v1')",
+                    OR (version = 11 AND name = 'durable-task-records-v1')
+                    OR (version = 12 AND name = 'local-review-collections-v1')",
                 [],
                 |row| row.get(0),
             )
             .expect("migration ledger must be queryable");
-        assert_eq!(migrated, 10);
+        assert_eq!(migrated, 11);
         let lifecycle_columns: i64 = repository
             .connection
             .query_row(
@@ -2801,6 +6431,96 @@ mod tests {
             )
             .expect("pre-selector conversations must receive an honest fallback");
         assert_eq!(migrated_availability_default, "'recommendation-only'");
+    }
+
+    #[test]
+    fn local_review_evidence_source_migration_backfills_manual_rows_atomically() {
+        let connection = Connection::open_in_memory().expect("database opens");
+        connection.execute_batch("CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY NOT NULL, name TEXT NOT NULL, applied_at_ms INTEGER NOT NULL);").expect("ledger");
+        for (version, name, sql) in MIGRATIONS.iter().take(12) {
+            connection.execute_batch(sql).expect("v12 migration");
+            connection
+                .execute(
+                    "INSERT INTO schema_migrations VALUES (?1, ?2, 1)",
+                    params![version, name],
+                )
+                .expect("ledger row");
+        }
+        let collection = "018f0000-0000-7000-8000-000000000001";
+        let item = "018f0000-0000-7000-8000-000000000002";
+        let old = br#"{"schemaVersion":1,"source":"manual-validation-summary","title":"Validation","summary":"passed"}"#.to_vec();
+        connection.execute("INSERT INTO local_review_collections (id, schema_version, task_id, state, title, created_at_ms, updated_at_ms) VALUES (?1, 1, ?1, 'active', 'Review', 1, 1)", [collection]).expect("collection");
+        connection.execute("INSERT INTO local_review_items (id, schema_version, collection_id, class, text_format, mime_type, width, height, state, title, source_kind, provenance, content, sha256, byte_size, created_at_ms, updated_at_ms) VALUES (?1, 1, ?2, 'evidence', NULL, 'application/json; profile=evidence-envelope-v1', NULL, NULL, 'ready', 'Validation', 'typed-evidence-snapshot', 'manual-validation-summary', ?3, ?4, ?5, 1, 1)", params![item, collection, old, review_digest(&old), old.len() as i64]).expect("v12 manual evidence");
+        let repository =
+            ProjectRepository::from_test_connection(connection).expect("latest schema migrates");
+        let (source, content): (String, Vec<u8>) = repository
+            .connection
+            .query_row(
+                "SELECT evidence_source, content FROM local_review_items WHERE id = ?1",
+                [item],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .expect("backfill");
+        assert_eq!(source, "manual-validation-summary");
+        assert_eq!(
+            parse_manual_evidence_envelope(&content, "Validation").expect("canonical envelope"),
+            "passed"
+        );
+        assert_eq!(
+            repository
+                .connection
+                .query_row("SELECT max(version) FROM schema_migrations", [], |row| row
+                    .get::<_, i64>(
+                    0
+                ))
+                .expect("version"),
+            18
+        );
+    }
+
+    #[test]
+    fn local_review_evidence_source_migration_rejects_invalid_rows_without_partial_upgrade() {
+        let mut connection = Connection::open_in_memory().expect("database opens");
+        connection.execute_batch("CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY NOT NULL, name TEXT NOT NULL, applied_at_ms INTEGER NOT NULL);").expect("ledger");
+        for (version, name, sql) in MIGRATIONS.iter().take(12) {
+            connection.execute_batch(sql).expect("v12 migration");
+            connection
+                .execute(
+                    "INSERT INTO schema_migrations VALUES (?1, ?2, 1)",
+                    params![version, name],
+                )
+                .expect("ledger row");
+        }
+        let collection = "018f0000-0000-7000-8000-000000000003";
+        let item = "018f0000-0000-7000-8000-000000000004";
+        let corrupt = b"not-json".to_vec();
+        connection.execute("INSERT INTO local_review_collections (id, schema_version, task_id, state, title, created_at_ms, updated_at_ms) VALUES (?1, 1, ?1, 'active', 'Review', 1, 1)", [collection]).expect("collection");
+        connection.execute("INSERT INTO local_review_items (id, schema_version, collection_id, class, text_format, mime_type, width, height, state, title, source_kind, provenance, content, sha256, byte_size, created_at_ms, updated_at_ms) VALUES (?1, 1, ?2, 'evidence', NULL, 'application/json; profile=evidence-envelope-v1', NULL, NULL, 'ready', 'Validation', 'typed-evidence-snapshot', 'manual-validation-summary', ?3, ?4, ?5, 1, 1)", params![item, collection, corrupt, review_digest(&corrupt), corrupt.len() as i64]).expect("corrupt v12 evidence");
+        assert!(matches!(
+            apply_migrations(&mut connection),
+            Err(StorageError::InvalidStoredValue)
+        ));
+        assert_eq!(
+            connection
+                .query_row("SELECT max(version) FROM schema_migrations", [], |row| row
+                    .get::<_, i64>(
+                    0
+                ))
+                .expect("prior ledger"),
+            12
+        );
+        assert_eq!(connection.query_row("SELECT count(*) FROM pragma_table_info('local_review_items') WHERE name = 'evidence_source'", [], |row| row.get::<_, i64>(0)).expect("schema rollback"), 0);
+    }
+
+    #[test]
+    fn local_review_evidence_source_constraints_reject_unknown_and_non_evidence_values() {
+        let repository = ProjectRepository::in_memory().expect("repository");
+        let collection = "018f0000-0000-7000-8000-000000000005";
+        let item = "018f0000-0000-7000-8000-000000000006";
+        repository.connection.execute("INSERT INTO local_review_collections (id, schema_version, task_id, state, title, created_at_ms, updated_at_ms) VALUES (?1, 1, ?1, 'active', 'Review', 1, 1)", [collection]).expect("collection");
+        let content = b"x".to_vec();
+        assert!(repository.connection.execute("INSERT INTO local_review_items (id, schema_version, collection_id, class, text_format, mime_type, width, height, state, title, source_kind, provenance, evidence_source, content, sha256, byte_size, created_at_ms, updated_at_ms) VALUES (?1, 1, ?2, 'evidence', NULL, 'application/json; profile=evidence-envelope-v1', NULL, NULL, 'ready', 'Validation', 'typed-evidence-snapshot', 'unknown', 'unknown', ?3, ?4, ?5, 1, 1)", params![item, collection, content, review_digest(b"x"), 1_i64]).is_err());
+        assert!(repository.connection.execute("INSERT INTO local_review_items (id, schema_version, collection_id, class, text_format, mime_type, width, height, state, title, source_kind, provenance, evidence_source, content, sha256, byte_size, created_at_ms, updated_at_ms) VALUES (?1, 1, ?2, 'text', 'plain', 'text/plain; charset=utf-8', NULL, NULL, 'ready', 'Text', 'user-authored-text', '', 'manual-validation-summary', ?3, ?4, ?5, 1, 1)", params!["018f0000-0000-7000-8000-000000000007", collection, content, review_digest(b"x"), 1_i64]).is_err());
     }
 
     #[test]
@@ -2915,6 +6635,11 @@ mod tests {
                 "advisor_dispatch_records".to_owned(),
                 "conversation_references".to_owned(),
                 "directory_associations".to_owned(),
+                "local_review_annotations".to_owned(),
+                "local_review_collections".to_owned(),
+                "local_review_comparisons".to_owned(),
+                "local_review_items".to_owned(),
+                "project_package_validation_summaries".to_owned(),
                 "projects".to_owned(),
                 "schema_migrations".to_owned(),
                 "task_plans".to_owned(),
@@ -3295,6 +7020,1175 @@ mod tests {
     }
 
     #[test]
+    fn task_project_binding_migration_preserves_legacy_tasks_and_rolls_back_atomically() {
+        let connection = Connection::open_in_memory().expect("database opens");
+        connection.execute_batch("CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY NOT NULL, name TEXT NOT NULL, applied_at_ms INTEGER NOT NULL);").expect("ledger");
+        for (version, name, sql) in MIGRATIONS.iter().take(13) {
+            connection.execute_batch(sql).expect("v13 migration");
+            connection
+                .execute(
+                    "INSERT INTO schema_migrations VALUES (?1, ?2, 1)",
+                    params![version, name],
+                )
+                .expect("ledger row");
+        }
+        let task_id = "018f0000-0000-7000-8000-000000000111";
+        let plan_id = "018f0000-0000-7000-8000-000000000112";
+        connection
+            .execute(
+                "INSERT INTO task_records (
+                id, schema_version, title, status, created_at_ms, updated_at_ms,
+                archived_at_ms, last_opened_at_ms, selected_plan_id
+             ) VALUES (?1, 1, 'Legacy', 'active', 1, 1, NULL, 1, ?2)",
+                params![task_id, plan_id],
+            )
+            .expect("legacy task");
+        let repository =
+            ProjectRepository::from_test_connection(connection).expect("latest upgrade");
+        assert_eq!(
+            repository.task_project_binding(task_id).expect("binding"),
+            None
+        );
+        assert_eq!(
+            repository
+                .connection
+                .query_row("SELECT max(version) FROM schema_migrations", [], |row| row
+                    .get::<_, i64>(
+                    0
+                ),)
+                .expect("version"),
+            15
+        );
+        assert_eq!(
+            repository.connection.query_row(
+                "SELECT count(*) FROM pragma_table_info('task_records') WHERE name = 'project_id'",
+                [], |row| row.get::<_, i64>(0),
+            ).expect("column"),
+            1
+        );
+
+        let mut failed = Connection::open_in_memory().expect("database opens");
+        failed.execute_batch("CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY NOT NULL, name TEXT NOT NULL, applied_at_ms INTEGER NOT NULL);").expect("ledger");
+        for (version, name, sql) in MIGRATIONS.iter().take(13) {
+            failed.execute_batch(sql).expect("v13 migration");
+            failed
+                .execute(
+                    "INSERT INTO schema_migrations VALUES (?1, ?2, 1)",
+                    params![version, name],
+                )
+                .expect("ledger row");
+        }
+        failed
+            .execute_batch("CREATE INDEX task_records_project_binding_idx ON task_records(id);")
+            .expect("conflicting index");
+        assert!(apply_migrations(&mut failed).is_err());
+        assert_eq!(
+            failed
+                .query_row("SELECT max(version) FROM schema_migrations", [], |row| row
+                    .get::<_, i64>(
+                    0
+                ))
+                .expect("prior ledger"),
+            13
+        );
+        assert_eq!(
+            failed.query_row("SELECT count(*) FROM pragma_table_info('task_records') WHERE name = 'project_id'", [], |row| row.get::<_, i64>(0)).expect("rollback"),
+            0
+        );
+    }
+
+    #[test]
+    fn task_project_binding_is_native_context_bound_immutable_and_isolated() {
+        let mut repository = ProjectRepository::in_memory().expect("schema");
+        let (project_id, conversation_id) = insert_live_task_context(&repository);
+        let bound = repository
+            .create_task_from_conversation_context(&conversation_id)
+            .expect("native context task");
+        let unbound = repository.create_task().expect("no-project task");
+        assert_eq!(
+            repository.task_project_binding(&bound).expect("bound task"),
+            Some(project_id.clone())
+        );
+        assert_eq!(
+            repository
+                .task_project_binding(&unbound)
+                .expect("unbound task"),
+            None
+        );
+
+        assert!(repository
+            .connection
+            .execute(
+                "UPDATE task_records SET project_id = NULL WHERE id = ?1",
+                [&bound],
+            )
+            .is_err());
+        assert!(repository
+            .connection
+            .execute(
+                "UPDATE task_records SET project_id = ?1 WHERE id = ?2",
+                params![project_id, unbound],
+            )
+            .is_err());
+        assert!(repository
+            .connection
+            .execute(
+                "INSERT INTO task_records (
+                id, schema_version, title, status, created_at_ms, updated_at_ms,
+                archived_at_ms, last_opened_at_ms, selected_plan_id, project_id
+             ) VALUES (
+                '018f0000-0000-7000-8000-000000000113', 1, 'Invalid', 'active',
+                1, 1, NULL, 1, '018f0000-0000-7000-8000-000000000114',
+                '018f0000-0000-7000-8000-000000000115'
+             )",
+                [],
+            )
+            .is_err());
+
+        repository
+            .set_task_status(&bound, TaskStatus::Paused)
+            .expect("pause");
+        repository
+            .set_task_status(&bound, TaskStatus::Completed)
+            .expect("complete");
+        repository
+            .set_task_status(&bound, TaskStatus::Active)
+            .expect("restore");
+        repository.create_plan(&bound, false).expect("plan change");
+        assert_eq!(
+            repository
+                .task_project_binding(&bound)
+                .expect("lifecycle binding"),
+            Some(project_id.clone())
+        );
+
+        repository
+            .connection
+            .execute(
+                "DELETE FROM conversation_references WHERE id = ?1",
+                [&conversation_id],
+            )
+            .expect("remove context only");
+        repository
+            .connection
+            .execute(
+                "UPDATE projects SET active_directory_association_id = NULL WHERE id = ?1",
+                [&project_id],
+            )
+            .expect("detach association for deletion check");
+        repository
+            .connection
+            .execute(
+                "DELETE FROM directory_associations WHERE project_id = ?1",
+                [&project_id],
+            )
+            .expect("remove association for deletion check");
+        assert!(repository
+            .connection
+            .execute("DELETE FROM projects WHERE id = ?1", [&project_id])
+            .is_err());
+    }
+
+    #[test]
+    fn task_project_context_rejects_archived_or_detached_projects_without_rebinding_tasks() {
+        let mut repository = ProjectRepository::in_memory().expect("schema");
+        let (project_id, conversation_id) = insert_live_task_context(&repository);
+        let bound = repository
+            .create_task_from_conversation_context(&conversation_id)
+            .expect("bound task");
+        repository.archive_project(&project_id).expect("archive");
+        assert_eq!(
+            repository
+                .task_project_binding(&bound)
+                .expect("binding after archive"),
+            Some(project_id.clone())
+        );
+        repository.detach_project(&project_id).expect("detach");
+        assert_eq!(
+            repository
+                .task_project_binding(&bound)
+                .expect("binding after detach"),
+            Some(project_id.clone())
+        );
+        assert!(matches!(
+            repository.create_task_from_conversation_context(&conversation_id),
+            Err(StorageError::ProjectNotFound)
+        ));
+        let unbound = repository
+            .create_task()
+            .expect("unbound creation remains supported");
+        assert_eq!(
+            repository.task_project_binding(&unbound).expect("unbound"),
+            None
+        );
+    }
+
+    #[test]
+    fn task_project_context_fails_closed_for_missing_stale_or_archived_conversations() {
+        let mut repository = ProjectRepository::in_memory().expect("schema");
+        let (_, conversation_id) = insert_live_task_context(&repository);
+        assert!(matches!(
+            repository
+                .create_task_from_conversation_context("018f0000-0000-7000-8000-000000000199"),
+            Err(StorageError::ProjectNotFound)
+        ));
+        repository
+            .connection
+            .execute(
+                "UPDATE conversation_references SET status = 'completed' WHERE id = ?1",
+                [&conversation_id],
+            )
+            .expect("complete conversation");
+        assert!(matches!(
+            repository.create_task_from_conversation_context(&conversation_id),
+            Err(StorageError::ProjectNotFound)
+        ));
+        repository
+            .connection
+            .execute(
+                "UPDATE conversation_references SET archived_at_ms = 2 WHERE id = ?1",
+                [&conversation_id],
+            )
+            .expect("archive conversation");
+        assert!(matches!(
+            repository.create_task_from_conversation_context(&conversation_id),
+            Err(StorageError::ProjectNotFound)
+        ));
+    }
+
+    #[test]
+    fn package_validation_summary_migration_upgrades_v14_without_synthesizing_history() {
+        let connection = Connection::open_in_memory().expect("database opens");
+        connection
+            .execute_batch("CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY NOT NULL, name TEXT NOT NULL, applied_at_ms INTEGER NOT NULL);")
+            .expect("ledger");
+        for (version, name, sql) in MIGRATIONS.iter().take(14) {
+            connection.execute_batch(sql).expect("v14 migration");
+            connection
+                .execute(
+                    "INSERT INTO schema_migrations VALUES (?1, ?2, 1)",
+                    params![version, name],
+                )
+                .expect("ledger row");
+        }
+        let repository = ProjectRepository::from_test_connection(connection).expect("v16 upgrade");
+        assert_eq!(
+            repository
+                .connection
+                .query_row(
+                    "SELECT count(*) FROM project_package_validation_summaries",
+                    [],
+                    |row| row.get::<_, i64>(0),
+                )
+                .expect("no synthesized records"),
+            0
+        );
+        assert_eq!(
+            repository
+                .connection
+                .query_row("SELECT max(version) FROM schema_migrations", [], |row| row
+                    .get::<_, i64>(
+                    0
+                ))
+                .expect("version"),
+            18
+        );
+
+        let mut failed = Connection::open_in_memory().expect("database opens");
+        failed
+            .execute_batch("CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY NOT NULL, name TEXT NOT NULL, applied_at_ms INTEGER NOT NULL);")
+            .expect("ledger");
+        for (version, name, sql) in MIGRATIONS.iter().take(14) {
+            failed.execute_batch(sql).expect("v14 migration");
+            failed
+                .execute(
+                    "INSERT INTO schema_migrations VALUES (?1, ?2, 1)",
+                    params![version, name],
+                )
+                .expect("ledger row");
+        }
+        failed
+            .execute_batch(
+                "CREATE TABLE project_package_validation_summaries (marker INTEGER NOT NULL);",
+            )
+            .expect("conflicting fixture");
+        assert!(apply_migrations(&mut failed).is_err());
+        assert_eq!(
+            failed
+                .query_row("SELECT max(version) FROM schema_migrations", [], |row| row
+                    .get::<_, i64>(
+                    0
+                ))
+                .expect("prior ledger"),
+            14
+        );
+        assert_eq!(
+            failed
+                .query_row(
+                    "SELECT count(*) FROM pragma_table_info('project_package_validation_summaries') WHERE name = 'marker'",
+                    [],
+                    |row| row.get::<_, i64>(0),
+                )
+                .expect("conflicting table remains"),
+            1
+        );
+    }
+
+    #[test]
+    fn package_validation_summaries_are_immutable_digest_bound_and_superseding() {
+        let mut repository = ProjectRepository::in_memory().expect("schema");
+        let (project_id, _) = insert_live_task_context(&repository);
+        let incomplete = package_validation_created(
+            repository
+                .record_package_validation_summary_at_for_test(
+                    &project_id,
+                    package_validation_input(false, None),
+                    10,
+                )
+                .expect("truthful incomplete record"),
+        );
+        let stored = repository
+            .package_validation_summary_for_test(&incomplete.id)
+            .expect("digest verifies");
+        assert_eq!(stored.record_sha256, incomplete.record_sha256);
+        assert!(!stored.input.validation_complete);
+        assert!(repository
+            .connection
+            .execute(
+                "UPDATE project_package_validation_summaries
+                 SET artifact_count = 2 WHERE id = ?1",
+                [&incomplete.id],
+            )
+            .is_err());
+
+        let invalid_complete = PackageValidationRecordInput {
+            validation_complete: true,
+            ..package_validation_input(false, None)
+        };
+        assert!(matches!(
+            repository.record_package_validation_summary_at_for_test(
+                &project_id,
+                invalid_complete,
+                11
+            ),
+            Err(StorageError::InvalidStoredValue)
+        ));
+        let mut complete_input = package_validation_input(true, Some(incomplete.id.clone()));
+        complete_input.candidate_identity_sha256 =
+            incomplete.input.candidate_identity_sha256.clone();
+        complete_input.manifest_state = incomplete.input.manifest_state;
+        complete_input.checksum_state = incomplete.input.checksum_state;
+        complete_input.abi_state = incomplete.input.abi_state;
+        complete_input.provenance_state = incomplete.input.provenance_state;
+        complete_input.visible_launch_state = incomplete.input.visible_launch_state;
+        complete_input.artifact_count = incomplete.input.artifact_count;
+        complete_input.validation_complete = false;
+        complete_input.installed_host_state = LocalReviewEvidenceCheckState::Unavailable;
+        let complete = package_validation_created(
+            repository
+                .record_package_validation_summary_at_for_test(&project_id, complete_input, 10)
+                .expect("installed-host follow-up supersedes by insertion"),
+        );
+        assert_ne!(complete.id, incomplete.id);
+        assert_eq!(
+            repository
+                .package_validation_summary_for_test(&complete.id)
+                .expect("complete record")
+                .input
+                .supersedes_record_id,
+            Some(incomplete.id.clone())
+        );
+        assert!(repository
+            .record_package_validation_summary_at_for_test(
+                &project_id,
+                package_validation_input(false, Some(incomplete.id.clone())),
+                12,
+            )
+            .is_err());
+
+        let other_project = "018f0000-0000-7000-8000-000000000201";
+        insert_active_project(
+            &repository,
+            other_project,
+            "018f0000-0000-7000-8000-000000000202",
+        );
+        assert!(matches!(
+            repository.record_package_validation_summary_at_for_test(
+                other_project,
+                package_validation_input(false, Some(incomplete.id.clone())),
+                12,
+            ),
+            Err(StorageError::InvalidStoredValue)
+        ));
+        assert!(matches!(
+            repository.record_package_validation_summary_at_for_test(
+                &project_id,
+                package_validation_input(
+                    false,
+                    Some("018f0000-0000-7000-8000-000000000299".to_owned()),
+                ),
+                12,
+            ),
+            Err(StorageError::InvalidStoredValue)
+        ));
+        repository
+            .record_package_validation_summary_at_for_test(
+                other_project,
+                package_validation_input(false, None),
+                12,
+            )
+            .expect("other project record");
+        repository
+            .connection
+            .execute(
+                "UPDATE projects SET active_directory_association_id = NULL WHERE id = ?1",
+                [other_project],
+            )
+            .expect("detach association for deletion check");
+        repository
+            .connection
+            .execute(
+                "DELETE FROM directory_associations WHERE project_id = ?1",
+                [other_project],
+            )
+            .expect("remove association for deletion check");
+        assert!(repository
+            .connection
+            .execute("DELETE FROM projects WHERE id = ?1", [other_project])
+            .is_err());
+
+        repository
+            .connection
+            .execute_batch("DROP TRIGGER project_package_validation_summaries_immutable;")
+            .expect("test corruption setup");
+        repository
+            .connection
+            .execute(
+                "UPDATE project_package_validation_summaries
+                 SET record_sha256 = ?1 WHERE id = ?2",
+                params!["0".repeat(64), complete.id],
+            )
+            .expect("corrupt row");
+        assert!(matches!(
+            repository.package_validation_summary_for_test(&complete.id),
+            Err(StorageError::InvalidStoredValue)
+        ));
+    }
+
+    #[test]
+    fn package_validation_summary_enforces_project_isolation_schema_bounds_and_retention() {
+        let mut repository = ProjectRepository::in_memory().expect("schema");
+        let (project_id, conversation_id) = insert_live_task_context(&repository);
+        let invalid_version = PackageValidationRecordInput {
+            application_version: "invalid version".to_owned(),
+            ..package_validation_input(false, None)
+        };
+        assert!(matches!(
+            repository.record_package_validation_summary_at_for_test(
+                &project_id,
+                invalid_version,
+                1
+            ),
+            Err(StorageError::InvalidStoredValue)
+        ));
+        let invalid_count = PackageValidationRecordInput {
+            artifact_count: 3,
+            ..package_validation_input(false, None)
+        };
+        assert!(matches!(
+            repository.record_package_validation_summary_at_for_test(&project_id, invalid_count, 1),
+            Err(StorageError::InvalidStoredValue)
+        ));
+        assert!(repository
+            .connection
+            .execute(
+                "INSERT INTO project_package_validation_summaries (
+                    id, project_id, application_version, debian_version,
+                    manifest_state, checksum_state, abi_state, provenance_state,
+                    visible_launch_state, installed_host_state, artifact_count,
+                    validation_complete, record_sha256, created_at_ms, supersedes_record_id
+                 ) VALUES (
+                    '018f0000-0000-7000-8000-000000000188',
+                    '018f0000-0000-7000-8000-000000000199', '0.1.0', '0.1.0',
+                    'invalid', 'passed', 'passed', 'passed', 'passed', 'passed',
+                    2, 1, '0', 1, NULL
+                 )",
+                [],
+            )
+            .is_err());
+
+        let old = PACKAGE_VALIDATION_PROTECTION_MS + 1_000;
+        let mut first = None;
+        for timestamp in 0..32 {
+            let receipt = package_validation_created(
+                repository
+                    .record_package_validation_summary_at_for_test(
+                        &project_id,
+                        package_validation_input(false, None),
+                        timestamp,
+                    )
+                    .expect("capacity fixture"),
+            );
+            first.get_or_insert(receipt.id);
+        }
+        assert!(matches!(
+            repository.record_package_validation_summary_at_for_test(
+                &project_id,
+                package_validation_input(false, None),
+                old,
+            ),
+            Err(StorageError::TaskCapacity)
+        ));
+        assert!(repository
+            .package_validation_summary_for_test(&first.expect("first"))
+            .is_ok());
+        let count: i64 = repository
+            .connection
+            .query_row(
+                "SELECT count(*) FROM project_package_validation_summaries WHERE project_id = ?1",
+                [&project_id],
+                |row| row.get(0),
+            )
+            .expect("count");
+        assert_eq!(count, 32);
+
+        repository
+            .connection
+            .execute(
+                "UPDATE conversation_references SET archived_at_ms = 1 WHERE id = ?1",
+                [&conversation_id],
+            )
+            .expect("context unrelated to retention");
+    }
+
+    #[test]
+    fn package_validation_summary_retention_protects_recent_and_complete_history() {
+        let mut repository = ProjectRepository::in_memory().expect("schema");
+        let project_id = "018f0000-0000-7000-8000-000000000211";
+        insert_active_project(
+            &repository,
+            project_id,
+            "018f0000-0000-7000-8000-000000000212",
+        );
+        let mut predecessor_input = package_validation_input(false, None);
+        predecessor_input.checksum_state = LocalReviewEvidenceCheckState::Passed;
+        predecessor_input.abi_state = LocalReviewEvidenceCheckState::Passed;
+        predecessor_input.provenance_state = LocalReviewEvidenceCheckState::Passed;
+        predecessor_input.visible_launch_state = LocalReviewEvidenceCheckState::Passed;
+        predecessor_input.artifact_count = 2;
+        let predecessor = package_validation_created(
+            repository
+                .record_package_validation_summary_at_for_test(project_id, predecessor_input, 0)
+                .expect("unprivileged history"),
+        );
+        let mut complete_input = package_validation_input(true, Some(predecessor.id.clone()));
+        complete_input.candidate_identity_sha256 =
+            predecessor.input.candidate_identity_sha256.clone();
+        let complete = package_validation_created(
+            repository
+                .record_package_validation_summary_at_for_test(project_id, complete_input, 1)
+                .expect("complete history"),
+        );
+        for timestamp in 2..32 {
+            repository
+                .record_package_validation_summary_at_for_test(
+                    project_id,
+                    package_validation_input(false, None),
+                    timestamp,
+                )
+                .expect("old history");
+        }
+        assert!(matches!(
+            repository.record_package_validation_summary_at_for_test(
+                project_id,
+                package_validation_input(false, None),
+                PACKAGE_VALIDATION_PROTECTION_MS + 1_000,
+            ),
+            Err(StorageError::TaskCapacity)
+        ));
+        assert!(repository
+            .package_validation_summary_for_test(&complete.id)
+            .is_ok());
+
+        let recent_project = "018f0000-0000-7000-8000-000000000213";
+        insert_active_project(
+            &repository,
+            recent_project,
+            "018f0000-0000-7000-8000-000000000214",
+        );
+        let recent = PACKAGE_VALIDATION_PROTECTION_MS.saturating_mul(2);
+        for timestamp in 0..32 {
+            repository
+                .record_package_validation_summary_at_for_test(
+                    recent_project,
+                    package_validation_input(false, None),
+                    recent + timestamp,
+                )
+                .expect("recent history");
+        }
+        assert!(matches!(
+            repository.record_package_validation_summary_at_for_test(
+                recent_project,
+                package_validation_input(false, None),
+                recent + 32,
+            ),
+            Err(StorageError::TaskCapacity)
+        ));
+        assert_eq!(
+            repository
+                .connection
+                .query_row(
+                    "SELECT count(*) FROM project_package_validation_summaries WHERE project_id = ?1",
+                    [recent_project],
+                    |row| row.get::<_, i64>(0),
+                )
+                .expect("no partial insert"),
+            32
+        );
+    }
+
+    #[test]
+    fn package_validation_identity_schema_and_v15_upgrade_are_closed() {
+        let repository = ProjectRepository::in_memory().expect("fresh schema");
+        for (kind, name) in [
+            ("table", "project_package_validation_candidate_identities"),
+            (
+                "index",
+                "project_package_validation_candidate_identities_summary",
+            ),
+            (
+                "trigger",
+                "project_package_validation_candidate_identities_immutable",
+            ),
+        ] {
+            assert_eq!(
+                repository
+                    .connection
+                    .query_row(
+                        "SELECT count(*) FROM sqlite_master WHERE type = ?1 AND name = ?2",
+                        params![kind, name],
+                        |row| row.get::<_, i64>(0),
+                    )
+                    .expect("schema object"),
+                1
+            );
+        }
+        assert_eq!(MIGRATIONS.len(), 18);
+
+        let connection = Connection::open_in_memory().expect("database");
+        connection
+            .execute_batch("CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY NOT NULL, name TEXT NOT NULL, applied_at_ms INTEGER NOT NULL);")
+            .expect("ledger");
+        for (version, name, sql) in MIGRATIONS.iter().take(15) {
+            connection.execute_batch(sql).expect("v15 migration");
+            connection
+                .execute(
+                    "INSERT INTO schema_migrations VALUES (?1, ?2, 1)",
+                    params![version, name],
+                )
+                .expect("ledger row");
+        }
+        let historical_project_id = Uuid::now_v7().to_string();
+        connection
+            .execute(
+                "INSERT INTO projects (id, display_name, active_directory_association_id, archived_at_ms, created_at_ms, updated_at_ms)
+                 VALUES (?1, 'Historical project', NULL, NULL, 1, 1)",
+                [&historical_project_id],
+            )
+            .expect("historical project");
+        connection
+            .execute(
+                "INSERT INTO project_package_validation_summaries (
+                    id, project_id, application_version, debian_version, manifest_state,
+                    checksum_state, abi_state, provenance_state, visible_launch_state,
+                    installed_host_state, artifact_count, validation_complete, record_sha256,
+                    created_at_ms, supersedes_record_id
+                 ) VALUES (?1, ?2, '0.1.0', '0.1.0', 'passed', 'skipped', 'skipped',
+                    'skipped', 'skipped', 'unavailable', 2, 0, ?3, 1, NULL)",
+                params![
+                    Uuid::now_v7().to_string(),
+                    historical_project_id,
+                    "a".repeat(64)
+                ],
+            )
+            .expect("historical v15 summary");
+        let repository = ProjectRepository::from_test_connection(connection).expect("v17 upgrade");
+        assert_eq!(
+            repository
+                .connection
+                .query_row("SELECT max(version) FROM schema_migrations", [], |row| row
+                    .get::<_, i64>(
+                    0
+                ))
+                .expect("version"),
+            18
+        );
+        assert_eq!(
+            repository
+                .connection
+                .query_row(
+                    "SELECT count(*) FROM project_package_validation_candidate_identities",
+                    [],
+                    |row| row.get::<_, i64>(0)
+                )
+                .expect("unassociated history"),
+            0
+        );
+    }
+
+    #[test]
+    fn package_validation_phase_migration_upgrades_v16_associations_atomically() {
+        let connection = Connection::open_in_memory().expect("database");
+        connection.execute_batch("CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY NOT NULL, name TEXT NOT NULL, applied_at_ms INTEGER NOT NULL);").expect("ledger");
+        for (version, name, sql) in MIGRATIONS.iter().take(16) {
+            connection.execute_batch(sql).expect("v16 migration");
+            connection
+                .execute(
+                    "INSERT INTO schema_migrations VALUES (?1, ?2, 1)",
+                    params![version, name],
+                )
+                .expect("ledger row");
+        }
+        let project_id = Uuid::now_v7().to_string();
+        let summary_id = Uuid::now_v7().to_string();
+        connection.execute("INSERT INTO projects (id, display_name, active_directory_association_id, archived_at_ms, created_at_ms, updated_at_ms) VALUES (?1, 'fixture', NULL, NULL, 1, 1)", [&project_id]).expect("project");
+        connection.execute(
+            "INSERT INTO project_package_validation_summaries (id, project_id, application_version, debian_version, manifest_state, checksum_state, abi_state, provenance_state, visible_launch_state, installed_host_state, artifact_count, validation_complete, record_sha256, created_at_ms, supersedes_record_id) VALUES (?1, ?2, '0.1.0', '0.1.0', 'passed', 'unavailable', 'unavailable', 'unavailable', 'unavailable', 'unavailable', 2, 0, ?3, 1, NULL)",
+            params![summary_id, project_id, "a".repeat(64)],
+        ).expect("summary");
+        connection.execute("INSERT INTO project_package_validation_candidate_identities VALUES (?1, ?2, ?3, 1)", params![project_id, "b".repeat(64), summary_id]).expect("v16 association");
+        let repository =
+            ProjectRepository::from_test_connection(connection).expect("v17 migration");
+        assert_eq!(
+            repository
+                .connection
+                .query_row(
+                    "SELECT validation_phase FROM project_package_validation_candidate_identities",
+                    [],
+                    |row| row.get::<_, String>(0)
+                )
+                .expect("phase"),
+            "unprivileged"
+        );
+        assert_eq!(
+            repository
+                .connection
+                .query_row("SELECT max(version) FROM schema_migrations", [], |row| row
+                    .get::<_, i64>(
+                    0
+                ))
+                .expect("version"),
+            18
+        );
+    }
+
+    #[test]
+    fn package_validation_attempt_identity_is_path_free_and_phase_chain_is_immutable() {
+        let identity = "a".repeat(64);
+        assert_eq!(
+            installed_host_attempt_identity(&identity, LocalReviewEvidenceCheckState::Failed, None)
+                .expect("vector"),
+            "d63b4382e2db22a6d2e23530b5a4ca5dc7b884dc0fa84c990b89537792502124"
+        );
+        assert_ne!(
+            installed_host_attempt_identity(&identity, LocalReviewEvidenceCheckState::Failed, None)
+                .expect("failed"),
+            installed_host_attempt_identity(
+                &identity,
+                LocalReviewEvidenceCheckState::Unavailable,
+                None
+            )
+            .expect("unavailable")
+        );
+        let full_facts = PackageValidationInstalledHostFacts {
+            package_state: "installed".to_owned(),
+            version_match: true,
+            ownership_verified: true,
+            permissions_safe: true,
+            package_integrity_verified: true,
+        };
+        assert_eq!(
+            installed_host_attempt_identity(
+                &identity,
+                LocalReviewEvidenceCheckState::Passed,
+                Some(&full_facts)
+            )
+            .expect("full vector"),
+            "b9b196b15bc6852bcbe5e2ba9fe71e0aa722e2f93f0150bfb9953ae03158e501"
+        );
+        let mut repository = ProjectRepository::in_memory().expect("schema");
+        let (project_id, _) = insert_live_task_context(&repository);
+        let root = package_validation_created(
+            repository
+                .record_package_validation_summary_at_for_test(
+                    &project_id,
+                    package_validation_input_with_identity(&identity),
+                    1,
+                )
+                .expect("unprivileged"),
+        );
+        let mut failed = package_validation_input_with_identity(&identity);
+        failed.validation_phase = PackageValidationPhase::InstalledHost;
+        failed.supersedes_record_id = Some(root.id.clone());
+        failed.installed_host_state = LocalReviewEvidenceCheckState::Failed;
+        let failed = package_validation_created(
+            repository
+                .record_package_validation_summary_at_for_test(&project_id, failed, 2)
+                .expect("first attempt"),
+        );
+        let mut passed = package_validation_input_with_identity(&identity);
+        passed.validation_phase = PackageValidationPhase::InstalledHost;
+        passed.supersedes_record_id = Some(failed.id.clone());
+        passed.installed_host_state = LocalReviewEvidenceCheckState::Passed;
+        passed.installed_host_facts = Some(PackageValidationInstalledHostFacts {
+            package_state: "installed".to_owned(),
+            version_match: true,
+            ownership_verified: true,
+            permissions_safe: true,
+            package_integrity_verified: true,
+        });
+        let passed = package_validation_created(
+            repository
+                .record_package_validation_summary_at_for_test(&project_id, passed, 3)
+                .expect("second attempt"),
+        );
+        assert_eq!(passed.input.supersedes_record_id, Some(failed.id));
+        assert!(matches!(
+            repository.record_package_validation_summary_at_for_test(
+                &project_id,
+                PackageValidationRecordInput {
+                    validation_phase: PackageValidationPhase::InstalledHost,
+                    supersedes_record_id: passed.input.supersedes_record_id.clone(),
+                    installed_host_state: LocalReviewEvidenceCheckState::Passed,
+                    installed_host_facts: Some(PackageValidationInstalledHostFacts {
+                        package_state: "installed".to_owned(),
+                        version_match: true,
+                        ownership_verified: true,
+                        permissions_safe: true,
+                        package_integrity_verified: true,
+                    }),
+                    ..package_validation_input_with_identity(&identity)
+                },
+                4
+            ),
+            Ok(PackageValidationRecordOutcome::Existing(_))
+        ));
+        assert_eq!(repository.connection.query_row(
+            "SELECT count(*) FROM project_package_validation_candidate_identities WHERE project_id = ?1 AND candidate_identity_sha256 = ?2",
+            params![project_id, identity], |row| row.get::<_, i64>(0)
+        ).expect("chain count"), 3);
+    }
+
+    #[test]
+    fn package_validation_identity_recorder_is_idempotent_isolated_and_verified() {
+        let mut repository = ProjectRepository::in_memory().expect("schema");
+        let (project_id, _) = insert_live_task_context(&repository);
+        let identity = "1".repeat(64);
+        for malformed in [
+            "",
+            "A".repeat(64).as_str(),
+            "g".repeat(64).as_str(),
+            "a".repeat(63).as_str(),
+        ] {
+            assert!(matches!(
+                repository.record_package_validation_summary_at_for_test(
+                    &project_id,
+                    package_validation_input_with_identity(malformed),
+                    1,
+                ),
+                Err(StorageError::InvalidStoredValue)
+            ));
+        }
+        let created = package_validation_created(
+            repository
+                .record_package_validation_summary_at_for_test(
+                    &project_id,
+                    package_validation_input_with_identity(&identity),
+                    2,
+                )
+                .expect("created"),
+        );
+        let existing = repository
+            .record_package_validation_summary_at_for_test(
+                &project_id,
+                package_validation_input_with_identity(&identity),
+                3,
+            )
+            .expect("existing");
+        match existing {
+            PackageValidationRecordOutcome::Existing(summary) => {
+                assert_eq!(summary.id, created.id);
+                assert_eq!(summary.record_sha256, created.record_sha256);
+            }
+            PackageValidationRecordOutcome::Created(_) => panic!("identity must be idempotent"),
+        }
+        assert_eq!(
+            repository.connection.query_row("SELECT count(*) FROM project_package_validation_summaries WHERE project_id = ?1", [&project_id], |row| row.get::<_, i64>(0)).expect("summary count"),
+            1
+        );
+        assert_eq!(
+            repository.connection.query_row("SELECT count(*) FROM project_package_validation_candidate_identities WHERE project_id = ?1", [&project_id], |row| row.get::<_, i64>(0)).expect("identity count"),
+            1
+        );
+        let mut installed = package_validation_input_with_identity(&identity);
+        installed.validation_phase = PackageValidationPhase::InstalledHost;
+        installed.supersedes_record_id = Some(created.id.clone());
+        let installed = package_validation_created(
+            repository
+                .record_package_validation_summary_at_for_test(&project_id, installed, 4)
+                .expect("installed-host phase creates a distinct immutable summary"),
+        );
+        assert_ne!(installed.id, created.id);
+        let mut installed_retry = package_validation_input_with_identity(&identity);
+        installed_retry.validation_phase = PackageValidationPhase::InstalledHost;
+        installed_retry.supersedes_record_id = Some(created.id.clone());
+        assert!(matches!(
+            repository.record_package_validation_summary_at_for_test(&project_id, installed_retry, 5),
+            Ok(PackageValidationRecordOutcome::Existing(summary)) if summary.id == installed.id
+        ));
+        assert!(matches!(
+            repository.record_package_validation_summary_at_for_test(
+                &project_id,
+                PackageValidationRecordInput {
+                    validation_phase: PackageValidationPhase::InstalledHost,
+                    ..package_validation_input_with_identity(&"9".repeat(64))
+                },
+                5,
+            ),
+            Err(StorageError::InvalidStoredValue)
+        ));
+        assert_eq!(repository.connection.query_row(
+            "SELECT count(*) FROM project_package_validation_candidate_identities WHERE project_id = ?1 AND candidate_identity_sha256 = ?2",
+            params![project_id, identity], |row| row.get::<_, i64>(0)
+        ).expect("one association per phase"), 2);
+        let second = package_validation_created(
+            repository
+                .record_package_validation_summary_at_for_test(
+                    &project_id,
+                    package_validation_input_with_identity(&"2".repeat(64)),
+                    4,
+                )
+                .expect("different identity"),
+        );
+        assert_ne!(second.id, created.id);
+
+        let other_project = "018f0000-0000-7000-8000-000000000701";
+        insert_active_project(
+            &repository,
+            other_project,
+            "018f0000-0000-7000-8000-000000000702",
+        );
+        let isolated = package_validation_created(
+            repository
+                .record_package_validation_summary_at_for_test(
+                    other_project,
+                    package_validation_input_with_identity(&identity),
+                    5,
+                )
+                .expect("cross-project identity is isolated"),
+        );
+        assert_ne!(isolated.id, created.id);
+        assert!(repository.connection.execute(
+            "UPDATE project_package_validation_candidate_identities SET created_at_ms = 9 WHERE project_id = ?1",
+            [&project_id],
+        ).is_err());
+        assert!(repository.connection.execute(
+            "INSERT INTO project_package_validation_candidate_identities VALUES (?1, ?2, 'unprivileged', ?3, 1)",
+            params![project_id, identity, created.id],
+        ).is_err());
+    }
+
+    #[test]
+    fn package_validation_identity_corruption_rollback_and_retention_fail_closed() {
+        let mut repository = ProjectRepository::in_memory().expect("schema");
+        let (project_id, _) = insert_live_task_context(&repository);
+        let identity = "3".repeat(64);
+        repository
+            .connection
+            .execute_batch(
+                "CREATE TRIGGER package_validation_identity_abort
+             BEFORE INSERT ON project_package_validation_candidate_identities
+             BEGIN SELECT RAISE(ABORT, 'fixture'); END;",
+            )
+            .expect("abort trigger");
+        assert!(repository
+            .record_package_validation_summary_at_for_test(
+                &project_id,
+                package_validation_input_with_identity(&identity),
+                1,
+            )
+            .is_err());
+        for table in [
+            "project_package_validation_summaries",
+            "project_package_validation_candidate_identities",
+        ] {
+            assert_eq!(
+                repository
+                    .connection
+                    .query_row(&format!("SELECT count(*) FROM {table}"), [], |row| row
+                        .get::<_, i64>(0))
+                    .expect("rollback count"),
+                0
+            );
+        }
+        repository
+            .connection
+            .execute_batch("DROP TRIGGER package_validation_identity_abort;")
+            .expect("drop trigger");
+        let created = package_validation_created(
+            repository
+                .record_package_validation_summary_at_for_test(
+                    &project_id,
+                    package_validation_input_with_identity(&identity),
+                    2,
+                )
+                .expect("retry after rollback"),
+        );
+        repository
+            .connection
+            .execute_batch("DROP TRIGGER project_package_validation_summaries_immutable;")
+            .expect("corrupt summary");
+        repository
+            .connection
+            .execute(
+                "UPDATE project_package_validation_summaries SET record_sha256 = ?1 WHERE id = ?2",
+                params!["0".repeat(64), created.id],
+            )
+            .expect("corruption fixture");
+        assert!(matches!(
+            repository.record_package_validation_summary_at_for_test(
+                &project_id,
+                package_validation_input_with_identity(&identity),
+                3,
+            ),
+            Err(StorageError::InvalidStoredValue)
+        ));
+
+        let protected_project = "018f0000-0000-7000-8000-000000000711";
+        insert_active_project(
+            &repository,
+            protected_project,
+            "018f0000-0000-7000-8000-000000000712",
+        );
+        for index in 0..32 {
+            package_validation_created(
+                repository
+                    .record_package_validation_summary_at_for_test(
+                        protected_project,
+                        package_validation_input_with_identity(&format!("{index:064x}")),
+                        0,
+                    )
+                    .expect("protected record"),
+            );
+        }
+        assert!(matches!(
+            repository.record_package_validation_summary_at_for_test(
+                protected_project,
+                package_validation_input_with_identity(&"f".repeat(64)),
+                PACKAGE_VALIDATION_PROTECTION_MS + 1,
+            ),
+            Err(StorageError::TaskCapacity)
+        ));
+        repository
+            .connection
+            .execute(
+                "UPDATE projects SET active_directory_association_id = NULL WHERE id = ?1",
+                [protected_project],
+            )
+            .expect("detach for deletion check");
+        repository
+            .connection
+            .execute(
+                "DELETE FROM directory_associations WHERE project_id = ?1",
+                [protected_project],
+            )
+            .expect("remove association");
+        assert!(repository
+            .connection
+            .execute("DELETE FROM projects WHERE id = ?1", [protected_project])
+            .is_err());
+    }
+
+    #[test]
+    fn package_validation_identity_missing_and_cross_project_associations_fail_closed() {
+        let mut repository = ProjectRepository::in_memory().expect("schema");
+        let (first_project, _) = insert_live_task_context(&repository);
+        let second_project = "018f0000-0000-7000-8000-000000000721";
+        insert_active_project(
+            &repository,
+            second_project,
+            "018f0000-0000-7000-8000-000000000722",
+        );
+        let first_identity = "7".repeat(64);
+        let second_identity = "8".repeat(64);
+        let first = package_validation_created(
+            repository
+                .record_package_validation_summary_at_for_test(
+                    &first_project,
+                    package_validation_input_with_identity(&first_identity),
+                    1,
+                )
+                .expect("first"),
+        );
+        let second = package_validation_created(
+            repository
+                .record_package_validation_summary_at_for_test(
+                    second_project,
+                    package_validation_input_with_identity(&second_identity),
+                    1,
+                )
+                .expect("second"),
+        );
+        repository
+            .connection
+            .execute_batch(
+                "DROP TRIGGER project_package_validation_candidate_identities_immutable;",
+            )
+            .expect("corruption fixture");
+        repository.connection.execute(
+            "DELETE FROM project_package_validation_candidate_identities WHERE package_validation_summary_id = ?1",
+            [&second.id],
+        ).expect("free second summary");
+        repository
+            .connection
+            .execute(
+                "UPDATE project_package_validation_candidate_identities
+             SET package_validation_summary_id = ?1 WHERE project_id = ?2",
+                params![second.id, first_project],
+            )
+            .expect("cross-project corruption");
+        assert!(matches!(
+            repository.record_package_validation_summary_at_for_test(
+                &first_project,
+                package_validation_input_with_identity(&first_identity),
+                2,
+            ),
+            Err(StorageError::InvalidStoredValue)
+        ));
+        repository
+            .connection
+            .execute_batch("PRAGMA foreign_keys = OFF;")
+            .expect("disable fk for missing fixture");
+        repository
+            .connection
+            .execute(
+                "UPDATE project_package_validation_candidate_identities
+             SET package_validation_summary_id = ?1 WHERE project_id = ?2",
+                params![Uuid::now_v7().to_string(), first_project],
+            )
+            .expect("missing summary corruption");
+        assert!(matches!(
+            repository.record_package_validation_summary_at_for_test(
+                &first_project,
+                package_validation_input_with_identity(&first_identity),
+                3,
+            ),
+            Err(StorageError::InvalidStoredValue)
+        ));
+        assert_ne!(first.id, second.id);
+    }
+
+    #[test]
     fn task_ids_retry_collisions_and_fail_closed_after_the_bound() {
         let mut repository = ProjectRepository::in_memory().expect("schema must migrate");
         let first_task = "018f0000-0000-7000-8000-000000000001".to_owned();
@@ -3439,6 +8333,7 @@ mod tests {
                 "archived_at_ms",
                 "last_opened_at_ms",
                 "selected_plan_id",
+                "project_id",
             ]
         );
         let plan_columns: Vec<String> = reopened
@@ -3469,7 +8364,6 @@ mod tests {
             .collect::<Vec<_>>();
         for forbidden in [
             "path",
-            "project_id",
             "conversation_id",
             "approval_id",
             "dispatch_id",
@@ -3833,6 +8727,1918 @@ mod tests {
     }
 
     #[test]
+    fn local_review_text_is_task_scoped_digest_bound_and_capacity_accounted() {
+        let mut repository = ProjectRepository::in_memory().expect("schema must migrate");
+        let task_id = repository.create_task().expect("task must create");
+        let (_, selected, plans, _, _, _) = repository
+            .task_catalog(Some(&task_id), false, None)
+            .expect("catalog must load");
+        let plan_id = selected.expect("task selected").selected_plan_id;
+        assert!(plans.iter().any(|plan| plan.id == plan_id));
+        let collection_id = repository
+            .create_local_review_collection(&task_id, Some(&plan_id), "Review brief")
+            .expect("collection must create");
+        let (_, collection, _, _, _, _) = repository
+            .local_review_snapshot(Some(&collection_id))
+            .expect("collection must project");
+        let collection = collection.expect("collection selected");
+        repository
+            .create_local_review_text_item(
+                &collection_id,
+                collection.updated_at_ms,
+                "Brief",
+                LocalReviewTextFormat::Plain,
+                "line one\r\nline two",
+            )
+            .expect("text item must create");
+        let (_, collection, items, _, payload, _) = repository
+            .local_review_snapshot(Some(&collection_id))
+            .expect("review must project");
+        assert_eq!(items.len(), 1);
+        assert_eq!(
+            items[0].source_kind,
+            LocalReviewSourceKind::UserAuthoredText
+        );
+        assert_eq!(items[0].byte_size, "line one\nline two".len() as u64);
+        assert!(payload >= items[0].byte_size);
+        assert!(collection.expect("collection selected").updated_at_ms >= 0);
+    }
+
+    #[test]
+    fn local_review_annotation_is_item_scoped_normalized_and_stale_safe() {
+        let mut repository = ProjectRepository::in_memory().expect("schema must migrate");
+        let task_id = repository.create_task().expect("task must create");
+        let (_, selected, _, _, _, _) = repository
+            .task_catalog(Some(&task_id), false, None)
+            .expect("catalog must load");
+        let plan_id = selected.expect("selected task").selected_plan_id;
+        let collection_id = repository
+            .create_local_review_collection(&task_id, Some(&plan_id), "Annotation review")
+            .expect("collection must create");
+        let collection = repository
+            .local_review_snapshot(Some(&collection_id))
+            .expect("snapshot")
+            .1
+            .expect("selected collection");
+        let first = repository
+            .create_local_review_text_item(
+                &collection_id,
+                collection.updated_at_ms,
+                "First item",
+                LocalReviewTextFormat::Plain,
+                "first content",
+            )
+            .expect("first item");
+        let collection = repository
+            .local_review_snapshot(Some(&collection_id))
+            .expect("snapshot")
+            .1
+            .expect("selected collection");
+        let second = repository
+            .create_local_review_text_item(
+                &collection_id,
+                collection.updated_at_ms,
+                "Second item",
+                LocalReviewTextFormat::Plain,
+                "second content",
+            )
+            .expect("second item");
+        let (_, before, before_items, _, _, _) = repository
+            .local_review_snapshot(Some(&collection_id))
+            .expect("snapshot");
+        let before = before.expect("selected collection");
+        let first_before = before_items
+            .iter()
+            .find(|item| item.item_id == first)
+            .expect("first projection")
+            .clone();
+        let task_before: (String, i64) = repository
+            .connection
+            .query_row(
+                "SELECT status, updated_at_ms FROM task_records WHERE id = ?1",
+                [&task_id],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .expect("task record");
+        let plan_before: (String, i64) = repository
+            .connection
+            .query_row(
+                "SELECT body, updated_at_ms FROM task_plans WHERE id = ?1",
+                [&plan_id],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .expect("plan record");
+
+        let annotation_id = repository
+            .create_local_review_annotation(
+                &collection_id,
+                &first,
+                before.updated_at_ms,
+                "note one\r\nnote two",
+            )
+            .expect("annotation must create");
+        assert!(valid_task_id(&annotation_id));
+        let (_, after_first, _, _, _, _) = repository
+            .local_review_snapshot(Some(&collection_id))
+            .expect("authoritative snapshot");
+        let after_first = after_first.expect("selected collection");
+        let second_annotation_id = repository
+            .create_local_review_annotation(
+                &collection_id,
+                &first,
+                after_first.updated_at_ms,
+                "later note",
+            )
+            .expect("second annotation must create");
+        let (_, after, after_items, _, _, _) = repository
+            .local_review_snapshot(Some(&collection_id))
+            .expect("authoritative snapshot");
+        let after = after.expect("selected collection");
+        assert!(after.updated_at_ms > before.updated_at_ms);
+        let annotated = after_items
+            .iter()
+            .find(|item| item.item_id == first)
+            .expect("annotated item");
+        let sibling = after_items
+            .iter()
+            .find(|item| item.item_id == second)
+            .expect("sibling item");
+        assert_eq!(annotated.annotations.len(), 2);
+        assert!(sibling.annotations.is_empty());
+        let annotation = &annotated.annotations[0];
+        assert_eq!(annotation.annotation_id, annotation_id);
+        assert_eq!(annotated.annotations[1].annotation_id, second_annotation_id);
+        assert_eq!(annotation.item_id, first);
+        assert_eq!(annotation.text, "note one\nnote two");
+        assert_eq!(annotation.state, LocalReviewAnnotationState::Open);
+        assert!(annotation.created_at_ms >= 0);
+        assert_eq!(annotation.created_at_ms, annotation.updated_at_ms);
+        assert_eq!(annotated.sha256, first_before.sha256);
+        assert_eq!(annotated.byte_size, first_before.byte_size);
+        assert_eq!(
+            repository
+                .connection
+                .query_row(
+                    "SELECT status, updated_at_ms FROM task_records WHERE id = ?1",
+                    [&task_id],
+                    |row| Ok((row.get(0)?, row.get(1)?)),
+                )
+                .expect("task unchanged"),
+            task_before
+        );
+        assert_eq!(
+            repository
+                .connection
+                .query_row(
+                    "SELECT body, updated_at_ms FROM task_plans WHERE id = ?1",
+                    [&plan_id],
+                    |row| Ok((row.get(0)?, row.get(1)?)),
+                )
+                .expect("plan unchanged"),
+            plan_before
+        );
+        let projected = serde_json::to_value(annotation).expect("annotation serializes");
+        for forbidden in [
+            "author",
+            "path",
+            "url",
+            "range",
+            "coordinate",
+            "mention",
+            "approval",
+            "dispatch",
+            "execution",
+        ] {
+            assert!(
+                projected.get(forbidden).is_none(),
+                "{forbidden} must not project"
+            );
+        }
+        assert!(matches!(
+            repository.create_local_review_annotation(
+                &collection_id,
+                &first,
+                before.updated_at_ms,
+                "stale annotation",
+            ),
+            Err(StorageError::InvalidStatusTransition)
+        ));
+        let (_, rejected, rejected_items, _, _, _) = repository
+            .local_review_snapshot(Some(&collection_id))
+            .expect("snapshot after rejection");
+        assert_eq!(
+            rejected.expect("selected").updated_at_ms,
+            after.updated_at_ms
+        );
+        assert_eq!(
+            rejected_items
+                .iter()
+                .find(|item| item.item_id == first)
+                .expect("first remains")
+                .annotations,
+            annotated.annotations
+        );
+    }
+
+    #[test]
+    fn local_review_text_comparison_is_same_format_digest_bound_and_non_mutating() {
+        let mut repository = ProjectRepository::in_memory().expect("schema migrates");
+        let task = repository.create_task().expect("task");
+        let (_, selected, _, _, _, _) = repository
+            .task_catalog(Some(&task), false, None)
+            .expect("catalog");
+        let plan = selected.expect("selected").selected_plan_id;
+        let collection = repository
+            .create_local_review_collection(&task, Some(&plan), "Comparison")
+            .expect("collection");
+        let mut selected = repository
+            .local_review_snapshot(Some(&collection))
+            .expect("snapshot")
+            .1
+            .expect("selected");
+        let left = repository
+            .create_local_review_text_item(
+                &collection,
+                selected.updated_at_ms,
+                "Left",
+                LocalReviewTextFormat::Plain,
+                "same\nleft",
+            )
+            .expect("left");
+        selected = repository
+            .local_review_snapshot(Some(&collection))
+            .expect("snapshot")
+            .1
+            .expect("selected");
+        let right = repository
+            .create_local_review_text_item(
+                &collection,
+                selected.updated_at_ms,
+                "Right",
+                LocalReviewTextFormat::Plain,
+                "same\nright",
+            )
+            .expect("right");
+        let (_, before, items, _, _, _) = repository
+            .local_review_snapshot(Some(&collection))
+            .expect("snapshot");
+        let before = before.expect("selected");
+        let left_before = items
+            .iter()
+            .find(|item| item.item_id == left)
+            .expect("left")
+            .clone();
+        let right_before = items
+            .iter()
+            .find(|item| item.item_id == right)
+            .expect("right")
+            .clone();
+        let task_before: (String, i64) = repository
+            .connection
+            .query_row(
+                "SELECT status, updated_at_ms FROM task_records WHERE id = ?1",
+                [&task],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .expect("task");
+        let plan_before: (String, i64) = repository
+            .connection
+            .query_row(
+                "SELECT body, updated_at_ms FROM task_plans WHERE id = ?1",
+                [&plan],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .expect("plan");
+        let comparison = repository
+            .create_local_review_text_comparison(&collection, &left, &right, before.updated_at_ms)
+            .expect("comparison");
+        assert!(valid_task_id(&comparison));
+        let comparisons = repository
+            .local_review_comparisons(&collection)
+            .expect("projection");
+        assert_eq!(comparisons.len(), 1);
+        assert_eq!(comparisons[0].left_sha256, left_before.sha256);
+        assert_eq!(comparisons[0].right_sha256, right_before.sha256);
+        assert_eq!(comparisons[0].state, LocalReviewComparisonState::Ready);
+        let lines = repository
+            .local_review_line_comparison(&comparison)
+            .expect("line diff");
+        assert_eq!(lines.state, LocalReviewComparisonState::Ready);
+        assert_eq!(
+            lines
+                .lines
+                .iter()
+                .map(|line| (&line.kind, line.text.as_str()))
+                .collect::<Vec<_>>(),
+            vec![
+                (&LocalReviewLineKind::Unchanged, "same"),
+                (&LocalReviewLineKind::Added, "right"),
+                (&LocalReviewLineKind::Removed, "left")
+            ]
+        );
+        let (_, after, items, _, _, _) = repository
+            .local_review_snapshot(Some(&collection))
+            .expect("snapshot");
+        let after = after.expect("selected");
+        assert!(after.updated_at_ms > before.updated_at_ms);
+        assert_eq!(
+            items
+                .iter()
+                .find(|item| item.item_id == left)
+                .expect("left"),
+            &left_before
+        );
+        assert_eq!(
+            items
+                .iter()
+                .find(|item| item.item_id == right)
+                .expect("right"),
+            &right_before
+        );
+        assert_eq!(
+            repository
+                .connection
+                .query_row(
+                    "SELECT status, updated_at_ms FROM task_records WHERE id = ?1",
+                    [&task],
+                    |row| Ok((row.get(0)?, row.get(1)?))
+                )
+                .expect("task"),
+            task_before
+        );
+        assert_eq!(
+            repository
+                .connection
+                .query_row(
+                    "SELECT body, updated_at_ms FROM task_plans WHERE id = ?1",
+                    [&plan],
+                    |row| Ok((row.get(0)?, row.get(1)?))
+                )
+                .expect("plan"),
+            plan_before
+        );
+        assert!(matches!(
+            repository.create_local_review_text_comparison(
+                &collection,
+                &left,
+                &left,
+                after.updated_at_ms
+            ),
+            Err(StorageError::InvalidStoredValue)
+        ));
+        let markdown = repository
+            .create_local_review_text_item(
+                &collection,
+                after.updated_at_ms,
+                "Markdown",
+                LocalReviewTextFormat::Markdown,
+                "text",
+            )
+            .expect("markdown");
+        let selected_updated_at_ms: i64 = repository
+            .connection
+            .query_row(
+                "SELECT updated_at_ms FROM local_review_collections WHERE id = ?1",
+                [&collection],
+                |row| row.get(0),
+            )
+            .expect("collection timestamp");
+        assert!(matches!(
+            repository.create_local_review_text_comparison(
+                &collection,
+                &left,
+                &markdown,
+                selected_updated_at_ms
+            ),
+            Err(StorageError::InvalidStoredValue)
+        ));
+        let image = repository
+            .create_local_review_image_item(
+                &collection,
+                selected_updated_at_ms,
+                "Image",
+                &png(1, 1, false),
+            )
+            .expect("image");
+        let selected = repository
+            .local_review_snapshot(Some(&collection))
+            .expect("snapshot")
+            .1
+            .expect("selected");
+        let image_comparison = repository.create_local_review_text_comparison(
+            &collection,
+            &left,
+            &image,
+            selected.updated_at_ms,
+        );
+        assert!(
+            matches!(image_comparison, Err(StorageError::InvalidStoredValue)),
+            "{image_comparison:?}"
+        );
+        let evidence = repository
+            .create_local_review_manual_evidence_item(
+                &collection,
+                selected.updated_at_ms,
+                "Evidence",
+                "summary",
+            )
+            .expect("evidence");
+        let selected_updated_at_ms: i64 = repository
+            .connection
+            .query_row(
+                "SELECT updated_at_ms FROM local_review_collections WHERE id = ?1",
+                [&collection],
+                |row| row.get(0),
+            )
+            .expect("collection timestamp");
+        assert!(matches!(
+            repository.create_local_review_text_comparison(
+                &collection,
+                &left,
+                &evidence,
+                selected_updated_at_ms
+            ),
+            Err(StorageError::InvalidStoredValue)
+        ));
+        assert!(matches!(
+            repository.create_local_review_text_comparison(
+                &collection,
+                &left,
+                &right,
+                before.updated_at_ms
+            ),
+            Err(StorageError::InvalidStatusTransition)
+        ));
+        repository
+            .connection
+            .execute(
+                "UPDATE local_review_items SET content = ?1, sha256 = ?2 WHERE id = ?3",
+                params![
+                    b"same\nchanged".to_vec(),
+                    review_digest(b"same\nchanged"),
+                    left
+                ],
+            )
+            .expect("stale fixture");
+        assert!(matches!(
+            repository
+                .local_review_comparisons(&collection)
+                .expect("comparison projection")[0]
+                .state,
+            LocalReviewComparisonState::Stale | LocalReviewComparisonState::Unavailable
+        ));
+        let projected = serde_json::to_value(&comparisons[0]).expect("serializes");
+        for forbidden in [
+            "path",
+            "git",
+            "repository",
+            "shell",
+            "command",
+            "provider",
+            "approval",
+            "dispatch",
+            "execution",
+        ] {
+            assert!(projected.get(forbidden).is_none());
+        }
+    }
+
+    #[test]
+    fn local_review_annotation_lifecycle_is_strict_and_ordered() {
+        let mut repository = ProjectRepository::in_memory().expect("schema migrates");
+        let task = repository.create_task().expect("task");
+        let (_, selected, _, _, _, _) = repository
+            .task_catalog(Some(&task), false, None)
+            .expect("catalog");
+        let plan = selected.expect("selected").selected_plan_id;
+        let collection = repository
+            .create_local_review_collection(&task, Some(&plan), "Lifecycle annotations")
+            .expect("collection");
+        let mut selected = repository
+            .local_review_snapshot(Some(&collection))
+            .expect("snapshot")
+            .1
+            .expect("selected");
+        let item = repository
+            .create_local_review_text_item(
+                &collection,
+                selected.updated_at_ms,
+                "Item",
+                LocalReviewTextFormat::Plain,
+                "immutable content",
+            )
+            .expect("item");
+        selected = repository
+            .local_review_snapshot(Some(&collection))
+            .expect("snapshot")
+            .1
+            .expect("selected");
+        let first = repository
+            .create_local_review_annotation(&collection, &item, selected.updated_at_ms, "first")
+            .expect("first annotation");
+        selected = repository
+            .local_review_snapshot(Some(&collection))
+            .expect("snapshot")
+            .1
+            .expect("selected");
+        let second = repository
+            .create_local_review_annotation(&collection, &item, selected.updated_at_ms, "second")
+            .expect("second annotation");
+        let (_, before_edit, items, _, _, _) = repository
+            .local_review_snapshot(Some(&collection))
+            .expect("snapshot");
+        let before_edit = before_edit.expect("selected");
+        let item_before = items
+            .iter()
+            .find(|candidate| candidate.item_id == item)
+            .expect("item")
+            .clone();
+        let first_before = item_before
+            .annotations
+            .iter()
+            .find(|annotation| annotation.annotation_id == first)
+            .expect("first")
+            .clone();
+        let task_before: (String, i64) = repository
+            .connection
+            .query_row(
+                "SELECT status, updated_at_ms FROM task_records WHERE id = ?1",
+                [&task],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .expect("task unchanged fixture");
+        let plan_before: (String, i64) = repository
+            .connection
+            .query_row(
+                "SELECT body, updated_at_ms FROM task_plans WHERE id = ?1",
+                [&plan],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .expect("plan unchanged fixture");
+
+        repository
+            .edit_local_review_annotation(
+                &collection,
+                &item,
+                &first,
+                before_edit.updated_at_ms,
+                "edited\r\ntext",
+            )
+            .expect("edit");
+        let (_, after_edit, items, _, _, _) = repository
+            .local_review_snapshot(Some(&collection))
+            .expect("snapshot");
+        let after_edit = after_edit.expect("selected");
+        let item_after_edit = items
+            .iter()
+            .find(|candidate| candidate.item_id == item)
+            .expect("item");
+        let first_after_edit = item_after_edit
+            .annotations
+            .iter()
+            .find(|annotation| annotation.annotation_id == first)
+            .expect("first");
+        assert_eq!(first_after_edit.text, "edited\ntext");
+        assert_eq!(first_after_edit.state, LocalReviewAnnotationState::Open);
+        assert_eq!(first_after_edit.created_at_ms, first_before.created_at_ms);
+        assert!(first_after_edit.updated_at_ms > first_before.updated_at_ms);
+        assert_eq!(item_after_edit.sha256, item_before.sha256);
+
+        repository
+            .resolve_local_review_annotation(&collection, &item, &first, after_edit.updated_at_ms)
+            .expect("resolve");
+        let (_, after_resolve, items, _, _, _) = repository
+            .local_review_snapshot(Some(&collection))
+            .expect("snapshot");
+        let after_resolve = after_resolve.expect("selected");
+        let annotations = &items
+            .iter()
+            .find(|candidate| candidate.item_id == item)
+            .expect("item")
+            .annotations;
+        assert_eq!(
+            annotations
+                .iter()
+                .map(|annotation| annotation.annotation_id.as_str())
+                .collect::<Vec<_>>(),
+            vec![second.as_str(), first.as_str()]
+        );
+        assert_eq!(annotations[1].state, LocalReviewAnnotationState::Resolved);
+        assert_eq!(annotations[1].text, "edited\ntext");
+        assert!(annotations[1].updated_at_ms > first_after_edit.updated_at_ms);
+        assert!(matches!(
+            repository.resolve_local_review_annotation(
+                &collection,
+                &item,
+                &first,
+                after_resolve.updated_at_ms
+            ),
+            Err(StorageError::InvalidStatusTransition)
+        ));
+        let after_repeated_resolve = repository
+            .local_review_snapshot(Some(&collection))
+            .expect("snapshot")
+            .1
+            .expect("selected");
+        assert_eq!(
+            after_repeated_resolve.updated_at_ms,
+            after_resolve.updated_at_ms
+        );
+
+        repository
+            .reopen_local_review_annotation(&collection, &item, &first, after_resolve.updated_at_ms)
+            .expect("reopen");
+        let (_, after_reopen, items, _, _, _) = repository
+            .local_review_snapshot(Some(&collection))
+            .expect("snapshot");
+        let after_reopen = after_reopen.expect("selected");
+        let annotations = &items
+            .iter()
+            .find(|candidate| candidate.item_id == item)
+            .expect("item")
+            .annotations;
+        assert_eq!(
+            annotations
+                .iter()
+                .map(|annotation| annotation.annotation_id.as_str())
+                .collect::<Vec<_>>(),
+            vec![first.as_str(), second.as_str()]
+        );
+        assert_eq!(annotations[0].state, LocalReviewAnnotationState::Open);
+        assert!(matches!(
+            repository.reopen_local_review_annotation(
+                &collection,
+                &item,
+                &first,
+                after_reopen.updated_at_ms
+            ),
+            Err(StorageError::InvalidStatusTransition)
+        ));
+        assert!(matches!(
+            repository.edit_local_review_annotation(
+                &collection,
+                &item,
+                &first,
+                before_edit.updated_at_ms,
+                "stale"
+            ),
+            Err(StorageError::InvalidStatusTransition)
+        ));
+        assert!(matches!(
+            repository.delete_local_review_annotation(
+                &collection,
+                &item,
+                &second,
+                before_edit.updated_at_ms
+            ),
+            Err(StorageError::InvalidStatusTransition)
+        ));
+        let (_, before_delete, _, _, _, _) = repository
+            .local_review_snapshot(Some(&collection))
+            .expect("snapshot");
+        let before_delete = before_delete.expect("selected");
+        repository
+            .delete_local_review_annotation(
+                &collection,
+                &item,
+                &second,
+                before_delete.updated_at_ms,
+            )
+            .expect("delete");
+        let (_, after_delete, items, _, _, _) = repository
+            .local_review_snapshot(Some(&collection))
+            .expect("snapshot");
+        assert_eq!(
+            items
+                .iter()
+                .find(|candidate| candidate.item_id == item)
+                .expect("item")
+                .annotations
+                .len(),
+            1
+        );
+        assert!(after_delete.expect("selected").updated_at_ms > before_delete.updated_at_ms);
+        assert_eq!(
+            repository
+                .connection
+                .query_row(
+                    "SELECT status, updated_at_ms FROM task_records WHERE id = ?1",
+                    [&task],
+                    |row| Ok((row.get(0)?, row.get(1)?))
+                )
+                .expect("task unchanged"),
+            task_before
+        );
+        assert_eq!(
+            repository
+                .connection
+                .query_row(
+                    "SELECT body, updated_at_ms FROM task_plans WHERE id = ?1",
+                    [&plan],
+                    |row| Ok((row.get(0)?, row.get(1)?))
+                )
+                .expect("plan unchanged"),
+            plan_before
+        );
+    }
+
+    #[test]
+    fn local_review_annotation_limits_and_discard_recover_capacity() {
+        let mut repository = ProjectRepository::in_memory().expect("schema migrates");
+        let task = repository.create_task().expect("task");
+        let collection = repository
+            .create_local_review_collection(&task, None, "Annotation limits")
+            .expect("collection");
+        let mut selected = repository
+            .local_review_snapshot(Some(&collection))
+            .expect("snapshot")
+            .1
+            .expect("selected");
+        let item = repository
+            .create_local_review_text_item(
+                &collection,
+                selected.updated_at_ms,
+                "Item",
+                LocalReviewTextFormat::Plain,
+                "content",
+            )
+            .expect("item");
+        selected = repository
+            .local_review_snapshot(Some(&collection))
+            .expect("snapshot")
+            .1
+            .expect("selected");
+        let initial_collection_payload = selected.payload_bytes;
+        let initial_total_payload = repository.local_review_snapshot(None).expect("snapshot").4;
+        let mut ids = Vec::new();
+        for index in 0..23 {
+            let id = repository
+                .create_local_review_annotation(
+                    &collection,
+                    &item,
+                    selected.updated_at_ms,
+                    &format!("n{index}"),
+                )
+                .expect("annotation");
+            ids.push(id);
+            selected = repository
+                .local_review_snapshot(Some(&collection))
+                .expect("snapshot")
+                .1
+                .expect("selected");
+            assert!(!selected.warning);
+        }
+        let warning_id = repository
+            .create_local_review_annotation(&collection, &item, selected.updated_at_ms, "warning")
+            .expect("twenty fourth annotation");
+        ids.push(warning_id);
+        selected = repository
+            .local_review_snapshot(Some(&collection))
+            .expect("snapshot")
+            .1
+            .expect("selected");
+        assert!(selected.warning);
+        for index in 24..32 {
+            let id = repository
+                .create_local_review_annotation(
+                    &collection,
+                    &item,
+                    selected.updated_at_ms,
+                    &format!("n{index}"),
+                )
+                .expect("within annotation limit");
+            ids.push(id);
+            selected = repository
+                .local_review_snapshot(Some(&collection))
+                .expect("snapshot")
+                .1
+                .expect("selected");
+        }
+        let before_rejection = selected.clone();
+        assert!(matches!(
+            repository.create_local_review_annotation(
+                &collection,
+                &item,
+                selected.updated_at_ms,
+                "overflow"
+            ),
+            Err(StorageError::TaskCapacity)
+        ));
+        let (_, after_rejection, items, _, total_after_rejection, _) = repository
+            .local_review_snapshot(Some(&collection))
+            .expect("snapshot");
+        assert_eq!(
+            after_rejection.expect("selected").updated_at_ms,
+            before_rejection.updated_at_ms
+        );
+        assert_eq!(items[0].annotations.len(), 32);
+        assert!(total_after_rejection > initial_total_payload);
+        assert!(before_rejection.payload_bytes > initial_collection_payload);
+        repository
+            .delete_local_review_annotation(
+                &collection,
+                &item,
+                &ids[0],
+                before_rejection.updated_at_ms,
+            )
+            .expect("discard annotation");
+        selected = repository
+            .local_review_snapshot(Some(&collection))
+            .expect("snapshot")
+            .1
+            .expect("selected");
+        let (_, _, items, _, total_after_delete, _) = repository
+            .local_review_snapshot(Some(&collection))
+            .expect("snapshot");
+        assert_eq!(items[0].annotations.len(), 31);
+        assert!(selected.payload_bytes < before_rejection.payload_bytes);
+        assert!(total_after_delete < total_after_rejection);
+        repository
+            .create_local_review_annotation(
+                &collection,
+                &item,
+                selected.updated_at_ms,
+                "replacement",
+            )
+            .expect("recovered annotation capacity");
+
+        let large_task = repository.create_task().expect("large task");
+        let large_collection = repository
+            .create_local_review_collection(&large_task, None, "Annotation bytes")
+            .expect("collection");
+        let mut large_selected = repository
+            .local_review_snapshot(Some(&large_collection))
+            .expect("snapshot")
+            .1
+            .expect("selected");
+        let large_item = repository
+            .create_local_review_text_item(
+                &large_collection,
+                large_selected.updated_at_ms,
+                "Item",
+                LocalReviewTextFormat::Plain,
+                "content",
+            )
+            .expect("item");
+        large_selected = repository
+            .local_review_snapshot(Some(&large_collection))
+            .expect("snapshot")
+            .1
+            .expect("selected");
+        repository
+            .create_local_review_annotation(
+                &large_collection,
+                &large_item,
+                large_selected.updated_at_ms,
+                &"a".repeat(767),
+            )
+            .expect("below byte warning");
+        large_selected = repository
+            .local_review_snapshot(Some(&large_collection))
+            .expect("snapshot")
+            .1
+            .expect("selected");
+        assert!(!large_selected.warning);
+        repository
+            .create_local_review_annotation(
+                &large_collection,
+                &large_item,
+                large_selected.updated_at_ms,
+                &"b".repeat(768),
+            )
+            .expect("byte warning");
+        large_selected = repository
+            .local_review_snapshot(Some(&large_collection))
+            .expect("snapshot")
+            .1
+            .expect("selected");
+        assert!(large_selected.warning);
+        let before_invalid = large_selected.clone();
+        assert!(matches!(
+            repository.create_local_review_annotation(
+                &large_collection,
+                &large_item,
+                large_selected.updated_at_ms,
+                &"c".repeat(1025)
+            ),
+            Err(StorageError::InvalidStoredValue)
+        ));
+        assert!(matches!(
+            repository.create_local_review_annotation(
+                &large_collection,
+                &large_item,
+                large_selected.updated_at_ms,
+                &"d".repeat(1025)
+            ),
+            Err(StorageError::InvalidStoredValue)
+        ));
+        assert_eq!(
+            repository
+                .local_review_snapshot(Some(&large_collection))
+                .expect("snapshot")
+                .1
+                .expect("selected")
+                .updated_at_ms,
+            before_invalid.updated_at_ms
+        );
+    }
+
+    #[test]
+    fn local_review_lifecycle_projects_task_state_and_requires_explicit_fresh_resume() {
+        let mut repository = ProjectRepository::in_memory().expect("schema migrates");
+        let task = repository.create_task().expect("task creates");
+        let (_, selected, _, _, _, _) = repository
+            .task_catalog(Some(&task), false, None)
+            .expect("catalog");
+        let plan = selected.expect("selected").selected_plan_id;
+        let collection = repository
+            .create_local_review_collection(&task, Some(&plan), "Lifecycle")
+            .expect("collection");
+        let state = |repository: &mut ProjectRepository| {
+            repository
+                .local_review_snapshot(Some(&collection))
+                .expect("snapshot")
+                .1
+                .expect("selected")
+        };
+        assert_eq!(
+            state(&mut repository).state,
+            LocalReviewCollectionState::Active
+        );
+        repository
+            .set_task_status(&task, TaskStatus::Paused)
+            .expect("pause");
+        assert_eq!(
+            state(&mut repository).state,
+            LocalReviewCollectionState::Active
+        );
+        repository
+            .set_task_status(&task, TaskStatus::Completed)
+            .expect("complete");
+        let frozen = state(&mut repository);
+        assert_eq!(frozen.state, LocalReviewCollectionState::Frozen);
+        assert!(matches!(
+            repository.resume_local_review_collection(&collection, frozen.updated_at_ms),
+            Err(StorageError::TaskArchived)
+        ));
+        repository
+            .set_task_status(&task, TaskStatus::Active)
+            .expect("restore status");
+        assert_eq!(
+            state(&mut repository).state,
+            LocalReviewCollectionState::Frozen
+        );
+        repository
+            .resume_local_review_collection(&collection, frozen.updated_at_ms)
+            .expect("explicit resume");
+        let resumed = state(&mut repository);
+        repository
+            .connection
+            .execute(
+                "UPDATE task_plans SET updated_at_ms = updated_at_ms + 1 WHERE id = ?1",
+                [&plan],
+            )
+            .expect("stale plan");
+        assert!(matches!(
+            repository.resume_local_review_collection(&collection, resumed.updated_at_ms),
+            Err(StorageError::PlanNotFound)
+        ));
+        repository.delete_task(&task).expect("delete task");
+        assert_eq!(
+            state(&mut repository).state,
+            LocalReviewCollectionState::Orphaned
+        );
+    }
+
+    #[test]
+    fn local_review_mutations_revalidate_lifecycle_and_preserve_recovery_discards() {
+        let mut repository = ProjectRepository::in_memory().expect("schema migrates");
+        let task = repository.create_task().expect("task");
+        let (_, selected_task, _, _, _, _) = repository
+            .task_catalog(Some(&task), false, None)
+            .expect("catalog");
+        let plan = selected_task.expect("selected task").selected_plan_id;
+        let collection = repository
+            .create_local_review_collection(&task, Some(&plan), "Lifecycle gate")
+            .expect("collection");
+        let current = |repository: &mut ProjectRepository| {
+            repository
+                .local_review_snapshot(Some(&collection))
+                .expect("snapshot")
+                .1
+                .expect("selected collection")
+        };
+        let initial = current(&mut repository);
+        let retained_item = repository
+            .create_local_review_text_item(
+                &collection,
+                initial.updated_at_ms,
+                "Retained",
+                LocalReviewTextFormat::Plain,
+                "copied text",
+            )
+            .expect("initial text");
+        let before_freeze = current(&mut repository);
+        let (_, _, before_items, _, before_payload, _) = repository
+            .local_review_snapshot(Some(&collection))
+            .expect("before freeze");
+
+        repository
+            .set_task_status(&task, TaskStatus::Completed)
+            .expect("complete task");
+        let frozen = current(&mut repository);
+        assert_eq!(frozen.state, LocalReviewCollectionState::Frozen);
+        assert!(repository
+            .create_local_review_text_item(
+                &collection,
+                frozen.updated_at_ms,
+                "Blocked text",
+                LocalReviewTextFormat::Plain,
+                "blocked",
+            )
+            .is_err());
+        assert!(repository
+            .create_local_review_image_item(
+                &collection,
+                frozen.updated_at_ms,
+                "Blocked image",
+                &png(1, 1, false),
+            )
+            .is_err());
+        assert!(repository
+            .create_local_review_manual_evidence_item(
+                &collection,
+                frozen.updated_at_ms,
+                "Blocked evidence",
+                "blocked",
+            )
+            .is_err());
+        let (_, frozen_selected, frozen_items, _, frozen_payload, _) = repository
+            .local_review_snapshot(Some(&collection))
+            .expect("frozen snapshot");
+        assert_eq!(frozen_items, before_items);
+        assert_eq!(frozen_payload, before_payload);
+        assert_eq!(
+            frozen_selected.expect("frozen selected").updated_at_ms,
+            frozen.updated_at_ms
+        );
+
+        repository
+            .set_task_status(&task, TaskStatus::Active)
+            .expect("restore task");
+        let restored = current(&mut repository);
+        assert_eq!(restored.state, LocalReviewCollectionState::Frozen);
+        assert!(repository
+            .create_local_review_text_item(
+                &collection,
+                restored.updated_at_ms,
+                "No automatic resume",
+                LocalReviewTextFormat::Plain,
+                "blocked",
+            )
+            .is_err());
+        repository
+            .resume_local_review_collection(&collection, restored.updated_at_ms)
+            .expect("explicit resume");
+        let resumed = current(&mut repository);
+        assert_eq!(resumed.state, LocalReviewCollectionState::Active);
+
+        repository.archive_task(&task, false).expect("archive task");
+        let archived = current(&mut repository);
+        assert_eq!(archived.state, LocalReviewCollectionState::Frozen);
+        assert!(repository
+            .create_local_review_text_item(
+                &collection,
+                archived.updated_at_ms,
+                "Archived text",
+                LocalReviewTextFormat::Plain,
+                "blocked",
+            )
+            .is_err());
+        repository
+            .archive_task(&task, true)
+            .expect("restore archive");
+        repository
+            .resume_local_review_collection(&collection, archived.updated_at_ms)
+            .expect("resume after archive restore");
+        let fresh = current(&mut repository);
+        repository
+            .connection
+            .execute(
+                "UPDATE task_plans SET updated_at_ms = updated_at_ms + 1 WHERE id = ?1",
+                [&plan],
+            )
+            .expect("make observed plan stale");
+        assert!(repository
+            .create_local_review_manual_evidence_item(
+                &collection,
+                fresh.updated_at_ms,
+                "Stale plan evidence",
+                "blocked",
+            )
+            .is_err());
+        let (_, _, after_stale_items, _, after_stale_payload, _) = repository
+            .local_review_snapshot(Some(&collection))
+            .expect("after stale plan");
+        assert_eq!(after_stale_items.len(), before_items.len());
+        assert_eq!(after_stale_payload, before_payload);
+
+        let recovery_task = repository.create_task().expect("recovery task");
+        let recovery_collection = repository
+            .create_local_review_collection(&recovery_task, None, "Recovery")
+            .expect("recovery collection");
+        let recovery_selected = repository
+            .local_review_snapshot(Some(&recovery_collection))
+            .expect("recovery snapshot")
+            .1
+            .expect("recovery selected");
+        let recovery_item = repository
+            .create_local_review_text_item(
+                &recovery_collection,
+                recovery_selected.updated_at_ms,
+                "Discardable",
+                LocalReviewTextFormat::Plain,
+                "copied text",
+            )
+            .expect("recovery item");
+        let orphaned_at = repository
+            .local_review_snapshot(Some(&recovery_collection))
+            .expect("recovery item snapshot")
+            .1
+            .expect("recovery selected")
+            .updated_at_ms;
+        repository.delete_task(&recovery_task).expect("delete task");
+        assert_eq!(
+            repository
+                .local_review_snapshot(Some(&recovery_collection))
+                .expect("orphaned snapshot")
+                .1
+                .expect("orphaned selected")
+                .state,
+            LocalReviewCollectionState::Orphaned
+        );
+        assert!(matches!(
+            repository.create_local_review_text_item(
+                &recovery_collection,
+                orphaned_at,
+                "Orphaned mutation",
+                LocalReviewTextFormat::Plain,
+                "blocked",
+            ),
+            Err(StorageError::TaskNotFound)
+        ));
+        repository
+            .discard_local_review_item(&recovery_collection, &recovery_item, orphaned_at)
+            .expect("orphaned copied data remains explicitly discardable");
+        assert!(repository
+            .local_review_snapshot(Some(&recovery_collection))
+            .expect("after recovery discard")
+            .2
+            .is_empty());
+        assert!(before_freeze.updated_at_ms < frozen.updated_at_ms);
+        assert_ne!(retained_item, recovery_item);
+    }
+
+    #[test]
+    fn local_review_discards_are_isolated_accounted_and_stale_safe() {
+        let mut repository = ProjectRepository::in_memory().expect("schema migrates");
+        let task = repository.create_task().expect("task creates");
+        let (_, selected, _, _, _, _) = repository
+            .task_catalog(Some(&task), false, None)
+            .expect("catalog");
+        let plan = selected.expect("selected").selected_plan_id;
+        let first = repository
+            .create_local_review_collection(&task, Some(&plan), "First")
+            .expect("first");
+        let second = repository
+            .create_local_review_collection(&task, None, "Second")
+            .expect("second");
+        let one = repository
+            .local_review_snapshot(Some(&first))
+            .expect("first snapshot")
+            .1
+            .expect("first selected");
+        let item = repository
+            .create_local_review_text_item(
+                &first,
+                one.updated_at_ms,
+                "Item",
+                LocalReviewTextFormat::Plain,
+                "payload",
+            )
+            .expect("item");
+        let (_, selected, items, _, total_before, _) = repository
+            .local_review_snapshot(Some(&first))
+            .expect("items");
+        let selected = selected.expect("selected");
+        assert!(matches!(
+            repository.discard_local_review_item(&first, &item, selected.updated_at_ms - 1),
+            Err(StorageError::InvalidStatusTransition)
+        ));
+        repository
+            .discard_local_review_item(&first, &item, selected.updated_at_ms)
+            .expect("discard item");
+        let (_, selected, items_after, _, total_after, _) = repository
+            .local_review_snapshot(Some(&first))
+            .expect("after item");
+        assert_eq!(items.len(), 1);
+        assert!(items_after.is_empty());
+        assert!(total_after < total_before);
+        let updated = selected.expect("selected").updated_at_ms;
+        assert!(matches!(
+            repository.discard_local_review_collection(&first, updated - 1),
+            Err(StorageError::InvalidStatusTransition)
+        ));
+        repository
+            .discard_local_review_collection(&first, updated)
+            .expect("discard collection");
+        assert!(repository
+            .local_review_snapshot(Some(&first))
+            .expect("snapshot")
+            .1
+            .is_none());
+        assert!(repository
+            .local_review_snapshot(Some(&second))
+            .expect("other")
+            .1
+            .is_some());
+        assert_eq!(
+            repository
+                .connection
+                .query_row(
+                    "SELECT count(*) FROM task_records WHERE id = ?1",
+                    [&task],
+                    |row| row.get::<_, i64>(0)
+                )
+                .expect("task"),
+            1
+        );
+        assert_eq!(
+            repository
+                .connection
+                .query_row(
+                    "SELECT count(*) FROM task_plans WHERE id = ?1",
+                    [&plan],
+                    |row| row.get::<_, i64>(0)
+                )
+                .expect("plan"),
+            1
+        );
+    }
+
+    #[test]
+    fn local_review_images_validate_project_preview_and_recover_quota() {
+        let mut repository = ProjectRepository::in_memory().expect("schema migrates");
+        let task = repository.create_task().expect("task");
+        let collection = repository
+            .create_local_review_collection(&task, None, "Images")
+            .expect("collection");
+        let current = |repository: &mut ProjectRepository| {
+            repository
+                .local_review_snapshot(Some(&collection))
+                .expect("snapshot")
+                .1
+                .expect("selected")
+        };
+        let png_bytes = png(1, 1, false);
+        let first = current(&mut repository);
+        let png_id = repository
+            .create_local_review_image_item(&collection, first.updated_at_ms, "PNG", &png_bytes)
+            .expect("png");
+        let (_, selected, items, _, total_before, _) = repository
+            .local_review_snapshot(Some(&collection))
+            .expect("items");
+        assert_eq!(items[0].class, LocalReviewItemClass::ImageMockup);
+        assert_eq!(items[0].mime_type, "image/png");
+        assert_eq!(items[0].width, Some(1));
+        assert_eq!(items[0].height, Some(1));
+        assert_eq!(
+            items[0].source_kind,
+            LocalReviewSourceKind::NativeImageInput
+        );
+        let preview = repository
+            .local_review_image_preview(&png_id, &items[0].sha256)
+            .expect("preview");
+        assert!(preview.data_url.starts_with("data:image/png;base64,"));
+        assert_eq!(preview.byte_size, png_bytes.len() as u64);
+        let second = selected.expect("selected");
+        let jpeg_bytes = jpeg(2, 3, true);
+        let jpeg_id = repository
+            .create_local_review_image_item(&collection, second.updated_at_ms, "JPEG", &jpeg_bytes)
+            .expect("jpeg");
+        let (_, selected, items, _, _, warning) = repository
+            .local_review_snapshot(Some(&collection))
+            .expect("two");
+        assert!(warning || items.len() == 2);
+        assert_eq!(
+            items
+                .iter()
+                .find(|item| item.item_id == jpeg_id)
+                .expect("jpeg item")
+                .mime_type,
+            "image/jpeg"
+        );
+        let updated = selected.expect("selected");
+        let third = repository
+            .create_local_review_image_item(
+                &collection,
+                updated.updated_at_ms,
+                "Duplicate",
+                &png_bytes,
+            )
+            .expect("third");
+        let after_third = current(&mut repository);
+        assert!(matches!(
+            repository.create_local_review_image_item(
+                &collection,
+                after_third.updated_at_ms,
+                "Fourth",
+                &png_bytes
+            ),
+            Err(StorageError::TaskCapacity)
+        ));
+        assert!(matches!(
+            repository.create_local_review_image_item(
+                &collection,
+                after_third.updated_at_ms - 1,
+                "Stale",
+                &png_bytes
+            ),
+            Err(StorageError::InvalidStatusTransition)
+        ));
+        repository
+            .discard_local_review_item(&collection, &third, after_third.updated_at_ms)
+            .expect("discard");
+        let (_, selected, items, _, total_after, _) = repository
+            .local_review_snapshot(Some(&collection))
+            .expect("after");
+        assert_eq!(items.len(), 2);
+        assert!(total_after < total_before + png_bytes.len() as u64 + 512);
+        let current = selected.expect("selected");
+        for invalid in [
+            vec![0],
+            png(0, 1, false),
+            png(1, 0, false),
+            png(1, 1, true),
+            jpeg(1, 1, false),
+            jpeg(0, 1, true),
+            jpeg(1, 0, true),
+        ] {
+            assert!(repository
+                .create_local_review_image_item(
+                    &collection,
+                    current.updated_at_ms,
+                    "Invalid",
+                    &invalid
+                )
+                .is_err());
+        }
+        assert_eq!(
+            repository
+                .local_review_snapshot(Some(&collection))
+                .expect("unchanged")
+                .2
+                .len(),
+            2
+        );
+    }
+
+    #[test]
+    fn local_review_image_preview_withholds_corrupt_or_mismatched_rows() {
+        let mut repository = ProjectRepository::in_memory().expect("schema migrates");
+        let task = repository.create_task().expect("task");
+        let collection = repository
+            .create_local_review_collection(&task, None, "Image")
+            .expect("collection");
+        let selected = repository
+            .local_review_snapshot(Some(&collection))
+            .expect("snapshot")
+            .1
+            .expect("selected");
+        let id = repository
+            .create_local_review_image_item(
+                &collection,
+                selected.updated_at_ms,
+                "PNG",
+                &png(1, 1, false),
+            )
+            .expect("image");
+        let item = repository
+            .local_review_snapshot(Some(&collection))
+            .expect("items")
+            .2
+            .remove(0);
+        assert!(repository
+            .local_review_image_preview(&id, &"0".repeat(64))
+            .is_err());
+        repository
+            .connection
+            .execute(
+                "UPDATE local_review_items SET byte_size = byte_size + 1 WHERE id = ?1",
+                [&id],
+            )
+            .expect("corrupt");
+        assert!(repository
+            .local_review_image_preview(&id, &item.sha256)
+            .is_err());
+    }
+
+    #[test]
+    fn local_review_text_preview_is_canonical_bounded_and_read_only() {
+        let mut repository = ProjectRepository::in_memory().expect("schema");
+        let task = repository.create_task().expect("task");
+        let collection = repository
+            .create_local_review_collection(&task, None, "Text previews")
+            .expect("collection");
+        let formats = [
+            (LocalReviewTextFormat::Plain, "plain\r\ntext"),
+            (LocalReviewTextFormat::Markdown, "# Markdown"),
+            (LocalReviewTextFormat::Json, "{\"value\":1}"),
+            (LocalReviewTextFormat::Csv, "left,right\n1,2"),
+            (LocalReviewTextFormat::Python, "print('safe')"),
+        ];
+        for (index, (format, content)) in formats.into_iter().enumerate() {
+            let selected = repository
+                .local_review_snapshot(Some(&collection))
+                .expect("snapshot")
+                .1
+                .expect("collection");
+            let item = repository
+                .create_local_review_text_item(
+                    &collection,
+                    selected.updated_at_ms,
+                    &format!("Text {index}"),
+                    format,
+                    content,
+                )
+                .expect("text item");
+            let snapshot_before = repository
+                .local_review_snapshot(Some(&collection))
+                .expect("before preview");
+            let summary = snapshot_before
+                .2
+                .iter()
+                .find(|value| value.item_id == item)
+                .expect("item");
+            let preview = repository
+                .local_review_text_preview(&collection, &item, &summary.sha256)
+                .expect("preview");
+            assert_eq!(preview.state, LocalReviewItemState::Ready);
+            assert_eq!(preview.text_format, Some(format));
+            assert_eq!(
+                preview.text.as_deref(),
+                Some(content.replace("\r\n", "\n").as_str())
+            );
+            assert!(!preview.truncated);
+            assert_eq!(
+                repository
+                    .local_review_snapshot(Some(&collection))
+                    .expect("after preview"),
+                snapshot_before
+            );
+        }
+
+        let selected = repository
+            .local_review_snapshot(Some(&collection))
+            .expect("snapshot")
+            .1
+            .expect("collection");
+        let long = (0..2_001)
+            .map(|index| format!("line {index}\n"))
+            .collect::<String>();
+        let item = repository
+            .create_local_review_text_item(
+                &collection,
+                selected.updated_at_ms,
+                "Long",
+                LocalReviewTextFormat::Plain,
+                &long,
+            )
+            .expect("long text");
+        let sha: String = repository
+            .connection
+            .query_row(
+                "SELECT sha256 FROM local_review_items WHERE id = ?1",
+                [&item],
+                |row| row.get(0),
+            )
+            .expect("sha");
+        let preview = repository
+            .local_review_text_preview(&collection, &item, &sha)
+            .expect("bounded preview");
+        assert!(preview.truncated);
+        assert_eq!(preview.projected_line_count, 2_000);
+        assert!(preview.projected_byte_size <= 128 * 1024);
+        assert!(!preview.text.expect("text").contains('\r'));
+    }
+
+    #[test]
+    fn local_review_text_preview_withholds_mismatched_corrupt_and_recovery_rows() {
+        let mut repository = ProjectRepository::in_memory().expect("schema");
+        let task = repository.create_task().expect("task");
+        let collection = repository
+            .create_local_review_collection(&task, None, "Text previews")
+            .expect("collection");
+        let updated = repository
+            .local_review_snapshot(Some(&collection))
+            .expect("snapshot")
+            .1
+            .expect("collection")
+            .updated_at_ms;
+        let item = repository
+            .create_local_review_text_item(
+                &collection,
+                updated,
+                "Text",
+                LocalReviewTextFormat::Plain,
+                "safe text",
+            )
+            .expect("item");
+        let sha: String = repository
+            .connection
+            .query_row(
+                "SELECT sha256 FROM local_review_items WHERE id = ?1",
+                [&item],
+                |row| row.get(0),
+            )
+            .expect("sha");
+        assert_eq!(
+            repository
+                .local_review_text_preview(&collection, &item, &"0".repeat(64))
+                .expect("mismatch")
+                .text,
+            None
+        );
+        repository
+            .connection
+            .execute(
+                "UPDATE local_review_items SET content = x'00' WHERE id = ?1",
+                [&item],
+            )
+            .expect("corrupt row");
+        assert_eq!(
+            repository
+                .local_review_text_preview(&collection, &item, &sha)
+                .expect("corrupt")
+                .state,
+            LocalReviewItemState::Unavailable
+        );
+        repository
+            .connection
+            .execute(
+                "UPDATE local_review_items SET content = ?1 WHERE id = ?2",
+                params![b"safe text".to_vec(), item],
+            )
+            .expect("restore fixture");
+        repository
+            .connection
+            .execute(
+                "UPDATE local_review_items SET sha256 = ?1 WHERE id = ?2",
+                params![review_digest(b"safe text"), item],
+            )
+            .expect("restore digest");
+        repository
+            .connection
+            .execute(
+                "UPDATE local_review_items SET state = 'stale' WHERE id = ?1",
+                [&item],
+            )
+            .expect("stale fixture");
+        let stale = repository
+            .local_review_text_preview(&collection, &item, &review_digest(b"safe text"))
+            .expect("stale preview");
+        assert_eq!(stale.state, LocalReviewItemState::Stale);
+        assert_eq!(stale.text, None);
+        repository
+            .connection
+            .execute(
+                "UPDATE local_review_items SET state = 'ready' WHERE id = ?1",
+                [&item],
+            )
+            .expect("ready fixture");
+        repository
+            .set_task_status(&task, TaskStatus::Completed)
+            .expect("freeze");
+        assert_eq!(
+            repository
+                .local_review_text_preview(&collection, &item, &review_digest(b"safe text"))
+                .expect("frozen recovery preview")
+                .text
+                .as_deref(),
+            Some("safe text")
+        );
+        repository.delete_task(&task).expect("orphan");
+        assert_eq!(
+            repository
+                .local_review_text_preview(&collection, &item, &review_digest(b"safe text"))
+                .expect("orphan recovery preview")
+                .text
+                .as_deref(),
+            Some("safe text")
+        );
+        assert_eq!(
+            repository
+                .local_review_text_preview(
+                    &Uuid::now_v7().to_string(),
+                    &item,
+                    &review_digest(b"safe text")
+                )
+                .expect("collection mismatch")
+                .state,
+            LocalReviewItemState::Unavailable
+        );
+    }
+
+    #[test]
+    fn local_review_manual_evidence_is_canonical_digest_bound_and_accounted() {
+        let mut repository = ProjectRepository::in_memory().expect("schema");
+        let task = repository.create_task().expect("task");
+        let collection = repository
+            .create_local_review_collection(&task, None, "Evidence")
+            .expect("collection");
+        let before = repository
+            .local_review_snapshot(Some(&collection))
+            .expect("before");
+        let selected = before.1.expect("selected");
+        let id = repository
+            .create_local_review_manual_evidence_item(
+                &collection,
+                selected.updated_at_ms,
+                "Validation",
+                "line one\r\nline two",
+            )
+            .expect("evidence");
+        let (content, digest, byte_size, class, source): (Vec<u8>, String, i64, String, String) = repository.connection.query_row("SELECT content, sha256, byte_size, class, provenance FROM local_review_items WHERE id = ?1", [&id], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?))).expect("row");
+        assert_eq!(class, "evidence");
+        assert_eq!(source, "manual-validation-summary");
+        assert_eq!(digest, review_digest(&content));
+        assert_eq!(byte_size, content.len() as i64);
+        let canonical = String::from_utf8(content).expect("utf8");
+        assert!(canonical.contains("line one\\nline two"));
+        assert!(!canonical.contains("\r"));
+        assert!(!canonical.contains("path"));
+        assert!(!canonical.contains("://"));
+        assert!(
+            review_payload_bytes(&repository.connection, None).expect("payload") > before.4 as i64
+        );
+        assert!(matches!(
+            repository.create_local_review_manual_evidence_item(
+                &collection,
+                selected.updated_at_ms,
+                "Stale",
+                "summary"
+            ),
+            Err(StorageError::InvalidStatusTransition)
+        ));
+        assert_eq!(
+            repository
+                .connection
+                .query_row(
+                    "SELECT count(*) FROM local_review_items WHERE collection_id = ?1",
+                    [&collection],
+                    |row| row.get::<_, i64>(0)
+                )
+                .expect("count"),
+            1
+        );
+    }
+
+    #[test]
+    fn local_review_manual_evidence_enforces_count_and_size_quotas() {
+        let mut repository = ProjectRepository::in_memory().expect("schema");
+        let task = repository.create_task().expect("task");
+        let collection = repository
+            .create_local_review_collection(&task, None, "Evidence")
+            .expect("collection");
+        for index in 0..6 {
+            let updated: i64 = repository
+                .connection
+                .query_row(
+                    "SELECT updated_at_ms FROM local_review_collections WHERE id = ?1",
+                    [&collection],
+                    |row| row.get(0),
+                )
+                .expect("timestamp");
+            repository
+                .create_local_review_manual_evidence_item(
+                    &collection,
+                    updated,
+                    &format!("Evidence {index}"),
+                    "summary",
+                )
+                .expect("evidence");
+        }
+        let timestamp: i64 = repository
+            .connection
+            .query_row(
+                "SELECT updated_at_ms FROM local_review_collections WHERE id = ?1",
+                [&collection],
+                |row| row.get(0),
+            )
+            .expect("timestamp");
+        let count: i64 = repository.connection.query_row("SELECT count(*) FROM local_review_items WHERE collection_id = ?1 AND class = 'evidence'", [&collection], |row| row.get(0)).expect("count");
+        assert_eq!(count, 6);
+        assert!(matches!(
+            repository.create_local_review_manual_evidence_item(
+                &collection,
+                timestamp,
+                "Seventh",
+                "summary"
+            ),
+            Err(StorageError::TaskCapacity)
+        ));
+        assert_eq!(
+            repository
+                .connection
+                .query_row(
+                    "SELECT count(*) FROM local_review_items WHERE collection_id = ?1",
+                    [&collection],
+                    |row| row.get::<_, i64>(0)
+                )
+                .expect("unchanged"),
+            6
+        );
+        let other = repository
+            .create_local_review_collection(&task, None, "Size")
+            .expect("size collection");
+        let selected: i64 = repository
+            .connection
+            .query_row(
+                "SELECT updated_at_ms FROM local_review_collections WHERE id = ?1",
+                [&other],
+                |row| row.get(0),
+            )
+            .expect("timestamp");
+        assert!(repository
+            .create_local_review_manual_evidence_item(
+                &other,
+                selected,
+                "Too large",
+                &"x".repeat(16 * 1024)
+            )
+            .is_err());
+    }
+
+    #[test]
+    fn local_review_manual_evidence_discard_recovers_quota_and_payload() {
+        let mut repository = ProjectRepository::in_memory().expect("schema");
+        let task = repository.create_task().expect("task");
+        let collection = repository
+            .create_local_review_collection(&task, None, "Evidence")
+            .expect("collection");
+        let mut ids = Vec::new();
+        for index in 0..6 {
+            let selected: i64 = repository
+                .connection
+                .query_row(
+                    "SELECT updated_at_ms FROM local_review_collections WHERE id = ?1",
+                    [&collection],
+                    |row| row.get(0),
+                )
+                .expect("timestamp");
+            ids.push(
+                repository
+                    .create_local_review_manual_evidence_item(
+                        &collection,
+                        selected,
+                        &format!("Evidence {index}"),
+                        "summary",
+                    )
+                    .expect("evidence"),
+            );
+        }
+        let before = review_payload_bytes(&repository.connection, None).expect("payload");
+        let updated: i64 = repository
+            .connection
+            .query_row(
+                "SELECT updated_at_ms FROM local_review_collections WHERE id = ?1",
+                [&collection],
+                |row| row.get(0),
+            )
+            .expect("updated");
+        repository
+            .discard_local_review_item(&collection, &ids[0], updated)
+            .expect("discard");
+        assert_eq!(
+            repository
+                .connection
+                .query_row(
+                    "SELECT count(*) FROM local_review_items WHERE collection_id = ?1",
+                    [&collection],
+                    |row| row.get::<_, i64>(0)
+                )
+                .expect("count"),
+            5
+        );
+        assert!(review_payload_bytes(&repository.connection, None).expect("payload") < before);
+        let refreshed: i64 = repository
+            .connection
+            .query_row(
+                "SELECT updated_at_ms FROM local_review_collections WHERE id = ?1",
+                [&collection],
+                |row| row.get(0),
+            )
+            .expect("updated");
+        repository
+            .create_local_review_manual_evidence_item(
+                &collection,
+                refreshed,
+                "Replacement",
+                "summary",
+            )
+            .expect("replacement");
+    }
+
+    #[test]
+    fn local_review_manual_evidence_projects_warning_thresholds() {
+        let mut repository = ProjectRepository::in_memory().expect("schema");
+        let task = repository.create_task().expect("task");
+        let collection = repository
+            .create_local_review_collection(&task, None, "Evidence")
+            .expect("collection");
+        for index in 0..4 {
+            let updated: i64 = repository
+                .connection
+                .query_row(
+                    "SELECT updated_at_ms FROM local_review_collections WHERE id = ?1",
+                    [&collection],
+                    |row| row.get(0),
+                )
+                .expect("updated");
+            repository
+                .create_local_review_manual_evidence_item(
+                    &collection,
+                    updated,
+                    &format!("E{index}"),
+                    "summary",
+                )
+                .expect("evidence");
+        }
+        assert!(!repository.local_review_snapshot(None).expect("snapshot").0[0].warning);
+        let updated: i64 = repository
+            .connection
+            .query_row(
+                "SELECT updated_at_ms FROM local_review_collections WHERE id = ?1",
+                [&collection],
+                |row| row.get(0),
+            )
+            .expect("updated");
+        repository
+            .create_local_review_manual_evidence_item(&collection, updated, "E5", "summary")
+            .expect("fifth");
+        assert!(repository.local_review_snapshot(None).expect("snapshot").0[0].warning);
+    }
+
+    #[test]
+    fn local_review_manual_evidence_preview_is_canonical_and_path_free() {
+        let mut repository = ProjectRepository::in_memory().expect("schema");
+        let task = repository.create_task().expect("task");
+        let collection = repository
+            .create_local_review_collection(&task, None, "Evidence")
+            .expect("collection");
+        let updated: i64 = repository
+            .connection
+            .query_row(
+                "SELECT updated_at_ms FROM local_review_collections WHERE id = ?1",
+                [&collection],
+                |row| row.get(0),
+            )
+            .expect("updated");
+        let id = repository
+            .create_local_review_manual_evidence_item(
+                &collection,
+                updated,
+                "Validation",
+                "line\r\nsummary",
+            )
+            .expect("evidence");
+        let sha: String = repository
+            .connection
+            .query_row(
+                "SELECT sha256 FROM local_review_items WHERE id = ?1",
+                [&id],
+                |row| row.get(0),
+            )
+            .expect("sha");
+        let preview = repository
+            .local_review_manual_evidence_preview(&id, &sha)
+            .expect("preview");
+        assert_eq!(preview.summary, "line\nsummary");
+        assert_eq!(preview.source, "manual-validation-summary");
+        assert!(!format!("{preview:?}").contains("path"));
+        repository
+            .connection
+            .execute(
+                "UPDATE local_review_items SET content = x'7B' WHERE id = ?1",
+                [&id],
+            )
+            .expect("corrupt");
+        assert!(repository
+            .local_review_manual_evidence_preview(&id, &sha)
+            .is_err());
+    }
+
+    #[test]
     fn failed_task_deletion_rolls_back_task_and_all_plans() {
         let mut repository = ProjectRepository::in_memory().expect("schema must migrate");
         let task = repository.create_task().expect("task must create");
@@ -3882,5 +10688,348 @@ mod tests {
         repository
             .delete_task(&task)
             .expect("recovered deletion must commit");
+    }
+
+    #[test]
+    fn local_review_text_comparison_enforces_quota_and_side_limits() {
+        let mut repository = ProjectRepository::in_memory().expect("schema");
+        let task = repository.create_task().expect("task");
+        let plan = repository
+            .task_catalog(Some(&task), false, None)
+            .expect("catalog")
+            .1
+            .expect("task")
+            .selected_plan_id;
+        let collection = repository
+            .create_local_review_collection(&task, Some(&plan), "Comparison quotas")
+            .expect("collection");
+        let timestamp = |repository: &ProjectRepository| {
+            repository
+                .connection
+                .query_row(
+                    "SELECT updated_at_ms FROM local_review_collections WHERE id = ?1",
+                    [&collection],
+                    |row| row.get::<_, i64>(0),
+                )
+                .expect("timestamp")
+        };
+        let left = repository
+            .create_local_review_text_item(
+                &collection,
+                timestamp(&repository),
+                "Left",
+                LocalReviewTextFormat::Plain,
+                "left",
+            )
+            .expect("left");
+        let right = repository
+            .create_local_review_text_item(
+                &collection,
+                timestamp(&repository),
+                "Right",
+                LocalReviewTextFormat::Plain,
+                "right",
+            )
+            .expect("right");
+        for index in 0..8 {
+            repository
+                .create_local_review_text_comparison(
+                    &collection,
+                    &left,
+                    &right,
+                    timestamp(&repository),
+                )
+                .unwrap_or_else(|error| panic!("comparison {index}: {error:?}"));
+            let warning = repository
+                .local_review_snapshot(Some(&collection))
+                .expect("snapshot")
+                .1
+                .expect("selected")
+                .comparison_count_warning;
+            assert_eq!(warning, index >= 5);
+        }
+        let before = timestamp(&repository);
+        assert!(matches!(
+            repository.create_local_review_text_comparison(&collection, &left, &right, before),
+            Err(StorageError::TaskCapacity)
+        ));
+        assert_eq!(timestamp(&repository), before);
+        assert_eq!(
+            repository
+                .local_review_comparisons(&collection)
+                .expect("bindings")
+                .len(),
+            8
+        );
+
+        let limits_collection = repository
+            .create_local_review_collection(&task, Some(&plan), "Comparison side limits")
+            .expect("limits collection");
+        let limits_timestamp = |repository: &ProjectRepository| {
+            repository
+                .connection
+                .query_row(
+                    "SELECT updated_at_ms FROM local_review_collections WHERE id = ?1",
+                    [&limits_collection],
+                    |row| row.get::<_, i64>(0),
+                )
+                .expect("limits timestamp")
+        };
+        let limits_left = repository
+            .create_local_review_text_item(
+                &limits_collection,
+                limits_timestamp(&repository),
+                "Limits left",
+                LocalReviewTextFormat::Plain,
+                "left",
+            )
+            .expect("limits left");
+        let oversized = "x".repeat(128 * 1024 + 1);
+        let oversized_item = Uuid::now_v7().to_string();
+        let oversized_now = 1_i64;
+        repository
+            .connection
+            .execute(
+                "INSERT INTO local_review_items (id, schema_version, collection_id, class, text_format, mime_type, width, height, state, title, source_kind, provenance, content, sha256, byte_size, created_at_ms, updated_at_ms) VALUES (?1, 1, ?2, 'text', 'plain', 'text/plain; charset=utf-8', NULL, NULL, 'ready', 'Oversized', 'user-authored-text', '', ?3, ?4, ?5, ?6, ?6)",
+                params![oversized_item, limits_collection, oversized.as_bytes(), review_digest(oversized.as_bytes()), oversized.len() as i64, oversized_now],
+            )
+            .expect("oversized fixture");
+        let before = limits_timestamp(&repository);
+        assert!(matches!(
+            repository.create_local_review_text_comparison(
+                &limits_collection,
+                &limits_left,
+                &oversized_item,
+                before
+            ),
+            Err(StorageError::InvalidStoredValue)
+        ));
+        assert_eq!(limits_timestamp(&repository), before);
+        let lines = "line\n".repeat(2_001);
+        let line_item = repository
+            .create_local_review_text_item(
+                &limits_collection,
+                limits_timestamp(&repository),
+                "Too many lines",
+                LocalReviewTextFormat::Plain,
+                &lines,
+            )
+            .expect("line text remains valid review text");
+        let before = limits_timestamp(&repository);
+        assert!(matches!(
+            repository.create_local_review_text_comparison(
+                &limits_collection,
+                &limits_left,
+                &line_item,
+                before
+            ),
+            Err(StorageError::InvalidStoredValue)
+        ));
+        assert_eq!(limits_timestamp(&repository), before);
+    }
+
+    #[test]
+    fn local_review_text_comparison_discard_isolated_and_recovers_capacity() {
+        let mut repository = ProjectRepository::in_memory().expect("schema");
+        let task = repository.create_task().expect("task");
+        let plan = repository
+            .task_catalog(Some(&task), false, None)
+            .expect("catalog")
+            .1
+            .expect("task")
+            .selected_plan_id;
+        let collection = repository
+            .create_local_review_collection(&task, Some(&plan), "Comparison discard")
+            .expect("collection");
+        let timestamp = |repository: &ProjectRepository| {
+            repository
+                .connection
+                .query_row(
+                    "SELECT updated_at_ms FROM local_review_collections WHERE id = ?1",
+                    [&collection],
+                    |row| row.get::<_, i64>(0),
+                )
+                .expect("timestamp")
+        };
+        let left = repository
+            .create_local_review_text_item(
+                &collection,
+                timestamp(&repository),
+                "Left",
+                LocalReviewTextFormat::Plain,
+                "left",
+            )
+            .expect("left");
+        let right = repository
+            .create_local_review_text_item(
+                &collection,
+                timestamp(&repository),
+                "Right",
+                LocalReviewTextFormat::Plain,
+                "right",
+            )
+            .expect("right");
+        let source_before = repository
+            .local_review_snapshot(Some(&collection))
+            .expect("snapshot")
+            .2;
+        let mut bindings = Vec::new();
+        for _ in 0..8 {
+            bindings.push(
+                repository
+                    .create_local_review_text_comparison(
+                        &collection,
+                        &left,
+                        &right,
+                        timestamp(&repository),
+                    )
+                    .expect("binding"),
+            );
+        }
+        let stale = timestamp(&repository) - 1;
+        assert!(matches!(
+            repository.discard_local_review_text_comparison(&collection, &bindings[0], stale),
+            Err(StorageError::InvalidStatusTransition)
+        ));
+        let before = timestamp(&repository);
+        repository
+            .discard_local_review_text_comparison(&collection, &bindings[0], before)
+            .expect("discard");
+        assert_eq!(
+            repository
+                .local_review_comparisons(&collection)
+                .expect("bindings")
+                .len(),
+            7
+        );
+        assert!(repository
+            .local_review_comparisons(&collection)
+            .expect("bindings")
+            .iter()
+            .all(|binding| binding.comparison_id != bindings[0]));
+        assert_eq!(
+            repository
+                .local_review_snapshot(Some(&collection))
+                .expect("snapshot")
+                .2,
+            source_before
+        );
+        repository
+            .create_local_review_text_comparison(&collection, &left, &right, timestamp(&repository))
+            .expect("replacement");
+        let before_missing = timestamp(&repository);
+        assert!(matches!(
+            repository.discard_local_review_text_comparison(
+                &collection,
+                &Uuid::now_v7().to_string(),
+                before_missing
+            ),
+            Err(StorageError::TaskNotFound)
+        ));
+        assert_eq!(timestamp(&repository), before_missing);
+    }
+
+    #[test]
+    fn local_review_text_comparison_read_withholds_stale_or_corrupt_sides() {
+        let mut repository = ProjectRepository::in_memory().expect("schema");
+        let task = repository.create_task().expect("task");
+        let plan = repository
+            .task_catalog(Some(&task), false, None)
+            .expect("catalog")
+            .1
+            .expect("task")
+            .selected_plan_id;
+        let collection = repository
+            .create_local_review_collection(&task, Some(&plan), "Comparison integrity")
+            .expect("collection");
+        let timestamp = |repository: &ProjectRepository| {
+            repository
+                .connection
+                .query_row(
+                    "SELECT updated_at_ms FROM local_review_collections WHERE id = ?1",
+                    [&collection],
+                    |row| row.get::<_, i64>(0),
+                )
+                .expect("timestamp")
+        };
+        let left = repository
+            .create_local_review_text_item(
+                &collection,
+                timestamp(&repository),
+                "Left",
+                LocalReviewTextFormat::Plain,
+                "left",
+            )
+            .expect("left");
+        let right = repository
+            .create_local_review_text_item(
+                &collection,
+                timestamp(&repository),
+                "Right",
+                LocalReviewTextFormat::Plain,
+                "right",
+            )
+            .expect("right");
+        let comparison = repository
+            .create_local_review_text_comparison(&collection, &left, &right, timestamp(&repository))
+            .expect("binding");
+        repository
+            .connection
+            .execute(
+                "UPDATE local_review_items SET content = ?1, sha256 = ?2, byte_size = ?3 WHERE id = ?4",
+                params![b"changed".to_vec(), review_digest(b"changed"), 7_i64, left],
+            )
+            .expect("changed fixture");
+        assert_eq!(
+            repository
+                .local_review_comparisons(&collection)
+                .expect("bindings")[0]
+                .state,
+            LocalReviewComparisonState::Stale
+        );
+        let stale = repository
+            .local_review_line_comparison(&comparison)
+            .expect("stale projection");
+        assert_eq!(stale.state, LocalReviewComparisonState::Stale);
+        assert!(stale.lines.is_empty());
+        repository
+            .connection
+            .execute(
+                "UPDATE local_review_items SET byte_size = byte_size + 1 WHERE id = ?1",
+                [&right],
+            )
+            .expect("corrupt fixture");
+        assert_eq!(
+            repository
+                .local_review_comparisons(&collection)
+                .expect("bindings")[0]
+                .state,
+            LocalReviewComparisonState::Unavailable
+        );
+        assert_eq!(
+            repository
+                .local_review_line_comparison(&comparison)
+                .expect("unavailable projection")
+                .state,
+            LocalReviewComparisonState::Unavailable
+        );
+        let columns: Vec<String> = repository
+            .connection
+            .prepare("PRAGMA table_info(local_review_comparisons)")
+            .expect("pragma")
+            .query_map([], |row| row.get(1))
+            .expect("columns")
+            .collect::<Result<_, _>>()
+            .expect("columns");
+        assert!(!columns.iter().any(|column| column.contains("result")));
+        let projected = serde_json::to_value(
+            repository
+                .local_review_comparisons(&collection)
+                .expect("bindings"),
+        )
+        .expect("serialize");
+        for forbidden in ["path", "url", "git", "repository", "shell", "command"] {
+            assert!(!projected.to_string().contains(forbidden));
+        }
     }
 }

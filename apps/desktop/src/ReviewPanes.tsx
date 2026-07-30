@@ -23,6 +23,7 @@ const panes = {
   preview: lazy(() => import("./review-panes/PreviewPane")),
   activity: lazy(() => import("./review-panes/ActivityPane")),
   approval: lazy(() => import("./review-panes/ApprovalPane")),
+  review: lazy(() => import("./review-panes/LocalReviewPane")),
 };
 
 const labels: Record<ReviewPaneId, string> = {
@@ -32,6 +33,7 @@ const labels: Record<ReviewPaneId, string> = {
   preview: "Preview",
   activity: "Activity",
   approval: "Approval",
+  review: "Review",
 };
 
 export function ReviewPanes({

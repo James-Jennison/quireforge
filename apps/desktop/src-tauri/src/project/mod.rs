@@ -1,11 +1,13 @@
 mod identity;
+mod package_validation;
 mod storage;
 pub mod types;
 
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{HashMap, HashSet, VecDeque},
     path::{Path, PathBuf},
     sync::Mutex,
+    time::{Duration, Instant},
 };
 
 use storage::{
@@ -13,12 +15,35 @@ use storage::{
 };
 pub(crate) use storage::{StoredConversationReference, StoredTerminalSession};
 use types::{
-    DirectoryAccessibilityState, DirectorySummary, GitSummary, PendingAttachmentKind,
-    PendingAttachmentPreview, ProjectDiagnosticCode, ProjectPreflightSnapshot, ProjectSummary,
-    ProjectWorkspaceSnapshot, ProjectWorkspaceState, TaskCatalogListRequest, TaskCatalogSnapshot,
-    TaskCatalogState, TaskDiagnosticCode, PROJECT_SCHEMA_VERSION, TASK_RECORD_SCHEMA_VERSION,
+    DirectoryAccessibilityState, DirectorySummary, GitSummary, LocalReviewAnnotationCreateRequest,
+    LocalReviewAnnotationEditRequest, LocalReviewAnnotationMutationRequest,
+    LocalReviewCollectionCreateRequest, LocalReviewCollectionMutationRequest,
+    LocalReviewComparisonCreateRequest, LocalReviewComparisonDiscardRequest,
+    LocalReviewComparisonReadRequest, LocalReviewDiagnosticCode, LocalReviewEvidenceArtifactKind,
+    LocalReviewEvidenceArtifactState, LocalReviewEvidenceSource, LocalReviewImagePickRequest,
+    LocalReviewImagePreview, LocalReviewImagePreviewRequest, LocalReviewItemDiscardRequest,
+    LocalReviewListRequest, LocalReviewM48ArtifactCopyRequest,
+    LocalReviewM48GeneratedArtifactMetadataDetails,
+    LocalReviewM48GeneratedArtifactMetadataEvidencePreview,
+    LocalReviewM48GeneratedArtifactMetadataEvidenceRequest, LocalReviewManualEvidenceCreateRequest,
+    LocalReviewManualEvidenceCreateResult, LocalReviewManualEvidencePreview,
+    LocalReviewPromotionCandidate, LocalReviewPromotionPrepareRequest,
+    LocalReviewPromotionReservationRequest, LocalReviewPromotionReservationState,
+    LocalReviewSafePreviewMetadataDetails, LocalReviewSafePreviewMetadataEvidencePreview,
+    LocalReviewSafePreviewMetadataEvidenceRequest, LocalReviewSnapshot,
+    LocalReviewTextItemCreateRequest, LocalReviewTextPreview, LocalReviewTextPreviewRequest,
+    PendingAttachmentKind, PendingAttachmentPreview, ProjectDiagnosticCode,
+    ProjectPreflightSnapshot, ProjectSummary, ProjectWorkspaceSnapshot, ProjectWorkspaceState,
+    TaskCatalogListRequest, TaskCatalogSnapshot, TaskCatalogState, TaskDiagnosticCode,
+    LOCAL_REVIEW_SCHEMA_VERSION, PROJECT_SCHEMA_VERSION, TASK_RECORD_SCHEMA_VERSION,
 };
 use uuid::Uuid;
+
+use crate::advisor_generated_artifact::{
+    AdvisorGeneratedArtifactService, GeneratedArtifactClaimRequest, GeneratedArtifactClass,
+    GeneratedArtifactCreateRequest, GeneratedArtifactManifestV1, GeneratedArtifactSourceKind,
+    GeneratedArtifactState, MAX_ARTIFACTS,
+};
 
 use crate::advisor::{
     AdvisorApprovalSnapshot, AdvisorDispatchProposal, AdvisorDispatchState,
@@ -43,7 +68,19 @@ pub struct ProjectService {
     pending: Mutex<Option<PendingAttachment>>,
     active_executions: Mutex<HashSet<String>>,
     active_terminals: Mutex<HashMap<String, usize>>,
+    promotion_reservations: Mutex<VecDeque<LocalReviewPromotionReservation>>,
 }
+
+struct LocalReviewPromotionReservation {
+    candidate: LocalReviewPromotionCandidate,
+    observed_plan_updated_at_ms: Option<i64>,
+    content: String,
+    class: GeneratedArtifactClass,
+    created: Instant,
+}
+
+const LOCAL_REVIEW_PROMOTION_RESERVATION_LIMIT: usize = 16;
+const LOCAL_REVIEW_PROMOTION_RESERVATION_TTL: Duration = Duration::from_secs(5 * 60);
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum ProjectExecutionError {
@@ -153,6 +190,741 @@ pub(crate) struct ConversationPendingSelection<'a> {
 }
 
 impl ProjectService {
+    pub fn local_review(&self, request: LocalReviewListRequest) -> LocalReviewSnapshot {
+        let selected = request.selected_collection_id.as_deref();
+        let result = self.repository.lock().ok().and_then(|mut repository| {
+            let repository = repository.as_mut()?;
+            let snapshot = repository.local_review_snapshot(selected).ok()?;
+            let comparisons = selected
+                .and_then(|id| repository.local_review_comparisons(id).ok())
+                .unwrap_or_default();
+            Some((snapshot, comparisons))
+        });
+        match result {
+            Some((
+                (collections, selected_collection, items, collection_count, payload_bytes, warning),
+                comparisons,
+            )) => LocalReviewSnapshot {
+                schema_version: LOCAL_REVIEW_SCHEMA_VERSION,
+                collections,
+                selected_collection,
+                items,
+                comparisons,
+                collection_count,
+                payload_bytes,
+                warning,
+                diagnostic_code: None,
+            },
+            None => local_review_unavailable(LocalReviewDiagnosticCode::MetadataUnavailable),
+        }
+    }
+
+    pub fn create_local_review_text_comparison(
+        &self,
+        request: LocalReviewComparisonCreateRequest,
+    ) -> LocalReviewSnapshot {
+        let collection_id = request.collection_id.clone();
+        let result = self.repository.lock().ok().and_then(|mut repository| {
+            repository
+                .as_mut()?
+                .create_local_review_text_comparison(
+                    &request.collection_id,
+                    &request.left_item_id,
+                    &request.right_item_id,
+                    request.expected_collection_updated_at_ms,
+                )
+                .ok()
+        });
+        let mut snapshot = self.local_review(LocalReviewListRequest {
+            selected_collection_id: Some(collection_id),
+        });
+        if result.is_none() {
+            snapshot.diagnostic_code = Some(LocalReviewDiagnosticCode::InvalidRequest);
+        }
+        snapshot
+    }
+
+    pub fn discard_local_review_text_comparison(
+        &self,
+        request: LocalReviewComparisonDiscardRequest,
+    ) -> LocalReviewSnapshot {
+        let collection_id = request.collection_id.clone();
+        let result = self.repository.lock().ok().and_then(|mut repository| {
+            repository
+                .as_mut()?
+                .discard_local_review_text_comparison(
+                    &request.collection_id,
+                    &request.comparison_id,
+                    request.expected_collection_updated_at_ms,
+                )
+                .ok()
+        });
+        let mut snapshot = self.local_review(LocalReviewListRequest {
+            selected_collection_id: Some(collection_id),
+        });
+        if result.is_none() {
+            snapshot.diagnostic_code = Some(LocalReviewDiagnosticCode::InvalidRequest);
+        }
+        snapshot
+    }
+
+    pub fn local_review_line_comparison(
+        &self,
+        request: LocalReviewComparisonReadRequest,
+    ) -> Result<types::LocalReviewLineComparison, ()> {
+        self.repository
+            .lock()
+            .ok()
+            .and_then(|repository| {
+                let repository = repository.as_ref()?;
+                let comparisons = repository
+                    .local_review_comparisons(&request.collection_id)
+                    .ok()?;
+                comparisons
+                    .iter()
+                    .any(|comparison| comparison.comparison_id == request.comparison_id)
+                    .then(|| {
+                        repository
+                            .local_review_line_comparison(&request.comparison_id)
+                            .ok()
+                    })
+                    .flatten()
+            })
+            .ok_or(())
+    }
+
+    pub fn prepare_local_review_promotion(
+        &self,
+        request: LocalReviewPromotionPrepareRequest,
+        artifacts: &AdvisorGeneratedArtifactService,
+    ) -> Result<LocalReviewPromotionCandidate, ()> {
+        let source = self
+            .repository
+            .lock()
+            .ok()
+            .and_then(|mut repository| {
+                repository
+                    .as_mut()?
+                    .local_review_promotion_source(
+                        &request.collection_id,
+                        &request.item_id,
+                        Some(request.expected_collection_updated_at_ms),
+                    )
+                    .ok()
+            })
+            .ok_or(())?;
+        if artifacts.snapshot().artifacts.len() >= MAX_ARTIFACTS {
+            return Err(());
+        }
+        let class = promotion_class(source.text_format);
+        let now = Instant::now();
+        let mut reservations = self.promotion_reservations.lock().map_err(|_| ())?;
+        expire_promotion_reservations(&mut reservations);
+        if reservations.len() >= LOCAL_REVIEW_PROMOTION_RESERVATION_LIMIT {
+            return Err(());
+        }
+        let candidate = LocalReviewPromotionCandidate {
+            reservation_id: Uuid::now_v7().to_string(),
+            collection_id: source.collection_id,
+            item_id: source.item_id,
+            title: source.title,
+            sha256: source.sha256,
+            text_format: source.text_format,
+            destination_class: promotion_class_name(class).to_owned(),
+            task_id: source.task_id,
+            plan_id: source.plan_id,
+            created_at_ms: 0,
+            expires_at_ms: LOCAL_REVIEW_PROMOTION_RESERVATION_TTL.as_millis() as u64,
+            state: LocalReviewPromotionReservationState::Prepared,
+        };
+        reservations.push_back(LocalReviewPromotionReservation {
+            candidate: candidate.clone(),
+            observed_plan_updated_at_ms: source.observed_plan_updated_at_ms,
+            content: source.content,
+            class,
+            created: now,
+        });
+        Ok(candidate)
+    }
+
+    pub fn confirm_local_review_promotion(
+        &self,
+        request: LocalReviewPromotionReservationRequest,
+        artifacts: &AdvisorGeneratedArtifactService,
+    ) -> Result<GeneratedArtifactManifestV1, ()> {
+        let reservation = {
+            let mut reservations = self.promotion_reservations.lock().map_err(|_| ())?;
+            expire_promotion_reservations(&mut reservations);
+            let index = reservations
+                .iter()
+                .position(|value| value.candidate.reservation_id == request.reservation_id)
+                .ok_or(())?;
+            reservations.remove(index).ok_or(())?
+        };
+        let source = self
+            .repository
+            .lock()
+            .ok()
+            .and_then(|mut repository| {
+                repository
+                    .as_mut()?
+                    .local_review_promotion_source(
+                        &reservation.candidate.collection_id,
+                        &reservation.candidate.item_id,
+                        None,
+                    )
+                    .ok()
+            })
+            .ok_or(())?;
+        if source.sha256 != reservation.candidate.sha256
+            || source.content != reservation.content
+            || source.text_format != reservation.candidate.text_format
+            || source.observed_plan_updated_at_ms != reservation.observed_plan_updated_at_ms
+            || artifacts.snapshot().artifacts.len() >= MAX_ARTIFACTS
+        {
+            return Err(());
+        }
+        artifacts
+            .create(GeneratedArtifactCreateRequest {
+                class: reservation.class,
+                source_kind: GeneratedArtifactSourceKind::ExplicitReviewPromotion,
+                display_label: source.title,
+                suggested_filename: format!("review-promotion{}", reservation.class.suffix()),
+                content: source.content,
+            })
+            .map_err(|_| ())
+    }
+
+    pub fn cancel_local_review_promotion(
+        &self,
+        request: LocalReviewPromotionReservationRequest,
+    ) -> Result<LocalReviewPromotionCandidate, ()> {
+        let mut reservations = self.promotion_reservations.lock().map_err(|_| ())?;
+        expire_promotion_reservations(&mut reservations);
+        let index = reservations
+            .iter()
+            .position(|value| value.candidate.reservation_id == request.reservation_id)
+            .ok_or(())?;
+        let mut reservation = reservations.remove(index).ok_or(())?.candidate;
+        reservation.state = LocalReviewPromotionReservationState::Expired;
+        Ok(reservation)
+    }
+
+    pub fn create_local_review_collection(
+        &self,
+        request: LocalReviewCollectionCreateRequest,
+    ) -> LocalReviewSnapshot {
+        let result = self.repository.lock().ok().and_then(|mut repository| {
+            repository
+                .as_mut()?
+                .create_local_review_collection(
+                    &request.task_id,
+                    request.plan_id.as_deref(),
+                    &request.title,
+                )
+                .ok()
+        });
+        match result {
+            Some(id) => self.local_review(LocalReviewListRequest {
+                selected_collection_id: Some(id),
+            }),
+            None => local_review_unavailable(LocalReviewDiagnosticCode::InvalidRequest),
+        }
+    }
+
+    pub fn create_local_review_text_item(
+        &self,
+        request: LocalReviewTextItemCreateRequest,
+    ) -> LocalReviewSnapshot {
+        let collection_id = request.collection_id.clone();
+        let result = self.repository.lock().ok().and_then(|mut repository| {
+            repository
+                .as_mut()?
+                .create_local_review_text_item(
+                    &request.collection_id,
+                    request.expected_collection_updated_at_ms,
+                    &request.title,
+                    request.text_format,
+                    &request.content,
+                )
+                .ok()
+        });
+        let mut snapshot = self.local_review(LocalReviewListRequest {
+            selected_collection_id: Some(collection_id),
+        });
+        if result.is_none() {
+            snapshot.diagnostic_code = Some(LocalReviewDiagnosticCode::InvalidRequest);
+        }
+        snapshot
+    }
+
+    pub fn create_local_review_m48_artifact_copy(
+        &self,
+        request: LocalReviewM48ArtifactCopyRequest,
+        artifacts: &AdvisorGeneratedArtifactService,
+    ) -> LocalReviewSnapshot {
+        let collection_id = request.collection_id.clone();
+        let source = artifacts
+            .local_review_copy_source(&GeneratedArtifactClaimRequest {
+                artifact_id: request.artifact_id,
+                manifest_sha256: request.manifest_sha256,
+            })
+            .ok();
+        let result = source.and_then(|source| {
+            let format = local_review_format(source.class);
+            let content = String::from_utf8(source.bytes).ok()?;
+            self.repository.lock().ok().and_then(|mut repository| {
+                repository
+                    .as_mut()?
+                    .create_local_review_m48_artifact_copy(
+                        &collection_id,
+                        request.expected_collection_updated_at_ms,
+                        &source.artifact_id,
+                        &source.sha256,
+                        &source.display_label,
+                        format,
+                        &content,
+                    )
+                    .ok()
+            })
+        });
+        let mut snapshot = self.local_review(LocalReviewListRequest {
+            selected_collection_id: Some(collection_id),
+        });
+        if result.is_none() {
+            snapshot.diagnostic_code = Some(LocalReviewDiagnosticCode::InvalidRequest);
+        }
+        snapshot
+    }
+
+    pub fn create_local_review_m48_generated_artifact_metadata_evidence(
+        &self,
+        request: LocalReviewM48GeneratedArtifactMetadataEvidenceRequest,
+        artifacts: &AdvisorGeneratedArtifactService,
+    ) -> LocalReviewManualEvidenceCreateResult {
+        let collection_id = request.collection_id.clone();
+        let source = artifacts
+            .local_review_metadata_source(&GeneratedArtifactClaimRequest {
+                artifact_id: request.artifact_id,
+                manifest_sha256: request.manifest_sha256,
+            })
+            .ok();
+        let result = source.and_then(|source| {
+            let title = format!("Generated artifact metadata: {}", source.display_label);
+            let summary = "Captured live generated-artifact metadata only.";
+            let details = LocalReviewM48GeneratedArtifactMetadataDetails {
+                artifact_state: match source.state {
+                    GeneratedArtifactState::Ready => LocalReviewEvidenceArtifactState::Ready,
+                    GeneratedArtifactState::Saving => LocalReviewEvidenceArtifactState::Saving,
+                    GeneratedArtifactState::Expired => LocalReviewEvidenceArtifactState::Expired,
+                    GeneratedArtifactState::Saved => LocalReviewEvidenceArtifactState::Saved,
+                },
+                artifact_kind: match source.class {
+                    GeneratedArtifactClass::Text => LocalReviewEvidenceArtifactKind::Text,
+                    GeneratedArtifactClass::Markdown => LocalReviewEvidenceArtifactKind::Markdown,
+                    GeneratedArtifactClass::Json => LocalReviewEvidenceArtifactKind::Json,
+                    GeneratedArtifactClass::Csv => LocalReviewEvidenceArtifactKind::Csv,
+                    GeneratedArtifactClass::Python => LocalReviewEvidenceArtifactKind::Python,
+                },
+                format: local_review_format(source.class),
+                byte_length: u32::try_from(source.byte_size).ok()?,
+                truncated: false,
+                manifest_sha256: source.sha256,
+            };
+            self.repository.lock().ok().and_then(|mut repository| {
+                repository
+                    .as_mut()?
+                    .create_local_review_m48_generated_artifact_metadata_evidence_item(
+                        &collection_id,
+                        request.expected_collection_updated_at_ms,
+                        &title,
+                        summary,
+                        &details,
+                    )
+                    .ok()
+            })
+        });
+        let mut snapshot = self.local_review(LocalReviewListRequest {
+            selected_collection_id: Some(collection_id),
+        });
+        if let Some(created_item_id) = result {
+            if snapshot.items.iter().any(|item| {
+                item.item_id == created_item_id
+                    && item.evidence_source
+                        == Some(LocalReviewEvidenceSource::M48GeneratedArtifactMetadata)
+            }) {
+                return LocalReviewManualEvidenceCreateResult::Created {
+                    created_item_id,
+                    source: LocalReviewEvidenceSource::M48GeneratedArtifactMetadata,
+                    snapshot,
+                };
+            }
+        }
+        if snapshot.diagnostic_code.is_none() {
+            snapshot.diagnostic_code = Some(LocalReviewDiagnosticCode::InvalidRequest);
+        }
+        LocalReviewManualEvidenceCreateResult::Failed { snapshot }
+    }
+
+    pub fn create_local_review_safe_preview_metadata_evidence(
+        &self,
+        request: LocalReviewSafePreviewMetadataEvidenceRequest,
+        details: LocalReviewSafePreviewMetadataDetails,
+    ) -> LocalReviewManualEvidenceCreateResult {
+        let collection_id = request.collection_id.clone();
+        let result = self.repository.lock().ok().and_then(|mut repository| {
+            repository
+                .as_mut()?
+                .create_local_review_safe_preview_metadata_evidence_item(
+                    &collection_id,
+                    request.expected_collection_updated_at_ms,
+                    "Safe preview metadata",
+                    "Captured current safe-preview metadata only.",
+                    &details,
+                )
+                .ok()
+        });
+        let mut snapshot = self.local_review(LocalReviewListRequest {
+            selected_collection_id: Some(collection_id),
+        });
+        if let Some(created_item_id) = result {
+            if snapshot.items.iter().any(|item| {
+                item.item_id == created_item_id
+                    && item.evidence_source == Some(LocalReviewEvidenceSource::SafePreviewMetadata)
+            }) {
+                return LocalReviewManualEvidenceCreateResult::Created {
+                    created_item_id,
+                    source: LocalReviewEvidenceSource::SafePreviewMetadata,
+                    snapshot,
+                };
+            }
+        }
+        if snapshot.diagnostic_code.is_none() {
+            snapshot.diagnostic_code = Some(LocalReviewDiagnosticCode::InvalidRequest);
+        }
+        LocalReviewManualEvidenceCreateResult::Failed { snapshot }
+    }
+
+    pub fn create_local_review_annotation(
+        &self,
+        request: LocalReviewAnnotationCreateRequest,
+    ) -> LocalReviewSnapshot {
+        let collection_id = request.collection_id.clone();
+        let result = self.repository.lock().ok().and_then(|mut repository| {
+            repository
+                .as_mut()?
+                .create_local_review_annotation(
+                    &request.collection_id,
+                    &request.item_id,
+                    request.expected_collection_updated_at_ms,
+                    &request.text,
+                )
+                .ok()
+        });
+        let mut snapshot = self.local_review(LocalReviewListRequest {
+            selected_collection_id: Some(collection_id),
+        });
+        if result.is_none() {
+            snapshot.diagnostic_code = Some(LocalReviewDiagnosticCode::InvalidRequest);
+        }
+        snapshot
+    }
+
+    pub fn edit_local_review_annotation(
+        &self,
+        request: LocalReviewAnnotationEditRequest,
+    ) -> LocalReviewSnapshot {
+        let collection_id = request.collection_id.clone();
+        let result = self.repository.lock().ok().and_then(|mut repository| {
+            repository
+                .as_mut()?
+                .edit_local_review_annotation(
+                    &request.collection_id,
+                    &request.item_id,
+                    &request.annotation_id,
+                    request.expected_collection_updated_at_ms,
+                    &request.text,
+                )
+                .ok()
+        });
+        self.local_review_annotation_mutation_snapshot(collection_id, result.is_some())
+    }
+
+    pub fn resolve_local_review_annotation(
+        &self,
+        request: LocalReviewAnnotationMutationRequest,
+    ) -> LocalReviewSnapshot {
+        let collection_id = request.collection_id.clone();
+        let result = self.repository.lock().ok().and_then(|mut repository| {
+            repository
+                .as_mut()?
+                .resolve_local_review_annotation(
+                    &request.collection_id,
+                    &request.item_id,
+                    &request.annotation_id,
+                    request.expected_collection_updated_at_ms,
+                )
+                .ok()
+        });
+        self.local_review_annotation_mutation_snapshot(collection_id, result.is_some())
+    }
+
+    pub fn reopen_local_review_annotation(
+        &self,
+        request: LocalReviewAnnotationMutationRequest,
+    ) -> LocalReviewSnapshot {
+        let collection_id = request.collection_id.clone();
+        let result = self.repository.lock().ok().and_then(|mut repository| {
+            repository
+                .as_mut()?
+                .reopen_local_review_annotation(
+                    &request.collection_id,
+                    &request.item_id,
+                    &request.annotation_id,
+                    request.expected_collection_updated_at_ms,
+                )
+                .ok()
+        });
+        self.local_review_annotation_mutation_snapshot(collection_id, result.is_some())
+    }
+
+    pub fn delete_local_review_annotation(
+        &self,
+        request: LocalReviewAnnotationMutationRequest,
+    ) -> LocalReviewSnapshot {
+        let collection_id = request.collection_id.clone();
+        let result = self.repository.lock().ok().and_then(|mut repository| {
+            repository
+                .as_mut()?
+                .delete_local_review_annotation(
+                    &request.collection_id,
+                    &request.item_id,
+                    &request.annotation_id,
+                    request.expected_collection_updated_at_ms,
+                )
+                .ok()
+        });
+        self.local_review_annotation_mutation_snapshot(collection_id, result.is_some())
+    }
+
+    fn local_review_annotation_mutation_snapshot(
+        &self,
+        collection_id: String,
+        succeeded: bool,
+    ) -> LocalReviewSnapshot {
+        let mut snapshot = self.local_review(LocalReviewListRequest {
+            selected_collection_id: Some(collection_id),
+        });
+        if !succeeded {
+            snapshot.diagnostic_code = Some(LocalReviewDiagnosticCode::InvalidRequest);
+        }
+        snapshot
+    }
+
+    pub fn resume_local_review_collection(
+        &self,
+        request: LocalReviewCollectionMutationRequest,
+    ) -> LocalReviewSnapshot {
+        let id = request.collection_id.clone();
+        let result = self.repository.lock().ok().and_then(|mut repository| {
+            repository
+                .as_mut()?
+                .resume_local_review_collection(&id, request.expected_collection_updated_at_ms)
+                .ok()
+        });
+        let mut snapshot = self.local_review(LocalReviewListRequest {
+            selected_collection_id: Some(id),
+        });
+        if result.is_none() {
+            snapshot.diagnostic_code = Some(LocalReviewDiagnosticCode::InvalidRequest);
+        }
+        snapshot
+    }
+
+    pub fn discard_local_review_collection(
+        &self,
+        request: LocalReviewCollectionMutationRequest,
+    ) -> LocalReviewSnapshot {
+        let result = self.repository.lock().ok().and_then(|mut repository| {
+            repository
+                .as_mut()?
+                .discard_local_review_collection(
+                    &request.collection_id,
+                    request.expected_collection_updated_at_ms,
+                )
+                .ok()
+        });
+        let mut snapshot = self.local_review(LocalReviewListRequest {
+            selected_collection_id: None,
+        });
+        if result.is_none() {
+            snapshot.diagnostic_code = Some(LocalReviewDiagnosticCode::InvalidRequest);
+        }
+        snapshot
+    }
+
+    pub fn discard_local_review_item(
+        &self,
+        request: LocalReviewItemDiscardRequest,
+    ) -> LocalReviewSnapshot {
+        let collection_id = request.collection_id.clone();
+        let result = self.repository.lock().ok().and_then(|mut repository| {
+            repository
+                .as_mut()?
+                .discard_local_review_item(
+                    &collection_id,
+                    &request.item_id,
+                    request.expected_collection_updated_at_ms,
+                )
+                .ok()
+        });
+        let mut snapshot = self.local_review(LocalReviewListRequest {
+            selected_collection_id: Some(collection_id),
+        });
+        if result.is_none() {
+            snapshot.diagnostic_code = Some(LocalReviewDiagnosticCode::InvalidRequest);
+        }
+        snapshot
+    }
+    pub fn create_local_review_image_item(
+        &self,
+        request: LocalReviewImagePickRequest,
+        bytes: Vec<u8>,
+    ) -> LocalReviewSnapshot {
+        let collection_id = request.collection_id.clone();
+        let result = self.repository.lock().ok().and_then(|mut repository| {
+            repository
+                .as_mut()?
+                .create_local_review_image_item(
+                    &collection_id,
+                    request.expected_collection_updated_at_ms,
+                    &request.title,
+                    &bytes,
+                )
+                .ok()
+        });
+        let mut snapshot = self.local_review(LocalReviewListRequest {
+            selected_collection_id: Some(collection_id),
+        });
+        if result.is_none() {
+            snapshot.diagnostic_code = Some(LocalReviewDiagnosticCode::InvalidRequest);
+        }
+        snapshot
+    }
+    pub fn local_review_image_preview(
+        &self,
+        request: LocalReviewImagePreviewRequest,
+    ) -> Result<LocalReviewImagePreview, ()> {
+        self.repository
+            .lock()
+            .map_err(|_| ())?
+            .as_ref()
+            .ok_or(())?
+            .local_review_image_preview(&request.item_id, &request.sha256)
+            .map_err(|_| ())
+    }
+    pub fn local_review_text_preview(
+        &self,
+        request: LocalReviewTextPreviewRequest,
+    ) -> Result<LocalReviewTextPreview, ()> {
+        if !valid_id(&request.collection_id)
+            || !valid_id(&request.item_id)
+            || !valid_sha256(&request.sha256)
+        {
+            return Err(());
+        }
+        Ok(self
+            .repository
+            .lock()
+            .ok()
+            .and_then(|repository| {
+                repository
+                    .as_ref()?
+                    .local_review_text_preview(
+                        &request.collection_id,
+                        &request.item_id,
+                        &request.sha256,
+                    )
+                    .ok()
+            })
+            .unwrap_or_else(|| local_review_text_preview_unavailable(&request)))
+    }
+    pub fn create_local_review_manual_evidence(
+        &self,
+        request: LocalReviewManualEvidenceCreateRequest,
+    ) -> LocalReviewManualEvidenceCreateResult {
+        let collection_id = request.collection_id.clone();
+        let result = self.repository.lock().ok().and_then(|mut repository| {
+            repository
+                .as_mut()?
+                .create_local_review_manual_evidence_item(
+                    &collection_id,
+                    request.expected_collection_updated_at_ms,
+                    &request.title,
+                    &request.summary,
+                )
+                .ok()
+        });
+        let mut snapshot = self.local_review(LocalReviewListRequest {
+            selected_collection_id: Some(collection_id),
+        });
+        if let Some(created_item_id) = result {
+            if snapshot.items.iter().any(|item| {
+                item.item_id == created_item_id
+                    && item.evidence_source
+                        == Some(LocalReviewEvidenceSource::ManualValidationSummary)
+            }) {
+                return LocalReviewManualEvidenceCreateResult::Created {
+                    created_item_id,
+                    source: LocalReviewEvidenceSource::ManualValidationSummary,
+                    snapshot,
+                };
+            }
+        }
+        if snapshot.diagnostic_code.is_none() {
+            snapshot.diagnostic_code = Some(LocalReviewDiagnosticCode::InvalidRequest);
+        }
+        LocalReviewManualEvidenceCreateResult::Failed { snapshot }
+    }
+    pub fn local_review_manual_evidence_preview(
+        &self,
+        item_id: String,
+        sha256: String,
+    ) -> Result<LocalReviewManualEvidencePreview, ()> {
+        self.repository
+            .lock()
+            .map_err(|_| ())?
+            .as_ref()
+            .ok_or(())?
+            .local_review_manual_evidence_preview(&item_id, &sha256)
+            .map_err(|_| ())
+    }
+    pub fn local_review_m48_generated_artifact_metadata_evidence_preview(
+        &self,
+        item_id: String,
+        sha256: String,
+    ) -> Result<LocalReviewM48GeneratedArtifactMetadataEvidencePreview, ()> {
+        self.repository
+            .lock()
+            .map_err(|_| ())?
+            .as_ref()
+            .ok_or(())?
+            .local_review_m48_generated_artifact_metadata_evidence_preview(&item_id, &sha256)
+            .map_err(|_| ())
+    }
+    pub fn local_review_safe_preview_metadata_evidence_preview(
+        &self,
+        item_id: String,
+        sha256: String,
+    ) -> Result<LocalReviewSafePreviewMetadataEvidencePreview, ()> {
+        self.repository
+            .lock()
+            .map_err(|_| ())?
+            .as_ref()
+            .ok_or(())?
+            .local_review_safe_preview_metadata_evidence_preview(&item_id, &sha256)
+            .map_err(|_| ())
+    }
     pub fn task_catalog(&self, request: TaskCatalogListRequest) -> TaskCatalogSnapshot {
         if request
             .selected_task_id
@@ -211,6 +983,38 @@ impl ProjectService {
                 return task_catalog_unavailable();
             };
             repository.create_task()
+        };
+        match result {
+            Ok(id) => self.task_catalog(TaskCatalogListRequest {
+                query: None,
+                include_archived: false,
+                selected_task_id: Some(id),
+            }),
+            Err(error) => self.task_snapshot_with_diagnostic(None, error),
+        }
+    }
+
+    /// Creates a project-bound task only from a native persisted conversation
+    /// context. The request identifies the context, never the project.
+    pub fn create_task_record_from_conversation(
+        &self,
+        conversation_id: String,
+    ) -> TaskCatalogSnapshot {
+        if !valid_id(&conversation_id) {
+            return TaskCatalogSnapshot {
+                diagnostic_code: Some(TaskDiagnosticCode::InvalidRequest),
+                ..task_catalog_unavailable()
+            };
+        }
+        let result = {
+            let mut repository = match self.repository.lock() {
+                Ok(value) => value,
+                Err(_) => return task_catalog_unavailable(),
+            };
+            let Some(repository) = repository.as_mut() else {
+                return task_catalog_unavailable();
+            };
+            repository.create_task_from_conversation_context(&conversation_id)
         };
         match result {
             Ok(id) => self.task_catalog(TaskCatalogListRequest {
@@ -302,6 +1106,7 @@ impl ProjectService {
             pending: Mutex::new(None),
             active_executions: Mutex::new(HashSet::new()),
             active_terminals: Mutex::new(HashMap::new()),
+            promotion_reservations: Mutex::new(VecDeque::new()),
         }
     }
 
@@ -311,6 +1116,7 @@ impl ProjectService {
             pending: Mutex::new(None),
             active_executions: Mutex::new(HashSet::new()),
             active_terminals: Mutex::new(HashMap::new()),
+            promotion_reservations: Mutex::new(VecDeque::new()),
         }
     }
 
@@ -321,6 +1127,7 @@ impl ProjectService {
             pending: Mutex::new(None),
             active_executions: Mutex::new(HashSet::new()),
             active_terminals: Mutex::new(HashMap::new()),
+            promotion_reservations: Mutex::new(VecDeque::new()),
         }
     }
 
@@ -1542,6 +2349,13 @@ fn valid_id(value: &str) -> bool {
         && Uuid::parse_str(value).is_ok_and(|id| id.get_version_num() == 7)
 }
 
+fn valid_sha256(value: &str) -> bool {
+    value.len() == 64
+        && value
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || matches!(byte, b'a'..=b'f'))
+}
+
 fn task_catalog_unavailable() -> TaskCatalogSnapshot {
     TaskCatalogSnapshot {
         schema_version: TASK_RECORD_SCHEMA_VERSION,
@@ -1554,6 +2368,78 @@ fn task_catalog_unavailable() -> TaskCatalogSnapshot {
         warning: false,
         diagnostic_code: Some(TaskDiagnosticCode::MetadataUnavailable),
     }
+}
+
+fn local_review_unavailable(diagnostic_code: LocalReviewDiagnosticCode) -> LocalReviewSnapshot {
+    LocalReviewSnapshot {
+        schema_version: LOCAL_REVIEW_SCHEMA_VERSION,
+        collections: Vec::new(),
+        selected_collection: None,
+        items: Vec::new(),
+        comparisons: Vec::new(),
+        collection_count: 0,
+        payload_bytes: 0,
+        warning: false,
+        diagnostic_code: Some(diagnostic_code),
+    }
+}
+
+fn local_review_text_preview_unavailable(
+    request: &LocalReviewTextPreviewRequest,
+) -> LocalReviewTextPreview {
+    LocalReviewTextPreview {
+        schema_version: 1,
+        collection_id: request.collection_id.clone(),
+        item_id: request.item_id.clone(),
+        title: None,
+        text_format: None,
+        byte_size: None,
+        sha256: None,
+        created_at_ms: None,
+        state: types::LocalReviewItemState::Unavailable,
+        text: None,
+        projected_byte_size: 0,
+        projected_line_count: 0,
+        projected_code_point_count: 0,
+        truncated: false,
+        diagnostic_code: Some(LocalReviewDiagnosticCode::MetadataUnavailable),
+    }
+}
+
+fn promotion_class(format: types::LocalReviewTextFormat) -> GeneratedArtifactClass {
+    match format {
+        types::LocalReviewTextFormat::Plain => GeneratedArtifactClass::Text,
+        types::LocalReviewTextFormat::Markdown => GeneratedArtifactClass::Markdown,
+        types::LocalReviewTextFormat::Json => GeneratedArtifactClass::Json,
+        types::LocalReviewTextFormat::Csv => GeneratedArtifactClass::Csv,
+        types::LocalReviewTextFormat::Python => GeneratedArtifactClass::Python,
+    }
+}
+
+fn local_review_format(class: GeneratedArtifactClass) -> types::LocalReviewTextFormat {
+    match class {
+        GeneratedArtifactClass::Text => types::LocalReviewTextFormat::Plain,
+        GeneratedArtifactClass::Markdown => types::LocalReviewTextFormat::Markdown,
+        GeneratedArtifactClass::Json => types::LocalReviewTextFormat::Json,
+        GeneratedArtifactClass::Csv => types::LocalReviewTextFormat::Csv,
+        GeneratedArtifactClass::Python => types::LocalReviewTextFormat::Python,
+    }
+}
+
+fn promotion_class_name(class: GeneratedArtifactClass) -> &'static str {
+    match class {
+        GeneratedArtifactClass::Text => "text",
+        GeneratedArtifactClass::Markdown => "markdown",
+        GeneratedArtifactClass::Json => "json",
+        GeneratedArtifactClass::Csv => "csv",
+        GeneratedArtifactClass::Python => "python",
+    }
+}
+
+fn expire_promotion_reservations(reservations: &mut VecDeque<LocalReviewPromotionReservation>) {
+    reservations.retain(|reservation| {
+        reservation.created.elapsed() < LOCAL_REVIEW_PROMOTION_RESERVATION_TTL
+    });
 }
 
 fn map_task_storage_error(error: &StorageError) -> TaskDiagnosticCode {
@@ -1637,9 +2523,21 @@ mod tests {
     use uuid::Uuid;
 
     use super::{
-        types::{DirectoryAccessibilityState, ProjectDiagnosticCode, ProjectWorkspaceState},
-        ProjectExecutionError, ProjectService,
+        types::{
+            DirectoryAccessibilityState, LocalReviewEvidenceSource,
+            LocalReviewM48ArtifactCopyRequest,
+            LocalReviewM48GeneratedArtifactMetadataEvidenceRequest,
+            LocalReviewManualEvidenceCreateRequest, LocalReviewManualEvidenceCreateResult,
+            LocalReviewPromotionPrepareRequest, LocalReviewPromotionReservationRequest,
+            LocalReviewTextFormat, ProjectDiagnosticCode, ProjectWorkspaceState,
+        },
+        ProjectExecutionError, ProjectService, LOCAL_REVIEW_PROMOTION_RESERVATION_TTL,
     };
+    use crate::advisor_generated_artifact::{
+        AdvisorGeneratedArtifactService, GeneratedArtifactClass, GeneratedArtifactCreateRequest,
+        GeneratedArtifactSourceKind,
+    };
+    use std::time::Instant;
 
     fn temporary_directory(label: &str) -> std::path::PathBuf {
         let path = std::env::temp_dir().join(format!("quireforge-{label}-{}", Uuid::now_v7()));
@@ -1657,6 +2555,482 @@ mod tests {
                 .expect("shared workspace fixture must parse");
 
         assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn local_review_promotion_prepare_is_digest_task_plan_and_class_bound() {
+        let service = ProjectService::in_memory();
+        let artifacts = AdvisorGeneratedArtifactService::default();
+        let (collection, item, updated_at_ms) = {
+            let mut repository = service.repository.lock().expect("repository lock");
+            let repository = repository.as_mut().expect("repository");
+            let task = repository.create_task().expect("task");
+            let plan = repository
+                .task_catalog(Some(&task), false, None)
+                .expect("catalog")
+                .1
+                .expect("task")
+                .selected_plan_id;
+            let collection = repository
+                .create_local_review_collection(&task, Some(&plan), "Promotion")
+                .expect("collection");
+            let updated = repository
+                .local_review_snapshot(Some(&collection))
+                .expect("snapshot")
+                .1
+                .expect("collection")
+                .updated_at_ms;
+            let item = repository
+                .create_local_review_text_item(
+                    &collection,
+                    updated,
+                    "Text",
+                    LocalReviewTextFormat::Plain,
+                    "promotion text",
+                )
+                .expect("item");
+            let updated = repository
+                .local_review_snapshot(Some(&collection))
+                .expect("snapshot")
+                .1
+                .expect("collection")
+                .updated_at_ms;
+            (collection, item, updated)
+        };
+        let candidate = service
+            .prepare_local_review_promotion(
+                LocalReviewPromotionPrepareRequest {
+                    collection_id: collection.clone(),
+                    item_id: item.clone(),
+                    expected_collection_updated_at_ms: updated_at_ms,
+                },
+                &artifacts,
+            )
+            .expect("prepare");
+        assert_eq!(candidate.destination_class, "text");
+        assert!(
+            Uuid::parse_str(&candidate.reservation_id)
+                .expect("uuid")
+                .get_version_num()
+                == 7
+        );
+        assert!(artifacts.snapshot().artifacts.is_empty());
+        let manifest = service
+            .confirm_local_review_promotion(
+                LocalReviewPromotionReservationRequest {
+                    reservation_id: candidate.reservation_id.clone(),
+                },
+                &artifacts,
+            )
+            .expect("confirm");
+        assert_eq!(manifest.class, GeneratedArtifactClass::Text);
+        assert_eq!(
+            manifest.source_kind,
+            GeneratedArtifactSourceKind::ExplicitReviewPromotion
+        );
+        assert_eq!(manifest.sha256, candidate.sha256);
+        assert!(service
+            .confirm_local_review_promotion(
+                LocalReviewPromotionReservationRequest {
+                    reservation_id: candidate.reservation_id
+                },
+                &artifacts
+            )
+            .is_err());
+        let snapshot = service.local_review(super::types::LocalReviewListRequest {
+            selected_collection_id: Some(collection),
+        });
+        assert!(snapshot
+            .items
+            .iter()
+            .any(|candidate| candidate.item_id == item));
+    }
+
+    #[test]
+    fn local_review_m48_artifact_copy_is_digest_bound_and_non_mutating() {
+        let service = ProjectService::in_memory();
+        let artifacts = AdvisorGeneratedArtifactService::default();
+        let (collection, updated_at_ms) = {
+            let mut repository = service.repository.lock().expect("repository lock");
+            let repository = repository.as_mut().expect("repository");
+            let task = repository.create_task().expect("task");
+            let plan = repository
+                .task_catalog(Some(&task), false, None)
+                .expect("catalog")
+                .1
+                .expect("task")
+                .selected_plan_id;
+            let collection = repository
+                .create_local_review_collection(&task, Some(&plan), "Copied artifacts")
+                .expect("collection");
+            let updated_at_ms = repository
+                .local_review_snapshot(Some(&collection))
+                .expect("snapshot")
+                .1
+                .expect("collection")
+                .updated_at_ms;
+            (collection, updated_at_ms)
+        };
+        let manifest = artifacts
+            .create(GeneratedArtifactCreateRequest {
+                class: GeneratedArtifactClass::Markdown,
+                source_kind: GeneratedArtifactSourceKind::VisibleFencedBlock,
+                display_label: "Live artifact".to_owned(),
+                suggested_filename: "live.md".to_owned(),
+                content: "line one\r\nline two".to_owned(),
+            })
+            .expect("artifact");
+        let source_before = artifacts.snapshot();
+        let copied = service.create_local_review_m48_artifact_copy(
+            LocalReviewM48ArtifactCopyRequest {
+                collection_id: collection.clone(),
+                expected_collection_updated_at_ms: updated_at_ms,
+                artifact_id: manifest.artifact_id.clone(),
+                manifest_sha256: manifest.sha256.clone(),
+            },
+            &artifacts,
+        );
+        assert_eq!(copied.diagnostic_code, None);
+        let item = copied.items.first().expect("copied item");
+        assert_eq!(item.class, super::types::LocalReviewItemClass::Text);
+        assert_eq!(
+            item.source_kind,
+            super::types::LocalReviewSourceKind::M48ArtifactCopy
+        );
+        assert_eq!(item.text_format, Some(LocalReviewTextFormat::Markdown));
+        assert_eq!(item.sha256, manifest.sha256);
+        assert_eq!(item.byte_size, "line one\nline two".len() as u64);
+        assert_eq!(
+            Uuid::parse_str(&item.item_id)
+                .expect("item UUID")
+                .get_version_num(),
+            7
+        );
+        assert_eq!(artifacts.snapshot(), source_before);
+        assert!(serde_json::to_string(item)
+            .expect("item serializes")
+            .contains("m48-artifact-copy"));
+        let stale = service.create_local_review_m48_artifact_copy(
+            LocalReviewM48ArtifactCopyRequest {
+                collection_id: collection,
+                expected_collection_updated_at_ms: updated_at_ms,
+                artifact_id: manifest.artifact_id,
+                manifest_sha256: "0".repeat(64),
+            },
+            &artifacts,
+        );
+        assert_eq!(
+            stale.diagnostic_code,
+            Some(super::types::LocalReviewDiagnosticCode::InvalidRequest)
+        );
+        assert_eq!(stale.items.len(), 1);
+    }
+
+    #[test]
+    fn local_review_m48_metadata_evidence_is_manifest_bound_and_content_free() {
+        let service = ProjectService::in_memory();
+        let artifacts = AdvisorGeneratedArtifactService::default();
+        let (collection, updated_at_ms) = {
+            let mut repository = service.repository.lock().expect("repository lock");
+            let repository = repository.as_mut().expect("repository");
+            let task = repository.create_task().expect("task");
+            let plan = repository
+                .task_catalog(Some(&task), false, None)
+                .expect("catalog")
+                .1
+                .expect("task")
+                .selected_plan_id;
+            let collection = repository
+                .create_local_review_collection(&task, Some(&plan), "Metadata")
+                .expect("collection");
+            let updated = repository
+                .local_review_snapshot(Some(&collection))
+                .expect("snapshot")
+                .1
+                .expect("collection")
+                .updated_at_ms;
+            (collection, updated)
+        };
+        let manifest = artifacts
+            .create(GeneratedArtifactCreateRequest {
+                class: GeneratedArtifactClass::Markdown,
+                source_kind: GeneratedArtifactSourceKind::VisibleFencedBlock,
+                display_label: "Safe artifact".to_owned(),
+                suggested_filename: "secret.md".to_owned(),
+                content: "generated content must not be copied".to_owned(),
+            })
+            .expect("artifact");
+        let source_before = artifacts.snapshot();
+        let result = service.create_local_review_m48_generated_artifact_metadata_evidence(
+            LocalReviewM48GeneratedArtifactMetadataEvidenceRequest {
+                collection_id: collection.clone(),
+                expected_collection_updated_at_ms: updated_at_ms,
+                artifact_id: manifest.artifact_id.clone(),
+                manifest_sha256: manifest.sha256.clone(),
+            },
+            &artifacts,
+        );
+        let (created_item_id, snapshot) = match result {
+            LocalReviewManualEvidenceCreateResult::Created {
+                created_item_id,
+                source,
+                snapshot,
+            } => {
+                assert_eq!(
+                    source,
+                    LocalReviewEvidenceSource::M48GeneratedArtifactMetadata
+                );
+                (created_item_id, snapshot)
+            }
+            LocalReviewManualEvidenceCreateResult::Failed { .. } => panic!("metadata evidence"),
+        };
+        let item = snapshot
+            .items
+            .iter()
+            .find(|item| item.item_id == created_item_id)
+            .expect("created item");
+        assert_eq!(
+            item.evidence_source,
+            Some(LocalReviewEvidenceSource::M48GeneratedArtifactMetadata)
+        );
+        assert!(
+            Uuid::parse_str(&item.item_id)
+                .expect("uuid")
+                .get_version_num()
+                == 7
+        );
+        let preview = service
+            .local_review_m48_generated_artifact_metadata_evidence_preview(
+                item.item_id.clone(),
+                item.sha256.clone(),
+            )
+            .expect("stored preview");
+        assert_eq!(preview.details.manifest_sha256, manifest.sha256);
+        assert_eq!(
+            preview.details.artifact_kind,
+            super::types::LocalReviewEvidenceArtifactKind::Markdown
+        );
+        assert_eq!(preview.details.format, LocalReviewTextFormat::Markdown);
+        let stored = serde_json::to_string(&preview).expect("preview JSON");
+        assert!(!stored.contains("generated content"));
+        assert!(!stored.contains("secret.md"));
+        assert_eq!(artifacts.snapshot(), source_before);
+
+        let stale = service.create_local_review_m48_generated_artifact_metadata_evidence(
+            LocalReviewM48GeneratedArtifactMetadataEvidenceRequest {
+                collection_id: collection,
+                expected_collection_updated_at_ms: updated_at_ms,
+                artifact_id: manifest.artifact_id,
+                manifest_sha256: manifest.sha256,
+            },
+            &artifacts,
+        );
+        assert!(matches!(
+            stale,
+            LocalReviewManualEvidenceCreateResult::Failed { .. }
+        ));
+    }
+
+    #[test]
+    fn local_review_manual_evidence_result_identifies_only_the_authoritative_created_item() {
+        let service = ProjectService::in_memory();
+        let (collection, updated_at_ms) = {
+            let mut repository = service.repository.lock().expect("repository lock");
+            let repository = repository.as_mut().expect("repository");
+            let task = repository.create_task().expect("task");
+            let collection = repository
+                .create_local_review_collection(&task, None, "Evidence")
+                .expect("collection");
+            let updated_at_ms = repository
+                .local_review_snapshot(Some(&collection))
+                .expect("snapshot")
+                .1
+                .expect("collection")
+                .updated_at_ms;
+            (collection, updated_at_ms)
+        };
+        let result =
+            service.create_local_review_manual_evidence(LocalReviewManualEvidenceCreateRequest {
+                collection_id: collection.clone(),
+                expected_collection_updated_at_ms: updated_at_ms,
+                title: "Validation".to_owned(),
+                summary: "passed".to_owned(),
+            });
+        let (created_item_id, snapshot) = match result {
+            LocalReviewManualEvidenceCreateResult::Created {
+                created_item_id,
+                source,
+                snapshot,
+            } => {
+                assert_eq!(source, LocalReviewEvidenceSource::ManualValidationSummary);
+                (created_item_id, snapshot)
+            }
+            LocalReviewManualEvidenceCreateResult::Failed { .. } => {
+                panic!("creation must identify success")
+            }
+        };
+        assert!(snapshot
+            .items
+            .iter()
+            .any(|item| item.item_id == created_item_id
+                && item.evidence_source
+                    == Some(LocalReviewEvidenceSource::ManualValidationSummary)));
+        let failed =
+            service.create_local_review_manual_evidence(LocalReviewManualEvidenceCreateRequest {
+                collection_id: collection.clone(),
+                expected_collection_updated_at_ms: updated_at_ms,
+                title: "Again".to_owned(),
+                summary: "failed".to_owned(),
+            });
+        assert!(matches!(
+            failed,
+            LocalReviewManualEvidenceCreateResult::Failed { .. }
+        ));
+    }
+
+    #[test]
+    fn local_review_m48_artifact_copy_rejects_stale_lifecycle_and_claims_atomically() {
+        let service = ProjectService::in_memory();
+        let artifacts = AdvisorGeneratedArtifactService::default();
+        let (task, collection, updated_at_ms) = {
+            let mut repository = service.repository.lock().expect("repository lock");
+            let repository = repository.as_mut().expect("repository");
+            let task = repository.create_task().expect("task");
+            let collection = repository
+                .create_local_review_collection(&task, None, "Copied artifacts")
+                .expect("collection");
+            let updated_at_ms = repository
+                .local_review_snapshot(Some(&collection))
+                .expect("snapshot")
+                .1
+                .expect("collection")
+                .updated_at_ms;
+            (task, collection, updated_at_ms)
+        };
+        let manifest = artifacts
+            .create(GeneratedArtifactCreateRequest {
+                class: GeneratedArtifactClass::Text,
+                source_kind: GeneratedArtifactSourceKind::VisibleCompletedReply,
+                display_label: "Live artifact".to_owned(),
+                suggested_filename: "live.txt".to_owned(),
+                content: "copy text".to_owned(),
+            })
+            .expect("artifact");
+        let request = LocalReviewM48ArtifactCopyRequest {
+            collection_id: collection.clone(),
+            expected_collection_updated_at_ms: updated_at_ms,
+            artifact_id: manifest.artifact_id.clone(),
+            manifest_sha256: manifest.sha256.clone(),
+        };
+        let missing = service.create_local_review_m48_artifact_copy(
+            LocalReviewM48ArtifactCopyRequest {
+                artifact_id: Uuid::now_v7().to_string(),
+                ..request.clone()
+            },
+            &artifacts,
+        );
+        assert_eq!(
+            missing.diagnostic_code,
+            Some(super::types::LocalReviewDiagnosticCode::InvalidRequest)
+        );
+        assert!(missing.items.is_empty());
+        {
+            let mut repository = service.repository.lock().expect("repository lock");
+            repository
+                .as_mut()
+                .expect("repository")
+                .set_task_status(&task, super::types::TaskStatus::Completed)
+                .expect("complete task");
+        }
+        let frozen = service.create_local_review_m48_artifact_copy(request, &artifacts);
+        assert_eq!(
+            frozen.diagnostic_code,
+            Some(super::types::LocalReviewDiagnosticCode::InvalidRequest)
+        );
+        assert!(frozen.items.is_empty());
+        assert_eq!(artifacts.snapshot().artifacts, vec![manifest]);
+    }
+
+    #[test]
+    fn local_review_promotion_reservations_are_bounded_expiring_and_one_use() {
+        let service = ProjectService::in_memory();
+        let artifacts = AdvisorGeneratedArtifactService::default();
+        let (collection, item, updated_at_ms) = {
+            let mut repository = service.repository.lock().expect("repository lock");
+            let repository = repository.as_mut().expect("repository");
+            let task = repository.create_task().expect("task");
+            let plan = repository
+                .task_catalog(Some(&task), false, None)
+                .expect("catalog")
+                .1
+                .expect("task")
+                .selected_plan_id;
+            let collection = repository
+                .create_local_review_collection(&task, Some(&plan), "Promotion")
+                .expect("collection");
+            let updated = repository
+                .local_review_snapshot(Some(&collection))
+                .expect("snapshot")
+                .1
+                .expect("collection")
+                .updated_at_ms;
+            let item = repository
+                .create_local_review_text_item(
+                    &collection,
+                    updated,
+                    "Text",
+                    LocalReviewTextFormat::Plain,
+                    "promotion text",
+                )
+                .expect("item");
+            let updated = repository
+                .local_review_snapshot(Some(&collection))
+                .expect("snapshot")
+                .1
+                .expect("collection")
+                .updated_at_ms;
+            (collection, item, updated)
+        };
+        let request = LocalReviewPromotionPrepareRequest {
+            collection_id: collection,
+            item_id: item,
+            expected_collection_updated_at_ms: updated_at_ms,
+        };
+        let first = service
+            .prepare_local_review_promotion(request.clone(), &artifacts)
+            .expect("first");
+        for _ in 1..16 {
+            service
+                .prepare_local_review_promotion(request.clone(), &artifacts)
+                .expect("reservation");
+        }
+        assert!(service
+            .prepare_local_review_promotion(request.clone(), &artifacts)
+            .is_err());
+        service
+            .cancel_local_review_promotion(LocalReviewPromotionReservationRequest {
+                reservation_id: first.reservation_id,
+            })
+            .expect("cancel");
+        let expiring = service
+            .prepare_local_review_promotion(request, &artifacts)
+            .expect("replacement");
+        {
+            let mut reservations = service.promotion_reservations.lock().expect("reservations");
+            let reservation = reservations
+                .iter_mut()
+                .find(|value| value.candidate.reservation_id == expiring.reservation_id)
+                .expect("reservation");
+            reservation.created = Instant::now() - LOCAL_REVIEW_PROMOTION_RESERVATION_TTL;
+        }
+        assert!(service
+            .confirm_local_review_promotion(
+                LocalReviewPromotionReservationRequest {
+                    reservation_id: expiring.reservation_id
+                },
+                &artifacts
+            )
+            .is_err());
     }
 
     #[test]

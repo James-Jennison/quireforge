@@ -7,6 +7,7 @@ import type { ReviewPaneId } from "./review-panes/types";
 import { scaffoldConversation } from "./lib/conversation";
 import { scaffoldFilePreview } from "./lib/filePreview";
 import { scaffoldGitWorkspace } from "./lib/git";
+import { scaffoldTaskCatalog } from "./lib/taskRecords";
 
 const projectId = "018f0000-0000-7000-8000-000000000001";
 
@@ -31,6 +32,7 @@ function renderPanes() {
         filePreview={scaffoldFilePreview}
         conversation={scaffoldConversation}
         conversationEvents={[]}
+        taskCatalog={scaffoldTaskCatalog}
         loadGitStatus={loadGitStatus}
         loadGitDiff={loadGitDiff}
         loadArtifacts={loadArtifacts}
@@ -77,7 +79,7 @@ describe("review panes", () => {
     await waitFor(() => expect(calls.loadArtifacts).toHaveBeenCalledTimes(1));
   });
 
-  it("exposes all six labelled inspection panes and restores focus on close", () => {
+  it("exposes all seven labelled inspection panes and restores focus on close", () => {
     const trigger = document.createElement("button");
     document.body.append(trigger);
     trigger.focus();
@@ -89,6 +91,7 @@ describe("review panes", () => {
       "Preview",
       "Activity",
       "Approval",
+      "Review",
     ]) {
       expect(screen.getByRole("tab", { name })).toBeVisible();
     }

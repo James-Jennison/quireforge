@@ -1,6 +1,6 @@
 [package]
 name = "quireforge"
-version = "0.1.0-beta.46"
+version = "0.1.0-beta.47"
 description = "An unofficial native Linux workspace for Codex"
 authors = ["QuireForge contributors"]
 edition = "2021"

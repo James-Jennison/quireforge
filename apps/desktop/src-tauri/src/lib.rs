@@ -95,9 +95,20 @@ use preview::{
 };
 use project::{
     types::{
-        PlanCreateRequest, PlanEditRequest, PlanIdRequest, ProjectPreflightSnapshot,
-        ProjectWorkspaceSnapshot, TaskCatalogListRequest, TaskCatalogSnapshot, TaskIdRequest,
-        TaskStatusRequest, TaskTitleRequest,
+        LocalReviewAnnotationCreateRequest, LocalReviewAnnotationEditRequest,
+        LocalReviewAnnotationMutationRequest, LocalReviewCollectionCreateRequest,
+        LocalReviewCollectionMutationRequest, LocalReviewComparisonCreateRequest,
+        LocalReviewComparisonDiscardRequest, LocalReviewComparisonReadRequest,
+        LocalReviewImagePickOutcome, LocalReviewImagePickRequest, LocalReviewImagePreview,
+        LocalReviewImagePreviewRequest, LocalReviewItemDiscardRequest, LocalReviewListRequest,
+        LocalReviewM48ArtifactCopyRequest, LocalReviewManualEvidenceCreateRequest,
+        LocalReviewManualEvidenceCreateResult, LocalReviewManualEvidencePreview,
+        LocalReviewPromotionPrepareRequest, LocalReviewPromotionReservationRequest,
+        LocalReviewSnapshot, LocalReviewTextItemCreateRequest, LocalReviewTextPreview,
+        LocalReviewTextPreviewRequest, PlanCreateRequest, PlanEditRequest, PlanIdRequest,
+        ProjectPreflightSnapshot, ProjectWorkspaceSnapshot, TaskCatalogContextCreateRequest,
+        TaskCatalogListRequest, TaskCatalogSnapshot, TaskIdRequest, TaskStatusRequest,
+        TaskTitleRequest,
     },
     ProjectService,
 };
@@ -1241,6 +1252,14 @@ fn task_catalog_status(
 fn task_catalog_create(service: tauri::State<'_, ProjectService>) -> TaskCatalogSnapshot {
     service.create_task_record()
 }
+
+#[tauri::command]
+fn task_catalog_create_from_conversation(
+    request: TaskCatalogContextCreateRequest,
+    service: tauri::State<'_, ProjectService>,
+) -> TaskCatalogSnapshot {
+    service.create_task_record_from_conversation(request.conversation_id)
+}
 #[tauri::command]
 fn task_catalog_rename(
     request: TaskTitleRequest,
@@ -1279,6 +1298,299 @@ fn task_catalog_delete(
     service: tauri::State<'_, ProjectService>,
 ) -> TaskCatalogSnapshot {
     service.task_action(request.task_id, |repo, id| repo.delete_task(id))
+}
+
+#[tauri::command]
+fn local_review_status(
+    request: LocalReviewListRequest,
+    service: tauri::State<'_, ProjectService>,
+) -> LocalReviewSnapshot {
+    service.local_review(request)
+}
+
+#[tauri::command]
+fn local_review_collection_create(
+    request: LocalReviewCollectionCreateRequest,
+    service: tauri::State<'_, ProjectService>,
+) -> LocalReviewSnapshot {
+    service.create_local_review_collection(request)
+}
+
+#[tauri::command]
+fn local_review_text_item_create(
+    request: LocalReviewTextItemCreateRequest,
+    service: tauri::State<'_, ProjectService>,
+) -> LocalReviewSnapshot {
+    service.create_local_review_text_item(request)
+}
+
+#[tauri::command]
+fn local_review_m48_artifact_copy(
+    request: LocalReviewM48ArtifactCopyRequest,
+    projects: tauri::State<'_, ProjectService>,
+    artifacts: tauri::State<'_, AdvisorGeneratedArtifactService>,
+) -> LocalReviewSnapshot {
+    projects.create_local_review_m48_artifact_copy(request, &artifacts)
+}
+#[tauri::command]
+fn local_review_m48_generated_artifact_metadata_evidence_create(
+    request: project::types::LocalReviewM48GeneratedArtifactMetadataEvidenceRequest,
+    projects: tauri::State<'_, ProjectService>,
+    artifacts: tauri::State<'_, AdvisorGeneratedArtifactService>,
+) -> project::types::LocalReviewManualEvidenceCreateResult {
+    projects.create_local_review_m48_generated_artifact_metadata_evidence(request, &artifacts)
+}
+#[tauri::command]
+fn local_review_safe_preview_metadata_claim(
+    previews: tauri::State<'_, FilePreviewService>,
+) -> Result<preview::SafePreviewMetadataClaim, ()> {
+    previews.issue_safe_metadata_claim().ok_or(())
+}
+#[tauri::command]
+fn local_review_safe_preview_metadata_evidence_create(
+    request: project::types::LocalReviewSafePreviewMetadataEvidenceRequest,
+    projects: tauri::State<'_, ProjectService>,
+    previews: tauri::State<'_, FilePreviewService>,
+) -> project::types::LocalReviewManualEvidenceCreateResult {
+    let collection_id = request.collection_id.clone();
+    let failed = || project::types::LocalReviewManualEvidenceCreateResult::Failed {
+        snapshot: projects.local_review(project::types::LocalReviewListRequest {
+            selected_collection_id: Some(collection_id.clone()),
+        }),
+    };
+    let Some(claim) =
+        previews.safe_metadata_claim(&request.preview_claim_id, &request.claim_sha256)
+    else {
+        return failed();
+    };
+    let media_type = match claim.media_type.as_str() {
+        "text/plain; charset=utf-8" => project::types::LocalReviewEvidenceMediaType::TextPlain,
+        "image/png" => project::types::LocalReviewEvidenceMediaType::ImagePng,
+        "image/jpeg" => project::types::LocalReviewEvidenceMediaType::ImageJpeg,
+        "application/pdf" => project::types::LocalReviewEvidenceMediaType::ApplicationPdf,
+        _ => return failed(),
+    };
+    let byte_length = match u32::try_from(claim.byte_length) {
+        Ok(value) => value,
+        Err(_) => return failed(),
+    };
+    let details = project::types::LocalReviewSafePreviewMetadataDetails {
+        preview_state: project::types::LocalReviewEvidencePreviewState::Ready,
+        kind: match claim.kind {
+            preview::types::FilePreviewKind::Text => {
+                project::types::LocalReviewEvidencePreviewKind::Text
+            }
+            preview::types::FilePreviewKind::Image => {
+                project::types::LocalReviewEvidencePreviewKind::Image
+            }
+            preview::types::FilePreviewKind::Pdf => {
+                project::types::LocalReviewEvidencePreviewKind::Pdf
+            }
+        },
+        rendering: match claim.rendering {
+            preview::types::FilePreviewRendering::NormalizedText => {
+                project::types::LocalReviewEvidencePreviewRendering::NormalizedText
+            }
+            preview::types::FilePreviewRendering::BoundedImage => {
+                project::types::LocalReviewEvidencePreviewRendering::BoundedImage
+            }
+            preview::types::FilePreviewRendering::MetadataOnly => {
+                project::types::LocalReviewEvidencePreviewRendering::MetadataOnly
+            }
+        },
+        media_type,
+        byte_length,
+        truncated: claim.truncated,
+        width_px: claim.width_px,
+        height_px: claim.height_px,
+    };
+    let result =
+        projects.create_local_review_safe_preview_metadata_evidence(request.clone(), details);
+    if matches!(
+        result,
+        project::types::LocalReviewManualEvidenceCreateResult::Created { .. }
+    ) {
+        let _ =
+            previews.consume_safe_metadata_claim(&request.preview_claim_id, &request.claim_sha256);
+    }
+    result
+}
+
+#[tauri::command]
+fn local_review_collection_resume(
+    request: LocalReviewCollectionMutationRequest,
+    service: tauri::State<'_, ProjectService>,
+) -> LocalReviewSnapshot {
+    service.resume_local_review_collection(request)
+}
+#[tauri::command]
+fn local_review_collection_discard(
+    request: LocalReviewCollectionMutationRequest,
+    service: tauri::State<'_, ProjectService>,
+) -> LocalReviewSnapshot {
+    service.discard_local_review_collection(request)
+}
+#[tauri::command]
+fn local_review_item_discard(
+    request: LocalReviewItemDiscardRequest,
+    service: tauri::State<'_, ProjectService>,
+) -> LocalReviewSnapshot {
+    service.discard_local_review_item(request)
+}
+#[tauri::command]
+async fn local_review_image_pick(
+    app: tauri::AppHandle,
+    request: LocalReviewImagePickRequest,
+    service: tauri::State<'_, ProjectService>,
+) -> Result<LocalReviewImagePickOutcome, ()> {
+    let selection = app
+        .dialog()
+        .file()
+        .set_title("Add one static PNG or JPEG local review mockup")
+        .add_filter("PNG or JPEG image", &["png", "jpg", "jpeg"])
+        .blocking_pick_file();
+    let Some(file) = selection else {
+        return Ok(LocalReviewImagePickOutcome::Canceled {
+            snapshot: service.local_review(LocalReviewListRequest {
+                selected_collection_id: Some(request.collection_id),
+            }),
+        });
+    };
+    let path = file.into_path().map_err(|_| ())?;
+    let metadata = std::fs::symlink_metadata(&path).map_err(|_| ())?;
+    if metadata.file_type().is_symlink() || !metadata.is_file() || metadata.len() > 1024 * 1024 {
+        return Ok(LocalReviewImagePickOutcome::Created {
+            snapshot: service.create_local_review_image_item(request, Vec::new()),
+        });
+    }
+    let bytes = std::fs::read(path).map_err(|_| ())?;
+    Ok(LocalReviewImagePickOutcome::Created {
+        snapshot: service.create_local_review_image_item(request, bytes),
+    })
+}
+#[tauri::command]
+fn local_review_image_preview(
+    request: LocalReviewImagePreviewRequest,
+    service: tauri::State<'_, ProjectService>,
+) -> Result<LocalReviewImagePreview, ()> {
+    service.local_review_image_preview(request)
+}
+#[tauri::command]
+fn local_review_text_preview(
+    request: LocalReviewTextPreviewRequest,
+    service: tauri::State<'_, ProjectService>,
+) -> Result<LocalReviewTextPreview, ()> {
+    service.local_review_text_preview(request)
+}
+#[tauri::command]
+fn local_review_manual_evidence_create(
+    request: LocalReviewManualEvidenceCreateRequest,
+    service: tauri::State<'_, ProjectService>,
+) -> LocalReviewManualEvidenceCreateResult {
+    service.create_local_review_manual_evidence(request)
+}
+#[tauri::command]
+fn local_review_manual_evidence_preview(
+    item_id: String,
+    sha256: String,
+    service: tauri::State<'_, ProjectService>,
+) -> Result<LocalReviewManualEvidencePreview, ()> {
+    service.local_review_manual_evidence_preview(item_id, sha256)
+}
+#[tauri::command]
+fn local_review_m48_generated_artifact_metadata_evidence_preview(
+    item_id: String,
+    sha256: String,
+    service: tauri::State<'_, ProjectService>,
+) -> Result<project::types::LocalReviewM48GeneratedArtifactMetadataEvidencePreview, ()> {
+    service.local_review_m48_generated_artifact_metadata_evidence_preview(item_id, sha256)
+}
+#[tauri::command]
+fn local_review_safe_preview_metadata_evidence_preview(
+    item_id: String,
+    sha256: String,
+    service: tauri::State<'_, ProjectService>,
+) -> Result<project::types::LocalReviewSafePreviewMetadataEvidencePreview, ()> {
+    service.local_review_safe_preview_metadata_evidence_preview(item_id, sha256)
+}
+#[tauri::command]
+fn local_review_annotation_create(
+    request: LocalReviewAnnotationCreateRequest,
+    service: tauri::State<'_, ProjectService>,
+) -> LocalReviewSnapshot {
+    service.create_local_review_annotation(request)
+}
+#[tauri::command]
+fn local_review_annotation_edit(
+    request: LocalReviewAnnotationEditRequest,
+    service: tauri::State<'_, ProjectService>,
+) -> LocalReviewSnapshot {
+    service.edit_local_review_annotation(request)
+}
+#[tauri::command]
+fn local_review_annotation_resolve(
+    request: LocalReviewAnnotationMutationRequest,
+    service: tauri::State<'_, ProjectService>,
+) -> LocalReviewSnapshot {
+    service.resolve_local_review_annotation(request)
+}
+#[tauri::command]
+fn local_review_annotation_reopen(
+    request: LocalReviewAnnotationMutationRequest,
+    service: tauri::State<'_, ProjectService>,
+) -> LocalReviewSnapshot {
+    service.reopen_local_review_annotation(request)
+}
+#[tauri::command]
+fn local_review_annotation_delete(
+    request: LocalReviewAnnotationMutationRequest,
+    service: tauri::State<'_, ProjectService>,
+) -> LocalReviewSnapshot {
+    service.delete_local_review_annotation(request)
+}
+#[tauri::command]
+fn local_review_comparison_create(
+    request: LocalReviewComparisonCreateRequest,
+    service: tauri::State<'_, ProjectService>,
+) -> LocalReviewSnapshot {
+    service.create_local_review_text_comparison(request)
+}
+#[tauri::command]
+fn local_review_comparison_read(
+    request: LocalReviewComparisonReadRequest,
+    service: tauri::State<'_, ProjectService>,
+) -> Result<project::types::LocalReviewLineComparison, ()> {
+    service.local_review_line_comparison(request)
+}
+#[tauri::command]
+fn local_review_comparison_discard(
+    request: LocalReviewComparisonDiscardRequest,
+    service: tauri::State<'_, ProjectService>,
+) -> LocalReviewSnapshot {
+    service.discard_local_review_text_comparison(request)
+}
+#[tauri::command]
+fn local_review_promotion_prepare(
+    request: LocalReviewPromotionPrepareRequest,
+    projects: tauri::State<'_, ProjectService>,
+    artifacts: tauri::State<'_, AdvisorGeneratedArtifactService>,
+) -> Result<project::types::LocalReviewPromotionCandidate, ()> {
+    projects.prepare_local_review_promotion(request, &artifacts)
+}
+#[tauri::command]
+fn local_review_promotion_confirm(
+    request: LocalReviewPromotionReservationRequest,
+    projects: tauri::State<'_, ProjectService>,
+    artifacts: tauri::State<'_, AdvisorGeneratedArtifactService>,
+) -> Result<advisor_generated_artifact::GeneratedArtifactManifestV1, ()> {
+    projects.confirm_local_review_promotion(request, &artifacts)
+}
+#[tauri::command]
+fn local_review_promotion_cancel(
+    request: LocalReviewPromotionReservationRequest,
+    projects: tauri::State<'_, ProjectService>,
+) -> Result<project::types::LocalReviewPromotionCandidate, ()> {
+    projects.cancel_local_review_promotion(request)
 }
 #[tauri::command]
 fn task_plan_create(
@@ -2182,11 +2494,40 @@ pub fn run() {
             project_workspace_status,
             task_catalog_status,
             task_catalog_create,
+            task_catalog_create_from_conversation,
             task_catalog_rename,
             task_catalog_status_set,
             task_catalog_archive,
             task_catalog_restore,
             task_catalog_delete,
+            local_review_status,
+            local_review_collection_create,
+            local_review_text_item_create,
+            local_review_m48_artifact_copy,
+            local_review_m48_generated_artifact_metadata_evidence_create,
+            local_review_safe_preview_metadata_claim,
+            local_review_safe_preview_metadata_evidence_create,
+            local_review_collection_resume,
+            local_review_collection_discard,
+            local_review_item_discard,
+            local_review_image_pick,
+            local_review_image_preview,
+            local_review_text_preview,
+            local_review_manual_evidence_create,
+            local_review_manual_evidence_preview,
+            local_review_m48_generated_artifact_metadata_evidence_preview,
+            local_review_safe_preview_metadata_evidence_preview,
+            local_review_annotation_create,
+            local_review_annotation_edit,
+            local_review_annotation_resolve,
+            local_review_annotation_reopen,
+            local_review_annotation_delete,
+            local_review_comparison_create,
+            local_review_comparison_read,
+            local_review_comparison_discard,
+            local_review_promotion_prepare,
+            local_review_promotion_confirm,
+            local_review_promotion_cancel,
             task_plan_create,
             task_plan_select,
             task_plan_edit,

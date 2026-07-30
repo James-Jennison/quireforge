@@ -533,6 +533,28 @@ describe("QuireForge desktop shell", () => {
     );
   });
 
+  it("keeps the eligible Review panes trigger semantically distinct from compact-hidden topbar controls", async () => {
+    render(
+      <App
+        loadBootstrap={() => Promise.resolve(scaffoldBootstrap)}
+        loadRuntime={() => Promise.resolve(scaffoldCodexRuntime)}
+        loadAuth={() => Promise.resolve(authenticatedAuth)}
+        loadProjects={() => Promise.resolve(attachedProject)}
+      />,
+    );
+
+    await navigateTo("New task");
+    expect(screen.getByRole("button", { name: "⌘ Actions" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Review panes" })).toHaveClass(
+      "topbar-button--review-panes",
+    );
+
+    await navigateTo("Home");
+    expect(
+      screen.queryByRole("button", { name: "Review panes" }),
+    ).not.toBeInTheDocument();
+  });
+
   it.each([
     null,
     "not-json",

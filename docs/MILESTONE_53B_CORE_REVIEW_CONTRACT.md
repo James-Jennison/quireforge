@@ -133,3 +133,6 @@ M53-C may decide only presentation and interaction details within this contract:
 | Promotion, failures, security/privacy, non-goals | Sections 8–10 close digest-bound explicit M48 promotion, deterministic failures/recovery, and authority/privacy exclusions. |
 
 No M54 implementation, schema, migration, runtime behavior, package identity, packaging, release, publication, deployment, provider, connector, browser, network, or external integration change occurred in M53-B.
+
+The later implementation-level source literals and redacted detail shapes are
+ratified in [M54 closed evidence-source contract](MILESTONE_54_EVIDENCE_SOURCE_CONTRACT.md).

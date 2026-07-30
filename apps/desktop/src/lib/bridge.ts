@@ -195,6 +195,49 @@ import {
   taskTitleRequestSchema,
   type TaskCatalogSnapshot,
 } from "./taskRecords";
+import {
+  localReviewCollectionCreateRequestSchema,
+  localReviewCollectionMutationRequestSchema,
+  localReviewAnnotationCreateRequestSchema,
+  localReviewAnnotationEditRequestSchema,
+  localReviewAnnotationMutationRequestSchema,
+  localReviewComparisonCreateRequestSchema,
+  localReviewComparisonDiscardRequestSchema,
+  localReviewComparisonReadRequestSchema,
+  localReviewPromotionPrepareRequestSchema,
+  localReviewPromotionCandidateSchema,
+  localReviewPromotionReservationRequestSchema,
+  localReviewPromotionConfirmationSchema,
+  localReviewItemDiscardRequestSchema,
+  localReviewImagePickRequestSchema,
+  localReviewImagePreviewRequestSchema,
+  localReviewImagePreviewSchema,
+  localReviewTextPreviewRequestSchema,
+  localReviewTextPreviewSchema,
+  localReviewImagePickOutcomeSchema,
+  localReviewManualEvidenceCreateRequestSchema,
+  localReviewManualEvidenceCreateResultSchema,
+  localReviewManualEvidencePreviewSchema,
+  localReviewM48GeneratedArtifactMetadataEvidenceCreateRequestSchema,
+  localReviewM48GeneratedArtifactMetadataEvidenceCreateResultSchema,
+  localReviewM48GeneratedArtifactMetadataEvidencePreviewSchema,
+  localReviewSafePreviewMetadataClaimSchema,
+  localReviewSafePreviewMetadataEvidenceCreateRequestSchema,
+  localReviewSafePreviewMetadataEvidenceCreateResultSchema,
+  localReviewSafePreviewMetadataEvidencePreviewSchema,
+  localReviewLineComparisonSchema,
+  localReviewListRequestSchema,
+  localReviewM48ArtifactCopyRequestSchema,
+  localReviewSnapshotSchema,
+  localReviewTextItemCreateRequestSchema,
+  type LocalReviewCollectionCreateRequest,
+  type LocalReviewComparisonCreateRequest,
+  type LocalReviewM48ArtifactCopyRequest,
+  type LocalReviewM48GeneratedArtifactMetadataEvidenceCreateRequest,
+  type LocalReviewSafePreviewMetadataEvidenceCreateRequest,
+  type LocalReviewSnapshot,
+  type LocalReviewTextItemCreateRequest,
+} from "./localReview";
 import type {
   RepositoryStateReadRequest,
   RepositoryStateReadSnapshot,
@@ -276,6 +319,57 @@ export const TASK_PLAN_CREATE_COMMAND = "task_plan_create";
 export const TASK_PLAN_SELECT_COMMAND = "task_plan_select";
 export const TASK_PLAN_EDIT_COMMAND = "task_plan_edit";
 export const TASK_PLAN_DELETE_COMMAND = "task_plan_delete";
+export const LOCAL_REVIEW_STATUS_COMMAND = "local_review_status";
+export const LOCAL_REVIEW_COLLECTION_CREATE_COMMAND =
+  "local_review_collection_create";
+export const LOCAL_REVIEW_TEXT_ITEM_CREATE_COMMAND =
+  "local_review_text_item_create";
+export const LOCAL_REVIEW_M48_ARTIFACT_COPY_COMMAND =
+  "local_review_m48_artifact_copy";
+export const LOCAL_REVIEW_M48_GENERATED_ARTIFACT_METADATA_EVIDENCE_CREATE_COMMAND =
+  "local_review_m48_generated_artifact_metadata_evidence_create";
+export const LOCAL_REVIEW_COLLECTION_RESUME_COMMAND =
+  "local_review_collection_resume";
+export const LOCAL_REVIEW_COLLECTION_DISCARD_COMMAND =
+  "local_review_collection_discard";
+export const LOCAL_REVIEW_ITEM_DISCARD_COMMAND = "local_review_item_discard";
+export const LOCAL_REVIEW_IMAGE_PICK_COMMAND = "local_review_image_pick";
+export const LOCAL_REVIEW_IMAGE_PREVIEW_COMMAND = "local_review_image_preview";
+export const LOCAL_REVIEW_TEXT_PREVIEW_COMMAND = "local_review_text_preview";
+export const LOCAL_REVIEW_MANUAL_EVIDENCE_CREATE_COMMAND =
+  "local_review_manual_evidence_create";
+export const LOCAL_REVIEW_MANUAL_EVIDENCE_PREVIEW_COMMAND =
+  "local_review_manual_evidence_preview";
+export const LOCAL_REVIEW_M48_GENERATED_ARTIFACT_METADATA_EVIDENCE_PREVIEW_COMMAND =
+  "local_review_m48_generated_artifact_metadata_evidence_preview";
+export const LOCAL_REVIEW_SAFE_PREVIEW_METADATA_CLAIM_COMMAND =
+  "local_review_safe_preview_metadata_claim";
+export const LOCAL_REVIEW_SAFE_PREVIEW_METADATA_EVIDENCE_CREATE_COMMAND =
+  "local_review_safe_preview_metadata_evidence_create";
+export const LOCAL_REVIEW_SAFE_PREVIEW_METADATA_EVIDENCE_PREVIEW_COMMAND =
+  "local_review_safe_preview_metadata_evidence_preview";
+export const LOCAL_REVIEW_ANNOTATION_CREATE_COMMAND =
+  "local_review_annotation_create";
+export const LOCAL_REVIEW_ANNOTATION_EDIT_COMMAND =
+  "local_review_annotation_edit";
+export const LOCAL_REVIEW_ANNOTATION_RESOLVE_COMMAND =
+  "local_review_annotation_resolve";
+export const LOCAL_REVIEW_ANNOTATION_REOPEN_COMMAND =
+  "local_review_annotation_reopen";
+export const LOCAL_REVIEW_ANNOTATION_DELETE_COMMAND =
+  "local_review_annotation_delete";
+export const LOCAL_REVIEW_COMPARISON_CREATE_COMMAND =
+  "local_review_comparison_create";
+export const LOCAL_REVIEW_COMPARISON_READ_COMMAND =
+  "local_review_comparison_read";
+export const LOCAL_REVIEW_COMPARISON_DISCARD_COMMAND =
+  "local_review_comparison_discard";
+export const LOCAL_REVIEW_PROMOTION_PREPARE_COMMAND =
+  "local_review_promotion_prepare";
+export const LOCAL_REVIEW_PROMOTION_CONFIRM_COMMAND =
+  "local_review_promotion_confirm";
+export const LOCAL_REVIEW_PROMOTION_CANCEL_COMMAND =
+  "local_review_promotion_cancel";
 export const ADVISOR_SNAPSHOT_READ_COMMAND = "advisor_snapshot_read";
 export const ADVISOR_PROJECT_STATE_SNAPSHOT_READ_COMMAND =
   "advisor_project_state_snapshot_read";
@@ -1031,6 +1125,311 @@ export const deleteTaskPlan = (
     planIdRequestSchema,
     invokeFunction,
   );
+
+export async function loadLocalReview(
+  request: unknown,
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<LocalReviewSnapshot> {
+  return localReviewSnapshotSchema.parse(
+    await invokeFunction(LOCAL_REVIEW_STATUS_COMMAND, {
+      request: localReviewListRequestSchema.parse(request),
+    }),
+  );
+}
+
+export async function createLocalReviewCollection(
+  request: LocalReviewCollectionCreateRequest,
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<LocalReviewSnapshot> {
+  return localReviewSnapshotSchema.parse(
+    await invokeFunction(LOCAL_REVIEW_COLLECTION_CREATE_COMMAND, {
+      request: localReviewCollectionCreateRequestSchema.parse(request),
+    }),
+  );
+}
+
+export async function createLocalReviewTextItem(
+  request: LocalReviewTextItemCreateRequest,
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<LocalReviewSnapshot> {
+  return localReviewSnapshotSchema.parse(
+    await invokeFunction(LOCAL_REVIEW_TEXT_ITEM_CREATE_COMMAND, {
+      request: localReviewTextItemCreateRequestSchema.parse(request),
+    }),
+  );
+}
+export async function createLocalReviewM48ArtifactCopy(
+  request: LocalReviewM48ArtifactCopyRequest,
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<LocalReviewSnapshot> {
+  return localReviewSnapshotSchema.parse(
+    await invokeFunction(LOCAL_REVIEW_M48_ARTIFACT_COPY_COMMAND, {
+      request: localReviewM48ArtifactCopyRequestSchema.parse(request),
+    }),
+  );
+}
+export async function createLocalReviewM48GeneratedArtifactMetadataEvidence(
+  request: LocalReviewM48GeneratedArtifactMetadataEvidenceCreateRequest,
+  invokeFunction: InvokeFunction = invokeTauri,
+) {
+  return localReviewM48GeneratedArtifactMetadataEvidenceCreateResultSchema.parse(
+    await invokeFunction(
+      LOCAL_REVIEW_M48_GENERATED_ARTIFACT_METADATA_EVIDENCE_CREATE_COMMAND,
+      {
+        request:
+          localReviewM48GeneratedArtifactMetadataEvidenceCreateRequestSchema.parse(
+            request,
+          ),
+      },
+    ),
+  );
+}
+export async function claimLocalReviewSafePreviewMetadata(
+  invokeFunction: InvokeFunction = invokeTauri,
+) {
+  return localReviewSafePreviewMetadataClaimSchema.parse(
+    await invokeFunction(LOCAL_REVIEW_SAFE_PREVIEW_METADATA_CLAIM_COMMAND),
+  );
+}
+export async function createLocalReviewSafePreviewMetadataEvidence(
+  request: LocalReviewSafePreviewMetadataEvidenceCreateRequest,
+  invokeFunction: InvokeFunction = invokeTauri,
+) {
+  return localReviewSafePreviewMetadataEvidenceCreateResultSchema.parse(
+    await invokeFunction(
+      LOCAL_REVIEW_SAFE_PREVIEW_METADATA_EVIDENCE_CREATE_COMMAND,
+      {
+        request:
+          localReviewSafePreviewMetadataEvidenceCreateRequestSchema.parse(
+            request,
+          ),
+      },
+    ),
+  );
+}
+async function mutateLocalReview(
+  command: string,
+  request: unknown,
+  schema: z.ZodType,
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<LocalReviewSnapshot> {
+  return localReviewSnapshotSchema.parse(
+    await invokeFunction(command, { request: schema.parse(request) }),
+  );
+}
+export const resumeLocalReviewCollection = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+) =>
+  mutateLocalReview(
+    LOCAL_REVIEW_COLLECTION_RESUME_COMMAND,
+    request,
+    localReviewCollectionMutationRequestSchema,
+    invokeFunction,
+  );
+export const discardLocalReviewCollection = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+) =>
+  mutateLocalReview(
+    LOCAL_REVIEW_COLLECTION_DISCARD_COMMAND,
+    request,
+    localReviewCollectionMutationRequestSchema,
+    invokeFunction,
+  );
+export const discardLocalReviewItem = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+) =>
+  mutateLocalReview(
+    LOCAL_REVIEW_ITEM_DISCARD_COMMAND,
+    request,
+    localReviewItemDiscardRequestSchema,
+    invokeFunction,
+  );
+export async function pickLocalReviewImage(
+  request: unknown,
+  invokeFunction: InvokeFunction = invokeTauri,
+) {
+  return localReviewImagePickOutcomeSchema.parse(
+    await invokeFunction(LOCAL_REVIEW_IMAGE_PICK_COMMAND, {
+      request: localReviewImagePickRequestSchema.parse(request),
+    }),
+  );
+}
+export async function previewLocalReviewImage(
+  request: unknown,
+  invokeFunction: InvokeFunction = invokeTauri,
+) {
+  return localReviewImagePreviewSchema.parse(
+    await invokeFunction(LOCAL_REVIEW_IMAGE_PREVIEW_COMMAND, {
+      request: localReviewImagePreviewRequestSchema.parse(request),
+    }),
+  );
+}
+export async function previewLocalReviewText(
+  request: unknown,
+  invokeFunction: InvokeFunction = invokeTauri,
+) {
+  return localReviewTextPreviewSchema.parse(
+    await invokeFunction(LOCAL_REVIEW_TEXT_PREVIEW_COMMAND, {
+      request: localReviewTextPreviewRequestSchema.parse(request),
+    }),
+  );
+}
+export async function createLocalReviewManualEvidence(
+  request: unknown,
+  invokeFunction: InvokeFunction = invokeTauri,
+) {
+  return localReviewManualEvidenceCreateResultSchema.parse(
+    await invokeFunction(LOCAL_REVIEW_MANUAL_EVIDENCE_CREATE_COMMAND, {
+      request: localReviewManualEvidenceCreateRequestSchema.parse(request),
+    }),
+  );
+}
+export async function previewLocalReviewManualEvidence(
+  request: unknown,
+  invokeFunction: InvokeFunction = invokeTauri,
+) {
+  const parsed = localReviewImagePreviewRequestSchema.parse(request);
+  return localReviewManualEvidencePreviewSchema.parse(
+    await invokeFunction(LOCAL_REVIEW_MANUAL_EVIDENCE_PREVIEW_COMMAND, parsed),
+  );
+}
+export async function previewLocalReviewM48GeneratedArtifactMetadataEvidence(
+  request: unknown,
+  invokeFunction: InvokeFunction = invokeTauri,
+) {
+  const parsed = localReviewImagePreviewRequestSchema.parse(request);
+  return localReviewM48GeneratedArtifactMetadataEvidencePreviewSchema.parse(
+    await invokeFunction(
+      LOCAL_REVIEW_M48_GENERATED_ARTIFACT_METADATA_EVIDENCE_PREVIEW_COMMAND,
+      parsed,
+    ),
+  );
+}
+export async function previewLocalReviewSafePreviewMetadataEvidence(
+  request: unknown,
+  invokeFunction: InvokeFunction = invokeTauri,
+) {
+  const parsed = localReviewImagePreviewRequestSchema.parse(request);
+  return localReviewSafePreviewMetadataEvidencePreviewSchema.parse(
+    await invokeFunction(
+      LOCAL_REVIEW_SAFE_PREVIEW_METADATA_EVIDENCE_PREVIEW_COMMAND,
+      parsed,
+    ),
+  );
+}
+export const createLocalReviewAnnotation = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+) =>
+  mutateLocalReview(
+    LOCAL_REVIEW_ANNOTATION_CREATE_COMMAND,
+    request,
+    localReviewAnnotationCreateRequestSchema,
+    invokeFunction,
+  );
+export const editLocalReviewAnnotation = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+) =>
+  mutateLocalReview(
+    LOCAL_REVIEW_ANNOTATION_EDIT_COMMAND,
+    request,
+    localReviewAnnotationEditRequestSchema,
+    invokeFunction,
+  );
+export const resolveLocalReviewAnnotation = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+) =>
+  mutateLocalReview(
+    LOCAL_REVIEW_ANNOTATION_RESOLVE_COMMAND,
+    request,
+    localReviewAnnotationMutationRequestSchema,
+    invokeFunction,
+  );
+export const reopenLocalReviewAnnotation = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+) =>
+  mutateLocalReview(
+    LOCAL_REVIEW_ANNOTATION_REOPEN_COMMAND,
+    request,
+    localReviewAnnotationMutationRequestSchema,
+    invokeFunction,
+  );
+export const deleteLocalReviewAnnotation = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+) =>
+  mutateLocalReview(
+    LOCAL_REVIEW_ANNOTATION_DELETE_COMMAND,
+    request,
+    localReviewAnnotationMutationRequestSchema,
+    invokeFunction,
+  );
+export const createLocalReviewComparison = (
+  request: LocalReviewComparisonCreateRequest,
+  invokeFunction?: InvokeFunction,
+) =>
+  mutateLocalReview(
+    LOCAL_REVIEW_COMPARISON_CREATE_COMMAND,
+    request,
+    localReviewComparisonCreateRequestSchema,
+    invokeFunction,
+  );
+export async function readLocalReviewComparison(
+  request: unknown,
+  invokeFunction: InvokeFunction = invokeTauri,
+) {
+  return localReviewLineComparisonSchema.parse(
+    await invokeFunction(LOCAL_REVIEW_COMPARISON_READ_COMMAND, {
+      request: localReviewComparisonReadRequestSchema.parse(request),
+    }),
+  );
+}
+export const discardLocalReviewComparison = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+) =>
+  mutateLocalReview(
+    LOCAL_REVIEW_COMPARISON_DISCARD_COMMAND,
+    request,
+    localReviewComparisonDiscardRequestSchema,
+    invokeFunction,
+  );
+export async function prepareLocalReviewPromotion(
+  request: unknown,
+  invokeFunction: InvokeFunction = invokeTauri,
+) {
+  return localReviewPromotionCandidateSchema.parse(
+    await invokeFunction(LOCAL_REVIEW_PROMOTION_PREPARE_COMMAND, {
+      request: localReviewPromotionPrepareRequestSchema.parse(request),
+    }),
+  );
+}
+export async function confirmLocalReviewPromotion(
+  request: unknown,
+  invokeFunction: InvokeFunction = invokeTauri,
+) {
+  return localReviewPromotionConfirmationSchema.parse(
+    await invokeFunction(LOCAL_REVIEW_PROMOTION_CONFIRM_COMMAND, {
+      request: localReviewPromotionReservationRequestSchema.parse(request),
+    }),
+  );
+}
+export async function cancelLocalReviewPromotion(
+  request: unknown,
+  invokeFunction: InvokeFunction = invokeTauri,
+) {
+  return localReviewPromotionCandidateSchema.parse(
+    await invokeFunction(LOCAL_REVIEW_PROMOTION_CANCEL_COMMAND, {
+      request: localReviewPromotionReservationRequestSchema.parse(request),
+    }),
+  );
+}
 
 /**
  * Reads only local Advisor reference metadata. This fixed command has no
