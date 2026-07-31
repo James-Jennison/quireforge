@@ -727,6 +727,34 @@ BEGIN
 END;
 "#;
 
+const LOCAL_TASK_TEMPLATES_MIGRATION: &str = r#"
+CREATE TABLE local_task_templates (
+    id TEXT PRIMARY KEY NOT NULL CHECK(length(id) = 36),
+    schema_version INTEGER NOT NULL CHECK(schema_version = 1),
+    origin TEXT NOT NULL CHECK(origin = 'local'),
+    title TEXT NOT NULL CHECK(length(title) BETWEEN 1 AND 80),
+    purpose TEXT NOT NULL CHECK(length(purpose) BETWEEN 1 AND 240),
+    instructions TEXT NOT NULL CHECK(length(instructions) <= 32768),
+    version INTEGER NOT NULL CHECK(version >= 1),
+    sha256 TEXT NOT NULL CHECK(length(sha256) = 64),
+    state TEXT NOT NULL CHECK(state IN ('active', 'archived')),
+    created_at_ms INTEGER NOT NULL CHECK(created_at_ms >= 0),
+    updated_at_ms INTEGER NOT NULL CHECK(updated_at_ms >= created_at_ms),
+    archived_at_ms INTEGER CHECK(archived_at_ms >= created_at_ms),
+    CHECK((state = 'active' AND archived_at_ms IS NULL) OR
+          (state = 'archived' AND archived_at_ms IS NOT NULL))
+);
+CREATE INDEX local_task_templates_state_recent
+ ON local_task_templates(state, updated_at_ms DESC, id);
+CREATE TRIGGER local_task_templates_identity_immutable
+BEFORE UPDATE OF id, schema_version, origin, created_at_ms ON local_task_templates
+BEGIN SELECT RAISE(ABORT, 'template identity is immutable'); END;
+CREATE TRIGGER local_task_templates_version_monotonic
+BEFORE UPDATE OF version ON local_task_templates
+WHEN NEW.version <= OLD.version
+BEGIN SELECT RAISE(ABORT, 'template version must increase'); END;
+"#;
+
 const MIGRATIONS: &[(i64, &str, &str)] = &[
     (1, "projects-and-directory-associations", INITIAL_MIGRATION),
     (
@@ -807,6 +835,11 @@ const MIGRATIONS: &[(i64, &str, &str)] = &[
         20,
         "task-advisor-dispatch-origin-v1",
         TASK_ADVISOR_DISPATCH_ORIGIN_MIGRATION,
+    ),
+    (
+        21,
+        "local-task-templates-v1",
+        LOCAL_TASK_TEMPLATES_MIGRATION,
     ),
 ];
 

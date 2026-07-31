@@ -1,6 +1,8 @@
 mod identity;
 mod package_validation;
 mod storage;
+#[allow(dead_code)]
+mod task_template;
 pub mod types;
 
 use std::{
