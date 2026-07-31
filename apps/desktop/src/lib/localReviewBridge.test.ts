@@ -40,6 +40,10 @@ import {
   cancelLocalReviewPromotion,
   createLocalReviewPackageManifestSummaryEvidence,
   LOCAL_REVIEW_PACKAGE_MANIFEST_SUMMARY_EVIDENCE_CREATE_COMMAND,
+  createLocalReviewApprovalPresentationEvidence,
+  previewLocalReviewApprovalPresentationEvidence,
+  LOCAL_REVIEW_APPROVAL_PRESENTATION_EVIDENCE_CREATE_COMMAND,
+  LOCAL_REVIEW_APPROVAL_PRESENTATION_EVIDENCE_PREVIEW_COMMAND,
 } from "./bridge";
 
 const id = "018f0000-0000-7000-8000-000000000001";
@@ -57,6 +61,7 @@ const snapshot = {
   packageManifestSummaryAvailable: false,
   gitStatusDiffSummaryAvailable: false,
   activityPresentationAvailable: false,
+  approvalPresentationAvailable: false,
   diagnosticCode: null,
 };
 const annotationSnapshot = {
@@ -610,5 +615,18 @@ describe("local review image bridge", () => {
       expect(JSON.stringify(envelope)).not.toMatch(
         /path|url|filename|directory|git|shell|terminal|provider|connector|approval|dispatch|execution|save|publish|deploy/i,
       );
+  });
+});
+
+describe("approval presentation bridge", () => {
+  it("sends only the strict capture and preview boundaries", async () => {
+    const request = { collectionId: id, expectedCollectionUpdatedAtMs: 0 };
+    const invoke = vi.fn()
+      .mockResolvedValueOnce({ outcome: "failed", snapshot })
+      .mockResolvedValueOnce({ schemaVersion: 1, itemId: id, source: "approval-presentation", title: "Approval presentation", summary: "Captured approved Advisor dispatch presentation.", details: { approvalState: "approved", requestPresent: true, decisionPresent: true, dispatchPresent: true, executionPresent: true }, byteSize: 1, sha256: sha, createdAtMs: 0 });
+    await createLocalReviewApprovalPresentationEvidence(request, invoke);
+    await previewLocalReviewApprovalPresentationEvidence({ itemId: id, sha256: sha }, invoke);
+    expect(invoke).toHaveBeenNthCalledWith(1, LOCAL_REVIEW_APPROVAL_PRESENTATION_EVIDENCE_CREATE_COMMAND, { request });
+    expect(invoke).toHaveBeenNthCalledWith(2, LOCAL_REVIEW_APPROVAL_PRESENTATION_EVIDENCE_PREVIEW_COMMAND, { itemId: id, sha256: sha });
   });
 });

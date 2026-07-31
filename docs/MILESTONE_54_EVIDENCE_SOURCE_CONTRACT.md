@@ -42,19 +42,22 @@ command output, approval body/action ID, receipt, remote handle, file bytes, or
 authority. Approval presentation is descriptive only and cannot approve,
 dispatch, or execute.
 
-`manual-validation-summary`, `m48-generated-artifact-metadata`,
-`safe-preview-metadata`, `package-manifest-summary`, and
-`git-status-diff-summary` capture are implemented
-through fixed native, redacted source-specific claims. Package-manifest capture
+All seven ratified sources have capture implementations: `manual-validation-summary`,
+`m48-generated-artifact-metadata`, `safe-preview-metadata`,
+`package-manifest-summary`, `git-status-diff-summary`, `activity-presentation`,
+and `approval-presentation`. They use fixed native, redacted source-specific
+claims. Package-manifest capture
 accepts only `{ collectionId, expectedCollectionUpdatedAtMs }`, resolves the
 immutable task project binding and deterministic newest complete migration-18
 installed-host chain natively, and persists no record identity or host detail.
 Git-status capture accepts the same two-field collection request, resolves the
 task project and attached repository natively, and stores only closed aggregate
 facts from the native Git service. Its preview reads persisted evidence bytes
-only. The remaining listed sources have no capture command in this slice. Frontend
+only. Approval capture accepts only that two-field collection request, resolves
+the immutable migration-20 task origin natively, persists only its five closed
+redacted presentation fields, and previews persisted bytes only. Frontend
 in-memory Activity events are presentation-only and never evidence authority.
 Activity capture uses only future native append-only ledger rows owned by the
 selected collection and immutable task; no historical frontend activity is
-migrated or reconstructed.
-snapshots and generic filesystem, Git, or approval inputs are not evidence APIs.
+migrated or reconstructed. Snapshots and generic filesystem, Git, or approval
+inputs are not evidence APIs.
