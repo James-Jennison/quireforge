@@ -1493,13 +1493,18 @@ version. M55, M57, and M58 remain separate authority boundaries.
   selection, exact item/projection bindings, transformations/omissions,
   exclusions, destination-aware authorization, revalidation, continuation
   confinement, privacy/retention, and content-free audit evidence.
+- [Limited Provider Inference
+  Boundary](LIMITED_PROVIDER_INFERENCE_BOUNDARY.md) defines exact attempt
+  binding/revalidation, an initially text/local-projection-only future route,
+  lifecycle and ambiguity handling, output/proposal confinement, disclosures,
+  emergency stop, and a separate local-runtime variant.
 
-**Recommended next decision gate:** Limited Provider Inference Boundary is not
-started and requires separate explicit approval.
+**Recommended next checkpoint:** Implementation Readiness and First Milestone
+Selection requires separate explicit approval. It is not an implementation
+milestone and does not select a provider.
 
-There are no later planned core decision gates. The remaining Limited Provider
-Inference Boundary is non-authorizing and may be refined only through its later
-separate decision.
+All currently planned core architecture gates are complete. No implementation
+milestone starts automatically.
 
 **Future implementation milestones:** Native capability-registry contracts,
 canonical interaction/event contracts, mock adapter conformance, credential

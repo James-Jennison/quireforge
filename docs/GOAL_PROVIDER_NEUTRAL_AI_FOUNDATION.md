@@ -120,14 +120,21 @@ continuation confinement, privacy/retention, and content-free audit evidence.
 It grants no assembly implementation, transmission, invocation, retrieval,
 credential resolution, or native authority.
 
+### Limited Provider Inference Boundary
+
+Status: complete, decision-only. The
+[limited provider inference decision](LIMITED_PROVIDER_INFERENCE_BOUNDARY.md)
+defines exact attempt binding, immediate revalidation, an initially text/local-
+projection-only route, acknowledgement/streaming/cancellation/continuation,
+idempotency and ambiguity rules, output/proposal confinement, policy/usage
+disclosures, emergency stop, and a separate local-runtime variant. It grants no
+provider selection, implementation, transmission, invocation, retrieval, tool,
+browser, connector, or native authority.
+
 ## Pending decision gates
 
-Every gate requires separate explicit approval. Completing one gate does not
-automatically begin the next.
-
-1. **Limited Provider Inference Boundary** — define the first model-invocation
-   authority without retrieval, native tool execution, browser behavior,
-   connected-service access, or external mutation.
+All currently planned core architecture gates are complete. Completing a gate
+never starts an implementation milestone automatically.
 
 ## Future implementation milestones
 
@@ -221,9 +228,10 @@ When a gate completes, record it as progress under this goal.
 
 ## Immediate next gate
 
-The goal is active. Six decision gates are complete and no gate is currently
-active. **Limited Provider Inference Boundary** is the recommended next gate,
-but it still requires separate explicit approval and does not begin here.
+The goal is active. Seven decision gates are complete and no gate is currently
+active. The recommended next step is an **Implementation Readiness and First
+Milestone Selection** checkpoint, which requires separate explicit approval and
+does not begin here.
 
 ## Package and release policy
 

@@ -174,11 +174,11 @@ independent, and beta.54 remains the latest packaged generation.
 
 The **Provider-Neutral AI Foundation** is an active long-term product goal. Its
 taxonomy, capability-registry, interaction-protocol, adapter-governance,
-credential-custody, and context-manifest decisions are completed gates; no
-provider-neutral implementation exists and no gate is currently active. Limited
-Provider Inference Boundary is the recommended next separately approved gate.
-M55, M57, and M58 remain separate, and beta.54 remains the latest packaged
-generation.
+credential-custody, context-manifest, and Limited Provider Inference Boundary
+decisions are completed gates; no provider-neutral implementation exists and no
+gate is currently active. Implementation Readiness and First Milestone Selection
+is the recommended next separately approved checkpoint. M55, M57, and M58
+remain separate, and beta.54 remains the latest packaged generation.
 
 The Rust Codex, project/SQLite, Git, worktree, terminal, preview, attachment,
 settings, and integration services are candidates for reuse. The current Tauri
