@@ -1506,12 +1506,19 @@ milestone and does not select a provider.
 All currently planned core architecture gates are complete. No implementation
 milestone starts automatically.
 
-**Future implementation milestones:** Native capability-registry contracts,
-canonical interaction/event contracts, mock adapter conformance, credential
-broker, context assembly, limited inference, and the first separately approved
-provider or local-runtime adapter remain provisional—not approved work. Release
-checkpoints are assigned only when user-visible or operational behavior is
-implemented.
+**First implementation milestone source-complete:** [Provider Capability
+Registry Contracts](MILESTONE_PROVIDER_CAPABILITY_REGISTRY_CONTRACTS.md)
+implements private static fictional registry contracts and focused safeguards
+only. It has no persistence, bridge, UI, provider route, package, or release.
+
+**Recommended next implementation milestone:** Canonical Interaction/Event
+Contracts and Deterministic Mock Adapter Conformance requires separate explicit
+approval and remains local/non-networked.
+
+**Later implementation milestones:** Credential broker, context assembly,
+limited inference, and the first separately approved provider or local-runtime
+adapter remain provisional—not approved work. Release checkpoints are assigned
+only when user-visible or operational behavior is implemented.
 
 ### 58 — Controlled Browser Verification Proposal
 

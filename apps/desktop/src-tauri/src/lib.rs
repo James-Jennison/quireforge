@@ -16,6 +16,8 @@ mod git;
 mod preview;
 mod project;
 pub mod project_state;
+#[allow(dead_code)]
+mod provider_capability_registry;
 mod task_handoff;
 mod terminal;
 mod worktree;

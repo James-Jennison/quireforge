@@ -467,6 +467,48 @@ def validate() -> list[str]:
                     f"{marker}"
                 )
 
+    provider_registry = (
+        ROOT / "apps/desktop/src-tauri/src/provider_capability_registry.rs"
+    )
+    if provider_registry.is_file():
+        registry_source = provider_registry.read_text(encoding="utf-8")
+        forbidden_registry_authority = (
+            "use std::process",
+            "use tokio::process",
+            "use reqwest",
+            "use url::",
+            "use std::env",
+            "std::net::",
+            "tokio::net::",
+            "Command::",
+            "tauri::command",
+            "rusqlite::",
+            "fn dispatch",
+            "fn invoke",
+            "credential_reference",
+            "account_binding",
+            "context_manifest",
+        )
+        for forbidden in forbidden_registry_authority:
+            if forbidden in registry_source:
+                errors.append(
+                    "provider capability registry contains prohibited authority: "
+                    f"{forbidden}"
+                )
+        required_registry_markers = (
+            "fn fictional_fixture()",
+            "fn parse_fixture(",
+            "deny_unknown_fields",
+            "fn claim_digest(",
+            "fn invalid_extension(",
+        )
+        for marker in required_registry_markers:
+            if marker not in registry_source:
+                errors.append(
+                    "provider capability registry is missing required static guard: "
+                    f"{marker}"
+                )
+
     for relative in REQUIRED_PATHS:
         if not (ROOT / relative).is_file():
             errors.append(f"missing required file: {relative}")

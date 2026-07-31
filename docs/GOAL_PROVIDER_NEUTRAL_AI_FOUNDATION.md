@@ -153,6 +153,17 @@ selected:
 9. packaging and installed-host validation; and
 10. first user-visible provider-neutral release.
 
+### Capability Registry Contracts Only
+
+Status: source-complete, source-only. The
+[Provider Capability Registry Contracts](MILESTONE_PROVIDER_CAPABILITY_REGISTRY_CONTRACTS.md)
+milestone implements private static fictional registry contracts and focused
+validation only. It has no persistence, bridge, UI, package, or operational
+provider behavior and does not complete the goal's later implementation criteria.
+
+The next separately approved implementation milestone is **Canonical
+Interaction/Event Contracts and Deterministic Mock Adapter Conformance**.
+
 ## Separate goals and lanes
 
 ### M55 durable source admission and research
@@ -228,10 +239,11 @@ When a gate completes, record it as progress under this goal.
 
 ## Immediate next gate
 
-The goal is active. Seven decision gates are complete and no gate is currently
-active. The recommended next step is an **Implementation Readiness and First
-Milestone Selection** checkpoint, which requires separate explicit approval and
-does not begin here.
+The goal is active. Seven decision gates are complete. The first source-only
+implementation milestone is complete and no new milestone is active. **Canonical
+Interaction/Event Contracts and Deterministic Mock Adapter Conformance** is the
+recommended next separately approved implementation milestone and does not
+begin here.
 
 ## Package and release policy
 

@@ -180,6 +180,15 @@ gate is currently active. Implementation Readiness and First Milestone Selection
 is the recommended next separately approved checkpoint. M55, M57, and M58
 remain separate, and beta.54 remains the latest packaged generation.
 
+The first Provider-Neutral AI Foundation implementation milestone is
+source-complete: private native capability-registry contracts provide static
+fictional descriptors, closed claims, deterministic digest/version validation,
+Serde unknown-field denial, endpoint-aware model identity, focused tests, and a
+narrow repository safeguard. It has no persistence, Tauri/bridge/UI exposure,
+provider route, or package. Canonical Interaction/Event Contracts and
+Deterministic Mock Adapter Conformance is the recommended next separately
+approved implementation milestone; M55, M57, and M58 remain separate.
+
 The Rust Codex, project/SQLite, Git, worktree, terminal, preview, attachment,
 settings, and integration services are candidates for reuse. The current Tauri
 boundary is the command façade, app/plugin wiring, native dialogs/openers/
