@@ -90,21 +90,28 @@ structured and multimodal events, tool communication, grounding/usage/errors,
 terminal states, and governed extensions. It grants no transport, invocation,
 credential, context, retrieval, tool, browser, persistence, or UI authority.
 
+### Provider Adapter Lifecycle and Conformance Governance
+
+Status: complete, decision-only. The
+[adapter lifecycle and conformance decision](PROVIDER_ADAPTER_LIFECYCLE_AND_CONFORMANCE_GOVERNANCE.md)
+defines adapter identity, compatibility, trust, lifecycle, upgrade, rollback,
+revocation, quarantine, capability mapping, protocol translation, deterministic
+conformance, extension handling, and failure-closed behavior. It grants no
+adapter implementation, credential, transport, context, native-operation, or
+provider authority.
+
 ## Pending decision gates
 
 Every gate requires separate explicit approval. Completing one gate does not
 automatically begin the next.
 
-1. **Provider Adapter Lifecycle and Conformance Governance** — define adapter
-   identity, trust, isolation, compatibility, conformance, upgrade, rollback,
-   quarantine, and revocation.
-2. **Credential Broker and Account/Project/Scope Custody** — define real
+1. **Credential Broker and Account/Project/Scope Custody** — define real
    credential custody, leases, account binding, expiry, rotation, revocation,
    and non-exportable references.
-3. **Context Assembly and Transmission Manifests** — define what context may be
+2. **Context Assembly and Transmission Manifests** — define what context may be
    selected, transformed, authorized, transmitted, audited, retained, and
    invalidated.
-4. **Limited Provider Inference Boundary** — define the first model-invocation
+3. **Limited Provider Inference Boundary** — define the first model-invocation
    authority without retrieval, native tool execution, browser behavior,
    connected-service access, or external mutation.
 
@@ -200,8 +207,8 @@ When a gate completes, record it as progress under this goal.
 
 ## Immediate next gate
 
-The goal is active. Three decision gates are complete and no gate is currently
-active. **Provider Adapter Lifecycle and Conformance Governance** is the
+The goal is active. Four decision gates are complete and no gate is currently
+active. **Credential Broker and Account/Project/Scope Custody** is the
 recommended next gate, but it still requires separate explicit approval and
 does not begin here.
 

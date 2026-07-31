@@ -1478,14 +1478,18 @@ version. M55, M57, and M58 remain separate authority boundaries.
   streaming, continuation, opaque provider-session references, structured and
   multimodal events, tool proposals/results, grounding, usage, errors, and
   governed extensions.
+- [Provider Adapter Lifecycle and Conformance
+  Governance](PROVIDER_ADAPTER_LIFECYCLE_AND_CONFORMANCE_GOVERNANCE.md)
+  defines adapter identity, compatibility, trust, lifecycle, upgrade, rollback,
+  revocation, quarantine, capability mapping, protocol translation, conformance,
+  extension handling, and failure-closed behavior.
 
-**Recommended next decision gate:** Provider Adapter Lifecycle and Conformance
-Governance is not started and requires separate explicit approval.
+**Recommended next decision gate:** Credential Broker and Account/Project/Scope
+Custody is not started and requires separate explicit approval.
 
-**Later planned decision gates:** Credential Broker and Account/Project/Scope
-Custody; Context Assembly and Transmission Manifests; and Limited Provider
-Inference Boundary. They are non-authorizing and may be refined only through
-later decisions.
+**Later planned decision gates:** Context Assembly and Transmission Manifests
+and Limited Provider Inference Boundary. They are non-authorizing and may be
+refined only through later decisions.
 
 **Future implementation milestones:** Native capability-registry contracts,
 canonical interaction/event contracts, mock adapter conformance, credential
