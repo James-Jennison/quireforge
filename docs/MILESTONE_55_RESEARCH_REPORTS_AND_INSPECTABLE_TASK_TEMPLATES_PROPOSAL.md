@@ -1,9 +1,9 @@
 # Milestone 55 — Research Reports and Inspectable Task Templates Proposal
 
-Status: decision-ready proposal, awaiting James’s explicit approval. This is the
-sole M55 decision record. It adds no runtime behavior, migration, command,
-bridge, UI, test, package, provider, connector, browser, or network capability.
-M56 remains blocked.
+Status: approved decision. This is the sole authoritative M55 decision record.
+It adds no runtime behavior, migration, command, bridge, UI, test, package,
+provider, connector, browser, or network capability. M56 remains blocked until
+its template-only implementation receives separate explicit approval.
 
 ## Decision
 

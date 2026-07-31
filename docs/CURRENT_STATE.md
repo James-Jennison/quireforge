@@ -104,10 +104,10 @@ persisted-bytes-only previews. Migration 19 is the native Activity ownership
 ledger; migration 20 immutably binds Advisor-dispatched tasks. Beta.52 remains
 preserved as an unreleased failed installed-host candidate.
 
-Milestone 55 is decision-ready but not approved. Its proposal separately defers
+Milestone 55 is approved as a decision-only milestone. Its proposal separately defers
 research-report implementation pending a future approved durable source-manifest
 authority and defines only a bounded, inspectable local-template contract for a
-future M56 approval. It adds no product behavior, migration, retrieval,
+future separately approved M56 implementation. It adds no product behavior, migration, retrieval,
 provider, connector, browser, credential, or package capability. M57 connector
 governance and M58 browser verification remain separate decision gates.
 

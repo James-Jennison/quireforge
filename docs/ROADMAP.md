@@ -1377,8 +1377,8 @@ provider integration. It excludes opaque personalization, hidden retrieval,
 automatic browsing, and automatic actions. This is a decision-only gate with
 no package change.
 
-**Decision-ready, awaiting approval:** [M55 research reports and inspectable
-task templates proposal](MILESTONE_55_RESEARCH_REPORTS_AND_INSPECTABLE_TASK_TEMPLATES_PROPOSAL.md)
+**Approved:** [M55 research reports and inspectable task templates
+proposal](MILESTONE_55_RESEARCH_REPORTS_AND_INSPECTABLE_TASK_TEMPLATES_PROPOSAL.md)
 defers research-report implementation because no approved durable source-manifest
 authority exists. It defines a closed local-template-only M56 contract without
 adding retrieval, providers, connectors, browser authority, or product behavior.
