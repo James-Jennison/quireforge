@@ -32,6 +32,7 @@ from release_contract import (
     sandboxd_artifact_filename,
     source_version,
 )
+from release_checksums import validate_sha256sums
 
 
 EXPECTED_DEPENDENCIES = {"libgtk-3-0", "libwebkit2gtk-4.1-0"}
@@ -199,14 +200,10 @@ def validate_manifest(
             f"unexpected release artifact set: {sorted(actual_names ^ expected_names)}"
         )
 
-    checksum_lines = (artifact_dir / "SHA256SUMS").read_text(
-        encoding="utf-8"
-    ).splitlines()
-    expected_lines = [
-        f"{sha256(path)}  {path.name}" for path in sorted(by_format.values())
-    ]
-    if checksum_lines != expected_lines:
-        raise RuntimeError("SHA256SUMS does not match the release artifacts")
+    validate_sha256sums(
+        artifact_dir / "SHA256SUMS",
+        {path.name: sha256(path) for path in by_format.values()},
+    )
     return manifest, by_format
 
 

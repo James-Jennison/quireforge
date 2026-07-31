@@ -12,6 +12,7 @@ import tempfile
 from pathlib import Path
 
 from package_sandboxd import build as build_sandboxd
+from release_checksums import validate_sha256sums
 
 from release_contract import (
     CANONICAL_DESKTOP,
@@ -251,36 +252,11 @@ def coherent_release_set(root: Path) -> dict[str, object]:
         raise RuntimeError("canonical release artifact names are incoherent")
     if {path.name for path in root.iterdir() if path.is_file()} != names:
         raise RuntimeError("canonical release file set is incoherent")
-    if checksum_mapping(checksums_path) != expected_checksums:
+    try:
+        validate_sha256sums(checksums_path, expected_checksums)
+    except RuntimeError as error:
         raise RuntimeError("canonical release checksums are incoherent")
     return manifest
-
-
-def checksum_mapping(checksums_path: Path) -> dict[str, str]:
-    """Read the closed SHA256SUMS format without assigning authority to order."""
-    try:
-        lines = checksums_path.read_text(encoding="utf-8").splitlines()
-    except OSError as error:
-        raise RuntimeError("canonical release checksums are unreadable") from error
-    entries: dict[str, str] = {}
-    for line in lines:
-        if not line:
-            continue
-        parts = line.split("  ")
-        if len(parts) != 2:
-            raise RuntimeError("canonical release checksum entry is malformed")
-        digest, name = parts
-        if (len(digest) != 64
-                or any(character not in "0123456789abcdef" for character in digest)
-                or not name
-                or Path(name).name != name
-                or "/" in name
-                or "\\" in name
-                or name in {".", ".."}
-                or name in entries):
-            raise RuntimeError("canonical release checksum entry is incoherent")
-        entries[name] = digest
-    return entries
 
 
 def release_sets_identical(source: Path, archive: Path) -> bool:

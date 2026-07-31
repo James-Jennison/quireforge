@@ -10,6 +10,11 @@ import re
 import subprocess
 from pathlib import Path
 
+try:
+    from .release_checksums import sha256, write_sha256sums
+except ImportError:  # Script entry points execute outside the scripts package.
+    from release_checksums import sha256, write_sha256sums
+
 
 ROOT = Path(__file__).resolve().parent.parent
 TAURI_CONFIG = ROOT / "apps/desktop/src-tauri/tauri.conf.json"
@@ -57,14 +62,6 @@ def run(
 
 def appstream_validation_command(validator: str, metadata: Path) -> list[str]:
     return [validator, "validate", "--no-net", str(metadata)]
-
-
-def sha256(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as source:
-        for chunk in iter(lambda: source.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
 
 
 def glibc_requirement(path: Path) -> tuple[int, int]:
@@ -274,11 +271,3 @@ def set_tree_timestamp(root: Path, timestamp: int) -> None:
             if not path.is_symlink():
                 raise
     os.utime(root, (timestamp, timestamp))
-
-
-def write_sha256sums(output_dir: Path, artifacts: list[Path]) -> None:
-    lines = [f"{sha256(path)}  {path.name}" for path in artifacts]
-    (output_dir / "SHA256SUMS").write_text(
-        "\n".join(lines) + "\n",
-        encoding="utf-8",
-    )

@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — 0.1.0-beta.50
+## Unreleased — 0.1.0-beta.51
 
 ### Added
 
@@ -15,6 +15,9 @@
 
 - Treat canonical `SHA256SUMS` as a closed artifact filename-to-digest mapping,
   preserving valid prior checksum ordering byte-for-byte during archival.
+
+- Centralize release checksum parsing, emission, and validation so every
+  desktop-release authority uses the same order-independent closed mapping.
 
 - Begin the approved M54 local-review implementation: native-owned, bounded
   task-scoped SQLite collections for copied text, static image mockups, and

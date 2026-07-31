@@ -61,13 +61,13 @@ class PackageContractTests(unittest.TestCase):
             output = Path(temporary) / "packages"
             output.mkdir()
             self.write_release_set(output, "48")
-            candidate = staging_dir(output, "0.1.0-beta.50")
+            candidate = staging_dir(output, "0.1.0-beta.51")
             candidate.mkdir()
-            self.write_release_set(candidate, "50")
-            self.assertEqual(finalize(output, "0.1.0-beta.50"), 0)
+            self.write_release_set(candidate, "51")
+            self.assertEqual(finalize(output, "0.1.0-beta.51"), 0)
             archived = output.parent / "archive" / "0.1.0-beta.48"
             self.assertTrue((archived / "release-manifest.json").is_file())
-            self.assertTrue((output / "quireforge_0.1.0.beta.50_amd64.deb").is_file())
+            self.assertTrue((output / "quireforge_0.1.0.beta.51_amd64.deb").is_file())
 
     def test_finalizer_accepts_beta_48_checksum_order_and_preserves_it_verbatim(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -75,13 +75,13 @@ class PackageContractTests(unittest.TestCase):
             output.mkdir()
             self.write_release_set(output, "48", ("sandboxd-deb", "deb"))
             prior_checksums = (output / "SHA256SUMS").read_bytes()
-            candidate = staging_dir(output, "0.1.0-beta.50")
+            candidate = staging_dir(output, "0.1.0-beta.51")
             candidate.mkdir()
-            self.write_release_set(candidate, "50")
-            finalize(output, "0.1.0-beta.50")
+            self.write_release_set(candidate, "51")
+            finalize(output, "0.1.0-beta.51")
             archived = output.parent / "archive" / "0.1.0-beta.48"
             self.assertEqual((archived / "SHA256SUMS").read_bytes(), prior_checksums)
-            self.assertTrue((output / "quireforge_0.1.0.beta.50_amd64.deb").is_file())
+            self.assertTrue((output / "quireforge_0.1.0.beta.51_amd64.deb").is_file())
 
     def test_finalizer_rejects_bad_checksum_mapping_entries(self) -> None:
         for line in [
@@ -95,22 +95,22 @@ class PackageContractTests(unittest.TestCase):
                 output.mkdir()
                 self.write_release_set(output, "48")
                 (output / "SHA256SUMS").write_text(line, encoding="utf-8")
-                candidate = staging_dir(output, "0.1.0-beta.50")
+                candidate = staging_dir(output, "0.1.0-beta.51")
                 candidate.mkdir()
-                self.write_release_set(candidate, "50")
+                self.write_release_set(candidate, "51")
                 with self.assertRaisesRegex(RuntimeError, "checksum"):
-                    finalize(output, "0.1.0-beta.50")
+                    finalize(output, "0.1.0-beta.51")
 
     def test_finalizer_refuses_a_partial_prior_release_without_deleting_it(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary) / "packages"
             output.mkdir()
             (output / "release-manifest.json").write_text("{}", encoding="utf-8")
-            candidate = staging_dir(output, "0.1.0-beta.50")
+            candidate = staging_dir(output, "0.1.0-beta.51")
             candidate.mkdir()
-            self.write_release_set(candidate, "50")
+            self.write_release_set(candidate, "51")
             with self.assertRaisesRegex(RuntimeError, "incomplete|incoherent"):
-                finalize(output, "0.1.0-beta.50")
+                finalize(output, "0.1.0-beta.51")
             self.assertTrue((output / "release-manifest.json").is_file())
             self.assertTrue((candidate / "release-manifest.json").is_file())
 
@@ -118,10 +118,10 @@ class PackageContractTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary) / "packages"
             output.mkdir()
-            candidate = staging_dir(output, "0.1.0-beta.50")
+            candidate = staging_dir(output, "0.1.0-beta.51")
             candidate.mkdir()
-            self.write_release_set(candidate, "50")
-            finalize(output, "0.1.0-beta.50")
+            self.write_release_set(candidate, "51")
+            finalize(output, "0.1.0-beta.51")
             self.assertFalse((output.parent / "archive").exists())
             self.assertTrue((output / "release-manifest.json").is_file())
 
@@ -134,11 +134,11 @@ class PackageContractTests(unittest.TestCase):
             archive.mkdir(parents=True)
             self.write_release_set(archive, "48")
             (archive / "quireforge_0.1.0.beta.48_amd64.deb").write_bytes(b"conflict")
-            candidate = staging_dir(output, "0.1.0-beta.50")
+            candidate = staging_dir(output, "0.1.0-beta.51")
             candidate.mkdir()
-            self.write_release_set(candidate, "50")
+            self.write_release_set(candidate, "51")
             with self.assertRaisesRegex(RuntimeError, "archive conflicts"):
-                finalize(output, "0.1.0-beta.50")
+                finalize(output, "0.1.0-beta.51")
             self.assertTrue((output / "quireforge_0.1.0.beta.48_amd64.deb").is_file())
 
     def test_finalizer_restores_prior_canonical_set_after_promotion_failure(self) -> None:
@@ -147,9 +147,9 @@ class PackageContractTests(unittest.TestCase):
             output.mkdir()
             self.write_release_set(output, "48")
             prior_bytes = (output / "quireforge_0.1.0.beta.48_amd64.deb").read_bytes()
-            candidate = staging_dir(output, "0.1.0-beta.50")
+            candidate = staging_dir(output, "0.1.0-beta.51")
             candidate.mkdir()
-            self.write_release_set(candidate, "50")
+            self.write_release_set(candidate, "51")
             real_move = __import__("shutil").move
 
             def fail_candidate_move(source: Path, destination: Path):
@@ -159,13 +159,13 @@ class PackageContractTests(unittest.TestCase):
 
             with patch("package_linux.shutil.move", side_effect=fail_candidate_move):
                 with self.assertRaisesRegex(RuntimeError, "promotion failed"):
-                    finalize(output, "0.1.0-beta.50")
+                    finalize(output, "0.1.0-beta.51")
             self.assertEqual(
                 (output / "quireforge_0.1.0.beta.48_amd64.deb").read_bytes(),
                 prior_bytes,
             )
     def test_all_source_versions_match_the_beta_candidate(self) -> None:
-        self.assertEqual(source_version(), "0.1.0-beta.50")
+        self.assertEqual(source_version(), "0.1.0-beta.51")
 
     def test_temporary_desktop_bundle_envelope_is_closed_and_bounded(self) -> None:
         budget = json.loads(
