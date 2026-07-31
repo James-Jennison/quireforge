@@ -1070,3 +1070,188 @@ pub struct PlanEditRequest {
     pub label: String,
     pub body: String,
 }
+
+pub const TASK_TEMPLATE_SCHEMA_VERSION: u16 = 1;
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum TaskTemplateBridgeState {
+    Ready,
+    Unavailable,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum TaskTemplateDiagnosticCode {
+    MetadataUnavailable,
+    InvalidRequest,
+    NotFound,
+    BuiltInImmutable,
+    ArchivedReadOnly,
+    ActiveAlready,
+    ArchivedAlready,
+    Stale,
+    CapacityReached,
+    Unavailable,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum TaskTemplateOrigin {
+    BuiltIn,
+    Local,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum TaskTemplateState {
+    Active,
+    Archived,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TaskTemplateSummary {
+    pub id: String,
+    pub title: String,
+    pub purpose: String,
+    pub origin: TaskTemplateOrigin,
+    pub state: TaskTemplateState,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TaskTemplateDetail {
+    pub id: String,
+    pub title: String,
+    pub purpose: String,
+    pub instructions: String,
+    pub origin: TaskTemplateOrigin,
+    pub state: TaskTemplateState,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TaskTemplateCapacity {
+    pub record_count: u16,
+    pub canonical_bytes: u32,
+    pub warning: bool,
+    pub count_limit: u16,
+    pub canonical_byte_limit: u32,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TaskTemplateCatalogSnapshot {
+    pub schema_version: u16,
+    pub state: TaskTemplateBridgeState,
+    pub templates: Vec<TaskTemplateSummary>,
+    pub capacity: Option<TaskTemplateCapacity>,
+    pub diagnostic_code: Option<TaskTemplateDiagnosticCode>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TaskTemplateInspectionSnapshot {
+    pub schema_version: u16,
+    pub state: TaskTemplateBridgeState,
+    pub template: Option<TaskTemplateDetail>,
+    pub mutation_handle: Option<String>,
+    pub diagnostic_code: Option<TaskTemplateDiagnosticCode>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TaskTemplateApplicationChecklist {
+    pub template_active: bool,
+    pub task_plan_available: bool,
+    pub exact_draft_required: bool,
+    pub confirmation_required: bool,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TaskTemplatePreviewSnapshot {
+    pub schema_version: u16,
+    pub state: TaskTemplateBridgeState,
+    pub reservation_id: Option<String>,
+    pub expires_at_ms: Option<i64>,
+    pub checklist: Option<TaskTemplateApplicationChecklist>,
+    pub diagnostic_code: Option<TaskTemplateDiagnosticCode>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TaskTemplateApplicationOutcome {
+    pub schema_version: u16,
+    pub state: TaskTemplateBridgeState,
+    pub applied: bool,
+    pub cancelled: bool,
+    pub diagnostic_code: Option<TaskTemplateDiagnosticCode>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct TaskTemplateIdRequest {
+    pub template_id: String,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct TaskTemplateContentRequest {
+    pub title: String,
+    pub purpose: String,
+    pub instructions: String,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct TaskTemplateMutationRequest {
+    pub mutation_handle: String,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct TaskTemplateEditRequest {
+    pub mutation_handle: String,
+    pub title: String,
+    pub purpose: String,
+    pub instructions: String,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct TaskTemplateDeleteRequest {
+    pub mutation_handle: String,
+    pub confirmation: TaskTemplateDeletionConfirmation,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum TaskTemplateDeletionConfirmation {
+    Confirmed,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct TaskTemplatePreviewRequest {
+    pub template_id: String,
+    pub task_id: String,
+    pub plan_id: String,
+    pub title: String,
+    pub plan_text: String,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct TaskTemplateConfirmRequest {
+    pub reservation_id: String,
+    pub title: String,
+    pub plan_text: String,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct TaskTemplateCancelRequest {
+    pub reservation_id: String,
+}

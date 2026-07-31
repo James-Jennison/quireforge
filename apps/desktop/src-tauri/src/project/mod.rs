@@ -49,8 +49,15 @@ use types::{
     LocalReviewTextPreviewRequest, PendingAttachmentKind, PendingAttachmentPreview,
     ProjectDiagnosticCode, ProjectPreflightSnapshot, ProjectSummary, ProjectWorkspaceSnapshot,
     ProjectWorkspaceState, TaskCatalogListRequest, TaskCatalogSnapshot, TaskCatalogState,
-    TaskDiagnosticCode, LOCAL_REVIEW_SCHEMA_VERSION, PROJECT_SCHEMA_VERSION,
-    TASK_RECORD_SCHEMA_VERSION,
+    TaskDiagnosticCode, TaskTemplateApplicationChecklist, TaskTemplateApplicationOutcome,
+    TaskTemplateBridgeState, TaskTemplateCancelRequest, TaskTemplateCapacity,
+    TaskTemplateCatalogSnapshot, TaskTemplateConfirmRequest, TaskTemplateContentRequest,
+    TaskTemplateDeleteRequest, TaskTemplateDetail, TaskTemplateDiagnosticCode,
+    TaskTemplateEditRequest, TaskTemplateIdRequest, TaskTemplateInspectionSnapshot,
+    TaskTemplateMutationRequest, TaskTemplateOrigin, TaskTemplatePreviewRequest,
+    TaskTemplatePreviewSnapshot, TaskTemplateState, TaskTemplateSummary,
+    LOCAL_REVIEW_SCHEMA_VERSION, PROJECT_SCHEMA_VERSION, TASK_RECORD_SCHEMA_VERSION,
+    TASK_TEMPLATE_SCHEMA_VERSION,
 };
 use uuid::Uuid;
 
@@ -73,6 +80,11 @@ use self::identity::{
     disconnected_state, display_path, inspect_directory, DirectoryIdentity,
     DirectoryInspectionError,
 };
+use self::task_template::{TemplateOrigin, TemplateState};
+use self::task_template_service::{
+    DeletionConfirmation, TemplateContentInput, TemplateLifecycleError, TemplateLifecycleService,
+    TemplateMutationAuthority,
+};
 
 #[derive(Clone)]
 struct PendingAttachment {
@@ -88,6 +100,7 @@ pub struct ProjectService {
     active_executions: Mutex<HashSet<String>>,
     active_terminals: Mutex<HashMap<String, usize>>,
     promotion_reservations: Mutex<VecDeque<LocalReviewPromotionReservation>>,
+    template_mutation_handles: Mutex<HashMap<String, TemplateMutationAuthority>>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -217,6 +230,274 @@ pub(crate) struct ConversationPendingSelection<'a> {
 }
 
 impl ProjectService {
+    fn with_template_service<T>(
+        &self,
+        operation: impl FnOnce(&mut TemplateLifecycleService) -> Result<T, TemplateLifecycleError>,
+    ) -> Result<T, TemplateLifecycleError> {
+        let mut guard = self
+            .repository
+            .lock()
+            .map_err(|_| TemplateLifecycleError::Unavailable)?;
+        let repository = guard.take().ok_or(TemplateLifecycleError::Unavailable)?;
+        let mut service = TemplateLifecycleService::new(repository);
+        let result = operation(&mut service);
+        *guard = Some(service.into_repository());
+        result
+    }
+
+    fn issue_template_handle(
+        &self,
+        inspection: &task_template_service::TemplateInspection,
+    ) -> Option<String> {
+        let authority = inspection.mutation_authority()?;
+        let handle = Uuid::now_v7().to_string();
+        self.template_mutation_handles
+            .lock()
+            .ok()?
+            .insert(handle.clone(), authority);
+        Some(handle)
+    }
+
+    fn template_authority(
+        &self,
+        handle: &str,
+    ) -> Result<TemplateMutationAuthority, TemplateLifecycleError> {
+        if !valid_id(handle) {
+            return Err(TemplateLifecycleError::InvalidInput);
+        }
+        self.template_mutation_handles
+            .lock()
+            .map_err(|_| TemplateLifecycleError::Unavailable)?
+            .get(handle)
+            .cloned()
+            .ok_or(TemplateLifecycleError::Stale)
+    }
+
+    fn remove_template_handle(&self, handle: &str) {
+        if let Ok(mut handles) = self.template_mutation_handles.lock() {
+            handles.remove(handle);
+        }
+    }
+
+    pub fn task_template_catalog(&self) -> TaskTemplateCatalogSnapshot {
+        match self.with_template_service(|service| service.catalog()) {
+            Ok(catalog) => TaskTemplateCatalogSnapshot {
+                schema_version: TASK_TEMPLATE_SCHEMA_VERSION,
+                state: TaskTemplateBridgeState::Ready,
+                templates: catalog.templates.iter().map(template_summary).collect(),
+                capacity: Some(template_capacity(&catalog.capacity)),
+                diagnostic_code: None,
+            },
+            Err(error) => task_template_catalog_unavailable(error),
+        }
+    }
+
+    pub fn task_template_inspect(
+        &self,
+        request: TaskTemplateIdRequest,
+    ) -> TaskTemplateInspectionSnapshot {
+        if !valid_id(&request.template_id) {
+            return task_template_inspection_unavailable(TemplateLifecycleError::InvalidInput);
+        }
+        match self.with_template_service(|service| service.inspect(&request.template_id)) {
+            Ok(inspection) => TaskTemplateInspectionSnapshot {
+                schema_version: TASK_TEMPLATE_SCHEMA_VERSION,
+                state: TaskTemplateBridgeState::Ready,
+                template: Some(template_detail(&inspection.template)),
+                mutation_handle: self.issue_template_handle(&inspection),
+                diagnostic_code: None,
+            },
+            Err(error) => task_template_inspection_unavailable(error),
+        }
+    }
+
+    pub fn task_template_create(
+        &self,
+        request: TaskTemplateContentRequest,
+    ) -> TaskTemplateInspectionSnapshot {
+        match self.with_template_service(|service| service.create(template_content(request))) {
+            Ok(inspection) => TaskTemplateInspectionSnapshot {
+                schema_version: TASK_TEMPLATE_SCHEMA_VERSION,
+                state: TaskTemplateBridgeState::Ready,
+                template: Some(template_detail(&inspection.template)),
+                mutation_handle: self.issue_template_handle(&inspection),
+                diagnostic_code: None,
+            },
+            Err(error) => task_template_inspection_unavailable(error),
+        }
+    }
+
+    pub fn task_template_edit(
+        &self,
+        request: TaskTemplateEditRequest,
+    ) -> TaskTemplateInspectionSnapshot {
+        let authority = match self.template_authority(&request.mutation_handle) {
+            Ok(authority) => authority,
+            Err(error) => return task_template_inspection_unavailable(error),
+        };
+        match self.with_template_service(|service| {
+            service.update(
+                &authority,
+                template_content(TaskTemplateContentRequest {
+                    title: request.title,
+                    purpose: request.purpose,
+                    instructions: request.instructions,
+                }),
+            )
+        }) {
+            Ok(inspection) => {
+                self.remove_template_handle(&request.mutation_handle);
+                TaskTemplateInspectionSnapshot {
+                    schema_version: TASK_TEMPLATE_SCHEMA_VERSION,
+                    state: TaskTemplateBridgeState::Ready,
+                    template: Some(template_detail(&inspection.template)),
+                    mutation_handle: self.issue_template_handle(&inspection),
+                    diagnostic_code: None,
+                }
+            }
+            Err(error) => task_template_inspection_unavailable(error),
+        }
+    }
+
+    fn task_template_mutation(
+        &self,
+        request: TaskTemplateMutationRequest,
+        operation: impl FnOnce(
+            &mut TemplateLifecycleService,
+            &TemplateMutationAuthority,
+        ) -> Result<
+            task_template_service::TemplateInspection,
+            TemplateLifecycleError,
+        >,
+    ) -> TaskTemplateInspectionSnapshot {
+        let authority = match self.template_authority(&request.mutation_handle) {
+            Ok(authority) => authority,
+            Err(error) => return task_template_inspection_unavailable(error),
+        };
+        match self.with_template_service(|service| operation(service, &authority)) {
+            Ok(inspection) => {
+                self.remove_template_handle(&request.mutation_handle);
+                TaskTemplateInspectionSnapshot {
+                    schema_version: TASK_TEMPLATE_SCHEMA_VERSION,
+                    state: TaskTemplateBridgeState::Ready,
+                    template: Some(template_detail(&inspection.template)),
+                    mutation_handle: self.issue_template_handle(&inspection),
+                    diagnostic_code: None,
+                }
+            }
+            Err(error) => task_template_inspection_unavailable(error),
+        }
+    }
+
+    pub fn task_template_duplicate(
+        &self,
+        request: TaskTemplateMutationRequest,
+    ) -> TaskTemplateInspectionSnapshot {
+        self.task_template_mutation(request, |service, authority| service.duplicate(authority))
+    }
+    pub fn task_template_archive(
+        &self,
+        request: TaskTemplateMutationRequest,
+    ) -> TaskTemplateInspectionSnapshot {
+        self.task_template_mutation(request, |service, authority| service.archive(authority))
+    }
+    pub fn task_template_restore(
+        &self,
+        request: TaskTemplateMutationRequest,
+    ) -> TaskTemplateInspectionSnapshot {
+        self.task_template_mutation(request, |service, authority| service.reactivate(authority))
+    }
+    pub fn task_template_delete(
+        &self,
+        request: TaskTemplateDeleteRequest,
+    ) -> TaskTemplateApplicationOutcome {
+        let TaskTemplateDeleteRequest {
+            mutation_handle,
+            confirmation,
+        } = request;
+        let confirmation = match confirmation {
+            types::TaskTemplateDeletionConfirmation::Confirmed => DeletionConfirmation::Confirmed,
+        };
+        let authority = match self.template_authority(&mutation_handle) {
+            Ok(authority) => authority,
+            Err(error) => return task_template_outcome_error(false, false, error),
+        };
+        match self.with_template_service(|service| service.delete(&authority, confirmation)) {
+            Ok(()) => {
+                self.remove_template_handle(&mutation_handle);
+                task_template_outcome_success(false, false)
+            }
+            Err(error) => task_template_outcome_error(false, false, error),
+        }
+    }
+    pub fn task_template_preview(
+        &self,
+        request: TaskTemplatePreviewRequest,
+    ) -> TaskTemplatePreviewSnapshot {
+        if !valid_id(&request.template_id)
+            || !valid_id(&request.task_id)
+            || !valid_id(&request.plan_id)
+        {
+            return task_template_preview_unavailable(TemplateLifecycleError::InvalidInput);
+        }
+        match self.with_template_service(|service| {
+            service.preview_application(
+                &request.template_id,
+                &request.task_id,
+                &request.plan_id,
+                &request.title,
+                &request.plan_text,
+            )
+        }) {
+            Ok(preview) => TaskTemplatePreviewSnapshot {
+                schema_version: TASK_TEMPLATE_SCHEMA_VERSION,
+                state: TaskTemplateBridgeState::Ready,
+                reservation_id: Some(preview.reservation_id),
+                expires_at_ms: Some(preview.expires_at_ms),
+                checklist: Some(TaskTemplateApplicationChecklist {
+                    template_active: true,
+                    task_plan_available: true,
+                    exact_draft_required: true,
+                    confirmation_required: true,
+                }),
+                diagnostic_code: None,
+            },
+            Err(error) => task_template_preview_unavailable(error),
+        }
+    }
+    pub fn task_template_confirm(
+        &self,
+        request: TaskTemplateConfirmRequest,
+    ) -> TaskTemplateApplicationOutcome {
+        if !valid_id(&request.reservation_id) {
+            return task_template_outcome_error(false, false, TemplateLifecycleError::InvalidInput);
+        }
+        match self.with_template_service(|service| {
+            service.confirm_application(&request.reservation_id, &request.title, &request.plan_text)
+        }) {
+            Ok(()) => task_template_outcome_success(true, false),
+            Err(error) => task_template_outcome_error(false, false, error),
+        }
+    }
+    pub fn task_template_cancel(
+        &self,
+        request: TaskTemplateCancelRequest,
+    ) -> TaskTemplateApplicationOutcome {
+        if !valid_id(&request.reservation_id) {
+            return task_template_outcome_error(false, false, TemplateLifecycleError::InvalidInput);
+        }
+        match self.repository.lock().ok().and_then(|mut guard| {
+            guard.as_mut().map(|repo| {
+                repo.cancel_task_template_application_reservation(&request.reservation_id)
+            })
+        }) {
+            Some(Ok(())) => task_template_outcome_success(false, true),
+            Some(Err(error)) => {
+                task_template_outcome_error(false, false, map_template_storage_error(error))
+            }
+            None => task_template_outcome_error(false, false, TemplateLifecycleError::Unavailable),
+        }
+    }
     pub fn local_review(&self, request: LocalReviewListRequest) -> LocalReviewSnapshot {
         let selected = request.selected_collection_id.as_deref();
         let result = self.repository.lock().ok().and_then(|mut repository| {
@@ -1372,6 +1653,7 @@ impl ProjectService {
             active_executions: Mutex::new(HashSet::new()),
             active_terminals: Mutex::new(HashMap::new()),
             promotion_reservations: Mutex::new(VecDeque::new()),
+            template_mutation_handles: Mutex::new(HashMap::new()),
         }
     }
 
@@ -1382,6 +1664,7 @@ impl ProjectService {
             active_executions: Mutex::new(HashSet::new()),
             active_terminals: Mutex::new(HashMap::new()),
             promotion_reservations: Mutex::new(VecDeque::new()),
+            template_mutation_handles: Mutex::new(HashMap::new()),
         }
     }
 
@@ -1455,6 +1738,7 @@ impl ProjectService {
             active_executions: Mutex::new(HashSet::new()),
             active_terminals: Mutex::new(HashMap::new()),
             promotion_reservations: Mutex::new(VecDeque::new()),
+            template_mutation_handles: Mutex::new(HashMap::new()),
         }
     }
 
@@ -2720,6 +3004,130 @@ fn valid_id(value: &str) -> bool {
         && Uuid::parse_str(value).is_ok_and(|id| id.get_version_num() == 7)
 }
 
+fn template_content(request: TaskTemplateContentRequest) -> TemplateContentInput {
+    TemplateContentInput {
+        title: request.title,
+        purpose: request.purpose,
+        instructions: request.instructions,
+    }
+}
+fn template_origin(origin: TemplateOrigin) -> TaskTemplateOrigin {
+    match origin {
+        TemplateOrigin::BuiltIn => TaskTemplateOrigin::BuiltIn,
+        TemplateOrigin::Local => TaskTemplateOrigin::Local,
+    }
+}
+fn template_state(state: TemplateState) -> TaskTemplateState {
+    match state {
+        TemplateState::Active => TaskTemplateState::Active,
+        TemplateState::Archived => TaskTemplateState::Archived,
+    }
+}
+fn template_summary(template: &task_template::TaskTemplate) -> TaskTemplateSummary {
+    TaskTemplateSummary {
+        id: template.id.clone(),
+        title: template.title.clone(),
+        purpose: template.purpose.clone(),
+        origin: template_origin(template.origin),
+        state: template_state(template.state),
+    }
+}
+fn template_detail(template: &task_template::TaskTemplate) -> TaskTemplateDetail {
+    TaskTemplateDetail {
+        id: template.id.clone(),
+        title: template.title.clone(),
+        purpose: template.purpose.clone(),
+        instructions: template.instructions.clone(),
+        origin: template_origin(template.origin),
+        state: template_state(template.state),
+    }
+}
+fn template_capacity(
+    capacity: &task_template_service::TemplateCapacityFacts,
+) -> TaskTemplateCapacity {
+    TaskTemplateCapacity {
+        record_count: capacity.record_count as u16,
+        canonical_bytes: capacity.canonical_bytes as u32,
+        warning: capacity.warning,
+        count_limit: capacity.count_limit as u16,
+        canonical_byte_limit: capacity.canonical_byte_limit as u32,
+    }
+}
+fn map_template_error(error: TemplateLifecycleError) -> TaskTemplateDiagnosticCode {
+    match error {
+        TemplateLifecycleError::InvalidInput => TaskTemplateDiagnosticCode::InvalidRequest,
+        TemplateLifecycleError::NotFound => TaskTemplateDiagnosticCode::NotFound,
+        TemplateLifecycleError::BuiltInImmutable => TaskTemplateDiagnosticCode::BuiltInImmutable,
+        TemplateLifecycleError::ArchivedReadOnly => TaskTemplateDiagnosticCode::ArchivedReadOnly,
+        TemplateLifecycleError::ActiveAlready => TaskTemplateDiagnosticCode::ActiveAlready,
+        TemplateLifecycleError::ArchivedAlready => TaskTemplateDiagnosticCode::ArchivedAlready,
+        TemplateLifecycleError::Stale => TaskTemplateDiagnosticCode::Stale,
+        TemplateLifecycleError::Capacity => TaskTemplateDiagnosticCode::CapacityReached,
+        TemplateLifecycleError::Unavailable => TaskTemplateDiagnosticCode::Unavailable,
+    }
+}
+fn map_template_storage_error(error: StorageError) -> TemplateLifecycleError {
+    match error {
+        StorageError::TaskCapacity => TemplateLifecycleError::Capacity,
+        StorageError::TaskNotFound => TemplateLifecycleError::NotFound,
+        StorageError::InvalidStatusTransition => TemplateLifecycleError::Stale,
+        StorageError::InvalidStoredValue => TemplateLifecycleError::Unavailable,
+        _ => TemplateLifecycleError::Unavailable,
+    }
+}
+fn task_template_catalog_unavailable(error: TemplateLifecycleError) -> TaskTemplateCatalogSnapshot {
+    TaskTemplateCatalogSnapshot {
+        schema_version: TASK_TEMPLATE_SCHEMA_VERSION,
+        state: TaskTemplateBridgeState::Unavailable,
+        templates: Vec::new(),
+        capacity: None,
+        diagnostic_code: Some(map_template_error(error)),
+    }
+}
+fn task_template_inspection_unavailable(
+    error: TemplateLifecycleError,
+) -> TaskTemplateInspectionSnapshot {
+    TaskTemplateInspectionSnapshot {
+        schema_version: TASK_TEMPLATE_SCHEMA_VERSION,
+        state: TaskTemplateBridgeState::Unavailable,
+        template: None,
+        mutation_handle: None,
+        diagnostic_code: Some(map_template_error(error)),
+    }
+}
+fn task_template_preview_unavailable(error: TemplateLifecycleError) -> TaskTemplatePreviewSnapshot {
+    TaskTemplatePreviewSnapshot {
+        schema_version: TASK_TEMPLATE_SCHEMA_VERSION,
+        state: TaskTemplateBridgeState::Unavailable,
+        reservation_id: None,
+        expires_at_ms: None,
+        checklist: None,
+        diagnostic_code: Some(map_template_error(error)),
+    }
+}
+fn task_template_outcome_success(applied: bool, cancelled: bool) -> TaskTemplateApplicationOutcome {
+    TaskTemplateApplicationOutcome {
+        schema_version: TASK_TEMPLATE_SCHEMA_VERSION,
+        state: TaskTemplateBridgeState::Ready,
+        applied,
+        cancelled,
+        diagnostic_code: None,
+    }
+}
+fn task_template_outcome_error(
+    applied: bool,
+    cancelled: bool,
+    error: TemplateLifecycleError,
+) -> TaskTemplateApplicationOutcome {
+    TaskTemplateApplicationOutcome {
+        schema_version: TASK_TEMPLATE_SCHEMA_VERSION,
+        state: TaskTemplateBridgeState::Unavailable,
+        applied,
+        cancelled,
+        diagnostic_code: Some(map_template_error(error)),
+    }
+}
+
 fn valid_sha256(value: &str) -> bool {
     value.len() == 64
         && value
@@ -2905,6 +3313,9 @@ mod tests {
             LocalReviewManualEvidenceCreateRequest, LocalReviewManualEvidenceCreateResult,
             LocalReviewPromotionPrepareRequest, LocalReviewPromotionReservationRequest,
             LocalReviewTextFormat, ProjectDiagnosticCode, ProjectWorkspaceState,
+            TaskTemplateBridgeState, TaskTemplateConfirmRequest, TaskTemplateContentRequest,
+            TaskTemplateDiagnosticCode, TaskTemplateEditRequest, TaskTemplateIdRequest,
+            TaskTemplateMutationRequest, TaskTemplatePreviewRequest,
         },
         ProjectExecutionError, ProjectService, LOCAL_REVIEW_PROMOTION_RESERVATION_TTL,
     };
@@ -3714,5 +4125,58 @@ mod tests {
             Some(ProjectDiagnosticCode::MetadataUnavailable)
         );
         assert!(!unavailable.cwd_ready);
+    }
+
+    #[test]
+    fn task_template_bridge_issues_native_handles_and_fails_closed() {
+        let service = ProjectService::in_memory();
+        let created = service.task_template_create(TaskTemplateContentRequest {
+            title: "Bounded template".into(),
+            purpose: "Keep task work bounded.".into(),
+            instructions: "Use the checked local context.".into(),
+        });
+        assert_eq!(created.state, TaskTemplateBridgeState::Ready);
+        let handle = created.mutation_handle.expect("local template handle");
+        let edited = service.task_template_edit(TaskTemplateEditRequest {
+            mutation_handle: handle.clone(),
+            title: "Edited template".into(),
+            purpose: "Keep task work bounded.".into(),
+            instructions: "Use the checked local context.".into(),
+        });
+        assert_eq!(edited.state, TaskTemplateBridgeState::Ready);
+        let stale = service.task_template_archive(TaskTemplateMutationRequest {
+            mutation_handle: handle,
+        });
+        assert_eq!(
+            stale.diagnostic_code,
+            Some(TaskTemplateDiagnosticCode::Stale)
+        );
+        let builtin = service.task_template_inspect(TaskTemplateIdRequest {
+            template_id: "01980a10-0000-7000-8000-000000000001".into(),
+        });
+        assert_eq!(builtin.mutation_handle, None);
+        let malformed = service.task_template_confirm(TaskTemplateConfirmRequest {
+            reservation_id: "not-a-reservation".into(),
+            title: "Draft".into(),
+            plan_text: "Plan".into(),
+        });
+        assert_eq!(malformed.state, TaskTemplateBridgeState::Unavailable);
+        assert_eq!(
+            malformed.diagnostic_code,
+            Some(TaskTemplateDiagnosticCode::InvalidRequest)
+        );
+    }
+
+    #[test]
+    fn task_template_request_types_deny_native_fields() {
+        let id = Uuid::now_v7().to_string();
+        let result = serde_json::from_value::<TaskTemplateContentRequest>(serde_json::json!({
+            "title": "Template", "purpose": "Purpose", "instructions": "Instructions", "version": 1
+        }));
+        assert!(result.is_err());
+        let result = serde_json::from_value::<TaskTemplatePreviewRequest>(serde_json::json!({
+            "templateId": id, "taskId": Uuid::now_v7().to_string(), "planId": Uuid::now_v7().to_string(), "title": "Draft", "planText": "Plan", "bindingSha256": "a".repeat(64)
+        }));
+        assert!(result.is_err());
     }
 }

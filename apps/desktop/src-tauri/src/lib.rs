@@ -1411,6 +1411,83 @@ fn task_catalog_delete(
 }
 
 #[tauri::command]
+fn task_template_catalog(
+    service: tauri::State<'_, ProjectService>,
+) -> project::types::TaskTemplateCatalogSnapshot {
+    service.task_template_catalog()
+}
+#[tauri::command]
+fn task_template_inspect(
+    request: project::types::TaskTemplateIdRequest,
+    service: tauri::State<'_, ProjectService>,
+) -> project::types::TaskTemplateInspectionSnapshot {
+    service.task_template_inspect(request)
+}
+#[tauri::command]
+fn task_template_create(
+    request: project::types::TaskTemplateContentRequest,
+    service: tauri::State<'_, ProjectService>,
+) -> project::types::TaskTemplateInspectionSnapshot {
+    service.task_template_create(request)
+}
+#[tauri::command]
+fn task_template_edit(
+    request: project::types::TaskTemplateEditRequest,
+    service: tauri::State<'_, ProjectService>,
+) -> project::types::TaskTemplateInspectionSnapshot {
+    service.task_template_edit(request)
+}
+#[tauri::command]
+fn task_template_duplicate(
+    request: project::types::TaskTemplateMutationRequest,
+    service: tauri::State<'_, ProjectService>,
+) -> project::types::TaskTemplateInspectionSnapshot {
+    service.task_template_duplicate(request)
+}
+#[tauri::command]
+fn task_template_archive(
+    request: project::types::TaskTemplateMutationRequest,
+    service: tauri::State<'_, ProjectService>,
+) -> project::types::TaskTemplateInspectionSnapshot {
+    service.task_template_archive(request)
+}
+#[tauri::command]
+fn task_template_restore(
+    request: project::types::TaskTemplateMutationRequest,
+    service: tauri::State<'_, ProjectService>,
+) -> project::types::TaskTemplateInspectionSnapshot {
+    service.task_template_restore(request)
+}
+#[tauri::command]
+fn task_template_delete(
+    request: project::types::TaskTemplateDeleteRequest,
+    service: tauri::State<'_, ProjectService>,
+) -> project::types::TaskTemplateApplicationOutcome {
+    service.task_template_delete(request)
+}
+#[tauri::command]
+fn task_template_preview(
+    request: project::types::TaskTemplatePreviewRequest,
+    service: tauri::State<'_, ProjectService>,
+) -> project::types::TaskTemplatePreviewSnapshot {
+    service.task_template_preview(request)
+}
+#[tauri::command]
+fn task_template_confirm(
+    request: project::types::TaskTemplateConfirmRequest,
+    service: tauri::State<'_, ProjectService>,
+) -> project::types::TaskTemplateApplicationOutcome {
+    service.task_template_confirm(request)
+}
+#[tauri::command]
+fn task_template_cancel(
+    request: project::types::TaskTemplateCancelRequest,
+    service: tauri::State<'_, ProjectService>,
+) -> project::types::TaskTemplateApplicationOutcome {
+    service.task_template_cancel(request)
+}
+
+#[tauri::command]
 fn local_review_status(
     request: LocalReviewListRequest,
     service: tauri::State<'_, ProjectService>,
@@ -2672,6 +2749,17 @@ pub fn run() {
             task_catalog_archive,
             task_catalog_restore,
             task_catalog_delete,
+            task_template_catalog,
+            task_template_inspect,
+            task_template_create,
+            task_template_edit,
+            task_template_duplicate,
+            task_template_archive,
+            task_template_restore,
+            task_template_delete,
+            task_template_preview,
+            task_template_confirm,
+            task_template_cancel,
             local_review_status,
             local_review_collection_create,
             local_review_text_item_create,
@@ -2798,5 +2886,45 @@ mod phase_a_tests {
     #[test]
     fn approval_digest_is_content_sensitive() {
         assert_ne!(sha256("draft one"), sha256("draft two"));
+    }
+
+    #[test]
+    fn task_template_commands_are_registered_once_and_are_closed() {
+        let source = include_str!("lib.rs");
+        let handler = source
+            .split(".invoke_handler(tauri::generate_handler![")
+            .nth(1)
+            .and_then(|value| value.split("]).run").next())
+            .expect("native command handler");
+        for command in [
+            "task_template_catalog",
+            "task_template_inspect",
+            "task_template_create",
+            "task_template_edit",
+            "task_template_duplicate",
+            "task_template_archive",
+            "task_template_restore",
+            "task_template_delete",
+            "task_template_preview",
+            "task_template_confirm",
+            "task_template_cancel",
+        ] {
+            assert_eq!(handler.matches(command).count(), 1, "{command}");
+        }
+        let command_section = source
+            .split("fn task_template_catalog")
+            .nth(1)
+            .and_then(|value| value.split("fn local_review_status").next())
+            .expect("task-template command declarations");
+        for forbidden in [
+            "git",
+            "terminal",
+            "attachment",
+            "dispatch",
+            "execute",
+            "approve",
+        ] {
+            assert!(!command_section.contains(forbidden), "{forbidden}");
+        }
     }
 }

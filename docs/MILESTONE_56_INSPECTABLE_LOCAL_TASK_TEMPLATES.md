@@ -26,8 +26,10 @@ tag, or release exists.
 
 - G5: complete — native digest-bound application preview, reservation, and
   atomic confirmation are implemented and covered by focused Rust tests.
-- G6: strict Tauri commands and TypeScript bridge.
-- G7: template-management UI.
+- G6: complete — closed Tauri lifecycle/application commands and a strict
+  TypeScript/Zod bridge validate only user text, opaque selectors, opaque
+  native mutation handles, and explicit confirmation values. No UI is added.
+- G7: template-management UI (next).
 - G8: application UI and accessibility/browser acceptance.
 - G9: full source acceptance and beta.54 preparation.
 - G10: canonical beta.54 packaging.

@@ -81,6 +81,9 @@ pub(crate) struct TemplateApplicationPreview {
 }
 
 impl TemplateLifecycleService {
+    pub(crate) fn into_repository(self) -> ProjectRepository {
+        self.repository
+    }
     pub(crate) fn preview_application(
         &mut self,
         template_id: &str,
@@ -315,6 +318,12 @@ impl TemplateLifecycleService {
             .replace_local_template(authority.version, &template)
             .map(inspection)
             .map_err(map_storage)
+    }
+}
+
+impl TemplateInspection {
+    pub(crate) fn mutation_authority(&self) -> Option<TemplateMutationAuthority> {
+        self.authority.clone()
     }
 }
 

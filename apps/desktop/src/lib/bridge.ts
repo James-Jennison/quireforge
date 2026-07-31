@@ -196,6 +196,24 @@ import {
   type TaskCatalogSnapshot,
 } from "./taskRecords";
 import {
+  taskTemplateApplicationOutcomeSchema,
+  taskTemplateCancelRequestSchema,
+  taskTemplateCatalogSchema,
+  taskTemplateConfirmRequestSchema,
+  taskTemplateContentRequestSchema,
+  taskTemplateDeleteRequestSchema,
+  taskTemplateEditRequestSchema,
+  taskTemplateIdRequestSchema,
+  taskTemplateInspectionSchema,
+  taskTemplateMutationRequestSchema,
+  taskTemplatePreviewRequestSchema,
+  taskTemplatePreviewSchema,
+  type TaskTemplateApplicationOutcome,
+  type TaskTemplateCatalogSnapshot,
+  type TaskTemplateInspectionSnapshot,
+  type TaskTemplatePreviewSnapshot,
+} from "./taskTemplates";
+import {
   localReviewCollectionCreateRequestSchema,
   localReviewCollectionMutationRequestSchema,
   localReviewAnnotationCreateRequestSchema,
@@ -332,6 +350,17 @@ export const TASK_PLAN_CREATE_COMMAND = "task_plan_create";
 export const TASK_PLAN_SELECT_COMMAND = "task_plan_select";
 export const TASK_PLAN_EDIT_COMMAND = "task_plan_edit";
 export const TASK_PLAN_DELETE_COMMAND = "task_plan_delete";
+export const TASK_TEMPLATE_CATALOG_COMMAND = "task_template_catalog";
+export const TASK_TEMPLATE_INSPECT_COMMAND = "task_template_inspect";
+export const TASK_TEMPLATE_CREATE_COMMAND = "task_template_create";
+export const TASK_TEMPLATE_EDIT_COMMAND = "task_template_edit";
+export const TASK_TEMPLATE_DUPLICATE_COMMAND = "task_template_duplicate";
+export const TASK_TEMPLATE_ARCHIVE_COMMAND = "task_template_archive";
+export const TASK_TEMPLATE_RESTORE_COMMAND = "task_template_restore";
+export const TASK_TEMPLATE_DELETE_COMMAND = "task_template_delete";
+export const TASK_TEMPLATE_PREVIEW_COMMAND = "task_template_preview";
+export const TASK_TEMPLATE_CONFIRM_COMMAND = "task_template_confirm";
+export const TASK_TEMPLATE_CANCEL_COMMAND = "task_template_cancel";
 export const LOCAL_REVIEW_STATUS_COMMAND = "local_review_status";
 export const LOCAL_REVIEW_COLLECTION_CREATE_COMMAND =
   "local_review_collection_create";
@@ -1152,6 +1181,135 @@ export const deleteTaskPlan = (
     TASK_PLAN_DELETE_COMMAND,
     request,
     planIdRequestSchema,
+    invokeFunction,
+  );
+
+async function taskTemplateInvoke<T>(
+  command: string,
+  request: unknown,
+  requestSchema: z.ZodType,
+  responseSchema: z.ZodType<T>,
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<T> {
+  return responseSchema.parse(
+    await invokeFunction(command, { request: requestSchema.parse(request) }),
+  );
+}
+
+export const loadTaskTemplateCatalog = async (
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<TaskTemplateCatalogSnapshot> =>
+  taskTemplateCatalogSchema.parse(
+    await invokeFunction(TASK_TEMPLATE_CATALOG_COMMAND),
+  );
+export const inspectTaskTemplate = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+) =>
+  taskTemplateInvoke(
+    TASK_TEMPLATE_INSPECT_COMMAND,
+    request,
+    taskTemplateIdRequestSchema,
+    taskTemplateInspectionSchema,
+    invokeFunction,
+  );
+export const createTaskTemplate = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+) =>
+  taskTemplateInvoke(
+    TASK_TEMPLATE_CREATE_COMMAND,
+    request,
+    taskTemplateContentRequestSchema,
+    taskTemplateInspectionSchema,
+    invokeFunction,
+  );
+export const editTaskTemplate = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+) =>
+  taskTemplateInvoke(
+    TASK_TEMPLATE_EDIT_COMMAND,
+    request,
+    taskTemplateEditRequestSchema,
+    taskTemplateInspectionSchema,
+    invokeFunction,
+  );
+export const duplicateTaskTemplate = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+) =>
+  taskTemplateInvoke(
+    TASK_TEMPLATE_DUPLICATE_COMMAND,
+    request,
+    taskTemplateMutationRequestSchema,
+    taskTemplateInspectionSchema,
+    invokeFunction,
+  );
+export const archiveTaskTemplate = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+) =>
+  taskTemplateInvoke(
+    TASK_TEMPLATE_ARCHIVE_COMMAND,
+    request,
+    taskTemplateMutationRequestSchema,
+    taskTemplateInspectionSchema,
+    invokeFunction,
+  );
+export const restoreTaskTemplate = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+) =>
+  taskTemplateInvoke(
+    TASK_TEMPLATE_RESTORE_COMMAND,
+    request,
+    taskTemplateMutationRequestSchema,
+    taskTemplateInspectionSchema,
+    invokeFunction,
+  );
+export const deleteTaskTemplate = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+) =>
+  taskTemplateInvoke(
+    TASK_TEMPLATE_DELETE_COMMAND,
+    request,
+    taskTemplateDeleteRequestSchema,
+    taskTemplateApplicationOutcomeSchema,
+    invokeFunction,
+  );
+export const previewTaskTemplateApplication = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+) =>
+  taskTemplateInvoke(
+    TASK_TEMPLATE_PREVIEW_COMMAND,
+    request,
+    taskTemplatePreviewRequestSchema,
+    taskTemplatePreviewSchema,
+    invokeFunction,
+  );
+export const confirmTaskTemplateApplication = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+) =>
+  taskTemplateInvoke(
+    TASK_TEMPLATE_CONFIRM_COMMAND,
+    request,
+    taskTemplateConfirmRequestSchema,
+    taskTemplateApplicationOutcomeSchema,
+    invokeFunction,
+  );
+export const cancelTaskTemplateApplication = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+) =>
+  taskTemplateInvoke(
+    TASK_TEMPLATE_CANCEL_COMMAND,
+    request,
+    taskTemplateCancelRequestSchema,
+    taskTemplateApplicationOutcomeSchema,
     invokeFunction,
   );
 
