@@ -1385,8 +1385,8 @@ adding retrieval, providers, connectors, browser authority, or product behavior.
 
 ### 56 — Inspectable Local Task Templates
 
-**Source-complete; beta.54 source candidate prepared:** James separately
-approved the closed M55 template-only contract. The foundation is complete at
+**Complete:** James separately approved the closed M55 template-only contract.
+The foundation is complete at
 `614b22c870dd5a45c88e1e8f59dedc51c4b1c671` (`feat: add task template
 foundation`); private transactional storage is complete at
 `693a7e95e911ac6b50a74734171e2305fbdddbc0` (`feat: add task template
@@ -1399,11 +1399,23 @@ bridge, lazy management UI, digest-bound application workflow, accessibility,
 and focused browser acceptance are implemented. Research reports, providers,
 connectors, MCP, browser authority, credentials, hidden instructions,
 import/export, automatic actions, approval, dispatch, and execution remain
-excluded. `0.1.0-beta.54` / `0.1.0~beta.54` is a prepared source candidate
-only: canonical packaging, installed-host validation, tag, draft prerelease,
-publication, and deployment have not occurred. Beta.53 remains the installed
-and released M54 baseline until beta.54 passes later gates. G10 canonical
-beta.54 packaging is next.
+excluded. `0.1.0-beta.54` / `0.1.0~beta.54` closed at package/source commit
+`e2b084ed0bdf17fb6f4b0b47663cdf6952ec8e73`, annotated tag
+`v0.1.0-beta.54`, and a `James-Jennison/quireforge` draft prerelease. G9 source
+acceptance, G10 canonical pinned-Ubuntu-22.04 packaging, and G11 restricted
+installed-host validation passed. The draft contains exactly the canonical
+Debian pair, `SHA256SUMS`, and `release-manifest.json`: the application package
+is 5,864,924 bytes with SHA-256
+`643e6bc3caf9068f7ed521ecd949f9f3f5d38b9c6a82bcce19384370f644d131`, and the
+sandbox package is 3,233,492 bytes with SHA-256
+`bd9c0682c0e9dd7761b28f03eb2e801ab7a925e7c5f5587eefc68bd7578bd21f`. Both
+beta.54 packages remain installed, headless completion returned `created`, then
+`existing`, and no rollback was required.
+The draft is not published and there has been no deployment. Beta.53 remains
+preserved as the prior released rollback generation; beta.52 remains preserved
+as an unreleased candidate that failed its installed-host gate. The next work
+is a separate decision/planning boundary; M57 and M58 remain future decision
+gates and do not start automatically.
 
 ### 57 — Per-Project Connector and MCP Governance Proposal
 

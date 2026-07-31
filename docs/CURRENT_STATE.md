@@ -104,21 +104,31 @@ persisted-bytes-only previews. Migration 19 is the native Activity ownership
 ledger; migration 20 immutably binds Advisor-dispatched tasks. Beta.52 remains
 preserved as an unreleased failed installed-host candidate.
 
-Milestone 55 is approved as a decision-only milestone. Its proposal separately defers
-research-report implementation pending a future approved durable source-manifest
-authority and defines only a bounded, inspectable local-template contract for a
-separately approved M56 implementation. James approved M56 and it is in
-progress: its foundation is `614b22c870dd5a45c88e1e8f59dedc51c4b1c671`
-(`feat: add task template foundation`), private transactional storage is
-`693a7e95e911ac6b50a74734171e2305fbdddbc0` (`feat: add task template storage`),
-and G4's bounded native lifecycle service is
-`03163389d6fe69dbf0deedfd532f8bad2f7bde03` (`feat: add task template lifecycle`).
-Before this documentation checkpoint, Git was clean and synchronized at the
-storage checkpoint; the lifecycle checkpoint subsequently advanced `main`.
-Research reports remain deferred; no retrieval, provider, connector, browser,
-credential, package, beta.54 source evidence, package, installed-host evidence,
-tag, or release is claimed. Beta.53 remains the installed/released M54 baseline.
-M57 connector governance and M58 browser verification remain separate decision gates.
+Milestone 55 remains a decision-only milestone: research-report implementation is
+deferred pending approved durable source-manifest authority. M56 is complete at
+package/source commit `e2b084ed0bdf17fb6f4b0b47663cdf6952ec8e73`, annotated tag
+`v0.1.0-beta.54`, and a `James-Jennison/quireforge` draft prerelease. Migration
+21 owns local templates,
+migration 22 owns bounded digest-only application reservations, and four static
+built-ins remain outside SQLite. The closed lifecycle, strict bridge, lazy
+management UI, digest-bound application workflow, accessibility, and focused
+browser acceptance passed source acceptance; canonical pinned-Ubuntu-22.04
+packaging and restricted installed-host validation also passed.
+
+The draft prerelease contains exactly the canonical beta.54 Debian pair,
+`SHA256SUMS`, and `release-manifest.json`. The application package is 5,864,924
+bytes with SHA-256
+`643e6bc3caf9068f7ed521ecd949f9f3f5d38b9c6a82bcce19384370f644d131`; the sandbox
+package is 3,233,492 bytes with SHA-256
+`bd9c0682c0e9dd7761b28f03eb2e801ab7a925e7c5f5587eefc68bd7578bd21f`. Both
+`0.1.0~beta.54` packages remain installed; headless completion returned
+`created`, then `existing`, with no rollback. The draft is not published and
+there has been no deployment. Beta.53 remains preserved as the prior released
+rollback generation, and beta.52 remains an unreleased failed installed-host
+candidate. Research, retrieval, providers, connectors, MCP, OAuth, browser
+authority, credentials, import/export, hidden instructions, automatic actions,
+approval, dispatch, and execution remain excluded. M57 connector governance and
+M58 browser verification remain separate decision gates.
 
 The Rust Codex, project/SQLite, Git, worktree, terminal, preview, attachment,
 settings, and integration services are candidates for reuse. The current Tauri
@@ -288,17 +298,15 @@ gates passed.
 
 ## Next action
 
-Milestone 56 — **Inspectable Local Task Templates** is source-complete and
-`0.1.0-beta.54` is a prepared source candidate. M56-G1 through G8 provide
-migration 21 local templates, migration 22 bounded digest-only application
-reservations, four static built-ins outside SQLite, the closed lifecycle and
-strict bridge, lazy management UI, digest-bound application workflow, and
-focused accessibility/browser acceptance. Research, providers, connectors,
-MCP, browser authority, credentials, hidden instructions, import/export,
-automatic actions, approval, dispatch, and execution remain excluded. The next
-action is M56-G10: canonical beta.54 packaging. Canonical packaging,
-installed-host validation, tag, draft prerelease, publication, and deployment
-have not occurred; beta.53 remains the installed and released M54 baseline.
+M56 — **Inspectable Local Task Templates** is complete at
+`e2b084ed0bdf17fb6f4b0b47663cdf6952ec8e73`, tagged `v0.1.0-beta.54`, with a
+draft prerelease containing the four canonical beta.54 assets. G9 source
+acceptance, G10 canonical packaging, and G11 installed-host validation passed;
+both beta.54 packages remain installed and headless completion returned
+`created`, then `existing`, without rollback. The next action is a separate
+decision/planning goal; M57 and M58 do not begin automatically. The draft has
+not been published or deployed, and all M56 deferred-capability exclusions
+remain intact.
 
 Milestone 46 — **Bounded Multi-Attachment** is complete at
 `1bc2e787ab785016041d70845c97ca9c2c4f84db` with its verified

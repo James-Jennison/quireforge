@@ -1,15 +1,30 @@
 # Changelog
 
-## Unreleased — 0.1.0-beta.54
+## 0.1.0-beta.54 — Milestone 56 complete
 
-- Prepare the M56 source candidate: inspectable local templates use migration
-  21, while bounded digest-only application reservations use migration 22.
-  Four static built-ins remain outside SQLite. The closed lifecycle, strict
-  bridge, lazy management UI, digest-bound application workflow, accessibility,
-  and focused browser acceptance are source-complete.
-- Beta.54 is a prepared source candidate only. Canonical packaging,
-  installed-host validation, tag, draft prerelease, publication, and deployment
-  have not occurred; beta.53 remains the installed and released M54 baseline.
+- Close M56 at package/source commit
+  `e2b084ed0bdf17fb6f4b0b47663cdf6952ec8e73`, tagged
+  `v0.1.0-beta.54`. Inspectable local templates use migration 21 and bounded
+  digest-only application reservations use migration 22; four static built-ins
+  remain outside SQLite. The closed lifecycle, strict bridge, lazy management
+  UI, digest-bound application workflow, accessibility, and focused browser
+  acceptance are complete.
+- G9 source acceptance, G10 canonical pinned-Ubuntu-22.04 packaging, and G11
+  restricted installed-host validation passed. The canonical beta.54 pair is
+  `quireforge_0.1.0.beta.54_amd64.deb` (5,864,924 bytes,
+  `643e6bc3caf9068f7ed521ecd949f9f3f5d38b9c6a82bcce19384370f644d131`) and
+  `quireforge-sandboxd_0.1.0.beta.54_amd64.deb` (3,233,492 bytes,
+  `bd9c0682c0e9dd7761b28f03eb2e801ab7a925e7c5f5587eefc68bd7578bd21f`).
+  The `James-Jennison/quireforge` draft prerelease contains those packages,
+  `SHA256SUMS`, and `release-manifest.json`.
+- Both beta.54 packages remain installed after clean integrity and restricted
+  boundary checks; headless completion returned `created`, then `existing`, and
+  no rollback was required. The prerelease remains draft: it has not been
+  published or deployed. Beta.53 remains preserved as the prior released
+  rollback generation; beta.52 remains a preserved failed installed-host
+  candidate. Research, retrieval, providers, connectors, MCP, OAuth, browser
+  authority, credentials, import/export, hidden instructions, automatic
+  execution, approval, and dispatch remain excluded.
 
 ## 0.1.0-beta.53 — Milestone 54 complete
 

@@ -1,7 +1,6 @@
 # Milestone 56 — Inspectable Local Task Templates
 
-Status: source-complete; beta.54 source candidate prepared. The template-only
-contract in the approved
+Status: complete. The template-only contract in the approved
 [M55 proposal](MILESTONE_55_RESEARCH_REPORTS_AND_INSPECTABLE_TASK_TEMPLATES_PROPOSAL.md)
 remains authoritative. James's separate explicit M56 approval satisfied the
 implementation gate; it did not authorize research reports, retrieval,
@@ -28,10 +27,35 @@ acceptance are implemented. Research, providers, connectors, MCP, browser
 authority, credentials, hidden instructions, import/export, automatic actions,
 approval, dispatch, and execution remain excluded.
 
-Beta.54 is a prepared source candidate only. Canonical packaging,
-installed-host validation, tag, draft prerelease, publication, and deployment
-have not occurred. Beta.53 remains the installed and released M54 baseline
-until beta.54 passes later gates.
+## Release closure
+
+M56 closed at package/source commit
+`e2b084ed0bdf17fb6f4b0b47663cdf6952ec8e73`, annotated tag
+`v0.1.0-beta.54`, and a `James-Jennison/quireforge` GitHub draft prerelease.
+G9 source acceptance passed; G10 produced and independently validated the
+existing canonical pinned-Ubuntu 22.04 package set without rebuilding during
+closure; and G11 passed restricted installed-host validation after the operator
+performed the authorized two-package installation. Both `0.1.0~beta.54`
+packages remain installed; integrity and restricted-boundary checks passed,
+headless completion returned `created`, then `existing`, and no rollback was
+required.
+
+The draft prerelease contains exactly four canonical assets:
+
+- `quireforge_0.1.0.beta.54_amd64.deb` — 5,864,924 bytes, SHA-256
+  `643e6bc3caf9068f7ed521ecd949f9f3f5d38b9c6a82bcce19384370f644d131`.
+- `quireforge-sandboxd_0.1.0.beta.54_amd64.deb` — 3,233,492 bytes, SHA-256
+  `bd9c0682c0e9dd7761b28f03eb2e801ab7a925e7c5f5587eefc68bd7578bd21f`.
+- `SHA256SUMS`.
+- `release-manifest.json`.
+
+The prerelease remains draft and has not been published or deployed. Beta.53
+remains preserved as the prior released rollback generation, while beta.52
+remains an unreleased candidate that failed its installed-host gate. M55
+research-report implementation remains deferred because durable source-manifest
+authority is not approved. M57 connector governance and M58 browser
+verification remain future decision gates; the next action is a separate
+decision/planning goal, not an automatic start of either milestone.
 
 ## M56 delivery sequence
 
@@ -44,7 +68,10 @@ until beta.54 passes later gates.
   local-template lifecycle UI are implemented with focused component coverage.
 - G8: complete — explicit native-reservation application UI and focused
   accessibility/browser acceptance are implemented.
-- G9: complete — definitive source acceptance and beta.54 preparation.
-- G10: canonical beta.54 packaging (next).
-- G11: guarded installed-host validation.
-- G12: tag, draft prerelease, and final M56 closure.
+- G9: complete — definitive source acceptance and beta.54 preparation passed.
+- G10: complete — canonical beta.54 packaging and independent artifact
+  validation passed.
+- G11: complete — guarded installed-host validation passed with `created`, then
+  `existing`, and no rollback.
+- G12: complete — annotated tag, four-asset draft prerelease, and final M56
+  documentation closure.
