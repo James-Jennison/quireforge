@@ -289,8 +289,9 @@ gates passed.
 ## Next action
 
 Milestone 56 — **Inspectable Local Task Templates** is approved and in
-progress. The next action is M56-G5: native digest-bound application preview,
-reservation, and confirmation; no implementation of it has begun.
+progress. M56-G5 is complete: native digest-bound application preview,
+reservation, and atomic confirmation are implemented. The next action is
+M56-G6: strict Tauri commands and TypeScript bridge.
 
 Milestone 46 — **Bounded Multi-Attachment** is complete at
 `1bc2e787ab785016041d70845c97ca9c2c4f84db` with its verified

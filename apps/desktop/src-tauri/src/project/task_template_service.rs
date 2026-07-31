@@ -1,7 +1,10 @@
 use uuid::Uuid;
 
 use super::{
-    storage::{ProjectRepository, StorageError, StoredLocalTaskTemplate},
+    storage::{
+        ProjectRepository, StorageError, StoredLocalTaskTemplate,
+        TaskTemplateApplicationReservation, TEMPLATE_APPLICATION_RESERVATION_TTL_MS,
+    },
     task_template::{
         builtins, canonical, digest, normalized_single, valid_instructions, warning, TaskTemplate,
         TemplateOrigin, TemplateState, TEMPLATE_COUNT_LIMIT, TEMPLATE_PAYLOAD_LIMIT,
@@ -69,8 +72,74 @@ pub(crate) enum TemplateLifecycleError {
 pub(crate) struct TemplateLifecycleService {
     repository: ProjectRepository,
 }
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct TemplateApplicationPreview {
+    pub reservation_id: String,
+    pub expires_at_ms: i64,
+    pub template: TaskTemplate,
+    pub binding_sha256: String,
+}
 
 impl TemplateLifecycleService {
+    pub(crate) fn preview_application(
+        &mut self,
+        template_id: &str,
+        task_id: &str,
+        plan_id: &str,
+        title: &str,
+        plan_text: &str,
+    ) -> Result<TemplateApplicationPreview, TemplateLifecycleError> {
+        let template = self.inspect(template_id)?.template;
+        if template.state != TemplateState::Active {
+            return Err(TemplateLifecycleError::ArchivedReadOnly);
+        }
+        let title = super::storage::normalize_task_text(title, 120, 480).map_err(map_storage)?;
+        super::storage::validate_plan_body(plan_text).map_err(map_storage)?;
+        let context = self
+            .repository
+            .task_template_application_context(task_id, plan_id)
+            .map_err(map_storage)?;
+        let binding_sha256 = super::storage::task_template_application_binding_digest(
+            &template, &context, &title, plan_text,
+        )
+        .ok_or(TemplateLifecycleError::InvalidInput)?;
+        let now = super::storage::now_millis();
+        let expires_at_ms = now + TEMPLATE_APPLICATION_RESERVATION_TTL_MS;
+        let reservation_id = Uuid::now_v7().to_string();
+        self.repository
+            .create_task_template_application_reservation(&TaskTemplateApplicationReservation {
+                id: reservation_id.clone(),
+                binding_sha256: binding_sha256.clone(),
+                template_id: template.id.clone(),
+                template_origin: match template.origin {
+                    TemplateOrigin::BuiltIn => "built-in",
+                    TemplateOrigin::Local => "local",
+                }
+                .into(),
+                template_version: template.version,
+                template_sha256: template.sha256.clone(),
+                context,
+                created_at_ms: now,
+                expires_at_ms,
+            })
+            .map_err(map_storage)?;
+        Ok(TemplateApplicationPreview {
+            reservation_id,
+            expires_at_ms,
+            template,
+            binding_sha256,
+        })
+    }
+    pub(crate) fn confirm_application(
+        &mut self,
+        reservation_id: &str,
+        title: &str,
+        plan_text: &str,
+    ) -> Result<(), TemplateLifecycleError> {
+        self.repository
+            .confirm_task_template_application(reservation_id, title, plan_text)
+            .map_err(map_storage)
+    }
     pub(crate) fn new(repository: ProjectRepository) -> Self {
         Self { repository }
     }
@@ -357,6 +426,19 @@ mod tests {
             instructions: " A\n bounded\t instruction. ".into(),
         }
     }
+    fn task_and_plan(service: &mut TemplateLifecycleService) -> (String, String) {
+        let task_id = service.repository.create_task().unwrap();
+        let plan_id = service
+            .repository
+            .connection
+            .query_row(
+                "SELECT selected_plan_id FROM task_records WHERE id = ?1",
+                [&task_id],
+                |row| row.get(0),
+            )
+            .unwrap();
+        (task_id, plan_id)
+    }
     fn authority(inspection: &TemplateInspection) -> TemplateMutationAuthority {
         inspection.authority.clone().expect("local authority")
     }
@@ -478,6 +560,95 @@ mod tests {
         assert!(matches!(
             service.create(input("Blocked")),
             Err(TemplateLifecycleError::Capacity)
+        ));
+    }
+    #[test]
+    fn preview_and_confirmation_update_only_bound_task_and_plan() {
+        let mut service = service();
+        let (task_id, plan_id) = task_and_plan(&mut service);
+        let preview = service
+            .preview_application(
+                &builtins()[0].id,
+                &task_id,
+                &plan_id,
+                "  Applied title  ",
+                "Applied plan\ntext",
+            )
+            .unwrap();
+        service
+            .confirm_application(
+                &preview.reservation_id,
+                "Applied title",
+                "Applied plan\ntext",
+            )
+            .unwrap();
+        let values: (String, String, String) = service.repository.connection.query_row(
+            "SELECT t.title, p.body, r.state FROM task_records t JOIN task_plans p ON p.id=?1 JOIN task_template_application_reservations r ON r.id=?2 WHERE t.id=?3",
+            rusqlite::params![plan_id, preview.reservation_id, task_id], |row| Ok((row.get(0)?,row.get(1)?,row.get(2)?)),
+        ).unwrap();
+        assert_eq!(
+            values,
+            (
+                "Applied title".into(),
+                "Applied plan\ntext".into(),
+                "consumed".into()
+            )
+        );
+        assert!(matches!(
+            service.confirm_application(
+                &preview.reservation_id,
+                "Applied title",
+                "Applied plan\ntext"
+            ),
+            Err(TemplateLifecycleError::NotFound)
+        ));
+    }
+    #[test]
+    fn application_rejects_changed_draft_template_and_concurrency() {
+        let mut service = service();
+        let (task_id, plan_id) = task_and_plan(&mut service);
+        let preview = service
+            .preview_application(&builtins()[0].id, &task_id, &plan_id, "Draft", "Plan")
+            .unwrap();
+        assert!(matches!(
+            service.confirm_application(&preview.reservation_id, "Different", "Plan"),
+            Err(TemplateLifecycleError::Stale)
+        ));
+        let preview = service
+            .preview_application(&builtins()[0].id, &task_id, &plan_id, "Draft", "Plan")
+            .unwrap();
+        service.repository.rename_task(&task_id, "Changed").unwrap();
+        assert!(matches!(
+            service.confirm_application(&preview.reservation_id, "Draft", "Plan"),
+            Err(TemplateLifecycleError::Stale)
+        ));
+    }
+    #[test]
+    fn application_reservations_never_store_drafts_or_instructions() {
+        let mut service = service();
+        let (task_id, plan_id) = task_and_plan(&mut service);
+        let preview = service
+            .preview_application(
+                &builtins()[0].id,
+                &task_id,
+                &plan_id,
+                "Secret draft",
+                "Secret plan",
+            )
+            .unwrap();
+        let sql: String = service.repository.connection.query_row(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name='task_template_application_reservations'", [], |row| row.get(0),
+        ).unwrap();
+        assert!(
+            !sql.contains("instructions") && !sql.contains("draft") && !sql.contains("plan_text")
+        );
+        service
+            .repository
+            .cancel_task_template_application_reservation(&preview.reservation_id)
+            .unwrap();
+        assert!(matches!(
+            service.confirm_application(&preview.reservation_id, "Secret draft", "Secret plan"),
+            Err(TemplateLifecycleError::NotFound)
         ));
     }
 }

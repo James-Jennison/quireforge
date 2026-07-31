@@ -760,6 +760,39 @@ WHEN NEW.version <= OLD.version
 BEGIN SELECT RAISE(ABORT, 'template version must increase'); END;
 "#;
 
+const TASK_TEMPLATE_APPLICATION_RESERVATIONS_MIGRATION: &str = r#"
+CREATE TABLE task_template_application_reservations (
+    id TEXT PRIMARY KEY NOT NULL CHECK(length(id) = 36),
+    binding_sha256 TEXT NOT NULL CHECK(length(binding_sha256) = 64),
+    template_id TEXT NOT NULL CHECK(length(template_id) = 36),
+    template_origin TEXT NOT NULL CHECK(template_origin IN ('built-in', 'local')),
+    template_version INTEGER NOT NULL CHECK(template_version >= 1),
+    template_sha256 TEXT NOT NULL CHECK(length(template_sha256) = 64),
+    task_id TEXT NOT NULL REFERENCES task_records(id) ON DELETE RESTRICT,
+    plan_id TEXT NOT NULL REFERENCES task_plans(id) ON DELETE RESTRICT,
+    task_updated_at_ms INTEGER NOT NULL CHECK(task_updated_at_ms >= 0),
+    plan_updated_at_ms INTEGER NOT NULL CHECK(plan_updated_at_ms >= 0),
+    state TEXT NOT NULL CHECK(state IN ('pending', 'consumed', 'cancelled', 'expired')),
+    created_at_ms INTEGER NOT NULL CHECK(created_at_ms >= 0),
+    expires_at_ms INTEGER NOT NULL CHECK(expires_at_ms > created_at_ms),
+    consumed_at_ms INTEGER,
+    CHECK((state = 'consumed' AND consumed_at_ms IS NOT NULL) OR
+          (state != 'consumed' AND consumed_at_ms IS NULL))
+);
+CREATE INDEX task_template_application_reservations_pending
+ ON task_template_application_reservations(state, expires_at_ms, id);
+CREATE TRIGGER task_template_application_reservations_binding_immutable
+BEFORE UPDATE OF id, binding_sha256, template_id, template_origin, template_version,
+ template_sha256, task_id, plan_id, task_updated_at_ms, plan_updated_at_ms,
+ created_at_ms, expires_at_ms ON task_template_application_reservations
+BEGIN SELECT RAISE(ABORT, 'template application binding is immutable'); END;
+CREATE TRIGGER task_template_application_reservations_state_transition
+BEFORE UPDATE OF state ON task_template_application_reservations
+WHEN NOT ((OLD.state = 'pending' AND NEW.state IN ('consumed', 'cancelled', 'expired'))
+       OR OLD.state = NEW.state)
+BEGIN SELECT RAISE(ABORT, 'template application reservation transition is invalid'); END;
+"#;
+
 const MIGRATIONS: &[(i64, &str, &str)] = &[
     (1, "projects-and-directory-associations", INITIAL_MIGRATION),
     (
@@ -846,6 +879,11 @@ const MIGRATIONS: &[(i64, &str, &str)] = &[
         "local-task-templates-v1",
         LOCAL_TASK_TEMPLATES_MIGRATION,
     ),
+    (
+        22,
+        "task-template-application-reservations-v1",
+        TASK_TEMPLATE_APPLICATION_RESERVATIONS_MIGRATION,
+    ),
 ];
 
 #[derive(Debug, Error)]
@@ -881,6 +919,8 @@ pub(crate) enum StorageError {
 const PACKAGE_VALIDATION_RECORD_LIMIT: usize = 32;
 const PACKAGE_VALIDATION_PROTECTION_MS: i64 = 180 * 24 * 60 * 60 * 1000;
 const PACKAGE_ARTIFACT_COUNT_LIMIT: u8 = 2;
+pub(crate) const TEMPLATE_APPLICATION_RESERVATION_TTL_MS: i64 = 5 * 60 * 1000;
+pub(crate) const TEMPLATE_APPLICATION_PENDING_RESERVATION_LIMIT: i64 = 32;
 const INSTALLED_HOST_ATTEMPT_LIMIT: i64 = 8;
 const INSTALLED_HOST_ATTEMPT_DOMAIN: &str = "quireforge-installed-host-attempt-v1";
 
@@ -960,7 +1000,7 @@ fn task_status(value: &str) -> Result<TaskStatus, StorageError> {
     }
 }
 
-fn normalize_task_text(
+pub(super) fn normalize_task_text(
     value: &str,
     char_limit: usize,
     byte_limit: usize,
@@ -978,7 +1018,7 @@ fn normalize_task_text(
     Ok(normalized)
 }
 
-fn validate_plan_body(value: &str) -> Result<(), StorageError> {
+pub(super) fn validate_plan_body(value: &str) -> Result<(), StorageError> {
     if value.chars().count() > 8_192
         || value.len() > 32 * 1024
         || value.chars().any(|character| {
@@ -1884,6 +1924,92 @@ fn ensure_task_capacity(transaction: &Transaction<'_>, task_id: &str) -> Result<
     Ok(())
 }
 
+fn valid_sha256(value: &str) -> bool {
+    value.len() == 64 && value.bytes().all(|byte| byte.is_ascii_hexdigit())
+}
+
+fn task_template_application_context_in_connection(
+    connection: &Connection,
+    task_id: &str,
+    plan_id: &str,
+) -> Result<TaskTemplateApplicationContext, StorageError> {
+    if !valid_task_id(task_id) || !valid_task_id(plan_id) {
+        return Err(StorageError::InvalidStoredValue);
+    }
+    let (status, archived_at_ms, task_updated_at_ms): (String, Option<i64>, i64) = connection
+        .query_row(
+            "SELECT status, archived_at_ms, updated_at_ms FROM task_records WHERE id = ?1",
+            [task_id],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+        )
+        .optional()?
+        .ok_or(StorageError::TaskNotFound)?;
+    if archived_at_ms.is_some()
+        || !matches!(status.as_str(), "active" | "paused")
+        || task_updated_at_ms < 0
+    {
+        return Err(StorageError::TaskArchived);
+    }
+    let plan_updated_at_ms: i64 = connection
+        .query_row(
+            "SELECT updated_at_ms FROM task_plans WHERE id = ?1 AND task_id = ?2",
+            params![plan_id, task_id],
+            |row| row.get(0),
+        )
+        .optional()?
+        .ok_or(StorageError::PlanNotFound)?;
+    if plan_updated_at_ms < 0 {
+        return Err(StorageError::InvalidStoredValue);
+    }
+    Ok(TaskTemplateApplicationContext {
+        task_id: task_id.to_owned(),
+        plan_id: plan_id.to_owned(),
+        task_updated_at_ms,
+        plan_updated_at_ms,
+    })
+}
+
+fn task_template_application_context_in_transaction(
+    transaction: &Transaction<'_>,
+    task_id: &str,
+    plan_id: &str,
+) -> Result<TaskTemplateApplicationContext, StorageError> {
+    if !valid_task_id(task_id) || !valid_task_id(plan_id) {
+        return Err(StorageError::InvalidStoredValue);
+    }
+    let (status, archived_at_ms, task_updated_at_ms): (String, Option<i64>, i64) = transaction
+        .query_row(
+            "SELECT status, archived_at_ms, updated_at_ms FROM task_records WHERE id = ?1",
+            [task_id],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+        )
+        .optional()?
+        .ok_or(StorageError::TaskNotFound)?;
+    if archived_at_ms.is_some()
+        || !matches!(status.as_str(), "active" | "paused")
+        || task_updated_at_ms < 0
+    {
+        return Err(StorageError::TaskArchived);
+    }
+    let plan_updated_at_ms: i64 = transaction
+        .query_row(
+            "SELECT updated_at_ms FROM task_plans WHERE id = ?1 AND task_id = ?2",
+            params![plan_id, task_id],
+            |row| row.get(0),
+        )
+        .optional()?
+        .ok_or(StorageError::PlanNotFound)?;
+    if plan_updated_at_ms < 0 {
+        return Err(StorageError::InvalidStoredValue);
+    }
+    Ok(TaskTemplateApplicationContext {
+        task_id: task_id.to_owned(),
+        plan_id: plan_id.to_owned(),
+        task_updated_at_ms,
+        plan_updated_at_ms,
+    })
+}
+
 #[derive(Clone, Debug)]
 pub(crate) struct StoredProject {
     pub id: String,
@@ -1984,6 +2110,27 @@ pub(crate) struct StoredLocalTaskTemplate {
 pub(crate) struct LocalTemplateCapacity {
     pub record_count: usize,
     pub canonical_bytes: usize,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct TaskTemplateApplicationContext {
+    pub task_id: String,
+    pub plan_id: String,
+    pub task_updated_at_ms: i64,
+    pub plan_updated_at_ms: i64,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct TaskTemplateApplicationReservation {
+    pub id: String,
+    pub binding_sha256: String,
+    pub template_id: String,
+    pub template_origin: String,
+    pub template_version: u32,
+    pub template_sha256: String,
+    pub context: TaskTemplateApplicationContext,
+    pub created_at_ms: i64,
+    pub expires_at_ms: i64,
 }
 
 #[allow(dead_code)]
@@ -2103,6 +2250,61 @@ fn stored_local_template_from_row(
     })
 }
 
+fn task_template_for_application(
+    transaction: &Transaction<'_>,
+    id: &str,
+    origin: &str,
+) -> Result<TaskTemplate, StorageError> {
+    match origin {
+        "built-in" => builtins().into_iter().find(|template| template.id == id).ok_or(StorageError::InvalidStoredValue),
+        "local" => transaction.query_row(
+            "SELECT id, schema_version, origin, title, purpose, instructions, version, sha256, state, created_at_ms, updated_at_ms, archived_at_ms FROM local_task_templates WHERE id=?1",
+            [id], local_template_row,
+        ).optional()?.map(stored_local_template_from_row).transpose()?.map(|record| record.template).ok_or(StorageError::InvalidStoredValue),
+        _ => Err(StorageError::InvalidStoredValue),
+    }
+}
+
+pub(super) fn task_template_application_binding_digest(
+    template: &TaskTemplate,
+    context: &TaskTemplateApplicationContext,
+    title: &str,
+    plan_text: &str,
+) -> Option<String> {
+    if template.state != TemplateState::Active
+        || !valid_sha256(&template.sha256)
+        || title.is_empty()
+        || plan_text.len() > 32 * 1024
+        || context.task_updated_at_ms < 0
+        || context.plan_updated_at_ms < 0
+    {
+        return None;
+    }
+    let origin = match template.origin {
+        TemplateOrigin::BuiltIn => "built-in",
+        TemplateOrigin::Local => "local",
+    };
+    Some(format!(
+        "{:x}",
+        Sha256::digest(
+            format!(
+                "task-template-application-v1\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}",
+                template.id,
+                origin,
+                template.version,
+                template.sha256,
+                context.task_id,
+                context.plan_id,
+                context.task_updated_at_ms,
+                context.plan_updated_at_ms,
+                title,
+                plan_text
+            )
+            .as_bytes()
+        )
+    ))
+}
+
 #[allow(dead_code)]
 fn insert_local_template_row(
     transaction: &Transaction<'_>,
@@ -2188,6 +2390,161 @@ pub(crate) struct LocalReviewPromotionSource {
 }
 
 impl ProjectRepository {
+    pub(crate) fn create_task_template_application_reservation(
+        &mut self,
+        reservation: &TaskTemplateApplicationReservation,
+    ) -> Result<(), StorageError> {
+        if !valid_task_id(&reservation.id)
+            || !matches!(reservation.template_origin.as_str(), "built-in" | "local")
+            || reservation.template_version == 0
+            || reservation.created_at_ms < 0
+            || reservation.expires_at_ms
+                != reservation.created_at_ms + TEMPLATE_APPLICATION_RESERVATION_TTL_MS
+            || !valid_sha256(&reservation.binding_sha256)
+            || !valid_sha256(&reservation.template_sha256)
+        {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let now = now_millis();
+        tx.execute("UPDATE task_template_application_reservations SET state='expired' WHERE state='pending' AND expires_at_ms <= ?1", [now])?;
+        let context = task_template_application_context_in_transaction(
+            &tx,
+            &reservation.context.task_id,
+            &reservation.context.plan_id,
+        )?;
+        if context != reservation.context || reservation.expires_at_ms <= now {
+            return Err(StorageError::InvalidStatusTransition);
+        }
+        let count: i64 = tx.query_row(
+            "SELECT count(*) FROM task_template_application_reservations WHERE state='pending'",
+            [],
+            |r| r.get(0),
+        )?;
+        if count >= TEMPLATE_APPLICATION_PENDING_RESERVATION_LIMIT {
+            return Err(StorageError::TaskCapacity);
+        }
+        tx.execute("INSERT INTO task_template_application_reservations(id,binding_sha256,template_id,template_origin,template_version,template_sha256,task_id,plan_id,task_updated_at_ms,plan_updated_at_ms,state,created_at_ms,expires_at_ms,consumed_at_ms) VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,'pending',?11,?12,NULL)", params![reservation.id,reservation.binding_sha256,reservation.template_id,reservation.template_origin,reservation.template_version,reservation.template_sha256,reservation.context.task_id,reservation.context.plan_id,reservation.context.task_updated_at_ms,reservation.context.plan_updated_at_ms,reservation.created_at_ms,reservation.expires_at_ms])?;
+        tx.commit()?;
+        Ok(())
+    }
+
+    pub(crate) fn confirm_task_template_application(
+        &mut self,
+        reservation_id: &str,
+        title: &str,
+        plan_text: &str,
+    ) -> Result<(), StorageError> {
+        if !valid_task_id(reservation_id) {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let title = normalize_task_text(title, 120, 480)?;
+        validate_plan_body(plan_text)?;
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let now = now_millis();
+        tx.execute("UPDATE task_template_application_reservations SET state='expired' WHERE state='pending' AND expires_at_ms <= ?1", [now])?;
+        let reservation: (String, String, String, i64, String, String, String, i64, i64) = tx.query_row(
+            "SELECT binding_sha256, template_id, template_origin, template_version, template_sha256, task_id, plan_id, task_updated_at_ms, plan_updated_at_ms FROM task_template_application_reservations WHERE id=?1 AND state='pending' AND expires_at_ms > ?2",
+            params![reservation_id, now], |r| Ok((r.get(0)?,r.get(1)?,r.get(2)?,r.get(3)?,r.get(4)?,r.get(5)?,r.get(6)?,r.get(7)?,r.get(8)?)),
+        ).optional()?.ok_or(StorageError::TaskNotFound)?;
+        let (
+            binding,
+            template_id,
+            origin,
+            version,
+            template_sha256,
+            task_id,
+            plan_id,
+            task_updated,
+            plan_updated,
+        ) = reservation;
+        let version = u32::try_from(version).map_err(|_| StorageError::InvalidStoredValue)?;
+        let context = task_template_application_context_in_transaction(&tx, &task_id, &plan_id)?;
+        if context.task_updated_at_ms != task_updated || context.plan_updated_at_ms != plan_updated
+        {
+            return Err(StorageError::InvalidStatusTransition);
+        }
+        let template = task_template_for_application(&tx, &template_id, &origin)?;
+        if template.state != TemplateState::Active
+            || template.version != version
+            || template.sha256 != template_sha256
+        {
+            return Err(StorageError::InvalidStatusTransition);
+        }
+        let actual =
+            task_template_application_binding_digest(&template, &context, &title, plan_text)
+                .ok_or(StorageError::InvalidStoredValue)?;
+        if actual != binding {
+            return Err(StorageError::InvalidStatusTransition);
+        }
+        let update_time = now
+            .max(context.task_updated_at_ms.saturating_add(1))
+            .max(context.plan_updated_at_ms.saturating_add(1));
+        ensure_editable_task(&tx, &task_id)?;
+        if tx.execute(
+            "UPDATE task_plans SET body=?1, updated_at_ms=?2 WHERE id=?3 AND task_id=?4",
+            params![plan_text, update_time, plan_id, task_id],
+        )? != 1
+        {
+            return Err(StorageError::PlanNotFound);
+        }
+        tx.execute(
+            "UPDATE task_records SET title=?1, updated_at_ms=?2 WHERE id=?3",
+            params![title, update_time, task_id],
+        )?;
+        ensure_task_capacity(&tx, &task_id)?;
+        if tx.execute("UPDATE task_template_application_reservations SET state='consumed', consumed_at_ms=?1 WHERE id=?2 AND state='pending'", params![update_time, reservation_id])? != 1 { return Err(StorageError::InvalidStatusTransition); }
+        tx.commit()?;
+        Ok(())
+    }
+    pub(crate) fn expire_task_template_application_reservations(
+        &mut self,
+    ) -> Result<usize, StorageError> {
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let expired = tx.execute(
+            "UPDATE task_template_application_reservations SET state = 'expired'
+             WHERE state = 'pending' AND expires_at_ms <= ?1",
+            [now_millis()],
+        )?;
+        tx.commit()?;
+        Ok(expired)
+    }
+
+    pub(crate) fn cancel_task_template_application_reservation(
+        &mut self,
+        reservation_id: &str,
+    ) -> Result<(), StorageError> {
+        if !valid_task_id(reservation_id) {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        if tx.execute(
+            "UPDATE task_template_application_reservations SET state = 'cancelled'
+             WHERE id = ?1 AND state = 'pending' AND expires_at_ms > ?2",
+            params![reservation_id, now_millis()],
+        )? != 1
+        {
+            return Err(StorageError::TaskNotFound);
+        }
+        tx.commit()?;
+        Ok(())
+    }
+
+    pub(crate) fn task_template_application_context(
+        &self,
+        task_id: &str,
+        plan_id: &str,
+    ) -> Result<TaskTemplateApplicationContext, StorageError> {
+        task_template_application_context_in_connection(&self.connection, task_id, plan_id)
+    }
     #[allow(dead_code)]
     pub(crate) fn insert_local_template(
         &mut self,
@@ -7522,7 +7879,7 @@ fn parse_optional_u64(value: Option<String>) -> Result<Option<u64>, StorageError
         .transpose()
 }
 
-fn now_millis() -> i64 {
+pub(super) fn now_millis() -> i64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default()

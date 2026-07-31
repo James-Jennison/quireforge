@@ -24,7 +24,8 @@ tag, or release exists.
 
 ## Remaining M56 sequence
 
-- G5: native digest-bound application preview, reservation, and confirmation.
+- G5: complete — native digest-bound application preview, reservation, and
+  atomic confirmation are implemented and covered by focused Rust tests.
 - G6: strict Tauri commands and TypeScript bridge.
 - G7: template-management UI.
 - G8: application UI and accessibility/browser acceptance.
