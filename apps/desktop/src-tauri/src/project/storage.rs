@@ -662,6 +662,69 @@ CREATE TRIGGER local_review_activity_ledger_append_only
 BEFORE DELETE ON local_review_activity_ledger BEGIN SELECT RAISE(ABORT, 'activity ledger append only'); END;
 "#;
 
+// Advisor dispatches create a distinct execution conversation. When that
+// native conversation later creates a task, retain the immutable origin pair
+// needed to distinguish it from other tasks in the same project. Existing
+// tasks deliberately remain unbound: no historical origin is inferred.
+const TASK_ADVISOR_DISPATCH_ORIGIN_MIGRATION: &str = r#"
+ALTER TABLE task_records ADD COLUMN origin_advisor_conversation_id TEXT
+    CHECK(origin_advisor_conversation_id IS NULL OR length(origin_advisor_conversation_id) = 36)
+    REFERENCES advisor_conversations(id) ON DELETE RESTRICT;
+ALTER TABLE task_records ADD COLUMN origin_advisor_dispatch_record_id TEXT
+    CHECK(origin_advisor_dispatch_record_id IS NULL OR length(origin_advisor_dispatch_record_id) = 36)
+    REFERENCES advisor_dispatch_records(id) ON DELETE RESTRICT;
+
+CREATE INDEX task_records_advisor_dispatch_origin_idx
+    ON task_records(origin_advisor_dispatch_record_id)
+    WHERE origin_advisor_dispatch_record_id IS NOT NULL;
+
+CREATE TRIGGER task_records_advisor_dispatch_origin_pair_insert
+BEFORE INSERT ON task_records
+WHEN (NEW.origin_advisor_conversation_id IS NULL) != (NEW.origin_advisor_dispatch_record_id IS NULL)
+BEGIN
+    SELECT RAISE(ABORT, 'task advisor dispatch origin must be complete');
+END;
+
+CREATE TRIGGER task_records_advisor_dispatch_origin_match_insert
+BEFORE INSERT ON task_records
+WHEN NEW.origin_advisor_dispatch_record_id IS NOT NULL
+ AND NOT EXISTS (
+    SELECT 1 FROM advisor_dispatch_records
+     WHERE id = NEW.origin_advisor_dispatch_record_id
+       AND advisor_conversation_id = NEW.origin_advisor_conversation_id
+ )
+BEGIN
+    SELECT RAISE(ABORT, 'task advisor dispatch origin must match dispatch');
+END;
+
+CREATE TRIGGER task_records_advisor_dispatch_origin_pair_update
+BEFORE UPDATE OF origin_advisor_conversation_id, origin_advisor_dispatch_record_id ON task_records
+WHEN (NEW.origin_advisor_conversation_id IS NULL) != (NEW.origin_advisor_dispatch_record_id IS NULL)
+BEGIN
+    SELECT RAISE(ABORT, 'task advisor dispatch origin must be complete');
+END;
+
+CREATE TRIGGER task_records_advisor_dispatch_origin_match_update
+BEFORE UPDATE OF origin_advisor_conversation_id, origin_advisor_dispatch_record_id ON task_records
+WHEN NEW.origin_advisor_dispatch_record_id IS NOT NULL
+ AND NOT EXISTS (
+    SELECT 1 FROM advisor_dispatch_records
+     WHERE id = NEW.origin_advisor_dispatch_record_id
+       AND advisor_conversation_id = NEW.origin_advisor_conversation_id
+ )
+BEGIN
+    SELECT RAISE(ABORT, 'task advisor dispatch origin must match dispatch');
+END;
+
+CREATE TRIGGER task_records_advisor_dispatch_origin_immutable
+BEFORE UPDATE OF origin_advisor_conversation_id, origin_advisor_dispatch_record_id ON task_records
+WHEN NEW.origin_advisor_conversation_id IS NOT OLD.origin_advisor_conversation_id
+  OR NEW.origin_advisor_dispatch_record_id IS NOT OLD.origin_advisor_dispatch_record_id
+BEGIN
+    SELECT RAISE(ABORT, 'task advisor dispatch origin is immutable');
+END;
+"#;
+
 const MIGRATIONS: &[(i64, &str, &str)] = &[
     (1, "projects-and-directory-associations", INITIAL_MIGRATION),
     (
@@ -737,6 +800,11 @@ const MIGRATIONS: &[(i64, &str, &str)] = &[
         19,
         "local-review-activity-ledger-v1",
         LOCAL_REVIEW_ACTIVITY_LEDGER_MIGRATION,
+    ),
+    (
+        20,
+        "task-advisor-dispatch-origin-v1",
+        TASK_ADVISOR_DISPATCH_ORIGIN_MIGRATION,
     ),
 ];
 
@@ -3858,7 +3926,7 @@ impl ProjectRepository {
         let tx = self
             .connection
             .transaction_with_behavior(TransactionBehavior::Immediate)?;
-        let task_id = Self::create_task_in_transaction(&tx, now, None, &mut generate)?;
+        let task_id = Self::create_task_in_transaction(&tx, now, None, None, &mut generate)?;
         tx.commit()?;
         Ok(task_id)
     }
@@ -3875,10 +3943,16 @@ impl ProjectRepository {
             .connection
             .transaction_with_behavior(TransactionBehavior::Immediate)?;
         let project_id = task_context_project_id(&tx, conversation_id)?;
-        let task_id =
-            Self::create_task_in_transaction(&tx, now, Some(project_id.as_str()), &mut || {
-                Uuid::now_v7().to_string()
-            })?;
+        let origin = task_advisor_dispatch_origin(&tx, conversation_id, &project_id)?;
+        let task_id = Self::create_task_in_transaction(
+            &tx,
+            now,
+            Some(project_id.as_str()),
+            origin.as_ref().map(|(conversation_id, dispatch_id)| {
+                (conversation_id.as_str(), dispatch_id.as_str())
+            }),
+            &mut || Uuid::now_v7().to_string(),
+        )?;
         tx.commit()?;
         Ok(task_id)
     }
@@ -3898,10 +3972,41 @@ impl ProjectRepository {
             .ok_or(StorageError::TaskNotFound)
     }
 
+    #[cfg(test)]
+    pub(crate) fn task_advisor_dispatch_origin(
+        &self,
+        task_id: &str,
+    ) -> Result<Option<(String, String)>, StorageError> {
+        self.connection
+            .query_row(
+                "SELECT origin_advisor_conversation_id, origin_advisor_dispatch_record_id
+                 FROM task_records WHERE id = ?1",
+                [task_id],
+                |row| {
+                    Ok((
+                        row.get::<_, Option<String>>(0)?,
+                        row.get::<_, Option<String>>(1)?,
+                    ))
+                },
+            )
+            .optional()?
+            .ok_or(StorageError::TaskNotFound)
+            .and_then(
+                |(conversation_id, dispatch_id)| match (conversation_id, dispatch_id) {
+                    (None, None) => Ok(None),
+                    (Some(conversation_id), Some(dispatch_id)) => {
+                        Ok(Some((conversation_id, dispatch_id)))
+                    }
+                    _ => Err(StorageError::InvalidStoredValue),
+                },
+            )
+    }
+
     fn create_task_in_transaction(
         tx: &Transaction<'_>,
         now: i64,
         project_id: Option<&str>,
+        advisor_dispatch_origin: Option<(&str, &str)>,
         mut generate: &mut impl FnMut() -> String,
     ) -> Result<String, StorageError> {
         let count: i64 = tx.query_row("SELECT count(*) FROM task_records", [], |row| row.get(0))?;
@@ -3914,9 +4019,17 @@ impl ProjectRepository {
         tx.execute(
             "INSERT INTO task_records (
                 id, schema_version, title, status, created_at_ms, updated_at_ms,
-                archived_at_ms, last_opened_at_ms, selected_plan_id, project_id
-             ) VALUES (?1, 1, 'Untitled task', 'active', ?2, ?2, NULL, ?2, ?3, ?4)",
-            params![task_id, now, plan_id, project_id],
+                archived_at_ms, last_opened_at_ms, selected_plan_id, project_id,
+                origin_advisor_conversation_id, origin_advisor_dispatch_record_id
+             ) VALUES (?1, 1, 'Untitled task', 'active', ?2, ?2, NULL, ?2, ?3, ?4, ?5, ?6)",
+            params![
+                task_id,
+                now,
+                plan_id,
+                project_id,
+                advisor_dispatch_origin.map(|(conversation_id, _)| conversation_id),
+                advisor_dispatch_origin.map(|(_, dispatch_id)| dispatch_id),
+            ],
         )?;
         tx.execute(
             "INSERT INTO task_plans (
@@ -6075,6 +6188,45 @@ fn task_context_project_id(
         .ok_or(StorageError::ProjectNotFound)
 }
 
+/// Resolves an Advisor origin only from the native execution conversation that
+/// is creating the task. The dispatch record, its Advisor conversation, and
+/// its target project must all agree before the origin pair can be inserted.
+/// A conversation without an Advisor dispatch remains an ordinary native
+/// project-bound task context.
+fn task_advisor_dispatch_origin(
+    transaction: &Transaction<'_>,
+    execution_conversation_id: &str,
+    project_id: &str,
+) -> Result<Option<(String, String)>, StorageError> {
+    let mut statement = transaction.prepare(
+        "SELECT dispatch.id, dispatch.advisor_conversation_id, dispatch.target_project_id,
+                dispatch.state, dispatch.execution_dispatch_state
+         FROM advisor_dispatch_records AS dispatch
+         JOIN advisor_conversations AS advisor
+           ON advisor.id = dispatch.advisor_conversation_id
+         WHERE dispatch.execution_conversation_id = ?1",
+    )?;
+    let mut rows = statement.query([execution_conversation_id])?;
+    let Some(row) = rows.next()? else {
+        return Ok(None);
+    };
+    let dispatch_id: String = row.get(0)?;
+    let advisor_conversation_id: String = row.get(1)?;
+    let target_project_id: String = row.get(2)?;
+    let state: String = row.get(3)?;
+    let execution_state: Option<String> = row.get(4)?;
+    if rows.next()?.is_some()
+        || !is_uuid_v7(&dispatch_id)
+        || !is_uuid_v7(&advisor_conversation_id)
+        || target_project_id != project_id
+        || state != "approved"
+        || execution_state.as_deref() != Some("started")
+    {
+        return Err(StorageError::InvalidStoredValue);
+    }
+    Ok(Some((advisor_conversation_id, dispatch_id)))
+}
+
 fn is_uuid_v7(value: &str) -> bool {
     Uuid::parse_str(value).is_ok_and(|uuid| uuid.get_version_num() == 7)
 }
@@ -6896,6 +7048,50 @@ mod tests {
         (project_id, conversation_id)
     }
 
+    fn insert_started_advisor_dispatch(
+        repository: &ProjectRepository,
+        advisor_conversation_id: &str,
+        dispatch_id: &str,
+        target_project_id: &str,
+        execution_conversation_id: &str,
+    ) {
+        repository
+            .connection
+            .execute(
+                "INSERT INTO advisor_conversations (id, codex_thread_id, created_at_ms, updated_at_ms)
+                 VALUES (?1, ?2, 1, 1)",
+                params![advisor_conversation_id, format!("advisor-{advisor_conversation_id}")],
+            )
+            .expect("advisor conversation fixture");
+        repository
+            .connection
+            .execute(
+                "INSERT INTO advisor_dispatch_records (
+                    id, advisor_conversation_id, target_project_id, request_sha256,
+                    context_manifest_sha256, capability_manifest_sha256, state,
+                    requires_explicit_approval, requested_model, requested_reasoning_effort,
+                    trust, provenance_source, provenance_ref, provenance_commit,
+                    observed_at_ms, provenance_note, created_at_ms, updated_at_ms,
+                    decided_at_ms, expires_at_ms, execution_dispatch_state,
+                    execution_conversation_id
+                 ) VALUES (
+                    ?1, ?2, ?3, ?4, ?5, ?6, 'approved', 1, NULL, NULL,
+                    'verified', 'user-selection', 'advisor-dispatch', NULL,
+                    1, NULL, 1, 1, 1, 9999999999999, 'started', ?7
+                 )",
+                params![
+                    dispatch_id,
+                    advisor_conversation_id,
+                    target_project_id,
+                    "1".repeat(64),
+                    "2".repeat(64),
+                    "3".repeat(64),
+                    execution_conversation_id,
+                ],
+            )
+            .expect("started advisor dispatch fixture");
+    }
+
     fn package_validation_input(
         complete: bool,
         supersedes_record_id: Option<String>,
@@ -7282,7 +7478,7 @@ mod tests {
                     0
                 ))
                 .expect("version"),
-            19
+            20
         );
     }
 
@@ -7443,6 +7639,7 @@ mod tests {
                 "advisor_dispatch_records".to_owned(),
                 "conversation_references".to_owned(),
                 "directory_associations".to_owned(),
+                "local_review_activity_ledger".to_owned(),
                 "local_review_annotations".to_owned(),
                 "local_review_collections".to_owned(),
                 "local_review_comparisons".to_owned(),
@@ -7866,7 +8063,7 @@ mod tests {
                     0
                 ),)
                 .expect("version"),
-            18
+            20
         );
         assert_eq!(
             repository.connection.query_row(
@@ -7999,6 +8196,170 @@ mod tests {
     }
 
     #[test]
+    fn task_advisor_dispatch_origin_is_native_verified_complete_and_immutable() {
+        let mut repository = ProjectRepository::in_memory().expect("schema");
+        let (project_id, execution_conversation_id) = insert_live_task_context(&repository);
+        let advisor_conversation_id = "018f0000-0000-7000-8000-000000000121";
+        let dispatch_id = "018f0000-0000-7000-8000-000000000122";
+        insert_started_advisor_dispatch(
+            &repository,
+            advisor_conversation_id,
+            dispatch_id,
+            &project_id,
+            &execution_conversation_id,
+        );
+
+        let task_id = repository
+            .create_task_from_conversation_context(&execution_conversation_id)
+            .expect("native Advisor-dispatched task");
+        assert_eq!(
+            repository
+                .task_project_binding(&task_id)
+                .expect("project binding"),
+            Some(project_id.clone())
+        );
+        assert_eq!(
+            repository
+                .task_advisor_dispatch_origin(&task_id)
+                .expect("origin binding"),
+            Some((advisor_conversation_id.to_owned(), dispatch_id.to_owned()))
+        );
+
+        let ordinary = repository.create_task().expect("ordinary task");
+        assert_eq!(
+            repository
+                .task_advisor_dispatch_origin(&ordinary)
+                .expect("ordinary origin"),
+            None
+        );
+        assert!(repository
+            .connection
+            .execute(
+                "UPDATE task_records SET origin_advisor_conversation_id = NULL WHERE id = ?1",
+                [&task_id],
+            )
+            .is_err());
+        assert!(repository
+            .connection
+            .execute(
+                "UPDATE task_records
+                 SET origin_advisor_conversation_id = ?1,
+                     origin_advisor_dispatch_record_id = ?2
+                 WHERE id = ?3",
+                params![advisor_conversation_id, dispatch_id, ordinary],
+            )
+            .is_err());
+    }
+
+    #[test]
+    fn task_advisor_dispatch_origin_rejects_mismatch_and_never_leaves_partial_binding() {
+        let mut repository = ProjectRepository::in_memory().expect("schema");
+        let (project_id, execution_conversation_id) = insert_live_task_context(&repository);
+        let other_project_id = "018f0000-0000-7000-8000-000000000130";
+        repository
+            .connection
+            .execute(
+                "INSERT INTO projects (
+                    id, display_name, active_directory_association_id, archived_at_ms,
+                    created_at_ms, updated_at_ms
+                 ) VALUES (?1, 'Other project', NULL, NULL, 1, 1)",
+                [other_project_id],
+            )
+            .expect("other project");
+        let dispatch_id = "018f0000-0000-7000-8000-000000000131";
+        let advisor_conversation_id = "018f0000-0000-7000-8000-000000000132";
+        insert_started_advisor_dispatch(
+            &repository,
+            advisor_conversation_id,
+            dispatch_id,
+            other_project_id,
+            &execution_conversation_id,
+        );
+        assert!(matches!(
+            repository.create_task_from_conversation_context(&execution_conversation_id),
+            Err(StorageError::InvalidStoredValue)
+        ));
+        assert_eq!(
+            repository
+                .connection
+                .query_row("SELECT count(*) FROM task_records", [], |row| row
+                    .get::<_, i64>(0))
+                .expect("no failed task"),
+            0
+        );
+
+        let second_advisor_conversation_id = "018f0000-0000-7000-8000-000000000133";
+        repository
+            .connection
+            .execute(
+                "INSERT INTO advisor_conversations (id, codex_thread_id, created_at_ms, updated_at_ms)
+                 VALUES (?1, 'second-advisor', 1, 1)",
+                [second_advisor_conversation_id],
+            )
+            .expect("second advisor conversation");
+        assert!(repository
+            .connection
+            .execute(
+                "INSERT INTO task_records (
+                id, schema_version, title, status, created_at_ms, updated_at_ms,
+                archived_at_ms, last_opened_at_ms, selected_plan_id, project_id,
+                origin_advisor_conversation_id, origin_advisor_dispatch_record_id
+             ) VALUES (
+                '018f0000-0000-7000-8000-000000000134', 1, 'Invalid', 'active',
+                1, 1, NULL, 1, '018f0000-0000-7000-8000-000000000135', ?1, ?2, ?3
+             )",
+                params![project_id, second_advisor_conversation_id, dispatch_id],
+            )
+            .is_err());
+    }
+
+    #[test]
+    fn task_advisor_dispatch_origin_migration_preserves_legacy_unbound_tasks() {
+        let connection = Connection::open_in_memory().expect("database opens");
+        connection
+            .execute_batch("CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY NOT NULL, name TEXT NOT NULL, applied_at_ms INTEGER NOT NULL);")
+            .expect("ledger");
+        for (version, name, sql) in MIGRATIONS.iter().take(19) {
+            connection.execute_batch(sql).expect("pre-origin migration");
+            connection
+                .execute(
+                    "INSERT INTO schema_migrations VALUES (?1, ?2, 1)",
+                    params![version, name],
+                )
+                .expect("ledger row");
+        }
+        connection
+            .execute(
+                "INSERT INTO task_records (
+                    id, schema_version, title, status, created_at_ms, updated_at_ms,
+                    archived_at_ms, last_opened_at_ms, selected_plan_id, project_id
+                 ) VALUES (
+                    '018f0000-0000-7000-8000-000000000141', 1, 'Legacy', 'active',
+                    1, 1, NULL, 1, '018f0000-0000-7000-8000-000000000142', NULL
+                 )",
+                [],
+            )
+            .expect("legacy task");
+        let repository = ProjectRepository::from_test_connection(connection).expect("migrated");
+        assert_eq!(
+            repository
+                .task_advisor_dispatch_origin("018f0000-0000-7000-8000-000000000141")
+                .expect("legacy origin"),
+            None
+        );
+        assert_eq!(
+            repository
+                .connection
+                .query_row("SELECT max(version) FROM schema_migrations", [], |row| row
+                    .get::<_, i64>(
+                    0
+                ))
+                .expect("migration version"),
+            20
+        );
+    }
+
+    #[test]
     fn task_project_context_rejects_archived_or_detached_projects_without_rebinding_tasks() {
         let mut repository = ProjectRepository::in_memory().expect("schema");
         let (project_id, conversation_id) = insert_live_task_context(&repository);
@@ -8100,7 +8461,7 @@ mod tests {
                     0
                 ))
                 .expect("version"),
-            18
+            20
         );
 
         let mut failed = Connection::open_in_memory().expect("database opens");
@@ -8482,7 +8843,7 @@ mod tests {
                 1
             );
         }
-        assert_eq!(MIGRATIONS.len(), 18);
+        assert_eq!(MIGRATIONS.len(), 20);
 
         let connection = Connection::open_in_memory().expect("database");
         connection
@@ -8530,7 +8891,7 @@ mod tests {
                     0
                 ))
                 .expect("version"),
-            18
+            20
         );
         assert_eq!(
             repository
@@ -8587,7 +8948,7 @@ mod tests {
                     0
                 ))
                 .expect("version"),
-            18
+            20
         );
     }
 
@@ -9143,6 +9504,8 @@ mod tests {
                 "last_opened_at_ms",
                 "selected_plan_id",
                 "project_id",
+                "origin_advisor_conversation_id",
+                "origin_advisor_dispatch_record_id",
             ]
         );
         let plan_columns: Vec<String> = reopened
