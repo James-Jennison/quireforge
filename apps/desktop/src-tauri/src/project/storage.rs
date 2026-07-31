@@ -2501,21 +2501,6 @@ impl ProjectRepository {
         tx.commit()?;
         Ok(())
     }
-    pub(crate) fn expire_task_template_application_reservations(
-        &mut self,
-    ) -> Result<usize, StorageError> {
-        let tx = self
-            .connection
-            .transaction_with_behavior(TransactionBehavior::Immediate)?;
-        let expired = tx.execute(
-            "UPDATE task_template_application_reservations SET state = 'expired'
-             WHERE state = 'pending' AND expires_at_ms <= ?1",
-            [now_millis()],
-        )?;
-        tx.commit()?;
-        Ok(expired)
-    }
-
     pub(crate) fn cancel_task_template_application_reservation(
         &mut self,
         reservation_id: &str,
@@ -5965,6 +5950,7 @@ impl ProjectRepository {
     /// Finds the single durable unprivileged receipt that the fixed headless
     /// executable may extend. Both the active project context and the receipt
     /// are deliberately resolved from migration-18 state, never from argv.
+    #[cfg(test)]
     pub(crate) fn installed_host_headless_predecessor_for_internal(
         &self,
     ) -> Result<(String, PackageValidationSummary), StorageError> {
@@ -8452,7 +8438,7 @@ mod tests {
                     0
                 ))
                 .expect("version"),
-            20
+            22
         );
     }
 
@@ -8618,12 +8604,14 @@ mod tests {
                 "local_review_collections".to_owned(),
                 "local_review_comparisons".to_owned(),
                 "local_review_items".to_owned(),
+                "local_task_templates".to_owned(),
                 "project_package_validation_candidate_identities".to_owned(),
                 "project_package_validation_summaries".to_owned(),
                 "projects".to_owned(),
                 "schema_migrations".to_owned(),
                 "task_plans".to_owned(),
                 "task_records".to_owned(),
+                "task_template_application_reservations".to_owned(),
                 "terminal_sessions".to_owned(),
                 "unified_conversation_metadata".to_owned(),
                 "worktree_relations".to_owned(),
@@ -9037,7 +9025,7 @@ mod tests {
                     0
                 ),)
                 .expect("version"),
-            20
+            22
         );
         assert_eq!(
             repository.connection.query_row(
@@ -9329,7 +9317,7 @@ mod tests {
                     0
                 ))
                 .expect("migration version"),
-            20
+            22
         );
     }
 
@@ -9501,7 +9489,7 @@ mod tests {
                     0
                 ))
                 .expect("version"),
-            20
+            22
         );
 
         let mut failed = Connection::open_in_memory().expect("database opens");
@@ -9883,7 +9871,7 @@ mod tests {
                 1
             );
         }
-        assert_eq!(MIGRATIONS.len(), 20);
+        assert_eq!(MIGRATIONS.len(), 22);
 
         let connection = Connection::open_in_memory().expect("database");
         connection
@@ -9931,7 +9919,7 @@ mod tests {
                     0
                 ))
                 .expect("version"),
-            20
+            22
         );
         assert_eq!(
             repository
@@ -9988,7 +9976,7 @@ mod tests {
                     0
                 ))
                 .expect("version"),
-            20
+            22
         );
     }
 

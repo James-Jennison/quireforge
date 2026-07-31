@@ -40,11 +40,7 @@ fn bad(value: &str, instructions: bool) -> bool {
     })
 }
 pub(crate) fn normalized_single(value: &str, chars: usize, bytes: usize) -> Option<String> {
-    let v = value
-        .trim()
-        .split_whitespace()
-        .collect::<Vec<_>>()
-        .join(" ");
+    let v = value.split_whitespace().collect::<Vec<_>>().join(" ");
     (!v.is_empty() && v.chars().count() <= chars && v.len() <= bytes && !bad(&v, false))
         .then_some(v)
 }

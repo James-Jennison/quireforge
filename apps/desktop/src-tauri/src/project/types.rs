@@ -1083,7 +1083,6 @@ pub enum TaskTemplateBridgeState {
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum TaskTemplateDiagnosticCode {
-    MetadataUnavailable,
     InvalidRequest,
     NotFound,
     BuiltInImmutable,
