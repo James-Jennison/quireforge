@@ -80,24 +80,31 @@ metadata from authority.
 
 These are completed gates within this goal, not completed product capabilities.
 
+### Canonical Provider-Neutral Interaction and Event Protocol
+
+Status: complete, decision-only. The
+[interaction and event protocol decision](CANONICAL_PROVIDER_NEUTRAL_INTERACTION_AND_EVENT_PROTOCOL.md)
+defines native-owned interaction attempts, closed envelopes, inputs/outputs,
+streaming, cancellation, continuation, opaque provider-session references,
+structured and multimodal events, tool communication, grounding/usage/errors,
+terminal states, and governed extensions. It grants no transport, invocation,
+credential, context, retrieval, tool, browser, persistence, or UI authority.
+
 ## Pending decision gates
 
 Every gate requires separate explicit approval. Completing one gate does not
 automatically begin the next.
 
-1. **Canonical Provider-Neutral Interaction and Event Protocol** — define
-   provider-neutral inputs, outputs, events, streaming, lifecycle,
-   continuations, tool proposals, citations, usage, errors, and terminal states.
-2. **Provider Adapter Lifecycle and Conformance Governance** — define adapter
+1. **Provider Adapter Lifecycle and Conformance Governance** — define adapter
    identity, trust, isolation, compatibility, conformance, upgrade, rollback,
    quarantine, and revocation.
-3. **Credential Broker and Account/Project/Scope Custody** — define real
+2. **Credential Broker and Account/Project/Scope Custody** — define real
    credential custody, leases, account binding, expiry, rotation, revocation,
    and non-exportable references.
-4. **Context Assembly and Transmission Manifests** — define what context may be
+3. **Context Assembly and Transmission Manifests** — define what context may be
    selected, transformed, authorized, transmitted, audited, retained, and
    invalidated.
-5. **Limited Provider Inference Boundary** — define the first model-invocation
+4. **Limited Provider Inference Boundary** — define the first model-invocation
    authority without retrieval, native tool execution, browser behavior,
    connected-service access, or external mutation.
 
@@ -193,8 +200,8 @@ When a gate completes, record it as progress under this goal.
 
 ## Immediate next gate
 
-The goal is active. Two decision gates are complete and no gate is currently
-active. **Canonical Provider-Neutral Interaction and Event Protocol** is the
+The goal is active. Three decision gates are complete and no gate is currently
+active. **Provider Adapter Lifecycle and Conformance Governance** is the
 recommended next gate, but it still requires separate explicit approval and
 does not begin here.
 
