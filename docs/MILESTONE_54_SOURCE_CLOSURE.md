@@ -2,7 +2,8 @@
 
 Source baseline: the M53-approved Local Review decision through parent
 `953bb1d5eee2cd17e04634e1438b9e5f15d639f9`. Beta.51 remains the latest
-packaged/installed authority; this checkpoint is unreleased source work.
+packaged/installed authority; beta.52 is the unreleased source/package candidate
+and has not been built or installed.
 
 M54 implements private SQLite migrations 13–20, task/project and optional-plan
 context, inert copied previews, annotations, native non-Git comparison, and

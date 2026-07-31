@@ -1,6 +1,12 @@
 # Changelog
 
-## Unreleased — 0.1.0-beta.51
+## Unreleased — 0.1.0-beta.52
+
+- Prepare the unreleased beta.52 source candidate. All seven M54 evidence
+  sources are implemented; beta.52 has not been built, installed, tagged,
+  released, published, or deployed.
+
+## Preserved beta.51 history
 
 ### Added
 

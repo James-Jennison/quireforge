@@ -1342,7 +1342,8 @@ Only after M53 approval, implement the approved local review surfaces by
 reusing the M48 typed artifact boundary and M49 preview/review services.
 Artifact lifecycle, selection, comparison, accessibility, and no-path/no-
 persistence boundaries must be deterministic. The provisional package
-candidate is `0.1.0-beta.51`.
+candidate is `0.1.0-beta.52` / `0.1.0~beta.52`; it remains unbuilt and
+uninstalled pending the next restricted package/host gate.
 
 **In progress:** M54 is explicitly approved. The former finalizer lost the
 beta.47 normalized canonical set; only its recorded hashes and distinct raw

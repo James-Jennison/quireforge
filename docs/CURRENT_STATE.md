@@ -334,7 +334,9 @@ mockups, typed evidence envelopes, inert preview, local item-level notes,
 non-Git text comparison, and explicit digest-bound M48 promotion. Review does
 not confer filesystem, network, Git, terminal, provider, approval, dispatch,
 execution, publishing, or deployment authority. M54 is explicitly approved
-and in progress locally, targeting `0.1.0-beta.51` / `0.1.0~beta.51`. Beta.48
+source-closed at `8900995ad3645ebc5a95c6959de8be4e75f24ae8`; beta.52 is the
+unreleased candidate (`0.1.0-beta.52` / `0.1.0~beta.52`). Beta.51 remains the
+latest packaged/installed predecessor. Beta.48
 is a validated but non-deployable candidate because the installed host still
 lacked the migration-18 unprivileged receipt bootstrap. Beta.49 is a preserved,
 validated but non-promoted candidate: its promotion correctly failed on an
