@@ -1,0 +1,219 @@
+# Goal — Provider-Neutral AI Foundation
+
+Type: active long-term product goal.
+Status: active; architecture gates in progress.
+Packaging status: none.
+Release version: none.
+Implementation authority: none granted by establishing this goal.
+Parent vision: native, project-centered, all-in-one Linux AI workspace.
+
+> The goal organizes related decisions and future implementation work. It does
+> not itself authorize any capability.
+
+## Purpose
+
+QuireForge must eventually support multiple cloud and local intelligence
+providers without organizing the application around provider-owned chat
+products, allowing provider sessions to replace projects or tasks, granting
+providers native tool or execution authority, inheriting a lowest-common-
+denominator OpenAI-compatible abstraction, or mixing capability metadata,
+credentials, context transmission, inference, retrieval, tools, and browser
+behavior into one integration boundary.
+
+This goal supplies one coherent product destination for the bounded decision,
+implementation, and release work required to avoid those failures.
+
+## Desired outcome
+
+At goal completion, QuireForge has a provider-neutral foundation in which:
+
+- projects and durable tasks remain authoritative;
+- providers and local runtimes are selected capabilities within tasks;
+- governed extensions preserve provider-specific behavior;
+- provider adapters translate intelligence traffic only;
+- credentials are separately governed;
+- context transmission is explicit and digest-bound;
+- native operations remain closed, typed, and QuireForge-owned;
+- provider sessions are opaque subordinate references; and
+- limited inference can exist without automatically granting retrieval, tools,
+  browser access, or external mutation.
+
+## Goal completion criteria
+
+The goal is not complete merely because its decision documents exist. Completion
+requires separately approved and validated implementation of at least:
+
+1. provider-neutral capability-registry contracts;
+2. canonical interaction and event contracts;
+3. a provider-adapter lifecycle and conformance boundary;
+4. credential broker and scoped account binding;
+5. context assembly and transmission manifests;
+6. a limited inference runtime;
+7. one separately approved bounded provider or local-runtime adapter;
+8. end-to-end proof that project/task authority is preserved;
+9. proof that no implicit native tool, retrieval, browser, connector, or
+   mutation authority exists; and
+10. appropriate packaging, installed-host validation, and release evidence for
+    the first user-visible capability.
+
+Later decisions may refine these criteria but may not weaken their authority
+boundaries without explicit approval.
+
+## Completed decision gates
+
+### External Capability Taxonomy and Sequencing
+
+Status: complete, decision-only. The
+[taxonomy and sequencing decision](EXTERNAL_CAPABILITY_TAXONOMY_AND_SEQUENCING.md)
+separates inference, retrieval, connected services, local runtimes, execution,
+credentials, browser verification, and automation; establishes dependency
+ordering; and preserves M55, M57, and M58 boundaries.
+
+### Provider-Neutral Capability Registry and Descriptor Governance
+
+Status: complete, decision-only. The
+[registry and descriptor-governance decision](PROVIDER_NEUTRAL_CAPABILITY_REGISTRY_AND_DESCRIPTOR_GOVERNANCE.md)
+establishes provider, endpoint, model, runtime, adapter, capability, and claim
+identity; versioning, digest binding, provenance, trust, lifecycle,
+compatibility, limits, and governed extensions; and the separation of capability
+metadata from authority.
+
+These are completed gates within this goal, not completed product capabilities.
+
+## Pending decision gates
+
+Every gate requires separate explicit approval. Completing one gate does not
+automatically begin the next.
+
+1. **Canonical Provider-Neutral Interaction and Event Protocol** — define
+   provider-neutral inputs, outputs, events, streaming, lifecycle,
+   continuations, tool proposals, citations, usage, errors, and terminal states.
+2. **Provider Adapter Lifecycle and Conformance Governance** — define adapter
+   identity, trust, isolation, compatibility, conformance, upgrade, rollback,
+   quarantine, and revocation.
+3. **Credential Broker and Account/Project/Scope Custody** — define real
+   credential custody, leases, account binding, expiry, rotation, revocation,
+   and non-exportable references.
+4. **Context Assembly and Transmission Manifests** — define what context may be
+   selected, transformed, authorized, transmitted, audited, retained, and
+   invalidated.
+5. **Limited Provider Inference Boundary** — define the first model-invocation
+   authority without retrieval, native tool execution, browser behavior,
+   connected-service access, or external mutation.
+
+## Future implementation milestones
+
+The likely implementation sequence is provisional and non-authorizing. Formal
+scopes, versions, and release candidates arise only when an item is separately
+selected:
+
+1. native capability-registry contracts;
+2. canonical interaction/event contracts;
+3. mock adapter lifecycle and conformance;
+4. credential broker foundation;
+5. context assembly and transmission authority;
+6. limited inference runtime;
+7. first approved provider or local-runtime adapter;
+8. end-to-end project/task/inference acceptance;
+9. packaging and installed-host validation; and
+10. first user-visible provider-neutral release.
+
+## Separate goals and lanes
+
+### M55 durable source admission and research
+
+Retrieval, cited research, durable external sources, indexing, and source
+manifests remain separate. Limited inference may precede durable retrieval only
+with explicitly selected transient or already-approved context.
+
+### M57 connector governance
+
+M57 remains reusable least-authority architecture evidence. It is not this goal
+and does not grant a real connector or provider.
+
+### M58 browser verification
+
+M58 remains a separately named, unstarted, verification-only decision lane. It
+is not a gate within the core text-only provider-neutral foundation and must not
+become general browser automation, OAuth, web research, provider transport, or
+external action.
+
+### Connected services
+
+GitHub, Gmail, calendars, cloud systems, messaging, storage, and deployment
+systems remain individually governed connected-service work.
+
+### Automation and multi-agent behavior
+
+Scheduling, conditions, background work, parallel agents, multi-agent
+coordination, and unattended execution remain later goals or lanes after their
+underlying authorities exist.
+
+## Goal-level invariants
+
+- Projects and durable tasks remain authoritative.
+- Provider threads and sessions remain subordinate opaque references.
+- Provider adapters translate intelligence traffic only.
+- Capability metadata does not grant authority.
+- Credentials, context, inference, retrieval, tools, connected services,
+  browser behavior, and automation remain separate authorities.
+- No provider receives implicit filesystem, terminal, Git, browser, connector,
+  credential, cloud, or deployment access.
+- Native operations remain closed and typed.
+- Mutations require immediate revalidation and digest-bound authorization.
+- Ambiguous mutation dispatch is never automatically retried.
+- Generic MCP cannot bypass lane-specific governance.
+- Governed extensions preserve provider-specific behavior.
+- Inspectable templates remain distinct from hidden agents and authority-bearing
+  plugins.
+- No goal gate automatically starts another gate.
+
+## Goal reporting
+
+Future [CURRENT_STATE](CURRENT_STATE.md) and [ROADMAP](ROADMAP.md) updates must
+report progress through this hierarchy:
+
+```text
+Product vision
+└── Product goals
+    ├── Decision and architecture gates
+    ├── Implementation milestones
+    └── Release checkpoints
+
+Goal status
+├── Completed gates
+├── Active gate
+├── Pending gates
+├── Approved implementation milestone
+└── Latest packaged/released capability
+```
+
+Do not present every decision artifact as a new top-level product destination.
+When a gate completes, record it as progress under this goal.
+
+## Immediate next gate
+
+The goal is active. Two decision gates are complete and no gate is currently
+active. **Canonical Provider-Neutral Interaction and Event Protocol** is the
+recommended next gate, but it still requires separate explicit approval and
+does not begin here.
+
+## Package and release policy
+
+Establishing or advancing this goal through decision-only gates requires no
+package or version. Implementation milestones receive versions only when they
+alter source or user-visible/operational behavior and a release policy is
+separately approved. Beta.54 remains the latest packaged generation, and its
+draft prerelease remains unchanged. Goal completion will require future package
+and installed-host evidence; none is authorized now.
+
+## Explicit exclusions
+
+This organizational checkpoint grants no provider or vendor selection; provider,
+descriptor, protocol, or adapter implementation; model invocation; networking;
+credentials; account connection; OAuth; context transmission; inference;
+retrieval; source admission; citations; browser behavior; connector
+implementation; MCP execution; native tool execution; filesystem, terminal,
+Git, repository, cloud, or deployment authority; persistence; migration; Tauri
+command; bridge; UI; package; version; release; tag; background work;
+automation; or multi-agent behavior.

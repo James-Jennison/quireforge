@@ -1457,23 +1457,36 @@ without a package or version. Beta.54 remains the latest packaged generation;
 its M56 draft prerelease is unchanged. Future provider-neutral architecture
 requires separately approved decision gates and must not be folded into M58.
 
-**External capability taxonomy and sequencing complete:** the unnumbered
-[External Capability Taxonomy and Sequencing](EXTERNAL_CAPABILITY_TAXONOMY_AND_SEQUENCING.md)
-checkpoint grants no implementation authority or package/version. It separates
-future inference, retrieval, connected-service, local-runtime, execution,
-credential, browser-verification, and automation lanes, and recommends
-Provider-Neutral Capability Registry and Descriptor Governance as the next
-separately approved decision gate. M58 remains unchanged and unstarted.
+### Goal — Provider-Neutral AI Foundation
 
-**Provider-neutral capability registry and descriptor governance complete:**
-the unnumbered [Provider-Neutral Capability Registry and Descriptor
-Governance](PROVIDER_NEUTRAL_CAPABILITY_REGISTRY_AND_DESCRIPTOR_GOVERNANCE.md)
-decision defines metadata-only descriptor identity, provenance, capability
-claims, lifecycle, extensions, and authority separation. It grants no package,
-version, implementation, provider, network, credential, or M55 source-admission
-authority, and recommends Canonical Provider-Neutral Interaction and Event
-Protocol as the next separately approved decision. M58 remains unchanged and
-unstarted.
+**Active long-term product goal:** [Provider-Neutral AI Foundation](GOAL_PROVIDER_NEUTRAL_AI_FOUNDATION.md)
+organizes the related decision gates, future implementation milestones, and
+future release checkpoints. It grants no implementation authority, package, or
+version. M55, M57, and M58 remain separate authority boundaries.
+
+**Completed decision gates:**
+
+- [External Capability Taxonomy and Sequencing](EXTERNAL_CAPABILITY_TAXONOMY_AND_SEQUENCING.md)
+  separates the external-capability lanes and their dependencies.
+- [Provider-Neutral Capability Registry and Descriptor
+  Governance](PROVIDER_NEUTRAL_CAPABILITY_REGISTRY_AND_DESCRIPTOR_GOVERNANCE.md)
+  defines metadata-only descriptor identity, provenance, capability claims,
+  lifecycle, extensions, and authority separation.
+
+**Recommended next decision gate:** Canonical Provider-Neutral Interaction and
+Event Protocol is not started and requires separate explicit approval.
+
+**Later planned decision gates:** Provider Adapter Lifecycle and Conformance
+Governance; Credential Broker and Account/Project/Scope Custody; Context
+Assembly and Transmission Manifests; and Limited Provider Inference Boundary.
+They are non-authorizing and may be refined only through later decisions.
+
+**Future implementation milestones:** Native capability-registry contracts,
+canonical interaction/event contracts, mock adapter conformance, credential
+broker, context assembly, limited inference, and the first separately approved
+provider or local-runtime adapter remain provisional—not approved work. Release
+checkpoints are assigned only when user-visible or operational behavior is
+implemented.
 
 ### 58 — Controlled Browser Verification Proposal
 
