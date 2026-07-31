@@ -104,6 +104,13 @@ persisted-bytes-only previews. Migration 19 is the native Activity ownership
 ledger; migration 20 immutably binds Advisor-dispatched tasks. Beta.52 remains
 preserved as an unreleased failed installed-host candidate.
 
+Milestone 55 is decision-ready but not approved. Its proposal separately defers
+research-report implementation pending a future approved durable source-manifest
+authority and defines only a bounded, inspectable local-template contract for a
+future M56 approval. It adds no product behavior, migration, retrieval,
+provider, connector, browser, credential, or package capability. M57 connector
+governance and M58 browser verification remain separate decision gates.
+
 The Rust Codex, project/SQLite, Git, worktree, terminal, preview, attachment,
 settings, and integration services are candidates for reuse. The current Tauri
 boundary is the command façade, app/plugin wiring, native dialogs/openers/

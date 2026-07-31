@@ -1377,12 +1377,19 @@ provider integration. It excludes opaque personalization, hidden retrieval,
 automatic browsing, and automatic actions. This is a decision-only gate with
 no package change.
 
+**Decision-ready, awaiting approval:** [M55 research reports and inspectable
+task templates proposal](MILESTONE_55_RESEARCH_REPORTS_AND_INSPECTABLE_TASK_TEMPLATES_PROPOSAL.md)
+defers research-report implementation because no approved durable source-manifest
+authority exists. It defines a closed local-template-only M56 contract without
+adding retrieval, providers, connectors, browser authority, or product behavior.
+
 ### 56 — Inspectable Local Task Templates
 
 Only after the template portion of M55 is approved, implement inspectable
 local task templates using approved context only. Research, external providers,
 connectors, browser access, and hidden retrieval remain excluded. The
-provisional package candidate is `0.1.0-beta.51`.
+provisional package candidate is `0.1.0-beta.54` / `0.1.0~beta.54`, subject to
+fresh revalidation when M56 is approved.
 
 ### 57 — Per-Project Connector and MCP Governance Proposal
 
