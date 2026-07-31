@@ -1414,17 +1414,22 @@ beta.54 packages remain installed, headless completion returned `created`, then
 The draft is not published and there has been no deployment. Beta.53 remains
 preserved as the prior released rollback generation; beta.52 remains preserved
 as an unreleased candidate that failed its installed-host gate. The next work
-is a separate decision/planning boundary; M57 and M58 remain future decision
-gates and do not start automatically.
+is a separate decision/planning boundary. M57 is now complete as a
+decision-only governance record; M58 remains a future decision gate and does
+not start automatically.
 
-### 57 — Per-Project Connector and MCP Governance Proposal
+### 57 — Connector Governance and External Authority
 
-Extend the existing Integration Center only through a separate security,
-transport, and authorization decision that defines per-project enablement,
-read-only/approval-required/prohibited tool classes, authorization visibility,
-audit receipts, revocation, and failure behavior. No connector, MCP server,
-OAuth flow, provider integration, or Advisor authority is added by this
-proposal. This is a decision-only gate with no package change.
+**Decision complete:** [M57 connector governance](MILESTONE_57_CONNECTOR_GOVERNANCE.md)
+defines the least-authority connector classification, authority ladder,
+consent, credential, provenance, privacy, audit, failure, and revocation
+requirements for any future external boundary. It preserves the separately
+approved Codex-owned Integration Center as-is and grants no new connector,
+provider, MCP, OAuth, credential, browser, retrieval, synchronization, or
+mutation authority. Its recommendation is to require additional bounded
+decision artifacts before implementation: no per-project connector foundation
+is approved, and no standing write or autonomous mutation authority is
+permitted.
 
 ### 58 — Controlled Browser Verification Proposal
 

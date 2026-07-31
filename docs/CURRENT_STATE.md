@@ -127,8 +127,11 @@ there has been no deployment. Beta.53 remains preserved as the prior released
 rollback generation, and beta.52 remains an unreleased failed installed-host
 candidate. Research, retrieval, providers, connectors, MCP, OAuth, browser
 authority, credentials, import/export, hidden instructions, automatic actions,
-approval, dispatch, and execution remain excluded. M57 connector governance and
-M58 browser verification remain separate decision gates.
+approval, dispatch, and execution remain excluded. M57 connector governance is
+now complete as a decision-only record: it preserves the existing
+Codex-owned Integration Center boundary, grants no new external authority, and
+requires further bounded decisions before any connector implementation. M58
+browser verification remains a separate unstarted decision gate.
 
 The Rust Codex, project/SQLite, Git, worktree, terminal, preview, attachment,
 settings, and integration services are candidates for reuse. The current Tauri
@@ -304,9 +307,10 @@ draft prerelease containing the four canonical beta.54 assets. G9 source
 acceptance, G10 canonical packaging, and G11 installed-host validation passed;
 both beta.54 packages remain installed and headless completion returned
 `created`, then `existing`, without rollback. The next action is a separate
-decision/planning goal; M57 and M58 do not begin automatically. The draft has
-not been published or deployed, and all M56 deferred-capability exclusions
-remain intact.
+decision/planning goal. M57 is now complete as a governance decision and
+recommends further bounded decisions before any connector implementation; M58
+remains unstarted. The draft has not been published or deployed, and all M56
+deferred-capability exclusions remain intact.
 
 Milestone 46 — **Bounded Multi-Attachment** is complete at
 `1bc2e787ab785016041d70845c97ca9c2c4f84db` with its verified
