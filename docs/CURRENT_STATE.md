@@ -107,9 +107,18 @@ preserved as an unreleased failed installed-host candidate.
 Milestone 55 is approved as a decision-only milestone. Its proposal separately defers
 research-report implementation pending a future approved durable source-manifest
 authority and defines only a bounded, inspectable local-template contract for a
-future separately approved M56 implementation. It adds no product behavior, migration, retrieval,
-provider, connector, browser, credential, or package capability. M57 connector
-governance and M58 browser verification remain separate decision gates.
+separately approved M56 implementation. James approved M56 and it is in
+progress: its foundation is `614b22c870dd5a45c88e1e8f59dedc51c4b1c671`
+(`feat: add task template foundation`), private transactional storage is
+`693a7e95e911ac6b50a74734171e2305fbdddbc0` (`feat: add task template storage`),
+and G4's bounded native lifecycle service is
+`03163389d6fe69dbf0deedfd532f8bad2f7bde03` (`feat: add task template lifecycle`).
+Before this documentation checkpoint, Git was clean and synchronized at the
+storage checkpoint; the lifecycle checkpoint subsequently advanced `main`.
+Research reports remain deferred; no retrieval, provider, connector, browser,
+credential, package, beta.54 source evidence, package, installed-host evidence,
+tag, or release is claimed. Beta.53 remains the installed/released M54 baseline.
+M57 connector governance and M58 browser verification remain separate decision gates.
 
 The Rust Codex, project/SQLite, Git, worktree, terminal, preview, attachment,
 settings, and integration services are candidates for reuse. The current Tauri
@@ -278,6 +287,10 @@ provenance/ABI, lifecycle, container and installed smoke, and visible-launch
 gates passed.
 
 ## Next action
+
+Milestone 56 — **Inspectable Local Task Templates** is approved and in
+progress. The next action is M56-G5: native digest-bound application preview,
+reservation, and confirmation; no implementation of it has begun.
 
 Milestone 46 — **Bounded Multi-Attachment** is complete at
 `1bc2e787ab785016041d70845c97ca9c2c4f84db` with its verified

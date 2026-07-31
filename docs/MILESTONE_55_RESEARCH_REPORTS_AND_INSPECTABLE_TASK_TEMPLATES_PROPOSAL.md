@@ -2,8 +2,9 @@
 
 Status: approved decision. This is the sole authoritative M55 decision record.
 It adds no runtime behavior, migration, command, bridge, UI, test, package,
-provider, connector, browser, or network capability. M56 remains blocked until
-its template-only implementation receives separate explicit approval.
+provider, connector, browser, or network capability. M56 subsequently received
+James's separate explicit approval and is now in progress; that later approval
+does not change this decision-only record or grant M55 runtime behavior.
 
 ## Decision
 

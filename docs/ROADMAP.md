@@ -88,38 +88,38 @@ discovery; scheduling management and execution remain unsupported.
 
 ## Status
 
-| Milestone | Scope                                                             | Size         | Status                                                                   |
-| --------: | ----------------------------------------------------------------- | ------------ | ------------------------------------------------------------------------ |
-|         0 | Existing project and feasibility discovery                        | Very large   | Complete; merged to `main`                                               |
-|         1 | QuireForge rename, move, GitHub migration, and governance closure | Medium       | Complete; merged to `main`                                               |
-|         2 | QuireForge brand and static website foundation                    | Large        | Complete; merged to `main`; deployed later through Milestone 16          |
-|         3 | Desktop scaffold consolidation                                    | Large        | Complete; merged to `main`; not packaged                                 |
-|         4 | Codex process adapter and contracts                               | Very large   | Complete; merged to `main`                                               |
-|         5 | Authentication and onboarding                                     | Medium       | Complete; merged to `main`                                               |
-|         6 | Projects and direct local-directory attachment                    | Very large   | Complete; merged to `main`                                               |
-|         7 | Conversation MVP                                                  | Very large   | Complete; merged to `main`                                               |
-|         8 | Session lifecycle and crash recovery                              | Large        | Complete; merged to `main`                                               |
-|         9 | Approvals and command presentation                                | Large        | Complete and verified; publication recorded in repository history        |
-|        10 | Git status, diff review, and controlled mutations                 | Large        | Complete and verified; publication tracked by this milestone change      |
-|        11 | Worktrees and parallel work                                       | Very large   | Complete through 11C and verified locally                                |
-|        12 | Integrated terminal                                               | Large        | Complete; merged to `main`; not packaged                                 |
-|        13 | Integration discovery and compatibility                           | Very large   | Complete through 13B; verified locally                                   |
-|        14 | Integration Center and installation workflows                     | Very large   | Complete through 14C; merged and verified on `main`                      |
-|        15 | File previews and desktop integration                             | Large        | Complete through 15C; verified locally                                   |
-|        16 | Complete Webuzo-hosted static website                             | Very large   | Complete through 16D; production and automatic origin TLS renewal active |
-|        17 | Scheduled tasks and advanced supported features                   | Medium–Large | Complete through 17A locally; management/execution deferred              |
-|        18 | Agent-directed model and reasoning selection                      | Large        | Complete and verified locally; not published                             |
-|        19 | Security, accessibility, and performance hardening                | Very large   | Complete and verified locally                                            |
-|        20 | Packaging and release automation                                  | Large        | Complete and verified locally; not published                             |
-|        21 | Product readiness, beta publication, and download activation      | Very large   | 21A complete; 21B local preflight passed, publication approval-gated     |
-|        23 | UI platform feasibility decision                                  | Medium       | Complete; ADR 0028 retains Tauri conditionally                           |
-|       24A | Project-state contract                                            | Medium       | Complete; strict contract only, no ingestion, UI, or automation          |
-|       24B | Repository-state reader                                           | Large        | Complete; attached-project-only read service, no UI or automation        |
-|       24C | Project-state workspace                                           | Medium       | Complete; read-only presentation over the existing normalized reader     |
-|        25 | Desktop visual polish                                             | Medium       | Complete; branded presentation refinement with fresh Ubuntu package gate |
-|        26 | Appearance themes                                                 | Medium       | Complete; eight closed local palettes with fresh Ubuntu package gate     |
-|        27 | Unified Conversation Engine                                       | Large        | Complete; managed Chat/Codex boundary and fresh Ubuntu package gate      |
-|        28 | Reference-only Advisor foundation                                 | Medium       | Complete; safe shell, confirmed temporary Project State projection, and fresh Ubuntu package gate |
+| Milestone | Scope                                                             | Size         | Status                                                                                                       |
+| --------: | ----------------------------------------------------------------- | ------------ | ------------------------------------------------------------------------------------------------------------ |
+|         0 | Existing project and feasibility discovery                        | Very large   | Complete; merged to `main`                                                                                   |
+|         1 | QuireForge rename, move, GitHub migration, and governance closure | Medium       | Complete; merged to `main`                                                                                   |
+|         2 | QuireForge brand and static website foundation                    | Large        | Complete; merged to `main`; deployed later through Milestone 16                                              |
+|         3 | Desktop scaffold consolidation                                    | Large        | Complete; merged to `main`; not packaged                                                                     |
+|         4 | Codex process adapter and contracts                               | Very large   | Complete; merged to `main`                                                                                   |
+|         5 | Authentication and onboarding                                     | Medium       | Complete; merged to `main`                                                                                   |
+|         6 | Projects and direct local-directory attachment                    | Very large   | Complete; merged to `main`                                                                                   |
+|         7 | Conversation MVP                                                  | Very large   | Complete; merged to `main`                                                                                   |
+|         8 | Session lifecycle and crash recovery                              | Large        | Complete; merged to `main`                                                                                   |
+|         9 | Approvals and command presentation                                | Large        | Complete and verified; publication recorded in repository history                                            |
+|        10 | Git status, diff review, and controlled mutations                 | Large        | Complete and verified; publication tracked by this milestone change                                          |
+|        11 | Worktrees and parallel work                                       | Very large   | Complete through 11C and verified locally                                                                    |
+|        12 | Integrated terminal                                               | Large        | Complete; merged to `main`; not packaged                                                                     |
+|        13 | Integration discovery and compatibility                           | Very large   | Complete through 13B; verified locally                                                                       |
+|        14 | Integration Center and installation workflows                     | Very large   | Complete through 14C; merged and verified on `main`                                                          |
+|        15 | File previews and desktop integration                             | Large        | Complete through 15C; verified locally                                                                       |
+|        16 | Complete Webuzo-hosted static website                             | Very large   | Complete through 16D; production and automatic origin TLS renewal active                                     |
+|        17 | Scheduled tasks and advanced supported features                   | Medium–Large | Complete through 17A locally; management/execution deferred                                                  |
+|        18 | Agent-directed model and reasoning selection                      | Large        | Complete and verified locally; not published                                                                 |
+|        19 | Security, accessibility, and performance hardening                | Very large   | Complete and verified locally                                                                                |
+|        20 | Packaging and release automation                                  | Large        | Complete and verified locally; not published                                                                 |
+|        21 | Product readiness, beta publication, and download activation      | Very large   | 21A complete; 21B local preflight passed, publication approval-gated                                         |
+|        23 | UI platform feasibility decision                                  | Medium       | Complete; ADR 0028 retains Tauri conditionally                                                               |
+|       24A | Project-state contract                                            | Medium       | Complete; strict contract only, no ingestion, UI, or automation                                              |
+|       24B | Repository-state reader                                           | Large        | Complete; attached-project-only read service, no UI or automation                                            |
+|       24C | Project-state workspace                                           | Medium       | Complete; read-only presentation over the existing normalized reader                                         |
+|        25 | Desktop visual polish                                             | Medium       | Complete; branded presentation refinement with fresh Ubuntu package gate                                     |
+|        26 | Appearance themes                                                 | Medium       | Complete; eight closed local palettes with fresh Ubuntu package gate                                         |
+|        27 | Unified Conversation Engine                                       | Large        | Complete; managed Chat/Codex boundary and fresh Ubuntu package gate                                          |
+|        28 | Reference-only Advisor foundation                                 | Medium       | Complete; safe shell, confirmed temporary Project State projection, and fresh Ubuntu package gate            |
 |        29 | Managed Advisor conversation foundation                           | Medium       | Complete; managed no-project Advisor turn with transient per-send safe context and fresh Ubuntu package gate |
 
 ## Milestone definitions
@@ -1385,11 +1385,20 @@ adding retrieval, providers, connectors, browser authority, or product behavior.
 
 ### 56 — Inspectable Local Task Templates
 
-Only after the template portion of M55 is approved, implement inspectable
-local task templates using approved context only. Research, external providers,
-connectors, browser access, and hidden retrieval remain excluded. The
-provisional package candidate is `0.1.0-beta.54` / `0.1.0~beta.54`, subject to
-fresh revalidation when M56 is approved.
+**Approved and in progress:** James separately approved the closed M55
+template-only contract. The foundation is complete at
+`614b22c870dd5a45c88e1e8f59dedc51c4b1c671` (`feat: add task template
+foundation`); private transactional storage is complete at
+`693a7e95e911ac6b50a74734171e2305fbdddbc0` (`feat: add task template
+storage`); and the native lifecycle service is complete at
+`03163389d6fe69dbf0deedfd532f8bad2f7bde03` (`feat: add task template
+lifecycle`). G5–G12 remain: application preview/reservation/confirmation,
+strict commands/bridge, management UI, application accessibility/browser
+acceptance, source acceptance/beta.54 preparation, packaging, installed-host
+validation, then tag/draft prerelease/final closure. Research reports,
+providers, connectors, browser access, and hidden retrieval remain excluded.
+The provisional package candidate remains `0.1.0-beta.54` / `0.1.0~beta.54`;
+no version declaration changes until its later approved preparation gate.
 
 ### 57 — Per-Project Connector and MCP Governance Proposal
 
