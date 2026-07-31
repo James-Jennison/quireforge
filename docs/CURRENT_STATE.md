@@ -175,11 +175,8 @@ independent, and beta.54 remains the latest packaged generation.
 The **Provider-Neutral AI Foundation** is an active long-term product goal. Its
 taxonomy, capability-registry, interaction-protocol, adapter-governance,
 credential-custody, context-manifest, and Limited Provider Inference Boundary
-decisions are completed gates; no provider-neutral operational implementation
-exists and no gate is currently active. Implementation Readiness and First
-Milestone Selection is the recommended next separately approved checkpoint.
-M55, M57, and M58 remain separate, and beta.54 remains the latest packaged
-generation.
+decisions are completed gates. M55, M57, and M58 remain separate, and beta.54
+remains the latest packaged generation.
 
 The first Provider-Neutral AI Foundation implementation milestone is
 source-complete: private native capability-registry contracts provide static
@@ -199,6 +196,18 @@ checks remain local and unexposed. It has no persistence, Tauri/bridge/UI
 surface, provider route, or package. Credential Broker Foundation Contracts is
 the recommended next separately approved implementation milestone; M55, M57,
 and M58 remain separate.
+
+The third Provider-Neutral AI Foundation implementation milestone is
+source-complete: the [local mock inference vertical
+slice](MILESTONE_PROVIDER_NEUTRAL_MOCK_INFERENCE_VERTICAL_SLICE.md) is a
+user-visible but fictional/in-memory task-bound workflow. It uses an explicit
+bounded authored-text manifest review, inert opaque lease, digest-bound one-use
+authorization, deterministic canonical event fixtures, and content-free
+evidence. It introduces no real provider, credentials, network route, context
+transmission, retrieval, native tool authority, persistence, or external action.
+Existing release policy leaves it source-only: beta.54 and its draft prerelease
+remain unchanged. Additional Mock Hardening is the recommended next separately
+approved milestone; M55, M57, and M58 remain separate.
 
 The Rust Codex, project/SQLite, Git, worktree, terminal, preview, attachment,
 settings, and integration services are candidates for reuse. The current Tauri

@@ -13,6 +13,7 @@ mod contract;
 mod desktop;
 mod dynamic_analysis;
 mod git;
+mod mock_inference;
 mod preview;
 mod project;
 pub mod project_state;
@@ -1494,6 +1495,73 @@ fn task_template_cancel(
 }
 
 #[tauri::command]
+fn mock_inference_catalog(
+    service: tauri::State<'_, mock_inference::MockInferenceService>,
+) -> mock_inference::MockInferenceCatalog {
+    service.catalog()
+}
+
+#[tauri::command]
+fn mock_inference_prepare(
+    request: mock_inference::MockInferencePrepareRequest,
+    service: tauri::State<'_, mock_inference::MockInferenceService>,
+    projects: tauri::State<'_, ProjectService>,
+) -> mock_inference::MockInferenceSnapshot {
+    let Some(binding) = projects.task_mock_inference_binding(&request.task_id) else {
+        return mock_inference::diagnostic(
+            mock_inference::MockAttemptState::Invalidated,
+            mock_inference::MockDiagnostic::TaskUnavailable,
+        );
+    };
+    service.prepare(request, binding)
+}
+
+#[tauri::command]
+fn mock_inference_authorize(
+    request: mock_inference::MockInferenceAuthorizationRequest,
+    service: tauri::State<'_, mock_inference::MockInferenceService>,
+    projects: tauri::State<'_, ProjectService>,
+) -> mock_inference::MockInferenceSnapshot {
+    let Some(binding) = projects.task_mock_inference_binding(&request.task_id) else {
+        return mock_inference::diagnostic(
+            mock_inference::MockAttemptState::Invalidated,
+            mock_inference::MockDiagnostic::TaskUnavailable,
+        );
+    };
+    service.authorize(request, &binding)
+}
+
+#[tauri::command]
+fn mock_inference_submit(
+    request: mock_inference::MockInferenceAuthorizationRequest,
+    service: tauri::State<'_, mock_inference::MockInferenceService>,
+    projects: tauri::State<'_, ProjectService>,
+) -> mock_inference::MockInferenceSnapshot {
+    let Some(binding) = projects.task_mock_inference_binding(&request.task_id) else {
+        return mock_inference::diagnostic(
+            mock_inference::MockAttemptState::Invalidated,
+            mock_inference::MockDiagnostic::TaskUnavailable,
+        );
+    };
+    service.submit(request, &binding)
+}
+
+#[tauri::command]
+fn mock_inference_cancel(
+    request: mock_inference::MockInferenceAttemptRequest,
+    service: tauri::State<'_, mock_inference::MockInferenceService>,
+    projects: tauri::State<'_, ProjectService>,
+) -> mock_inference::MockInferenceSnapshot {
+    let Some(binding) = projects.task_mock_inference_binding(&request.task_id) else {
+        return mock_inference::diagnostic(
+            mock_inference::MockAttemptState::Invalidated,
+            mock_inference::MockDiagnostic::TaskUnavailable,
+        );
+    };
+    service.cancel(request, &binding)
+}
+
+#[tauri::command]
 fn local_review_status(
     request: LocalReviewListRequest,
     service: tauri::State<'_, ProjectService>,
@@ -2647,6 +2715,7 @@ pub fn run() {
         .manage(RepositoryStateReader)
         .manage(FilePreviewService::default())
         .manage(TerminalService::default())
+        .manage(mock_inference::MockInferenceService::default())
         .setup(|app| {
             match app.path().app_data_dir() {
                 Ok(directory) => {
@@ -2766,6 +2835,11 @@ pub fn run() {
             task_template_preview,
             task_template_confirm,
             task_template_cancel,
+            mock_inference_catalog,
+            mock_inference_prepare,
+            mock_inference_authorize,
+            mock_inference_submit,
+            mock_inference_cancel,
             local_review_status,
             local_review_collection_create,
             local_review_text_item_create,
@@ -2930,6 +3004,33 @@ mod phase_a_tests {
             "execute",
             "approve",
         ] {
+            assert!(!command_section.contains(forbidden), "{forbidden}");
+        }
+    }
+
+    #[test]
+    fn mock_inference_commands_are_registered_once_and_remain_closed() {
+        let source = include_str!("lib.rs");
+        let handler = source
+            .split(".invoke_handler(tauri::generate_handler![")
+            .nth(1)
+            .and_then(|value| value.split("]).run").next())
+            .expect("native command handler");
+        for command in [
+            "mock_inference_catalog",
+            "mock_inference_prepare",
+            "mock_inference_authorize",
+            "mock_inference_submit",
+            "mock_inference_cancel",
+        ] {
+            assert_eq!(handler.matches(command).count(), 1, "{command}");
+        }
+        let command_section = source
+            .split("fn mock_inference_catalog")
+            .nth(1)
+            .and_then(|value| value.split("fn local_review_status").next())
+            .expect("mock inference command declarations");
+        for forbidden in ["terminal", "git", "attachment", "dispatch", "execute"] {
             assert!(!command_section.contains(forbidden), "{forbidden}");
         }
     }

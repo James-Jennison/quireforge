@@ -563,6 +563,80 @@ def validate() -> list[str]:
                     f"{marker}"
                 )
 
+    mock_inference = ROOT / "apps/desktop/src-tauri/src/mock_inference.rs"
+    if mock_inference.is_file():
+        mock_source = mock_inference.read_text(encoding="utf-8")
+        lowered_mock_source = mock_source.lower()
+        forbidden_mock_authority = (
+            "use std::process",
+            "use tokio::process",
+            "use reqwest",
+            "use url::",
+            "use std::env",
+            "std::net::",
+            "tokio::net::",
+            "command::",
+            "std::fs",
+            "tokio::fs",
+            "pathbuf",
+            "rusqlite::",
+            "tauri::command",
+            "invoke_handler",
+            "openai",
+            "anthropic",
+            "google",
+            "azure",
+            "ollama",
+            "http://",
+            "https://",
+        )
+        for forbidden in forbidden_mock_authority:
+            if forbidden in lowered_mock_source:
+                errors.append(
+                    "mock inference foundation contains prohibited authority: "
+                    f"{forbidden}"
+                )
+        required_mock_markers = (
+            "struct MockInferenceService",
+            "fn fixture_events(",
+            "fn valid_for_submit(",
+            "MockAttemptState",
+            "mock_only: true",
+        )
+        for marker in required_mock_markers:
+            if marker not in mock_source:
+                errors.append(
+                    "mock inference foundation is missing required local-only guard: "
+                    f"{marker}"
+                )
+
+        mock_bridge = ROOT / "apps/desktop/src/lib/mockInference.ts"
+        if not mock_bridge.is_file():
+            errors.append("mock inference bridge schema is missing")
+        else:
+            bridge_source = mock_bridge.read_text(encoding="utf-8").lower()
+            for forbidden in ("http://", "https://", "password", "api_key", "cookie"):
+                if forbidden in bridge_source:
+                    errors.append(
+                        "mock inference bridge schema contains prohibited field or destination: "
+                        f"{forbidden}"
+                    )
+        lib_source = (ROOT / "apps/desktop/src-tauri/src/lib.rs").read_text(
+            encoding="utf-8"
+        )
+        for command in (
+            "mock_inference_catalog",
+            "mock_inference_prepare",
+            "mock_inference_authorize",
+            "mock_inference_submit",
+            "mock_inference_cancel",
+        ):
+            if lib_source.count(command) < 2:
+                errors.append(
+                    "mock inference command is not present in both its closed declaration "
+                    f"and handler: {command}"
+                )
+
     for relative in REQUIRED_PATHS:
         if not (ROOT / relative).is_file():
             errors.append(f"missing required file: {relative}")

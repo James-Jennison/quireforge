@@ -211,6 +211,7 @@ export function TaskCatalog({
   onPlanEdit,
   onPlanDelete,
   onOpenTemplates,
+  onOpenMockInference,
 }: {
   snapshot: TaskCatalogSnapshot;
   busy: boolean;
@@ -235,6 +236,7 @@ export function TaskCatalog({
   ) => SnapshotAction;
   onPlanDelete: (taskId: string, planId: string) => SnapshotAction;
   onOpenTemplates?: () => void;
+  onOpenMockInference?: () => void;
 }) {
   const [query, setQuery] = useState("");
   const [includeArchived, setIncludeArchived] = useState(false);
@@ -333,6 +335,9 @@ export function TaskCatalog({
           </button>
           <button type="button" onClick={onOpenTemplates}>
             Task Templates
+          </button>
+          <button type="button" onClick={onOpenMockInference}>
+            Fictional mock inference
           </button>
         </div>
       </div>

@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased — Provider-Neutral AI Foundation local mock slice
+
+- Add a user-visible, deterministic local mock-inference workbench bound to an
+  existing project task. It uses fictional static destinations, bounded
+  authored text, a reviewed transient manifest, inert opaque lease, one-use
+  digest-bound authorization, canonical mock events, bounded usage, and
+  content-free evidence. It adds no provider route, network access, credential
+  material, context transmission, retrieval, native operation, persistence,
+  package, or release authority.
+
 ## 0.1.0-beta.54 — Milestone 56 complete
 
 - Close M56 at package/source commit

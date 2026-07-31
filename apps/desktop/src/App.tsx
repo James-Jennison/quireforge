@@ -285,6 +285,13 @@ const TaskTemplateWorkbench = lazy(() =>
     }),
   ),
 );
+const MockInferenceWorkbench = lazy(() =>
+  import("./MockInferenceWorkbench").then(
+    ({ MockInferenceWorkbench: workspace }) => ({
+      default: workspace,
+    }),
+  ),
+);
 
 type BridgeState = "connecting" | "native" | "preview";
 type RuntimeState =
@@ -1153,6 +1160,8 @@ export default function App({
     useState<TaskCatalogSnapshot>(scaffoldTaskCatalog);
   const [taskCatalogBusy, setTaskCatalogBusy] = useState(false);
   const [taskTemplateWorkbenchOpen, setTaskTemplateWorkbenchOpen] =
+    useState(false);
+  const [mockInferenceWorkbenchOpen, setMockInferenceWorkbenchOpen] =
     useState(false);
   const [workbenchLayout, setWorkbenchLayout] = useState(
     initialWorkbenchLayoutPreferences,
@@ -3391,6 +3400,7 @@ export default function App({
                 )
               }
               onOpenTemplates={() => setTaskTemplateWorkbenchOpen(true)}
+              onOpenMockInference={() => setMockInferenceWorkbenchOpen(true)}
             />
             {taskTemplateWorkbenchOpen && (
               <Suspense
@@ -3405,6 +3415,22 @@ export default function App({
               >
                 <TaskTemplateWorkbench
                   onClose={() => setTaskTemplateWorkbenchOpen(false)}
+                />
+              </Suspense>
+            )}
+            {mockInferenceWorkbenchOpen && (
+              <Suspense
+                fallback={
+                  <section
+                    className="mock-inference-workbench"
+                    aria-label="Fictional mock inference"
+                  >
+                    <p role="status">Loading local mock inference…</p>
+                  </section>
+                }
+              >
+                <MockInferenceWorkbench
+                  onClose={() => setMockInferenceWorkbenchOpen(false)}
                 />
               </Suspense>
             )}

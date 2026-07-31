@@ -91,6 +91,17 @@ describe("durable task catalogue", () => {
     expect(onOpenTemplates).toHaveBeenCalledTimes(1);
   });
 
+  it("offers the explicitly fictional local mock inference workbench entry", () => {
+    const onOpenMockInference = vi.fn();
+    render(
+      <TaskCatalog {...props()} onOpenMockInference={onOpenMockInference} />,
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Fictional mock inference" }),
+    );
+    expect(onOpenMockInference).toHaveBeenCalledTimes(1);
+  });
+
   it("renders bounded local-only semantics, cleanup, and accessible plan state", () => {
     render(<TaskCatalog {...props()} />);
 

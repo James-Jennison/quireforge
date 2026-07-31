@@ -211,6 +211,15 @@ import {
   type TaskTemplateCatalogSnapshot,
 } from "./taskTemplates";
 import {
+  mockInferenceAttemptRequestSchema,
+  mockInferenceAuthorizationRequestSchema,
+  mockInferenceCatalogSchema,
+  mockInferencePrepareRequestSchema,
+  mockInferenceSnapshotSchema,
+  type MockInferenceCatalog,
+  type MockInferenceSnapshot,
+} from "./mockInference";
+import {
   localReviewCollectionCreateRequestSchema,
   localReviewCollectionMutationRequestSchema,
   localReviewAnnotationCreateRequestSchema,
@@ -358,6 +367,11 @@ export const TASK_TEMPLATE_DELETE_COMMAND = "task_template_delete";
 export const TASK_TEMPLATE_PREVIEW_COMMAND = "task_template_preview";
 export const TASK_TEMPLATE_CONFIRM_COMMAND = "task_template_confirm";
 export const TASK_TEMPLATE_CANCEL_COMMAND = "task_template_cancel";
+export const MOCK_INFERENCE_CATALOG_COMMAND = "mock_inference_catalog";
+export const MOCK_INFERENCE_PREPARE_COMMAND = "mock_inference_prepare";
+export const MOCK_INFERENCE_AUTHORIZE_COMMAND = "mock_inference_authorize";
+export const MOCK_INFERENCE_SUBMIT_COMMAND = "mock_inference_submit";
+export const MOCK_INFERENCE_CANCEL_COMMAND = "mock_inference_cancel";
 export const LOCAL_REVIEW_STATUS_COMMAND = "local_review_status";
 export const LOCAL_REVIEW_COLLECTION_CREATE_COMMAND =
   "local_review_collection_create";
@@ -1307,6 +1321,64 @@ export const cancelTaskTemplateApplication = (
     request,
     taskTemplateCancelRequestSchema,
     taskTemplateApplicationOutcomeSchema,
+    invokeFunction,
+  );
+
+async function mockInferenceInvoke(
+  command: string,
+  request: unknown,
+  requestSchema: z.ZodType,
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<MockInferenceSnapshot> {
+  return mockInferenceSnapshotSchema.parse(
+    await invokeFunction(command, { request: requestSchema.parse(request) }),
+  );
+}
+
+export const loadMockInferenceCatalog = async (
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<MockInferenceCatalog> =>
+  mockInferenceCatalogSchema.parse(
+    await invokeFunction(MOCK_INFERENCE_CATALOG_COMMAND),
+  );
+export const prepareMockInference = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+) =>
+  mockInferenceInvoke(
+    MOCK_INFERENCE_PREPARE_COMMAND,
+    request,
+    mockInferencePrepareRequestSchema,
+    invokeFunction,
+  );
+export const authorizeMockInference = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+) =>
+  mockInferenceInvoke(
+    MOCK_INFERENCE_AUTHORIZE_COMMAND,
+    request,
+    mockInferenceAuthorizationRequestSchema,
+    invokeFunction,
+  );
+export const submitMockInference = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+) =>
+  mockInferenceInvoke(
+    MOCK_INFERENCE_SUBMIT_COMMAND,
+    request,
+    mockInferenceAuthorizationRequestSchema,
+    invokeFunction,
+  );
+export const cancelMockInference = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+) =>
+  mockInferenceInvoke(
+    MOCK_INFERENCE_CANCEL_COMMAND,
+    request,
+    mockInferenceAttemptRequestSchema,
     invokeFunction,
   );
 

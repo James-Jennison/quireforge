@@ -1,7 +1,7 @@
 # Goal — Provider-Neutral AI Foundation
 
 Type: active long-term product goal.
-Status: active; architecture gates in progress.
+Status: active; architecture gates complete, implementation in progress.
 Packaging status: none.
 Release version: none.
 Implementation authority: none granted by establishing this goal.
@@ -175,6 +175,20 @@ persistence, bridge, UI, provider route, package, or operational behavior.
 The next separately approved implementation milestone is **Credential Broker
 Foundation Contracts**.
 
+### Provider-Neutral Core Foundation and Mock Inference Vertical Slice
+
+Status: source-complete, source-only. The [Mock Inference Vertical
+Slice](MILESTONE_PROVIDER_NEUTRAL_MOCK_INFERENCE_VERTICAL_SLICE.md) provides a
+small user-visible local fixture workflow: explicit task-bound preparation,
+bounded authored-text manifest review, inert opaque lease, one-use authorization,
+deterministic canonical events, and content-free evidence. It remains
+in-memory, fictional, non-networked, and non-operational; it adds no real
+provider, credential, retrieval, context transmission, native operation, or
+external authority.
+
+The recommended next separately approved milestone is **Additional Mock
+Hardening**. No real-provider readiness decision begins automatically.
+
 ## Separate goals and lanes
 
 ### M55 durable source admission and research
@@ -250,10 +264,10 @@ When a gate completes, record it as progress under this goal.
 
 ## Immediate next gate
 
-The goal is active. Seven decision gates and two source-only implementation
-milestones are complete; no new milestone is active. **Credential Broker
-Foundation Contracts** is the recommended next separately approved
-implementation milestone and does not begin here.
+The goal is active. Seven decision gates and three implementation milestones
+are complete; no new milestone is active. **Additional Mock Hardening** is the
+recommended next separately approved implementation milestone and does not
+begin here.
 
 ## Package and release policy
 

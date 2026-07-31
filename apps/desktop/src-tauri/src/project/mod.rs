@@ -230,6 +230,27 @@ pub(crate) struct ConversationPendingSelection<'a> {
 }
 
 impl ProjectService {
+    /// Resolves the native project binding for the local fictional inference
+    /// slice without exposing task content to that slice.
+    pub(crate) fn task_mock_inference_binding(
+        &self,
+        task_id: &str,
+    ) -> Option<crate::mock_inference::TaskBinding> {
+        if !valid_id(task_id) {
+            return None;
+        }
+        let repository = self.repository.lock().ok()?;
+        let repository = repository.as_ref()?;
+        let project_id = repository.task_mock_inference_binding(task_id).ok()??;
+        if !valid_id(&project_id) {
+            return None;
+        }
+        Some(crate::mock_inference::TaskBinding {
+            project_id,
+            task_id: task_id.to_owned(),
+        })
+    }
+
     fn with_template_service<T>(
         &self,
         operation: impl FnOnce(&mut TemplateLifecycleService) -> Result<T, TemplateLifecycleError>,

@@ -4832,6 +4832,23 @@ impl ProjectRepository {
             .ok_or(StorageError::TaskNotFound)
     }
 
+    /// Returns only the durable project/task identity required by the local
+    /// mock-inference boundary. It intentionally projects no task text, plan,
+    /// artifact, or other project content.
+    pub(crate) fn task_mock_inference_binding(
+        &self,
+        task_id: &str,
+    ) -> Result<Option<String>, StorageError> {
+        self.connection
+            .query_row(
+                "SELECT project_id FROM task_records WHERE id = ?1 AND archived_at_ms IS NULL",
+                [task_id],
+                |row| row.get(0),
+            )
+            .optional()?
+            .ok_or(StorageError::TaskNotFound)
+    }
+
     #[cfg(test)]
     pub(crate) fn task_advisor_dispatch_origin(
         &self,

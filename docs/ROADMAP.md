@@ -1517,8 +1517,17 @@ implements private fictional interaction contracts and deterministic fixture
 translation only. It has no persistence, bridge, UI, provider route, package,
 or release.
 
-**Recommended next implementation milestone:** Credential Broker Foundation
-Contracts requires separate explicit approval and remains local/non-networked.
+**Third implementation milestone source-complete:** [Provider-Neutral Core
+Foundation and Mock Inference Vertical Slice](MILESTONE_PROVIDER_NEUTRAL_MOCK_INFERENCE_VERTICAL_SLICE.md)
+adds a user-visible but strictly fictional/in-memory task-bound mock workflow.
+Its manifest, inert lease, authorization, events, usage, and evidence are
+closed, bounded, and local only; it has no real provider, network, credential,
+context-transmission, retrieval, native-operation, persistence, package, or
+release authority.
+
+**Recommended next implementation milestone:** Additional Mock Hardening
+requires separate explicit approval. A real-provider readiness or
+provider-selection decision does not begin automatically.
 
 **Later implementation milestones:** Credential broker, context assembly,
 limited inference, and the first separately approved provider or local-runtime
