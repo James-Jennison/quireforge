@@ -1450,6 +1450,13 @@ records. It adds no persistence, Tauri command, bridge, UI, network, provider,
 credential, OAuth, browser, external mutation, or M55 source-manifest
 authority. Packaging and release work remain separate future goals.
 
+**Source-only closure:** [M57 source acceptance and release
+policy](MILESTONE_57_SOURCE_ACCEPTANCE_AND_RELEASE_POLICY.md) accepts
+`a1d407469626e34cd5d4921abdb6c8d305895d7e` as source-complete and closes M57
+without a package or version. Beta.54 remains the latest packaged generation;
+its M56 draft prerelease is unchanged. Future provider-neutral architecture
+requires separately approved decision gates and must not be folded into M58.
+
 ### 58 — Controlled Browser Verification Proposal
 
 Determine whether a narrow, user-controlled verification-only browser surface

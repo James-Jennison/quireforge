@@ -1,9 +1,11 @@
 # Milestone 57 — Connector Governance and External Authority
 
-Status: complete decision; implementation deferred. This is the authoritative
-M57 governance record. It creates no connector, provider client, retrieval,
-browser, MCP, OAuth, credential, storage, command, UI, schema, package, or
-network behavior.
+Status: complete decision. This is the authoritative M57 governance record. It
+created no connector, provider client, retrieval, browser, MCP, OAuth,
+credential, storage, command, UI, schema, package, or network behavior. The
+later separately approved local mock-only foundation is source-only closed by
+[M57 source acceptance and release policy](MILESTONE_57_SOURCE_ACCEPTANCE_AND_RELEASE_POLICY.md);
+it does not expand this record into real external authority.
 
 ## Decision and current baseline
 

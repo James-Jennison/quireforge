@@ -1,9 +1,11 @@
 # Post-M57 Connector Foundation Prerequisite Decisions
 
-Status: complete decision checkpoint. A narrowly bounded connector-foundation
-implementation is approved as a future, unstarted milestone only. This record
-creates no connector, provider client, network access, OAuth, credential store,
-schema, command, bridge, UI, package, or runtime behavior.
+Status: complete decision checkpoint. This record approved a narrowly bounded
+local mock-only connector foundation, subsequently source-only closed by
+[M57 source acceptance and release policy](MILESTONE_57_SOURCE_ACCEPTANCE_AND_RELEASE_POLICY.md).
+This decision record itself created no connector, provider client, network
+access, OAuth, credential store, schema, command, bridge, UI, package, or
+runtime behavior.
 
 ## Prior authority and scope
 
@@ -16,10 +18,10 @@ durable source-manifest implementation deferred. M56 local task templates do
 not carry connector, provider, credential, approval, dispatch, or execution
 authority. M58 browser verification remains separate and unstarted.
 
-This checkpoint resolves M57's prerequisites only sufficiently to approve a
-future **local, no-network connector-foundation** proposal. It does not approve
-an external connector implementation, provider selection, live read, search,
-fetch, mutation, browser handoff, or secret custody.
+This checkpoint resolved M57's prerequisites sufficiently to approve the later
+**local, no-network connector-foundation** source-only checkpoint. It did not
+approve an external connector implementation, provider selection, live read,
+search, fetch, mutation, browser handoff, or secret custody.
 
 ## Prerequisite inventory and disposition
 
@@ -193,8 +195,9 @@ versions, installation, tags, releases, publication, and deployment.
 
 ## Future implementation acceptance and recommendation
 
-**Recommendation: approve one proposed, unstarted local connector-foundation
-milestone.** Its exact envelope is static inspectable non-executable local
+**Historical recommendation fulfilled by the source-only checkpoint:** approve
+one local connector-foundation milestone. Its exact envelope is static
+inspectable non-executable local
 descriptors; native-only opaque descriptor/project/account/scope/credential-
 reference lifecycle contracts; closed operation, confirmation, result,
 provenance, and content-free audit models; fail-closed transition/recovery
@@ -203,8 +206,8 @@ no network calls, real credentials, OAuth, secret storage, provider SDKs,
 browser authority, external mutations, background activity, generic MCP
 execution, fetched-content retention, or M55 source-manifest behavior.
 
-The future milestone remains unstarted and needs its own explicit approval.
-Real read/search/fetch requires a later named provider/class/route, source
+The local mock-only milestone is source-only closed and creates no operational
+connector behavior. Real read/search/fetch requires a later named provider/class/route, source
 admission, retention, and credential-broker decision. Any mutation requires a
 second provider-specific finality/postcondition decision. Remaining unresolved
 items are secret-store technology if real custody is ever needed, the first
