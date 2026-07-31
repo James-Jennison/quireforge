@@ -1,6 +1,10 @@
 # Changelog
 
-## Unreleased — 0.1.0-beta.52
+## Unreleased — 0.1.0-beta.53
+
+- Prepare beta.53 after beta.52 package validation succeeded but installed-host
+  promotion failed on bootstrap authority; beta.52 remains preserved and beta.53
+  awaits installed-host validation.
 
 - Prepare the unreleased beta.52 source candidate. All seven M54 evidence
   sources are implemented; beta.52 has not been built, installed, tagged,

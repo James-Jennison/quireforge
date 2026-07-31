@@ -14,7 +14,8 @@ use package_validation::{
     InstalledHostValidationOutcome, PackageValidationController, PackageValidationControllerError,
 };
 use storage::{
-    ProjectRepository, StorageError, StoredAssociation, StoredProject, StoredWorktreeRelation,
+    PackageValidationRecordOutcome, ProjectRepository, StorageError, StoredAssociation,
+    StoredProject, StoredWorktreeRelation,
 };
 pub(crate) use storage::{StoredConversationReference, StoredTerminalSession};
 use types::{
@@ -26,7 +27,7 @@ use types::{
     LocalReviewCollectionMutationRequest, LocalReviewComparisonCreateRequest,
     LocalReviewComparisonDiscardRequest, LocalReviewComparisonReadRequest,
     LocalReviewDiagnosticCode, LocalReviewEvidenceArtifactKind, LocalReviewEvidenceArtifactState,
-    LocalReviewEvidenceSource, LocalReviewEvidenceWorkspaceState,
+    LocalReviewEvidenceCheckState, LocalReviewEvidenceSource, LocalReviewEvidenceWorkspaceState,
     LocalReviewGitStatusDiffSummaryDetails, LocalReviewGitStatusDiffSummaryEvidencePreview,
     LocalReviewGitStatusDiffSummaryEvidenceRequest, LocalReviewImagePickRequest,
     LocalReviewImagePreview, LocalReviewImagePreviewRequest, LocalReviewItemDiscardRequest,
@@ -1408,24 +1409,28 @@ impl ProjectService {
             return InstalledHostHeadlessStatus::Unavailable;
         };
         let mut controller = PackageValidationController::default();
-        if !PackageValidationController::installed_debian_version_is("0.1.0~beta.51")
+        let application_version = env!("CARGO_PKG_VERSION");
+        let debian_version = application_version.replacen('-', "~", 1);
+        if !PackageValidationController::installed_debian_version_is(&debian_version)
             .unwrap_or(false)
         {
             return InstalledHostHeadlessStatus::Unavailable;
         }
-        if controller
-            .run_and_record(repository, context.clone())
-            .is_err()
-        {
-            return InstalledHostHeadlessStatus::Failed;
-        }
-        let predecessor = match repository.installed_host_headless_predecessor_for_internal() {
-            Ok((resolved_project_id, predecessor)) if resolved_project_id == project_id => {
-                predecessor
+        let receipt = match controller.run_and_record(repository, context.clone()) {
+            Ok(PackageValidationRecordOutcome::Created(summary))
+            | Ok(PackageValidationRecordOutcome::Existing(summary))
+                if summary.project_id == project_id
+                    && summary.input.application_version == application_version
+                    && summary.input.debian_version == debian_version
+                    && !summary.input.validation_complete
+                    && summary.input.installed_host_state
+                        == LocalReviewEvidenceCheckState::Unavailable =>
+            {
+                summary
             }
             _ => return InstalledHostHeadlessStatus::Failed,
         };
-        match controller.run_installed_host_and_record(repository, context, &predecessor.id) {
+        match controller.run_installed_host_and_record(repository, context, &receipt.id) {
             Ok(InstalledHostValidationOutcome::Created) => InstalledHostHeadlessStatus::Created,
             Ok(InstalledHostValidationOutcome::Existing) => InstalledHostHeadlessStatus::Existing,
             Ok(InstalledHostValidationOutcome::Failed) => InstalledHostHeadlessStatus::Failed,
