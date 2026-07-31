@@ -23,7 +23,8 @@ use crate::preview::validate_attachment_image;
 
 use super::task_template::{
     builtins, canonical as canonical_template, valid as valid_template, TaskTemplate,
-    TemplateOrigin, TemplateState, TEMPLATE_SCHEMA_VERSION,
+    TemplateOrigin, TemplateState, TEMPLATE_COUNT_LIMIT, TEMPLATE_PAYLOAD_LIMIT,
+    TEMPLATE_SCHEMA_VERSION,
 };
 use super::types::{
     EvidenceEnvelopeV1, LocalReviewActivityPresentationDetails,
@@ -1965,7 +1966,7 @@ type TaskCatalogProjection = (
 );
 
 pub(crate) struct ProjectRepository {
-    connection: Connection,
+    pub(super) connection: Connection,
     activity_session_id: String,
 }
 
@@ -2132,6 +2133,48 @@ fn insert_local_template_row(
     Ok(())
 }
 
+fn ensure_local_template_capacity(
+    transaction: &Transaction<'_>,
+    replacing_id: Option<&str>,
+    incoming: Option<&TaskTemplate>,
+) -> Result<(), StorageError> {
+    let mut count = builtins().len();
+    let mut canonical_bytes: usize = builtins()
+        .iter()
+        .map(|template| {
+            canonical_template(template)
+                .expect("builtins are canonical")
+                .len()
+        })
+        .sum();
+    let mut statement = transaction.prepare(
+        "SELECT id, schema_version, origin, title, purpose, instructions, version, sha256,
+                state, created_at_ms, updated_at_ms, archived_at_ms FROM local_task_templates",
+    )?;
+    let rows = statement
+        .query_map([], local_template_row)?
+        .collect::<Result<Vec<_>, _>>()?;
+    for row in rows {
+        let record = stored_local_template_from_row(row)?;
+        if Some(record.template.id.as_str()) != replacing_id {
+            count += 1;
+            canonical_bytes += canonical_template(&record.template)
+                .ok_or(StorageError::InvalidStoredValue)?
+                .len();
+        }
+    }
+    if let Some(template) = incoming {
+        count += 1;
+        canonical_bytes += canonical_template(template)
+            .ok_or(StorageError::InvalidStoredValue)?
+            .len();
+    }
+    if count > TEMPLATE_COUNT_LIMIT || canonical_bytes > TEMPLATE_PAYLOAD_LIMIT {
+        return Err(StorageError::TaskCapacity);
+    }
+    Ok(())
+}
+
 pub(crate) struct LocalReviewPromotionSource {
     pub collection_id: String,
     pub item_id: String,
@@ -2156,6 +2199,7 @@ impl ProjectRepository {
         let tx = self
             .connection
             .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        ensure_local_template_capacity(&tx, None, Some(template))?;
         insert_local_template_row(&tx, template, timestamp, timestamp, archived_at_ms)?;
         tx.commit()?;
         Ok(StoredLocalTaskTemplate {
@@ -2246,6 +2290,7 @@ impl ProjectRepository {
         if previous.template.version != expected_version {
             return Err(StorageError::InvalidStatusTransition);
         }
+        ensure_local_template_capacity(&tx, Some(&template.id), Some(template))?;
         let updated_at_ms = now_millis().max(previous.updated_at_ms.saturating_add(1));
         let archived_at_ms = match template.state {
             TemplateState::Active => None,

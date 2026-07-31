@@ -3,6 +3,8 @@ mod package_validation;
 mod storage;
 #[allow(dead_code)]
 mod task_template;
+#[allow(dead_code)]
+mod task_template_service;
 pub mod types;
 
 use std::{
