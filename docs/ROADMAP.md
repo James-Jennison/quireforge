@@ -1341,11 +1341,14 @@ explicit approval gate.
 Only after M53 approval, implement the approved local review surfaces by
 reusing the M48 typed artifact boundary and M49 preview/review services.
 Artifact lifecycle, selection, comparison, accessibility, and no-path/no-
-persistence boundaries must be deterministic. The provisional package
-candidate is `0.1.0-beta.52` / `0.1.0~beta.52`; it remains unbuilt and
-uninstalled pending the next restricted package/host gate.
+persistence boundaries are deterministic.
 
-**In progress:** M54 is explicitly approved. The former finalizer lost the
+**Complete:** M54 is closed at package/source commit
+`c4c2752466f36f791fde47edbc5c6b02b0e21320`, tagged
+`v0.1.0-beta.53`. The beta.53 Debian pair passed the pinned Ubuntu 22.04
+package, lifecycle, smoke, visible-launch, and restricted installed-host gates;
+headless completion returned `created`, then `existing`. All seven ratified
+evidence sources are implemented with persisted-bytes-only previews. The former finalizer lost the
 beta.47 normalized canonical set; only its recorded hashes and distinct raw
 Tauri bundle remain, and no replacement evidence was fabricated. Beta.48 is a
 validated but non-deployable release candidate because it lacked the production
@@ -1360,11 +1363,9 @@ fixed headless completion branch that resolves the production metadata path,
 one live attached project, and one migration-18 unprivileged predecessor;
 it initializes no GUI surface and records only through the native controller;
 it also begins preservation by archiving the coherent beta.48 release set.
-No release or deployment is authorized. Post-beta.51 unreleased source work
-implements the package-manifest-summary evidence capture from the completed
-immutable same-project migration-18 record. All seven M54 evidence sources are
-implemented as unreleased source work; source closure is complete while the
-next-version package and restricted installed-host gate remains pending.
+Beta.52 remains a preserved failed installed-host candidate and is not released.
+The four beta.53 draft-prerelease assets are byte-identical to the canonical
+package set; publication and deployment remain separate actions.
 
 ### 55 — Research Reports and Inspectable Task Templates Proposal
 

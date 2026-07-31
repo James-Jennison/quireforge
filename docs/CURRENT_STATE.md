@@ -94,22 +94,15 @@ portability work has started.
 
 ## Reuse and boundary
 
-M54 package-manifest-summary Local Review capture is implemented as unreleased
-source work after the authoritative installed `0.1.0~beta.51` package. It uses
-only a completed immutable same-project migration-18 package-validation record
-and stores the closed redacted summary envelope; it does not build or install a
-package. All seven M54 evidence captures are implemented as unreleased
-post-beta.51 source work. Migration 19 is the native Activity ownership ledger
-and migration 20 binds Advisor-dispatched tasks immutably; beta.51 remains the
-latest packaged/installed authority and later package/host validation is pending.
-
-M54 git-status-diff-summary capture is also unreleased post-beta.51 source
-work. It resolves the bound attached project and native Git authority, stores
-only redacted aggregate state, and previews only persisted canonical bytes.
-Activity presentation now uses a native append-only collection/task ledger for
-future successful Local Review operations; frontend session events remain
-presentation-only. Approval evidence resolves only the migration-20 task origin
-and persists its closed redacted presentation.
+M54 Local Review is complete at package/source commit
+`c4c2752466f36f791fde47edbc5c6b02b0e21320`, tagged
+`v0.1.0-beta.53`. Its beta.53 Debian pair passed pinned-container package,
+lifecycle, smoke, visible-launch, and restricted installed-host validation;
+headless completion returned `created`, then `existing`, and beta.53 is
+installed. All seven evidence captures use closed native authority and canonical
+persisted-bytes-only previews. Migration 19 is the native Activity ownership
+ledger; migration 20 immutably binds Advisor-dispatched tasks. Beta.52 remains
+preserved as an unreleased failed installed-host candidate.
 
 The Rust Codex, project/SQLite, Git, worktree, terminal, preview, attachment,
 settings, and integration services are candidates for reuse. The current Tauri
@@ -334,9 +327,10 @@ mockups, typed evidence envelopes, inert preview, local item-level notes,
 non-Git text comparison, and explicit digest-bound M48 promotion. Review does
 not confer filesystem, network, Git, terminal, provider, approval, dispatch,
 execution, publishing, or deployment authority. M54 is explicitly approved
-source-closed at `8900995ad3645ebc5a95c6959de8be4e75f24ae8`; beta.52 is the
-unreleased candidate (`0.1.0-beta.52` / `0.1.0~beta.52`). Beta.51 remains the
-latest packaged/installed predecessor. Beta.48
+source-closed at `8900995ad3645ebc5a95c6959de8be4e75f24ae8`; package and
+installed-host closure passed at `c4c2752466f36f791fde47edbc5c6b02b0e21320`
+for beta.53. Beta.52 remains an unreleased failed installed-host candidate.
+Beta.48
 is a validated but non-deployable candidate because the installed host still
 lacked the migration-18 unprivileged receipt bootstrap. Beta.49 is a preserved,
 validated but non-promoted candidate: its promotion correctly failed on an
@@ -347,13 +341,11 @@ across release generation, finalization, and validation. The beta.47 normalized
 canonical set was
 lost by the former finalizer; only its recorded hashes and distinct raw Tauri
 bundle remain, and no replacement beta.47 evidence was fabricated. Restricted installed-host
-validation now has a fixed native beta.51 completion branch: it resolves only
-the production data directory, one live attached project, and one digest-valid
-migration-18 unprivileged predecessor; it starts no Tauri/GUI surface and
-records only through the existing controller. Beta.48 remains the active
-coherent canonical predecessor until beta.51 promotion succeeds. Beta.49 and
-beta.50 remain preserved non-promoted candidates. No M53 package,
-release, publication, or deployment occurred. See
+validation now derives the installed version from the compiled executable and
+binds the installed-host phase to the current unprivileged receipt. Beta.48,
+beta.49, beta.50, beta.51, and beta.52 histories remain preserved without
+fabricating beta.47 evidence. The beta.53 four-asset draft prerelease is
+byte-identical to the canonical set; no publication or deployment occurred. See
 [Milestone 53](MILESTONE_53_LOCAL_ARTIFACT_DESIGN_REVIEW_PROPOSAL.md).
 
 Milestone 27 — **Unified Conversation Engine** is complete. It adds strict

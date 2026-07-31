@@ -1,14 +1,20 @@
 # Changelog
 
-## Unreleased — 0.1.0-beta.53
+## 0.1.0-beta.53 — Milestone 54 complete
 
-- Prepare beta.53 after beta.52 package validation succeeded but installed-host
-  promotion failed on bootstrap authority; beta.52 remains preserved and beta.53
-  awaits installed-host validation.
-
-- Prepare the unreleased beta.52 source candidate. All seven M54 evidence
-  sources are implemented; beta.52 has not been built, installed, tagged,
-  released, published, or deployed.
+- Close M54 at package/source commit
+  `c4c2752466f36f791fde47edbc5c6b02b0e21320`: the pinned Ubuntu 22.04
+  Debian package pair, lifecycle, smoke, visible-launch, and restricted
+  installed-host validation passed. Headless completion returned `created`,
+  then `existing`; beta.53 is installed.
+- Release the seven closed M54 evidence sources: manual validation, M48
+  generated-artifact metadata, safe-preview metadata, Git status/diff summary,
+  Activity presentation, Approval presentation, and package-manifest summary.
+  Activity uses its native append-only ownership ledger; Approval uses the
+  immutable Advisor-dispatch task origin.
+- Preserve beta.52 as a failed installed-host candidate. It is not released;
+  beta.47–beta.51 history remains unchanged and no beta.47 package/release is
+  fabricated.
 
 ## Preserved beta.51 history
 
