@@ -365,12 +365,18 @@ export const LOCAL_REVIEW_PACKAGE_MANIFEST_SUMMARY_EVIDENCE_CREATE_COMMAND =
   "local_review_package_manifest_summary_evidence_create";
 export const LOCAL_REVIEW_PACKAGE_MANIFEST_SUMMARY_EVIDENCE_PREVIEW_COMMAND =
   "local_review_package_manifest_summary_evidence_preview";
-export const LOCAL_REVIEW_GIT_STATUS_DIFF_SUMMARY_EVIDENCE_CREATE_COMMAND = "local_review_git_status_diff_summary_evidence_create";
-export const LOCAL_REVIEW_GIT_STATUS_DIFF_SUMMARY_EVIDENCE_PREVIEW_COMMAND = "local_review_git_status_diff_summary_evidence_preview";
-export const LOCAL_REVIEW_ACTIVITY_PRESENTATION_EVIDENCE_CREATE_COMMAND = "local_review_activity_presentation_evidence_create";
-export const LOCAL_REVIEW_ACTIVITY_PRESENTATION_EVIDENCE_PREVIEW_COMMAND = "local_review_activity_presentation_evidence_preview";
-export const LOCAL_REVIEW_APPROVAL_PRESENTATION_EVIDENCE_CREATE_COMMAND = "local_review_approval_presentation_evidence_create";
-export const LOCAL_REVIEW_APPROVAL_PRESENTATION_EVIDENCE_PREVIEW_COMMAND = "local_review_approval_presentation_evidence_preview";
+export const LOCAL_REVIEW_GIT_STATUS_DIFF_SUMMARY_EVIDENCE_CREATE_COMMAND =
+  "local_review_git_status_diff_summary_evidence_create";
+export const LOCAL_REVIEW_GIT_STATUS_DIFF_SUMMARY_EVIDENCE_PREVIEW_COMMAND =
+  "local_review_git_status_diff_summary_evidence_preview";
+export const LOCAL_REVIEW_ACTIVITY_PRESENTATION_EVIDENCE_CREATE_COMMAND =
+  "local_review_activity_presentation_evidence_create";
+export const LOCAL_REVIEW_ACTIVITY_PRESENTATION_EVIDENCE_PREVIEW_COMMAND =
+  "local_review_activity_presentation_evidence_preview";
+export const LOCAL_REVIEW_APPROVAL_PRESENTATION_EVIDENCE_CREATE_COMMAND =
+  "local_review_approval_presentation_evidence_create";
+export const LOCAL_REVIEW_APPROVAL_PRESENTATION_EVIDENCE_PREVIEW_COMMAND =
+  "local_review_approval_presentation_evidence_preview";
 export const LOCAL_REVIEW_ANNOTATION_CREATE_COMMAND =
   "local_review_annotation_create";
 export const LOCAL_REVIEW_ANNOTATION_EDIT_COMMAND =
@@ -1235,12 +1241,65 @@ export async function createLocalReviewPackageManifestSummaryEvidence(
   invokeFunction: InvokeFunction = invokeTauri,
 ) {
   return localReviewPackageManifestSummaryEvidenceCreateResultSchema.parse(
-    await invokeFunction(LOCAL_REVIEW_PACKAGE_MANIFEST_SUMMARY_EVIDENCE_CREATE_COMMAND, { request: localReviewPackageManifestSummaryEvidenceCreateRequestSchema.parse(request) }),
+    await invokeFunction(
+      LOCAL_REVIEW_PACKAGE_MANIFEST_SUMMARY_EVIDENCE_CREATE_COMMAND,
+      {
+        request:
+          localReviewPackageManifestSummaryEvidenceCreateRequestSchema.parse(
+            request,
+          ),
+      },
+    ),
   );
 }
-export async function createLocalReviewGitStatusDiffSummaryEvidence(request: unknown, invokeFunction: InvokeFunction = invokeTauri) { return localReviewGitStatusDiffSummaryEvidenceCreateResultSchema.parse(await invokeFunction(LOCAL_REVIEW_GIT_STATUS_DIFF_SUMMARY_EVIDENCE_CREATE_COMMAND, { request: localReviewGitStatusDiffSummaryEvidenceCreateRequestSchema.parse(request) })); }
-export async function createLocalReviewActivityPresentationEvidence(request: unknown, invokeFunction: InvokeFunction = invokeTauri) { return localReviewActivityPresentationEvidenceCreateResultSchema.parse(await invokeFunction(LOCAL_REVIEW_ACTIVITY_PRESENTATION_EVIDENCE_CREATE_COMMAND, { request: localReviewActivityPresentationEvidenceCreateRequestSchema.parse(request) })); }
-export async function createLocalReviewApprovalPresentationEvidence(request: unknown, invokeFunction: InvokeFunction = invokeTauri) { return localReviewApprovalPresentationEvidenceCreateResultSchema.parse(await invokeFunction(LOCAL_REVIEW_APPROVAL_PRESENTATION_EVIDENCE_CREATE_COMMAND, { request: localReviewApprovalPresentationEvidenceCreateRequestSchema.parse(request) })); }
+export async function createLocalReviewGitStatusDiffSummaryEvidence(
+  request: unknown,
+  invokeFunction: InvokeFunction = invokeTauri,
+) {
+  return localReviewGitStatusDiffSummaryEvidenceCreateResultSchema.parse(
+    await invokeFunction(
+      LOCAL_REVIEW_GIT_STATUS_DIFF_SUMMARY_EVIDENCE_CREATE_COMMAND,
+      {
+        request:
+          localReviewGitStatusDiffSummaryEvidenceCreateRequestSchema.parse(
+            request,
+          ),
+      },
+    ),
+  );
+}
+export async function createLocalReviewActivityPresentationEvidence(
+  request: unknown,
+  invokeFunction: InvokeFunction = invokeTauri,
+) {
+  return localReviewActivityPresentationEvidenceCreateResultSchema.parse(
+    await invokeFunction(
+      LOCAL_REVIEW_ACTIVITY_PRESENTATION_EVIDENCE_CREATE_COMMAND,
+      {
+        request:
+          localReviewActivityPresentationEvidenceCreateRequestSchema.parse(
+            request,
+          ),
+      },
+    ),
+  );
+}
+export async function createLocalReviewApprovalPresentationEvidence(
+  request: unknown,
+  invokeFunction: InvokeFunction = invokeTauri,
+) {
+  return localReviewApprovalPresentationEvidenceCreateResultSchema.parse(
+    await invokeFunction(
+      LOCAL_REVIEW_APPROVAL_PRESENTATION_EVIDENCE_CREATE_COMMAND,
+      {
+        request:
+          localReviewApprovalPresentationEvidenceCreateRequestSchema.parse(
+            request,
+          ),
+      },
+    ),
+  );
+}
 async function mutateLocalReview(
   command: string,
   request: unknown,
@@ -1355,16 +1414,53 @@ export async function previewLocalReviewSafePreviewMetadataEvidence(
   );
 }
 export async function previewLocalReviewPackageManifestSummaryEvidence(
-  request: unknown, invokeFunction: InvokeFunction = invokeTauri,
+  request: unknown,
+  invokeFunction: InvokeFunction = invokeTauri,
 ) {
   const parsed = localReviewImagePreviewRequestSchema.parse(request);
   return localReviewPackageManifestSummaryEvidencePreviewSchema.parse(
-    await invokeFunction(LOCAL_REVIEW_PACKAGE_MANIFEST_SUMMARY_EVIDENCE_PREVIEW_COMMAND, parsed),
+    await invokeFunction(
+      LOCAL_REVIEW_PACKAGE_MANIFEST_SUMMARY_EVIDENCE_PREVIEW_COMMAND,
+      parsed,
+    ),
   );
 }
-export async function previewLocalReviewGitStatusDiffSummaryEvidence(request: unknown, invokeFunction: InvokeFunction = invokeTauri) { const parsed = localReviewImagePreviewRequestSchema.parse(request); return localReviewGitStatusDiffSummaryEvidencePreviewSchema.parse(await invokeFunction(LOCAL_REVIEW_GIT_STATUS_DIFF_SUMMARY_EVIDENCE_PREVIEW_COMMAND, parsed)); }
-export async function previewLocalReviewActivityPresentationEvidence(request: unknown, invokeFunction: InvokeFunction = invokeTauri) { const parsed = localReviewImagePreviewRequestSchema.parse(request); return localReviewActivityPresentationEvidencePreviewSchema.parse(await invokeFunction(LOCAL_REVIEW_ACTIVITY_PRESENTATION_EVIDENCE_PREVIEW_COMMAND, parsed)); }
-export async function previewLocalReviewApprovalPresentationEvidence(request: unknown, invokeFunction: InvokeFunction = invokeTauri) { const parsed = localReviewImagePreviewRequestSchema.parse(request); return localReviewApprovalPresentationEvidencePreviewSchema.parse(await invokeFunction(LOCAL_REVIEW_APPROVAL_PRESENTATION_EVIDENCE_PREVIEW_COMMAND, parsed)); }
+export async function previewLocalReviewGitStatusDiffSummaryEvidence(
+  request: unknown,
+  invokeFunction: InvokeFunction = invokeTauri,
+) {
+  const parsed = localReviewImagePreviewRequestSchema.parse(request);
+  return localReviewGitStatusDiffSummaryEvidencePreviewSchema.parse(
+    await invokeFunction(
+      LOCAL_REVIEW_GIT_STATUS_DIFF_SUMMARY_EVIDENCE_PREVIEW_COMMAND,
+      parsed,
+    ),
+  );
+}
+export async function previewLocalReviewActivityPresentationEvidence(
+  request: unknown,
+  invokeFunction: InvokeFunction = invokeTauri,
+) {
+  const parsed = localReviewImagePreviewRequestSchema.parse(request);
+  return localReviewActivityPresentationEvidencePreviewSchema.parse(
+    await invokeFunction(
+      LOCAL_REVIEW_ACTIVITY_PRESENTATION_EVIDENCE_PREVIEW_COMMAND,
+      parsed,
+    ),
+  );
+}
+export async function previewLocalReviewApprovalPresentationEvidence(
+  request: unknown,
+  invokeFunction: InvokeFunction = invokeTauri,
+) {
+  const parsed = localReviewImagePreviewRequestSchema.parse(request);
+  return localReviewApprovalPresentationEvidencePreviewSchema.parse(
+    await invokeFunction(
+      LOCAL_REVIEW_APPROVAL_PRESENTATION_EVIDENCE_PREVIEW_COMMAND,
+      parsed,
+    ),
+  );
+}
 export const createLocalReviewAnnotation = (
   request: unknown,
   invokeFunction?: InvokeFunction,

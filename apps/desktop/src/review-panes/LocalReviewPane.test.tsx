@@ -1159,7 +1159,9 @@ describe("local review image pane", () => {
     );
     expect(screen.getByLabelText("Annotation text")).toHaveValue("");
     await waitFor(() =>
-      expect(screen.getByRole("heading", { name: "Annotations" })).toHaveFocus(),
+      expect(
+        screen.getByRole("heading", { name: "Annotations" }),
+      ).toHaveFocus(),
     );
     fireEvent.change(screen.getByLabelText("Annotation text"), {
       target: { value: "retain this" },

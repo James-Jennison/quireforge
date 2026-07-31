@@ -1361,11 +1361,9 @@ it initializes no GUI surface and records only through the native controller;
 it also begins preservation by archiving the coherent beta.48 release set.
 No release or deployment is authorized. Post-beta.51 unreleased source work
 implements the package-manifest-summary evidence capture from the completed
-immutable same-project migration-18 record; Git, Activity, and Approval
-evidence flows remain pending and M54 is not complete. Git-status-diff-summary
-capture is now implemented as separate unreleased source work using native
-project association and redacted Git aggregates; only Activity and Approval
-flows remain pending.
+immutable same-project migration-18 record. All seven M54 evidence sources are
+implemented as unreleased source work; source closure is complete while the
+next-version package and restricted installed-host gate remains pending.
 
 ### 55 — Research Reports and Inspectable Task Templates Proposal
 

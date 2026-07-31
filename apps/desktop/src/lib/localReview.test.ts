@@ -54,7 +54,9 @@ describe("local review image contracts", () => {
   it("accepts only the native-owned package summary capture request", () => {
     const request = { collectionId: id, expectedCollectionUpdatedAtMs: 1 };
     expect(
-      localReviewPackageManifestSummaryEvidenceCreateRequestSchema.parse(request),
+      localReviewPackageManifestSummaryEvidenceCreateRequestSchema.parse(
+        request,
+      ),
     ).toEqual(request);
     expect(() =>
       localReviewPackageManifestSummaryEvidenceCreateRequestSchema.parse({
@@ -65,10 +67,27 @@ describe("local review image contracts", () => {
     ).toThrow();
     expect(() =>
       localReviewPackageManifestSummaryEvidencePreviewSchema.parse({
-        schemaVersion: 1, itemId: id, source: "package-manifest-summary", title: "Package validation summary",
+        schemaVersion: 1,
+        itemId: id,
+        source: "package-manifest-summary",
+        title: "Package validation summary",
         summary: "Captured completed package-validation summary.",
-        details: { applicationVersion: "0.1.0-beta.51", debianVersion: "0.1.0~beta.51", manifestState: "passed", checksumState: "passed", abiState: "passed", provenanceState: "passed", visibleLaunchState: "passed", installedHostState: "passed", artifactCount: 2, validationComplete: true, path: "/unsafe" },
-        byteSize: 1, sha256: sha, createdAtMs: 1,
+        details: {
+          applicationVersion: "0.1.0-beta.51",
+          debianVersion: "0.1.0~beta.51",
+          manifestState: "passed",
+          checksumState: "passed",
+          abiState: "passed",
+          provenanceState: "passed",
+          visibleLaunchState: "passed",
+          installedHostState: "passed",
+          artifactCount: 2,
+          validationComplete: true,
+          path: "/unsafe",
+        },
+        byteSize: 1,
+        sha256: sha,
+        createdAtMs: 1,
       }),
     ).toThrow();
   });

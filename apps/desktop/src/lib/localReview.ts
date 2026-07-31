@@ -608,9 +608,24 @@ export const localReviewPackageManifestSummaryEvidenceCreateRequestSchema = z
     expectedCollectionUpdatedAtMs: z.number().int().nonnegative(),
   })
   .strict();
-export const localReviewGitStatusDiffSummaryEvidenceCreateRequestSchema = z.object({ collectionId: id, expectedCollectionUpdatedAtMs: z.number().int().nonnegative() }).strict();
-export const localReviewActivityPresentationEvidenceCreateRequestSchema = z.object({ collectionId: id, expectedCollectionUpdatedAtMs: z.number().int().nonnegative() }).strict();
-export const localReviewApprovalPresentationEvidenceCreateRequestSchema = z.object({ collectionId: id, expectedCollectionUpdatedAtMs: z.number().int().nonnegative() }).strict();
+export const localReviewGitStatusDiffSummaryEvidenceCreateRequestSchema = z
+  .object({
+    collectionId: id,
+    expectedCollectionUpdatedAtMs: z.number().int().nonnegative(),
+  })
+  .strict();
+export const localReviewActivityPresentationEvidenceCreateRequestSchema = z
+  .object({
+    collectionId: id,
+    expectedCollectionUpdatedAtMs: z.number().int().nonnegative(),
+  })
+  .strict();
+export const localReviewApprovalPresentationEvidenceCreateRequestSchema = z
+  .object({
+    collectionId: id,
+    expectedCollectionUpdatedAtMs: z.number().int().nonnegative(),
+  })
+  .strict();
 export const localReviewM48GeneratedArtifactMetadataEvidenceCreateResultSchema =
   z.discriminatedUnion("outcome", [
     z
@@ -675,12 +690,72 @@ export const localReviewSafePreviewMetadataEvidenceCreateResultSchema =
   ]);
 export const localReviewPackageManifestSummaryEvidenceCreateResultSchema =
   z.discriminatedUnion("outcome", [
-    z.object({ outcome: z.literal("created"), createdItemId: id, source: z.literal("package-manifest-summary"), snapshot: localReviewSnapshotSchema }).strict(),
-    z.object({ outcome: z.literal("failed"), snapshot: localReviewSnapshotSchema }).strict(),
+    z
+      .object({
+        outcome: z.literal("created"),
+        createdItemId: id,
+        source: z.literal("package-manifest-summary"),
+        snapshot: localReviewSnapshotSchema,
+      })
+      .strict(),
+    z
+      .object({
+        outcome: z.literal("failed"),
+        snapshot: localReviewSnapshotSchema,
+      })
+      .strict(),
   ]);
-export const localReviewGitStatusDiffSummaryEvidenceCreateResultSchema = z.discriminatedUnion("outcome", [z.object({ outcome: z.literal("created"), createdItemId: id, source: z.literal("git-status-diff-summary"), snapshot: localReviewSnapshotSchema }).strict(), z.object({ outcome: z.literal("failed"), snapshot: localReviewSnapshotSchema }).strict()]);
-export const localReviewActivityPresentationEvidenceCreateResultSchema = z.discriminatedUnion("outcome", [z.object({ outcome: z.literal("created"), createdItemId: id, source: z.literal("activity-presentation"), snapshot: localReviewSnapshotSchema }).strict(), z.object({ outcome: z.literal("failed"), snapshot: localReviewSnapshotSchema }).strict()]);
-export const localReviewApprovalPresentationEvidenceCreateResultSchema = z.discriminatedUnion("outcome", [z.object({ outcome: z.literal("created"), createdItemId: id, source: z.literal("approval-presentation"), snapshot: localReviewSnapshotSchema }).strict(), z.object({ outcome: z.literal("failed"), snapshot: localReviewSnapshotSchema }).strict()]);
+export const localReviewGitStatusDiffSummaryEvidenceCreateResultSchema =
+  z.discriminatedUnion("outcome", [
+    z
+      .object({
+        outcome: z.literal("created"),
+        createdItemId: id,
+        source: z.literal("git-status-diff-summary"),
+        snapshot: localReviewSnapshotSchema,
+      })
+      .strict(),
+    z
+      .object({
+        outcome: z.literal("failed"),
+        snapshot: localReviewSnapshotSchema,
+      })
+      .strict(),
+  ]);
+export const localReviewActivityPresentationEvidenceCreateResultSchema =
+  z.discriminatedUnion("outcome", [
+    z
+      .object({
+        outcome: z.literal("created"),
+        createdItemId: id,
+        source: z.literal("activity-presentation"),
+        snapshot: localReviewSnapshotSchema,
+      })
+      .strict(),
+    z
+      .object({
+        outcome: z.literal("failed"),
+        snapshot: localReviewSnapshotSchema,
+      })
+      .strict(),
+  ]);
+export const localReviewApprovalPresentationEvidenceCreateResultSchema =
+  z.discriminatedUnion("outcome", [
+    z
+      .object({
+        outcome: z.literal("created"),
+        createdItemId: id,
+        source: z.literal("approval-presentation"),
+        snapshot: localReviewSnapshotSchema,
+      })
+      .strict(),
+    z
+      .object({
+        outcome: z.literal("failed"),
+        snapshot: localReviewSnapshotSchema,
+      })
+      .strict(),
+  ]);
 export const localReviewManualEvidencePreviewSchema = z
   .object({
     schemaVersion: z.literal(1),
@@ -762,14 +837,123 @@ export const localReviewSafePreviewMetadataEvidencePreviewSchema = z
   .strict();
 export const localReviewPackageManifestSummaryEvidencePreviewSchema = z
   .object({
-    schemaVersion: z.literal(1), itemId: id, source: z.literal("package-manifest-summary"), title: safeLabel,
+    schemaVersion: z.literal(1),
+    itemId: id,
+    source: z.literal("package-manifest-summary"),
+    title: safeLabel,
     summary: evidenceSummary,
-    details: z.object({ applicationVersion: z.string().min(1).max(64), debianVersion: z.string().min(1).max(64), manifestState: z.literal("passed"), checksumState: z.literal("passed"), abiState: z.literal("passed"), provenanceState: z.literal("passed"), visibleLaunchState: z.literal("passed"), installedHostState: z.literal("passed"), artifactCount: z.literal(2), validationComplete: z.literal(true) }).strict(),
-    byteSize: z.number().int().positive().max(16 * 1024), sha256, createdAtMs: z.number().int().nonnegative(),
-  }).strict();
-export const localReviewGitStatusDiffSummaryEvidencePreviewSchema = z.object({ schemaVersion: z.literal(1), itemId: id, source: z.literal("git-status-diff-summary"), title: safeLabel, summary: evidenceSummary, details: z.object({ workspaceState: z.enum(["clean", "ready"]), dirty: z.boolean(), stagedCount: nonnegativeCount, modifiedCount: nonnegativeCount, addedCount: nonnegativeCount, deletedCount: nonnegativeCount, renamedCount: nonnegativeCount, untrackedCount: nonnegativeCount, conflictedCount: nonnegativeCount, changedFileCount: nonnegativeCount, additions: nonnegativeCount, deletions: nonnegativeCount, diffAvailable: z.boolean(), diffTruncated: z.boolean() }).strict(), byteSize: z.number().int().positive().max(16 * 1024), sha256, createdAtMs: z.number().int().nonnegative() }).strict();
-export const localReviewActivityPresentationEvidencePreviewSchema = z.object({ schemaVersion: z.literal(1), itemId: id, source: z.literal("activity-presentation"), title: safeLabel, summary: evidenceSummary, details: z.object({ scope: z.literal("current-session"), eventCount: z.number().int().min(1).max(12), itemAddedCount: z.number().int().min(0).max(12), itemDiscardedCount: z.number().int().min(0).max(12), annotationChangedCount: z.number().int().min(0).max(12), comparisonChangedCount: z.number().int().min(0).max(12), promotionPreparedCount: z.number().int().min(0).max(12), promotionCompletedCount: z.number().int().min(0).max(12), collectionChangedCount: z.number().int().min(0).max(12), truncated: z.boolean() }).strict(), byteSize: z.number().int().positive().max(16 * 1024), sha256, createdAtMs: z.number().int().nonnegative() }).strict();
-export const localReviewApprovalPresentationEvidencePreviewSchema = z.object({ schemaVersion: z.literal(1), itemId: id, source: z.literal("approval-presentation"), title: safeLabel, summary: evidenceSummary, details: z.object({ approvalState: z.literal("approved"), requestPresent: z.literal(true), decisionPresent: z.literal(true), dispatchPresent: z.literal(true), executionPresent: z.literal(true) }).strict(), byteSize: z.number().int().positive().max(16 * 1024), sha256, createdAtMs: z.number().int().nonnegative() }).strict();
+    details: z
+      .object({
+        applicationVersion: z.string().min(1).max(64),
+        debianVersion: z.string().min(1).max(64),
+        manifestState: z.literal("passed"),
+        checksumState: z.literal("passed"),
+        abiState: z.literal("passed"),
+        provenanceState: z.literal("passed"),
+        visibleLaunchState: z.literal("passed"),
+        installedHostState: z.literal("passed"),
+        artifactCount: z.literal(2),
+        validationComplete: z.literal(true),
+      })
+      .strict(),
+    byteSize: z
+      .number()
+      .int()
+      .positive()
+      .max(16 * 1024),
+    sha256,
+    createdAtMs: z.number().int().nonnegative(),
+  })
+  .strict();
+export const localReviewGitStatusDiffSummaryEvidencePreviewSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    itemId: id,
+    source: z.literal("git-status-diff-summary"),
+    title: safeLabel,
+    summary: evidenceSummary,
+    details: z
+      .object({
+        workspaceState: z.enum(["clean", "ready"]),
+        dirty: z.boolean(),
+        stagedCount: nonnegativeCount,
+        modifiedCount: nonnegativeCount,
+        addedCount: nonnegativeCount,
+        deletedCount: nonnegativeCount,
+        renamedCount: nonnegativeCount,
+        untrackedCount: nonnegativeCount,
+        conflictedCount: nonnegativeCount,
+        changedFileCount: nonnegativeCount,
+        additions: nonnegativeCount,
+        deletions: nonnegativeCount,
+        diffAvailable: z.boolean(),
+        diffTruncated: z.boolean(),
+      })
+      .strict(),
+    byteSize: z
+      .number()
+      .int()
+      .positive()
+      .max(16 * 1024),
+    sha256,
+    createdAtMs: z.number().int().nonnegative(),
+  })
+  .strict();
+export const localReviewActivityPresentationEvidencePreviewSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    itemId: id,
+    source: z.literal("activity-presentation"),
+    title: safeLabel,
+    summary: evidenceSummary,
+    details: z
+      .object({
+        scope: z.literal("current-session"),
+        eventCount: z.number().int().min(1).max(12),
+        itemAddedCount: z.number().int().min(0).max(12),
+        itemDiscardedCount: z.number().int().min(0).max(12),
+        annotationChangedCount: z.number().int().min(0).max(12),
+        comparisonChangedCount: z.number().int().min(0).max(12),
+        promotionPreparedCount: z.number().int().min(0).max(12),
+        promotionCompletedCount: z.number().int().min(0).max(12),
+        collectionChangedCount: z.number().int().min(0).max(12),
+        truncated: z.boolean(),
+      })
+      .strict(),
+    byteSize: z
+      .number()
+      .int()
+      .positive()
+      .max(16 * 1024),
+    sha256,
+    createdAtMs: z.number().int().nonnegative(),
+  })
+  .strict();
+export const localReviewApprovalPresentationEvidencePreviewSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    itemId: id,
+    source: z.literal("approval-presentation"),
+    title: safeLabel,
+    summary: evidenceSummary,
+    details: z
+      .object({
+        approvalState: z.literal("approved"),
+        requestPresent: z.literal(true),
+        decisionPresent: z.literal(true),
+        dispatchPresent: z.literal(true),
+        executionPresent: z.literal(true),
+      })
+      .strict(),
+    byteSize: z
+      .number()
+      .int()
+      .positive()
+      .max(16 * 1024),
+    sha256,
+    createdAtMs: z.number().int().nonnegative(),
+  })
+  .strict();
 export const localReviewImagePreviewRequestSchema = z
   .object({ itemId: id, sha256 })
   .strict();
