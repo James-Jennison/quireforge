@@ -1457,6 +1457,14 @@ without a package or version. Beta.54 remains the latest packaged generation;
 its M56 draft prerelease is unchanged. Future provider-neutral architecture
 requires separately approved decision gates and must not be folded into M58.
 
+**External capability taxonomy and sequencing complete:** the unnumbered
+[External Capability Taxonomy and Sequencing](EXTERNAL_CAPABILITY_TAXONOMY_AND_SEQUENCING.md)
+checkpoint grants no implementation authority or package/version. It separates
+future inference, retrieval, connected-service, local-runtime, execution,
+credential, browser-verification, and automation lanes, and recommends
+Provider-Neutral Capability Registry and Descriptor Governance as the next
+separately approved decision gate. M58 remains unchanged and unstarted.
+
 ### 58 — Controlled Browser Verification Proposal
 
 Determine whether a narrow, user-controlled verification-only browser surface

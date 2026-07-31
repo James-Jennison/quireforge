@@ -156,6 +156,14 @@ guidance: QuireForge remains the future owner of project context, authority,
 credential policy, operation validation, artifacts, audit, and recovery while
 provider-neutral work requires separate decisions.
 
+The **External Capability Taxonomy and Sequencing** decision checkpoint is
+complete. It grants no implementation authority, separates inference,
+retrieval, connected services, local runtimes, execution, credential, browser,
+and automation lanes, and records their dependency ordering. It recommends
+Provider-Neutral Capability Registry and Descriptor Governance as the next
+separately approved decision gate. M58 remains unstarted and independent;
+beta.54 remains the latest packaged generation.
+
 The Rust Codex, project/SQLite, Git, worktree, terminal, preview, attachment,
 settings, and integration services are candidates for reuse. The current Tauri
 boundary is the command façade, app/plugin wiring, native dialogs/openers/
