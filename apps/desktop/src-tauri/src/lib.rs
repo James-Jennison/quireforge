@@ -7,6 +7,8 @@ mod advisor_generated_artifact;
 mod advisor_image_attachment;
 mod attachment;
 mod codex;
+#[allow(dead_code)]
+mod connector_foundation;
 mod contract;
 mod desktop;
 mod dynamic_analysis;

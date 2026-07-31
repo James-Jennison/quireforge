@@ -1440,6 +1440,16 @@ local mock-only foundation with no network, credentials, OAuth, provider,
 browser, mutation, background, generic MCP, or M55 source-manifest authority.
 Any real connector remains deferred to later provider-specific decisions.
 
+**Local mock-only foundation source-complete:**
+[M57 local mock connector foundation](MILESTONE_57_LOCAL_MOCK_CONNECTOR_FOUNDATION.md)
+implements the approved private native in-memory contracts and deterministic
+mock adapter. It adds static digest/version-bound fictional descriptors, opaque
+bindings and inert credential references, closed lifecycle/operation/result
+models, one-use expiry/cancellation/replay protection, and content-free audit
+records. It adds no persistence, Tauri command, bridge, UI, network, provider,
+credential, OAuth, browser, external mutation, or M55 source-manifest
+authority. Packaging and release work remain separate future goals.
+
 ### 58 — Controlled Browser Verification Proposal
 
 Determine whether a narrow, user-controlled verification-only browser surface

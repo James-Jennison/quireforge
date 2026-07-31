@@ -141,6 +141,16 @@ authority, external mutation, background activity, generic MCP execution, and
 M55 source-manifest authority remain deferred. It does not change the existing
 Codex-owned Integration Center boundary or beta.54 release state.
 
+The M57 local mock-only connector foundation is source-complete. It provides a
+private native in-memory descriptor/lifecycle/binding/proposal/confirmation/
+audit contract and deterministic mock outcomes only; it has no persistence,
+Tauri command, bridge, or UI. Static fictional descriptors are digest/version
+bound, credential references are inert opaque metadata, confirmations are
+one-use/expiring/cancellable, and audit records are content-free/mock-only.
+Real connector authority, credentials, providers, network access, M55 source
+admission, and M58 browser verification remain deferred. Packaging, installed-
+host validation, and release work have not started.
+
 The Rust Codex, project/SQLite, Git, worktree, terminal, preview, attachment,
 settings, and integration services are candidates for reuse. The current Tauri
 boundary is the command façade, app/plugin wiring, native dialogs/openers/

@@ -433,6 +433,40 @@ def validate() -> list[str]:
     errors: list[str] = []
     files = repository_files()
 
+    connector_foundation = (
+        ROOT / "apps/desktop/src-tauri/src/connector_foundation.rs"
+    )
+    if connector_foundation.is_file():
+        foundation_source = connector_foundation.read_text(encoding="utf-8")
+        forbidden_foundation_imports = (
+            "use std::process",
+            "use tokio::process",
+            "use reqwest",
+            "use url::",
+            "use std::env",
+            "std::net::",
+            "tokio::net::",
+            "Command::",
+        )
+        for forbidden in forbidden_foundation_imports:
+            if forbidden in foundation_source:
+                errors.append(
+                    "connector foundation imports prohibited authority: "
+                    f"{forbidden}"
+                )
+        required_foundation_markers = (
+            "mock_only: true",
+            "fn static_mock_descriptor()",
+            "fn valid_credential_reference(",
+            "fn dispatch_mock_mutation(",
+        )
+        for marker in required_foundation_markers:
+            if marker not in foundation_source:
+                errors.append(
+                    "connector foundation is missing required local-only guard: "
+                    f"{marker}"
+                )
+
     for relative in REQUIRED_PATHS:
         if not (ROOT / relative).is_file():
             errors.append(f"missing required file: {relative}")
