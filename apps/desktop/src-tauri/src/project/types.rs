@@ -1128,6 +1128,8 @@ pub struct TaskTemplateDetail {
     pub instructions: String,
     pub origin: TaskTemplateOrigin,
     pub state: TaskTemplateState,
+    pub version: u32,
+    pub sha256: String,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]

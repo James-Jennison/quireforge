@@ -171,12 +171,16 @@ impl TemplateLifecycleService {
     pub(crate) fn inspect(&self, id: &str) -> Result<TemplateInspection, TemplateLifecycleError> {
         if let Some(template) = builtins().into_iter().find(|template| template.id == id) {
             return Ok(TemplateInspection {
+                authority: Some(TemplateMutationAuthority {
+                    id: template.id.clone(),
+                    version: template.version,
+                    digest: template.sha256.clone(),
+                }),
                 template,
                 schema_version: TEMPLATE_SCHEMA_VERSION,
                 created_at_ms: None,
                 updated_at_ms: None,
                 archived_at_ms: None,
-                authority: None,
             });
         }
         let record = self
@@ -246,12 +250,22 @@ impl TemplateLifecycleService {
         &mut self,
         authority: &TemplateMutationAuthority,
     ) -> Result<TemplateInspection, TemplateLifecycleError> {
-        let record = self.current(authority)?;
+        let source = if let Some(template) = builtins()
+            .into_iter()
+            .find(|template| template.id == authority.id)
+        {
+            if template.version != authority.version || template.sha256 != authority.digest {
+                return Err(TemplateLifecycleError::Stale);
+            }
+            template
+        } else {
+            self.current(authority)?.template
+        };
         let template = new_template(
             TemplateContentInput {
-                title: record.template.title,
-                purpose: record.template.purpose,
-                instructions: record.template.instructions,
+                title: source.title,
+                purpose: source.purpose,
+                instructions: source.instructions,
             },
             TemplateState::Active,
         )?;
@@ -463,7 +477,7 @@ mod tests {
             .inspect(&catalog.templates[0].id)
             .unwrap()
             .authority
-            .is_none());
+            .is_some());
     }
     #[test]
     fn create_update_and_stale_rejection_preserve_authority() {

@@ -208,10 +208,7 @@ import {
   taskTemplateMutationRequestSchema,
   taskTemplatePreviewRequestSchema,
   taskTemplatePreviewSchema,
-  type TaskTemplateApplicationOutcome,
   type TaskTemplateCatalogSnapshot,
-  type TaskTemplateInspectionSnapshot,
-  type TaskTemplatePreviewSnapshot,
 } from "./taskTemplates";
 import {
   localReviewCollectionCreateRequestSchema,

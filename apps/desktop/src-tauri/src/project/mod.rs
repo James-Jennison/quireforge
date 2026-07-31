@@ -3040,6 +3040,8 @@ fn template_detail(template: &task_template::TaskTemplate) -> TaskTemplateDetail
         instructions: template.instructions.clone(),
         origin: template_origin(template.origin),
         state: template_state(template.state),
+        version: template.version,
+        sha256: template.sha256.clone(),
     }
 }
 fn template_capacity(
@@ -4154,7 +4156,7 @@ mod tests {
         let builtin = service.task_template_inspect(TaskTemplateIdRequest {
             template_id: "01980a10-0000-7000-8000-000000000001".into(),
         });
-        assert_eq!(builtin.mutation_handle, None);
+        assert!(builtin.mutation_handle.is_some());
         let malformed = service.task_template_confirm(TaskTemplateConfirmRequest {
             reservation_id: "not-a-reservation".into(),
             title: "Draft".into(),

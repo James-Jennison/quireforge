@@ -210,6 +210,7 @@ export function TaskCatalog({
   onPlanSelect,
   onPlanEdit,
   onPlanDelete,
+  onOpenTemplates,
 }: {
   snapshot: TaskCatalogSnapshot;
   busy: boolean;
@@ -233,6 +234,7 @@ export function TaskCatalog({
     body: string,
   ) => SnapshotAction;
   onPlanDelete: (taskId: string, planId: string) => SnapshotAction;
+  onOpenTemplates?: () => void;
 }) {
   const [query, setQuery] = useState("");
   const [includeArchived, setIncludeArchived] = useState(false);
@@ -309,25 +311,30 @@ export function TaskCatalog({
           <span>Local organization</span>
           <h2 id="task-catalog-title">Tasks</h2>
         </div>
-        <button
-          type="button"
-          disabled={
-            busy ||
-            snapshot.state === "unavailable" ||
-            snapshot.taskCount >= 200 ||
-            snapshot.payloadBytes >= 8 * 1024 * 1024
-          }
-          onClick={() => {
-            void apply(onCreate, "Task created.").then((result) => {
-              if (result?.selectedTask) {
-                setSelectedTaskId(result.selectedTask.id);
-                window.requestAnimationFrame(() => titleRef.current?.focus());
-              }
-            });
-          }}
-        >
-          New task
-        </button>
+        <div className="task-catalog__actions">
+          <button
+            type="button"
+            disabled={
+              busy ||
+              snapshot.state === "unavailable" ||
+              snapshot.taskCount >= 200 ||
+              snapshot.payloadBytes >= 8 * 1024 * 1024
+            }
+            onClick={() => {
+              void apply(onCreate, "Task created.").then((result) => {
+                if (result?.selectedTask) {
+                  setSelectedTaskId(result.selectedTask.id);
+                  window.requestAnimationFrame(() => titleRef.current?.focus());
+                }
+              });
+            }}
+          >
+            New task
+          </button>
+          <button type="button" onClick={onOpenTemplates}>
+            Task Templates
+          </button>
+        </div>
       </div>
       <p className="context-note">
         Titles and plans stay local. They do not contain or control

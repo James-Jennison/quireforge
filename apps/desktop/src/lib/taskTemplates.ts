@@ -107,7 +107,11 @@ const summary = z
   })
   .strict();
 const detail = summary
-  .extend({ instructions: z.string().max(32 * 1024) })
+  .extend({
+    instructions: z.string().max(32 * 1024),
+    version: z.number().int().min(1).max(4_294_967_295),
+    sha256: z.string().regex(/^[0-9a-f]{64}$/u),
+  })
   .strict();
 const capacity = z
   .object({
@@ -167,7 +171,7 @@ export const taskTemplateInspectionSchema = z
       value.state === "ready" &&
       (value.template === null ||
         value.diagnosticCode !== null ||
-        (value.template.origin === "local") !== (value.mutationHandle !== null))
+        value.mutationHandle === null)
     )
       context.addIssue({
         code: "custom",

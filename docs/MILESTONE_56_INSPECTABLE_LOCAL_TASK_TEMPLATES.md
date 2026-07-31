@@ -29,8 +29,9 @@ tag, or release exists.
 - G6: complete — closed Tauri lifecycle/application commands and a strict
   TypeScript/Zod bridge validate only user text, opaque selectors, opaque
   native mutation handles, and explicit confirmation values. No UI is added.
-- G7: template-management UI (next).
-- G8: application UI and accessibility/browser acceptance.
+- G7: complete — lazy native-backed template catalog, detail inspection, and
+  local-template lifecycle UI are implemented with focused component coverage.
+- G8: application UI and accessibility/real-browser acceptance (next).
 - G9: full source acceptance and beta.54 preparation.
 - G10: canonical beta.54 packaging.
 - G11: guarded installed-host validation.

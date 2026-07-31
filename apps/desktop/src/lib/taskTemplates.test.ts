@@ -63,7 +63,12 @@ const catalog = {
 const inspection = {
   schemaVersion: 1,
   state: "ready",
-  template: { ...catalog.templates[0], instructions: "Use evidence." },
+  template: {
+    ...catalog.templates[0],
+    instructions: "Use evidence.",
+    version: 1,
+    sha256: "a".repeat(64),
+  },
   mutationHandle: handle,
   diagnosticCode: null,
 };

@@ -6375,12 +6375,175 @@ body,
   margin: 0;
 }
 
+.task-template-workbench {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.task-template-workbench__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.task-template-workbench__status {
+  min-height: 1.4em;
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.task-template-workbench__warning,
+.task-template-workbench__unavailable {
+  margin: 0;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.task-template-workbench__warning {
+  color: var(--warning);
+}
+
+.task-template-workbench__capacity {
+  margin: 0;
+  font-size: 12px;
+}
+
+.task-template-workbench__list {
+  display: grid;
+  gap: 4px;
+  max-height: 240px;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+}
+
+.task-template-workbench__list button {
+  display: grid;
+  width: 100%;
+  min-height: 44px;
+  gap: 3px;
+  text-align: left;
+}
+
+.task-template-workbench__list button[aria-current="page"] {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.task-template-workbench__list span,
+.task-template-workbench small {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.task-template-workbench__detail {
+  display: grid;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.task-template-workbench__detail dl {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+
+.task-template-workbench__detail dt {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.task-template-workbench__detail dd {
+  margin: 3px 0 0;
+  overflow-wrap: anywhere;
+}
+
+.task-template-workbench__instructions {
+  white-space: pre-wrap;
+}
+
+.task-template-workbench__form {
+  display: grid;
+  gap: 10px;
+}
+
+.task-template-workbench__form label {
+  display: grid;
+  gap: 5px;
+}
+
+.task-template-workbench__form textarea {
+  min-height: 150px;
+  resize: vertical;
+}
+
+.task-template-dialog {
+  position: fixed;
+  z-index: 80;
+  inset: 0;
+  display: grid;
+  width: auto;
+  max-width: none;
+  height: auto;
+  max-height: none;
+  margin: 0;
+  padding: 20px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  place-items: center;
+}
+
+.task-template-dialog__backdrop {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: 0;
+  background: rgb(0 0 0 / 55%);
+}
+
+.task-template-dialog__panel {
+  position: relative;
+  display: grid;
+  width: min(620px, 100%);
+  max-height: min(720px, calc(100vh - 40px));
+  gap: 14px;
+  overflow: auto;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: 0 24px 80px rgb(0 0 0 / 35%);
+}
+
+.task-template-dialog__panel h3,
+.task-template-dialog__panel p {
+  margin: 0;
+}
+
 @media (max-width: 760px) {
   .task-catalog-dialog {
     padding: 12px;
   }
 
   .task-catalog-dialog__panel {
+    max-height: calc(100vh - 24px);
+  }
+
+  .task-template-dialog {
+    padding: 12px;
+  }
+
+  .task-template-dialog__panel {
     max-height: calc(100vh - 24px);
   }
 }

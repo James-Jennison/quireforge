@@ -84,6 +84,13 @@ describe("durable task catalogue", () => {
     });
   });
 
+  it("offers the task-template workbench entry without loading it", () => {
+    const onOpenTemplates = vi.fn();
+    render(<TaskCatalog {...props()} onOpenTemplates={onOpenTemplates} />);
+    fireEvent.click(screen.getByRole("button", { name: "Task Templates" }));
+    expect(onOpenTemplates).toHaveBeenCalledTimes(1);
+  });
+
   it("renders bounded local-only semantics, cleanup, and accessible plan state", () => {
     render(<TaskCatalog {...props()} />);
 

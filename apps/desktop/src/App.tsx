@@ -278,6 +278,13 @@ const ReviewPanes = lazy(() =>
     default: workspace,
   })),
 );
+const TaskTemplateWorkbench = lazy(() =>
+  import("./TaskTemplateWorkbench").then(
+    ({ TaskTemplateWorkbench: workspace }) => ({
+      default: workspace,
+    }),
+  ),
+);
 
 type BridgeState = "connecting" | "native" | "preview";
 type RuntimeState =
@@ -1145,6 +1152,8 @@ export default function App({
   const [taskCatalog, setTaskCatalog] =
     useState<TaskCatalogSnapshot>(scaffoldTaskCatalog);
   const [taskCatalogBusy, setTaskCatalogBusy] = useState(false);
+  const [taskTemplateWorkbenchOpen, setTaskTemplateWorkbenchOpen] =
+    useState(false);
   const [workbenchLayout, setWorkbenchLayout] = useState(
     initialWorkbenchLayoutPreferences,
   );
@@ -3381,7 +3390,24 @@ export default function App({
                   deleteTaskPlan({ taskId, planId }),
                 )
               }
+              onOpenTemplates={() => setTaskTemplateWorkbenchOpen(true)}
             />
+            {taskTemplateWorkbenchOpen && (
+              <Suspense
+                fallback={
+                  <section
+                    className="task-template-workbench"
+                    aria-label="Task Templates"
+                  >
+                    <p role="status">Loading task templates…</p>
+                  </section>
+                }
+              >
+                <TaskTemplateWorkbench
+                  onClose={() => setTaskTemplateWorkbenchOpen(false)}
+                />
+              </Suspense>
+            )}
             <div
               className="workbench-context-tabs"
               role="tablist"
