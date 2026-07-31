@@ -1511,9 +1511,14 @@ Registry Contracts](MILESTONE_PROVIDER_CAPABILITY_REGISTRY_CONTRACTS.md)
 implements private static fictional registry contracts and focused safeguards
 only. It has no persistence, bridge, UI, provider route, package, or release.
 
-**Recommended next implementation milestone:** Canonical Interaction/Event
-Contracts and Deterministic Mock Adapter Conformance requires separate explicit
-approval and remains local/non-networked.
+**Second implementation milestone source-complete:** [Provider Interaction/Event
+Contracts and Deterministic Mock Adapter Conformance](MILESTONE_PROVIDER_INTERACTION_PROTOCOL_CONTRACTS.md)
+implements private fictional interaction contracts and deterministic fixture
+translation only. It has no persistence, bridge, UI, provider route, package,
+or release.
+
+**Recommended next implementation milestone:** Credential Broker Foundation
+Contracts requires separate explicit approval and remains local/non-networked.
 
 **Later implementation milestones:** Credential broker, context assembly,
 limited inference, and the first separately approved provider or local-runtime

@@ -18,6 +18,8 @@ mod project;
 pub mod project_state;
 #[allow(dead_code)]
 mod provider_capability_registry;
+#[allow(dead_code)]
+mod provider_interaction_protocol;
 mod task_handoff;
 mod terminal;
 mod worktree;

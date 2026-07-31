@@ -509,6 +509,60 @@ def validate() -> list[str]:
                     f"{marker}"
                 )
 
+    interaction_protocol = (
+        ROOT / "apps/desktop/src-tauri/src/provider_interaction_protocol.rs"
+    )
+    if interaction_protocol.is_file():
+        protocol_source = interaction_protocol.read_text(encoding="utf-8")
+        lowered_protocol_source = protocol_source.lower()
+        forbidden_protocol_authority = (
+            "use std::process",
+            "use tokio::process",
+            "use reqwest",
+            "use url::",
+            "use std::env",
+            "std::net::",
+            "tokio::net::",
+            "command::",
+            "std::fs",
+            "tokio::fs",
+            "pathbuf",
+            "tauri::command",
+            "invoke_handler",
+            "rusqlite::",
+            "credential",
+            "credential_reference",
+            "context_manifest",
+            "fn dispatch",
+            "fn invoke",
+            "browser",
+            "mcp",
+            "openai",
+            "anthropic",
+            "google",
+            "azure",
+            "ollama",
+        )
+        for forbidden in forbidden_protocol_authority:
+            if forbidden in lowered_protocol_source:
+                errors.append(
+                    "provider interaction protocol contains prohibited authority: "
+                    f"{forbidden}"
+                )
+        required_protocol_markers = (
+            "fn fictional_attempt()",
+            "struct DeterministicMockAdapter",
+            "fn validate_envelope(",
+            "fn transition(",
+            "deny_unknown_fields",
+        )
+        for marker in required_protocol_markers:
+            if marker not in protocol_source:
+                errors.append(
+                    "provider interaction protocol is missing required local-only guard: "
+                    f"{marker}"
+                )
+
     for relative in REQUIRED_PATHS:
         if not (ROOT / relative).is_file():
             errors.append(f"missing required file: {relative}")

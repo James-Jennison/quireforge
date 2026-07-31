@@ -175,10 +175,11 @@ independent, and beta.54 remains the latest packaged generation.
 The **Provider-Neutral AI Foundation** is an active long-term product goal. Its
 taxonomy, capability-registry, interaction-protocol, adapter-governance,
 credential-custody, context-manifest, and Limited Provider Inference Boundary
-decisions are completed gates; no provider-neutral implementation exists and no
-gate is currently active. Implementation Readiness and First Milestone Selection
-is the recommended next separately approved checkpoint. M55, M57, and M58
-remain separate, and beta.54 remains the latest packaged generation.
+decisions are completed gates; no provider-neutral operational implementation
+exists and no gate is currently active. Implementation Readiness and First
+Milestone Selection is the recommended next separately approved checkpoint.
+M55, M57, and M58 remain separate, and beta.54 remains the latest packaged
+generation.
 
 The first Provider-Neutral AI Foundation implementation milestone is
 source-complete: private native capability-registry contracts provide static
@@ -188,6 +189,16 @@ narrow repository safeguard. It has no persistence, Tauri/bridge/UI exposure,
 provider route, or package. Canonical Interaction/Event Contracts and
 Deterministic Mock Adapter Conformance is the recommended next separately
 approved implementation milestone; M55, M57, and M58 remain separate.
+
+The second Provider-Neutral AI Foundation implementation milestone is
+source-complete: private native interaction/event contracts bind fictional
+attempts and canonical envelopes to opaque project/task/provider/endpoint/model/
+adapter/protocol identities. Strict sequencing, lifecycle, reference, extension,
+tool-result, citation, structured-output, usage, and deterministic mock-adapter
+checks remain local and unexposed. It has no persistence, Tauri/bridge/UI
+surface, provider route, or package. Credential Broker Foundation Contracts is
+the recommended next separately approved implementation milestone; M55, M57,
+and M58 remain separate.
 
 The Rust Codex, project/SQLite, Git, worktree, terminal, preview, attachment,
 settings, and integration services are candidates for reuse. The current Tauri

@@ -164,6 +164,17 @@ provider behavior and does not complete the goal's later implementation criteria
 The next separately approved implementation milestone is **Canonical
 Interaction/Event Contracts and Deterministic Mock Adapter Conformance**.
 
+### Canonical Interaction/Event Contracts and Deterministic Mock Adapter Conformance
+
+Status: source-complete, source-only. The [Provider Interaction/Event Contracts
+and Deterministic Mock Adapter Conformance](MILESTONE_PROVIDER_INTERACTION_PROTOCOL_CONTRACTS.md)
+milestone implements private fictional attempts, canonical envelopes, closed
+lifecycle validation, and deterministic fixture translation only. It has no
+persistence, bridge, UI, provider route, package, or operational behavior.
+
+The next separately approved implementation milestone is **Credential Broker
+Foundation Contracts**.
+
 ## Separate goals and lanes
 
 ### M55 durable source admission and research
@@ -239,11 +250,10 @@ When a gate completes, record it as progress under this goal.
 
 ## Immediate next gate
 
-The goal is active. Seven decision gates are complete. The first source-only
-implementation milestone is complete and no new milestone is active. **Canonical
-Interaction/Event Contracts and Deterministic Mock Adapter Conformance** is the
-recommended next separately approved implementation milestone and does not
-begin here.
+The goal is active. Seven decision gates and two source-only implementation
+milestones are complete; no new milestone is active. **Credential Broker
+Foundation Contracts** is the recommended next separately approved
+implementation milestone and does not begin here.
 
 ## Package and release policy
 
