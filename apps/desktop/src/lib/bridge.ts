@@ -225,6 +225,9 @@ import {
   localReviewSafePreviewMetadataEvidenceCreateRequestSchema,
   localReviewSafePreviewMetadataEvidenceCreateResultSchema,
   localReviewSafePreviewMetadataEvidencePreviewSchema,
+  localReviewPackageManifestSummaryEvidenceCreateRequestSchema,
+  localReviewPackageManifestSummaryEvidenceCreateResultSchema,
+  localReviewPackageManifestSummaryEvidencePreviewSchema,
   localReviewLineComparisonSchema,
   localReviewListRequestSchema,
   localReviewM48ArtifactCopyRequestSchema,
@@ -235,6 +238,7 @@ import {
   type LocalReviewM48ArtifactCopyRequest,
   type LocalReviewM48GeneratedArtifactMetadataEvidenceCreateRequest,
   type LocalReviewSafePreviewMetadataEvidenceCreateRequest,
+  type LocalReviewPackageManifestSummaryEvidenceCreateRequest,
   type LocalReviewSnapshot,
   type LocalReviewTextItemCreateRequest,
 } from "./localReview";
@@ -348,6 +352,10 @@ export const LOCAL_REVIEW_SAFE_PREVIEW_METADATA_EVIDENCE_CREATE_COMMAND =
   "local_review_safe_preview_metadata_evidence_create";
 export const LOCAL_REVIEW_SAFE_PREVIEW_METADATA_EVIDENCE_PREVIEW_COMMAND =
   "local_review_safe_preview_metadata_evidence_preview";
+export const LOCAL_REVIEW_PACKAGE_MANIFEST_SUMMARY_EVIDENCE_CREATE_COMMAND =
+  "local_review_package_manifest_summary_evidence_create";
+export const LOCAL_REVIEW_PACKAGE_MANIFEST_SUMMARY_EVIDENCE_PREVIEW_COMMAND =
+  "local_review_package_manifest_summary_evidence_preview";
 export const LOCAL_REVIEW_ANNOTATION_CREATE_COMMAND =
   "local_review_annotation_create";
 export const LOCAL_REVIEW_ANNOTATION_EDIT_COMMAND =
@@ -1207,6 +1215,14 @@ export async function createLocalReviewSafePreviewMetadataEvidence(
     ),
   );
 }
+export async function createLocalReviewPackageManifestSummaryEvidence(
+  request: LocalReviewPackageManifestSummaryEvidenceCreateRequest,
+  invokeFunction: InvokeFunction = invokeTauri,
+) {
+  return localReviewPackageManifestSummaryEvidenceCreateResultSchema.parse(
+    await invokeFunction(LOCAL_REVIEW_PACKAGE_MANIFEST_SUMMARY_EVIDENCE_CREATE_COMMAND, { request: localReviewPackageManifestSummaryEvidenceCreateRequestSchema.parse(request) }),
+  );
+}
 async function mutateLocalReview(
   command: string,
   request: unknown,
@@ -1318,6 +1334,14 @@ export async function previewLocalReviewSafePreviewMetadataEvidence(
       LOCAL_REVIEW_SAFE_PREVIEW_METADATA_EVIDENCE_PREVIEW_COMMAND,
       parsed,
     ),
+  );
+}
+export async function previewLocalReviewPackageManifestSummaryEvidence(
+  request: unknown, invokeFunction: InvokeFunction = invokeTauri,
+) {
+  const parsed = localReviewImagePreviewRequestSchema.parse(request);
+  return localReviewPackageManifestSummaryEvidencePreviewSchema.parse(
+    await invokeFunction(LOCAL_REVIEW_PACKAGE_MANIFEST_SUMMARY_EVIDENCE_PREVIEW_COMMAND, parsed),
   );
 }
 export const createLocalReviewAnnotation = (

@@ -28,6 +28,8 @@ import {
   localReviewPromotionPrepareRequestSchema,
   localReviewPromotionCandidateSchema,
   localReviewPromotionReservationRequestSchema,
+  localReviewPackageManifestSummaryEvidenceCreateRequestSchema,
+  localReviewPackageManifestSummaryEvidencePreviewSchema,
 } from "./localReview";
 
 const id = "018f0000-0000-7000-8000-000000000001";
@@ -42,10 +44,32 @@ const snapshot = {
   collectionCount: 0,
   payloadBytes: 0,
   warning: false,
+  packageManifestSummaryAvailable: false,
   diagnosticCode: null,
 };
 
 describe("local review image contracts", () => {
+  it("accepts only the native-owned package summary capture request", () => {
+    const request = { collectionId: id, expectedCollectionUpdatedAtMs: 1 };
+    expect(
+      localReviewPackageManifestSummaryEvidenceCreateRequestSchema.parse(request),
+    ).toEqual(request);
+    expect(() =>
+      localReviewPackageManifestSummaryEvidenceCreateRequestSchema.parse({
+        ...request,
+        projectId: id,
+        applicationVersion: "0.1.0-beta.51",
+      }),
+    ).toThrow();
+    expect(() =>
+      localReviewPackageManifestSummaryEvidencePreviewSchema.parse({
+        schemaVersion: 1, itemId: id, source: "package-manifest-summary", title: "Package validation summary",
+        summary: "Captured completed package-validation summary.",
+        details: { applicationVersion: "0.1.0-beta.51", debianVersion: "0.1.0~beta.51", manifestState: "passed", checksumState: "passed", abiState: "passed", provenanceState: "passed", visibleLaunchState: "passed", installedHostState: "passed", artifactCount: 2, validationComplete: true, path: "/unsafe" },
+        byteSize: 1, sha256: sha, createdAtMs: 1,
+      }),
+    ).toThrow();
+  });
   it("accepts only the fixed path-free picker request", () => {
     expect(
       localReviewImagePickRequestSchema.parse({
@@ -381,6 +405,7 @@ describe("local review image contracts", () => {
         collectionCount: 0,
         payloadBytes: 0,
         warning: false,
+        packageManifestSummaryAvailable: false,
         diagnosticCode: null,
       },
     };

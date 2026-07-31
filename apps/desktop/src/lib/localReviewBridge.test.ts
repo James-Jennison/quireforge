@@ -38,6 +38,8 @@ import {
   prepareLocalReviewPromotion,
   confirmLocalReviewPromotion,
   cancelLocalReviewPromotion,
+  createLocalReviewPackageManifestSummaryEvidence,
+  LOCAL_REVIEW_PACKAGE_MANIFEST_SUMMARY_EVIDENCE_CREATE_COMMAND,
 } from "./bridge";
 
 const id = "018f0000-0000-7000-8000-000000000001";
@@ -52,6 +54,7 @@ const snapshot = {
   collectionCount: 0,
   payloadBytes: 0,
   warning: false,
+  packageManifestSummaryAvailable: false,
   diagnosticCode: null,
 };
 const annotationSnapshot = {
@@ -118,10 +121,18 @@ const annotationSnapshot = {
   collectionCount: 1,
   payloadBytes: 1,
   warning: false,
+  packageManifestSummaryAvailable: false,
   diagnosticCode: null,
 };
 
 describe("local review image bridge", () => {
+  it("uses the strict native-owned package summary envelope", async () => {
+    const request = { collectionId: id, expectedCollectionUpdatedAtMs: 1 };
+    const response = { outcome: "failed", snapshot };
+    const invoke = vi.fn().mockResolvedValue(response);
+    await expect(createLocalReviewPackageManifestSummaryEvidence(request, invoke)).resolves.toEqual(response);
+    expect(invoke).toHaveBeenCalledWith(LOCAL_REVIEW_PACKAGE_MANIFEST_SUMMARY_EVIDENCE_CREATE_COMMAND, { request });
+  });
   it("uses the fixed digest-bound text preview envelope", async () => {
     const request = { collectionId: id, itemId: annotationId, sha256: sha };
     const preview = {

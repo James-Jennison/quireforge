@@ -1359,7 +1359,10 @@ fixed headless completion branch that resolves the production metadata path,
 one live attached project, and one migration-18 unprivileged predecessor;
 it initializes no GUI surface and records only through the native controller;
 it also begins preservation by archiving the coherent beta.48 release set.
-No release or deployment is authorized.
+No release or deployment is authorized. Post-beta.51 unreleased source work
+implements the package-manifest-summary evidence capture from the completed
+immutable same-project migration-18 record; Git, Activity, and Approval
+evidence flows remain pending and M54 is not complete.
 
 ### 55 — Research Reports and Inspectable Task Templates Proposal
 

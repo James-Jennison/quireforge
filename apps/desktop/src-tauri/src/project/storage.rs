@@ -29,7 +29,8 @@ use super::types::{
     LocalReviewItemSummary, LocalReviewLineComparison, LocalReviewLineKind, LocalReviewLineRecord,
     LocalReviewM48GeneratedArtifactMetadataDetails,
     LocalReviewM48GeneratedArtifactMetadataEvidencePreview, LocalReviewManualEvidencePreview,
-    LocalReviewManualValidationDetails, LocalReviewSafePreviewMetadataDetails,
+    LocalReviewManualValidationDetails, LocalReviewPackageManifestSummaryDetails,
+    LocalReviewPackageManifestSummaryEvidencePreview, LocalReviewSafePreviewMetadataDetails,
     LocalReviewSafePreviewMetadataEvidencePreview, LocalReviewSourceKind, LocalReviewTextFormat,
     LocalReviewTextPreview, LocalReviewValidationState, TaskPlanSummary, TaskRecordSummary,
     TaskStatus,
@@ -1017,6 +1018,22 @@ fn safe_preview_metadata_evidence_envelope_bytes(
     .map_err(|_| StorageError::InvalidStoredValue)
 }
 
+fn package_manifest_summary_evidence_envelope_bytes(
+    title: &str,
+    summary: &str,
+    details: &LocalReviewPackageManifestSummaryDetails,
+) -> Result<Vec<u8>, StorageError> {
+    serde_json::to_vec(&EvidenceEnvelopeV1 {
+        schema_version: 1,
+        source: LocalReviewEvidenceSource::PackageManifestSummary,
+        source_schema_version: 1,
+        title: title.to_owned(),
+        summary: summary.to_owned(),
+        details,
+    })
+    .map_err(|_| StorageError::InvalidStoredValue)
+}
+
 fn parse_manual_evidence_envelope(bytes: &[u8], title: &str) -> Result<String, StorageError> {
     let envelope: EvidenceEnvelopeV1<LocalReviewManualValidationDetails> =
         serde_json::from_slice(bytes).map_err(|_| StorageError::InvalidStoredValue)?;
@@ -1065,6 +1082,39 @@ fn parse_safe_preview_metadata_evidence_envelope(
         || normalize_review_label(&envelope.title)? != envelope.title
         || normalize_review_text(&envelope.summary, LocalReviewTextFormat::Plain)?
             != envelope.summary
+    {
+        return Err(StorageError::InvalidStoredValue);
+    }
+    Ok((envelope.summary, envelope.details))
+}
+
+fn parse_package_manifest_summary_evidence_envelope(
+    bytes: &[u8],
+    title: &str,
+) -> Result<(String, LocalReviewPackageManifestSummaryDetails), StorageError> {
+    let envelope: EvidenceEnvelopeV1<LocalReviewPackageManifestSummaryDetails> =
+        serde_json::from_slice(bytes).map_err(|_| StorageError::InvalidStoredValue)?;
+    if envelope.schema_version != 1
+        || envelope.source != LocalReviewEvidenceSource::PackageManifestSummary
+        || envelope.source_schema_version != 1
+        || envelope.title != title
+        || normalize_review_label(&envelope.title)? != envelope.title
+        || normalize_review_text(&envelope.summary, LocalReviewTextFormat::Plain)?
+            != envelope.summary
+        || !valid_package_version(&envelope.details.application_version, false)
+        || !valid_package_version(&envelope.details.debian_version, true)
+        || envelope.details.artifact_count != u32::from(PACKAGE_ARTIFACT_COUNT_LIMIT)
+        || !envelope.details.validation_complete
+        || ![
+            envelope.details.manifest_state,
+            envelope.details.checksum_state,
+            envelope.details.abi_state,
+            envelope.details.provenance_state,
+            envelope.details.visible_launch_state,
+            envelope.details.installed_host_state,
+        ]
+        .into_iter()
+        .all(|state| state == LocalReviewEvidenceCheckState::Passed)
     {
         return Err(StorageError::InvalidStoredValue);
     }
@@ -2945,6 +2995,193 @@ impl ProjectRepository {
             schema_version: 1,
             item_id: item_id.to_owned(),
             source: LocalReviewEvidenceSource::SafePreviewMetadata,
+            title,
+            summary,
+            details,
+            byte_size: byte_size as u64,
+            sha256: stored_sha,
+            created_at_ms,
+        })
+    }
+
+    pub(crate) fn package_manifest_summary_available_for_local_review(
+        &self,
+        collection_id: &str,
+    ) -> bool {
+        self.package_manifest_summary_source_for_local_review(collection_id)
+            .is_ok()
+    }
+
+    fn package_manifest_summary_source_for_local_review(
+        &self,
+        collection_id: &str,
+    ) -> Result<PackageValidationSummary, StorageError> {
+        if !valid_task_id(collection_id) {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let project_id: String = self.connection.query_row(
+            "SELECT task.project_id FROM local_review_collections AS collection
+             JOIN task_records AS task ON task.id = collection.task_id
+             JOIN projects AS project ON project.id = task.project_id
+             JOIN directory_associations AS association ON association.id = project.active_directory_association_id
+             WHERE collection.id = ?1 AND collection.discarded_at_ms IS NULL
+               AND collection.state = 'active' AND task.archived_at_ms IS NULL
+               AND task.status IN ('active', 'paused') AND task.project_id IS NOT NULL
+               AND project.archived_at_ms IS NULL AND association.detached_at_ms IS NULL",
+            [collection_id], |row| row.get(0),
+        ).map_err(|_| StorageError::ProjectNotFound)?;
+        let ids = self
+            .connection
+            .prepare(
+                "SELECT record.id FROM project_package_validation_summaries AS record
+             JOIN project_package_validation_candidate_identities AS identity
+               ON identity.package_validation_summary_id = record.id
+             WHERE record.project_id = ?1 AND record.validation_complete = 1
+               AND identity.validation_phase = 'installed-host'
+             ORDER BY record.created_at_ms DESC, record.id DESC LIMIT 2",
+            )?
+            .query_map([&project_id], |row| row.get::<_, String>(0))?
+            .collect::<Result<Vec<_>, _>>()?;
+        let Some(id) = ids.first() else {
+            return Err(StorageError::InvalidStoredValue);
+        };
+        let record = package_validation_summary_record(&self.connection, id)?;
+        if record.project_id != project_id
+            || record.input.validation_phase != PackageValidationPhase::InstalledHost
+            || !record.input.validation_complete
+            || record.input.artifact_count != PACKAGE_ARTIFACT_COUNT_LIMIT
+            || !validation_is_complete(&record.input)
+        {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let candidate = &record.input.candidate_identity_sha256;
+        let attempt = record
+            .input
+            .attempt_identity_sha256
+            .as_deref()
+            .ok_or(StorageError::InvalidStoredValue)?;
+        if installed_host_attempt_identity(
+            candidate,
+            record.input.installed_host_state,
+            record.input.installed_host_facts.as_ref(),
+        )? != attempt
+        {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let predecessor_id = record
+            .input
+            .supersedes_record_id
+            .as_deref()
+            .ok_or(StorageError::InvalidStoredValue)?;
+        let predecessor = package_validation_summary_record(&self.connection, predecessor_id)?;
+        let phase: String = self.connection.query_row(
+            "SELECT validation_phase FROM project_package_validation_candidate_identities
+             WHERE package_validation_summary_id = ?1 AND project_id = ?2
+               AND candidate_identity_sha256 = ?3",
+            params![predecessor_id, project_id, candidate],
+            |row| row.get(0),
+        )?;
+        if predecessor.project_id != project_id
+            || package_validation_phase(&phase)? != PackageValidationPhase::Unprivileged
+            || predecessor.input.validation_complete
+            || predecessor.input.installed_host_state != LocalReviewEvidenceCheckState::Unavailable
+        {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        Ok(record)
+    }
+
+    pub(crate) fn create_local_review_package_manifest_summary_evidence_item(
+        &mut self,
+        collection_id: &str,
+        expected_updated_at_ms: i64,
+    ) -> Result<String, StorageError> {
+        let source = self.package_manifest_summary_source_for_local_review(collection_id)?;
+        let title = "Package validation summary";
+        let summary = "Captured completed package-validation summary.";
+        let details = LocalReviewPackageManifestSummaryDetails {
+            application_version: source.input.application_version,
+            debian_version: source.input.debian_version,
+            manifest_state: source.input.manifest_state,
+            checksum_state: source.input.checksum_state,
+            abi_state: source.input.abi_state,
+            provenance_state: source.input.provenance_state,
+            visible_launch_state: source.input.visible_launch_state,
+            installed_host_state: source.input.installed_host_state,
+            artifact_count: source.input.artifact_count.into(),
+            validation_complete: source.input.validation_complete,
+        };
+        let bytes = package_manifest_summary_evidence_envelope_bytes(title, summary, &details)?;
+        if bytes.len() > REVIEW_EVIDENCE_BYTES_LIMIT {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let now = now_millis();
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        local_review_mutation_context(
+            &tx,
+            collection_id,
+            Some(expected_updated_at_ms),
+            LocalReviewMutationPermission::ActiveContent,
+        )?;
+        // Repeat resolution inside the write transaction so stale lifecycle or record state fails closed.
+        drop(tx);
+        let source = self.package_manifest_summary_source_for_local_review(collection_id)?;
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        local_review_mutation_context(
+            &tx,
+            collection_id,
+            Some(expected_updated_at_ms),
+            LocalReviewMutationPermission::ActiveContent,
+        )?;
+        if source.input.validation_phase != PackageValidationPhase::InstalledHost {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let count: i64 = tx.query_row("SELECT count(*) FROM local_review_items WHERE collection_id = ?1 AND class = 'evidence'", [collection_id], |row| row.get(0))?;
+        if count >= 6 {
+            return Err(StorageError::TaskCapacity);
+        }
+        let added = bytes.len() as i64 + title.len() as i64 + 256;
+        if review_payload_bytes(&tx, Some(collection_id))? + added > REVIEW_COLLECTION_PAYLOAD_LIMIT
+            || review_payload_bytes(&tx, None)? + added > REVIEW_PAYLOAD_LIMIT
+        {
+            return Err(StorageError::TaskCapacity);
+        }
+        let id = Uuid::now_v7().to_string();
+        tx.execute("INSERT INTO local_review_items (id, schema_version, collection_id, class, text_format, mime_type, width, height, state, title, source_kind, provenance, evidence_source, content, sha256, byte_size, created_at_ms, updated_at_ms) VALUES (?1, 1, ?2, 'evidence', NULL, 'application/json; profile=evidence-envelope-v1', NULL, NULL, 'ready', ?3, 'typed-evidence-snapshot', 'package-manifest-summary', 'package-manifest-summary', ?4, ?5, ?6, ?7, ?7)", params![id, collection_id, title, bytes, review_digest(&bytes), bytes.len() as i64, now])?;
+        tx.execute("UPDATE local_review_collections SET updated_at_ms = CASE WHEN updated_at_ms >= ?1 THEN updated_at_ms + 1 ELSE ?1 END WHERE id = ?2", params![now, collection_id])?;
+        tx.commit()?;
+        Ok(id)
+    }
+
+    pub(crate) fn local_review_package_manifest_summary_evidence_preview(
+        &self,
+        item_id: &str,
+        sha256: &str,
+    ) -> Result<LocalReviewPackageManifestSummaryEvidencePreview, StorageError> {
+        if !valid_task_id(item_id) || !valid_review_sha256(sha256) {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let (title, source_kind, provenance, evidence_source, content, stored_sha, byte_size, created_at_ms): (String, String, String, Option<String>, Vec<u8>, String, i64, i64) = self.connection.query_row("SELECT title, source_kind, provenance, evidence_source, content, sha256, byte_size, created_at_ms FROM local_review_items WHERE id = ?1 AND class = 'evidence' AND state = 'ready'", [item_id], |row| Ok((row.get(0)?,row.get(1)?,row.get(2)?,row.get(3)?,row.get(4)?,row.get(5)?,row.get(6)?,row.get(7)?)))?;
+        if source_kind != "typed-evidence-snapshot"
+            || provenance != "package-manifest-summary"
+            || evidence_source.as_deref() != Some("package-manifest-summary")
+            || sha256 != stored_sha
+            || byte_size != content.len() as i64
+            || content.len() > REVIEW_EVIDENCE_BYTES_LIMIT
+            || stored_sha != review_digest(&content)
+        {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let (summary, details) =
+            parse_package_manifest_summary_evidence_envelope(&content, &title)?;
+        Ok(LocalReviewPackageManifestSummaryEvidencePreview {
+            schema_version: 1,
+            item_id: item_id.to_owned(),
+            source: LocalReviewEvidenceSource::PackageManifestSummary,
             title,
             summary,
             details,
@@ -8971,6 +9208,85 @@ mod tests {
         assert_eq!(items[0].byte_size, "line one\nline two".len() as u64);
         assert!(payload >= items[0].byte_size);
         assert!(collection.expect("collection selected").updated_at_ms >= 0);
+    }
+
+    #[test]
+    fn local_review_package_manifest_summary_uses_only_completed_bound_record() {
+        let mut repository = ProjectRepository::in_memory().expect("schema");
+        let (project_id, conversation_id) = insert_live_task_context(&repository);
+        let task_id = repository
+            .create_task_from_conversation_context(&conversation_id)
+            .expect("bound task");
+        let collection_id = repository
+            .create_local_review_collection(&task_id, None, "Package review")
+            .expect("collection");
+        let identity = "d".repeat(64);
+        let predecessor = package_validation_created(
+            repository
+                .record_package_validation_summary(
+                    &project_id,
+                    headless_predecessor_input(&identity),
+                )
+                .expect("unprivileged receipt"),
+        );
+        let mut completed = headless_predecessor_input(&identity);
+        completed.validation_phase = PackageValidationPhase::InstalledHost;
+        completed.installed_host_state = LocalReviewEvidenceCheckState::Passed;
+        completed.validation_complete = true;
+        completed.supersedes_record_id = Some(predecessor.id);
+        completed.installed_host_facts = Some(PackageValidationInstalledHostFacts {
+            package_state: "installed".to_owned(),
+            version_match: true,
+            ownership_verified: true,
+            permissions_safe: true,
+            package_integrity_verified: true,
+        });
+        let source_before = repository.package_validation_phase_summary_for_test(
+            &project_id,
+            PackageValidationPhase::InstalledHost,
+        );
+        assert!(source_before.is_err());
+        package_validation_created(
+            repository
+                .record_package_validation_summary(&project_id, completed)
+                .expect("complete receipt"),
+        );
+        let (_, collection, _, _, _, _) = repository
+            .local_review_snapshot(Some(&collection_id))
+            .expect("snapshot");
+        let updated = collection.expect("collection").updated_at_ms;
+        let item_id = repository
+            .create_local_review_package_manifest_summary_evidence_item(&collection_id, updated)
+            .expect("capture");
+        let item = repository
+            .local_review_package_manifest_summary_evidence_preview(
+                &item_id,
+                &repository
+                    .connection
+                    .query_row(
+                        "SELECT sha256 FROM local_review_items WHERE id = ?1",
+                        [&item_id],
+                        |row| row.get::<_, String>(0),
+                    )
+                    .expect("digest"),
+            )
+            .expect("preview");
+        assert_eq!(item.details.artifact_count, 2);
+        assert!(item.details.validation_complete);
+        assert_eq!(
+            item.details.installed_host_state,
+            LocalReviewEvidenceCheckState::Passed
+        );
+        assert!(repository
+            .package_manifest_summary_source_for_local_review(&collection_id)
+            .is_ok());
+        let unbound = repository.create_task().expect("unbound");
+        let unbound_collection = repository
+            .create_local_review_collection(&unbound, None, "Unbound")
+            .expect("collection");
+        assert!(
+            !repository.package_manifest_summary_available_for_local_review(&unbound_collection)
+        );
     }
 
     #[test]

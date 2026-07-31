@@ -42,8 +42,11 @@ command output, approval body/action ID, receipt, remote handle, file bytes, or
 authority. Approval presentation is descriptive only and cannot approve,
 dispatch, or execute.
 
-`manual-validation-summary`, `m48-generated-artifact-metadata`, and
-`safe-preview-metadata` capture are implemented through fixed native,
-redacted source-specific claims. The remaining listed sources have no capture
-command in this slice. Frontend snapshots and generic filesystem, Git, or
-approval inputs are not evidence APIs.
+`manual-validation-summary`, `m48-generated-artifact-metadata`,
+`safe-preview-metadata`, and `package-manifest-summary` capture are implemented
+through fixed native, redacted source-specific claims. Package-manifest capture
+accepts only `{ collectionId, expectedCollectionUpdatedAtMs }`, resolves the
+immutable task project binding and deterministic newest complete migration-18
+installed-host chain natively, and persists no record identity or host detail.
+The remaining listed sources have no capture command in this slice. Frontend
+snapshots and generic filesystem, Git, or approval inputs are not evidence APIs.

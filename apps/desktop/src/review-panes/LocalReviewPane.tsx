@@ -15,6 +15,8 @@ import {
   claimLocalReviewSafePreviewMetadata,
   createLocalReviewSafePreviewMetadataEvidence,
   previewLocalReviewSafePreviewMetadataEvidence,
+  createLocalReviewPackageManifestSummaryEvidence,
+  previewLocalReviewPackageManifestSummaryEvidence,
   discardLocalReviewItem,
   createLocalReviewAnnotation,
   editLocalReviewAnnotation,
@@ -44,6 +46,7 @@ const unavailable: LocalReviewSnapshot = {
   collectionCount: 0,
   payloadBytes: 0,
   warning: false,
+  packageManifestSummaryAvailable: false,
   diagnosticCode: "metadata-unavailable",
 };
 
@@ -110,6 +113,8 @@ export default function LocalReviewPane({
     useState<Awaited<
       ReturnType<typeof previewLocalReviewSafePreviewMetadataEvidence>
     > | null>(null);
+  const [packageManifestEvidencePreview, setPackageManifestEvidencePreview] =
+    useState<Awaited<ReturnType<typeof previewLocalReviewPackageManifestSummaryEvidence>> | null>(null);
   const [artifactCandidates, setArtifactCandidates] = useState<
     Awaited<ReturnType<ReviewPaneData["loadArtifacts"]>>["artifacts"]
   >([]);
@@ -177,9 +182,10 @@ export default function LocalReviewPane({
       evidencePreview ||
       artifactMetadataPreview ||
       safePreviewEvidencePreview
+      || packageManifestEvidencePreview
     )
       evidenceHeading.current?.focus();
-  }, [artifactMetadataPreview, evidencePreview, safePreviewEvidencePreview]);
+  }, [artifactMetadataPreview, evidencePreview, safePreviewEvidencePreview, packageManifestEvidencePreview]);
   useEffect(() => {
     if (focusAnnotationsRequested.current) {
       annotationsHeading.current?.focus();
@@ -239,6 +245,7 @@ export default function LocalReviewPane({
     setImagePreview(null);
     setEvidencePreview(null);
     setArtifactMetadataPreview(null);
+    setPackageManifestEvidencePreview(null);
     setSelectedItemId(itemId);
     if (compact) setCompactLevel("detail");
   };
@@ -615,6 +622,24 @@ export default function LocalReviewPane({
         setError("Evidence snapshot could not be added.");
       })
       .finally(() => setBusy(false));
+  };
+  const capturePackageManifestSummary = () => {
+    const collection = snapshot?.selectedCollection;
+    if (!collection || busy || !snapshot?.packageManifestSummaryAvailable) return;
+    setBusy(true);
+    setError(null);
+    void createLocalReviewPackageManifestSummaryEvidence({
+      collectionId: collection.collectionId,
+      expectedCollectionUpdatedAtMs: collection.updatedAtMs,
+    }).then((result) => {
+      setSnapshot(result.snapshot);
+      if (result.outcome !== "created") { setError("Package validation summary could not be captured."); return; }
+      const item = result.snapshot.items.find((candidate) => candidate.itemId === result.createdItemId && candidate.class === "evidence" && candidate.evidenceSource === result.source);
+      if (!item) { setError("Package validation summary could not be captured."); return; }
+      setSelectedItemId(item.itemId);
+      recordLocalReviewActivity({ kind: "item-added", label: item.title, status: "success", digest: item.sha256 });
+      return previewLocalReviewPackageManifestSummaryEvidence({ itemId: item.itemId, sha256: item.sha256 }).then(setPackageManifestEvidencePreview);
+    }).catch(() => setError("Package validation summary could not be captured.")).finally(() => setBusy(false));
   };
   const discardSelectedItem = () => {
     const collection = snapshot?.selectedCollection;
@@ -2169,6 +2194,10 @@ export default function LocalReviewPane({
             >
               Add evidence snapshot
             </button>
+            <p>Package validation summary is available only for this collection’s eligible native task and completed validation record.</p>
+            <button type="button" disabled={busy || !snapshot.packageManifestSummaryAvailable} onClick={capturePackageManifestSummary}>
+              Capture package validation summary…
+            </button>
           </section>
           {evidencePreview ? (
             <section aria-label="Evidence preview">
@@ -2236,6 +2265,17 @@ export default function LocalReviewPane({
               </code>
               <p>Not comparable</p>
               <p>Not promotion eligible</p>
+            </section>
+          ) : null}
+          {packageManifestEvidencePreview ? (
+            <section aria-label="Package validation summary evidence preview">
+              <h4 ref={evidenceHeading} tabIndex={-1}>Package validation summary evidence</h4>
+              <p>{packageManifestEvidencePreview.title}</p>
+              <p>Evidence · Package validation summary</p>
+              <pre>{packageManifestEvidencePreview.summary}</pre>
+              <p>{packageManifestEvidencePreview.details.applicationVersion} · {packageManifestEvidencePreview.details.debianVersion} · 2 artifacts · complete</p>
+              <p>All validation checks passed.</p>
+              <p>Not comparable</p><p>Not promotion eligible</p>
             </section>
           ) : null}
           {selectedItemId ? (

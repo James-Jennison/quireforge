@@ -27,6 +27,13 @@
   files, network, Git, terminal, browser, provider, approval, dispatch,
   execution, publishing, or deployment authority.
 
+- Add unreleased post-beta.51 M54 package-manifest-summary capture. It accepts
+  only a Local Review collection and optimistic collection timestamp, resolves
+  the immutable same-project completed migration-18 record natively, and
+  persists only the redacted closed summary envelope with an inert stored-bytes
+  preview. No package build, installation, validation run, or host operation
+  is performed.
+
 - Implement M52's native-owned local task catalogue with migration 11, opaque
   UUIDv7 task and plan identities, explicit status/archive/delete lifecycle,
   bounded title/label search, one to four visible plan records, closed capacity
