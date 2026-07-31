@@ -1342,14 +1342,17 @@ Only after M53 approval, implement the approved local review surfaces by
 reusing the M48 typed artifact boundary and M49 preview/review services.
 Artifact lifecycle, selection, comparison, accessibility, and no-path/no-
 persistence boundaries must be deterministic. The provisional package
-candidate is `0.1.0-beta.47`.
+candidate is `0.1.0-beta.48`.
 
 **In progress:** M54 is explicitly approved. Its clean beta.47 Debian and
 sandbox-worker candidate passed source, pinned-container lifecycle/smoke,
 provenance, checksum, and ABI validation (`GLIBC_2.34` within the Ubuntu 22.04
 `GLIBC_2.35` ceiling). It is not complete until separately approval-gated
-restricted installed-host evidence is recorded; no release or deployment is
-authorized.
+restricted installed-host evidence is recorded. The beta.48 follow-on adds a
+fixed headless completion branch that resolves the production metadata path,
+one live attached project, and one migration-18 unprivileged predecessor;
+it initializes no GUI surface and records only through the native controller.
+No release or deployment is authorized.
 
 ### 55 — Research Reports and Inspectable Task Templates Proposal
 

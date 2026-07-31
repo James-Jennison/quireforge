@@ -74,8 +74,118 @@ use dynamic_analysis::{
     DynamicAnalysisRunRequest, DynamicAnalysisService, DynamicAnalysisSnapshot,
 };
 use sha2::{Digest, Sha256};
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::{
+    ffi::OsString,
+    path::PathBuf,
+    time::{Duration, SystemTime, UNIX_EPOCH},
+};
 use uuid::Uuid;
+
+const COMPLETE_INSTALLED_HOST_VALIDATION_FLAG: &str = "--complete-installed-host-validation";
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum HeadlessDispatch {
+    Gui,
+    CompleteInstalledHostValidation,
+    Rejected,
+}
+
+fn headless_dispatch(arguments: impl IntoIterator<Item = OsString>) -> HeadlessDispatch {
+    let mut arguments = arguments.into_iter();
+    let _program = arguments.next();
+    let remaining = arguments.collect::<Vec<_>>();
+    match remaining.as_slice() {
+        [] => HeadlessDispatch::Gui,
+        [flag] if flag == COMPLETE_INSTALLED_HOST_VALIDATION_FLAG => {
+            HeadlessDispatch::CompleteInstalledHostValidation
+        }
+        _ if remaining
+            .iter()
+            .any(|argument| argument == COMPLETE_INSTALLED_HOST_VALIDATION_FLAG) =>
+        {
+            HeadlessDispatch::Rejected
+        }
+        _ => HeadlessDispatch::Gui,
+    }
+}
+
+fn complete_installed_host_validation_at(
+    data_directory: Option<PathBuf>,
+) -> project::InstalledHostHeadlessStatus {
+    let Some(data_directory) = data_directory else {
+        return project::InstalledHostHeadlessStatus::Unavailable;
+    };
+    ProjectService::open(
+        &data_directory
+            .join("io.github.codeframe78.QuireForge")
+            .join("metadata.sqlite3"),
+    )
+    .complete_installed_host_validation()
+}
+
+/// Handles the single supported headless invocation before any Tauri state is
+/// constructed. `true` means main must exit without initializing the GUI.
+pub fn run_complete_installed_host_validation_from_env() -> bool {
+    match headless_dispatch(std::env::args_os()) {
+        HeadlessDispatch::Gui => false,
+        HeadlessDispatch::Rejected => {
+            println!("failed");
+            true
+        }
+        HeadlessDispatch::CompleteInstalledHostValidation => {
+            let status = complete_installed_host_validation_at(dirs::data_dir());
+            println!(
+                "{}",
+                match status {
+                    project::InstalledHostHeadlessStatus::Created => "created",
+                    project::InstalledHostHeadlessStatus::Existing => "existing",
+                    project::InstalledHostHeadlessStatus::Failed => "failed",
+                    project::InstalledHostHeadlessStatus::Unavailable => "unavailable",
+                }
+            );
+            true
+        }
+    }
+}
+
+#[cfg(test)]
+mod headless_dispatch_tests {
+    use super::{headless_dispatch, HeadlessDispatch, COMPLETE_INSTALLED_HOST_VALIDATION_FLAG};
+    use std::ffi::OsString;
+
+    fn args(values: &[&str]) -> Vec<OsString> {
+        std::iter::once(OsString::from("quireforge"))
+            .chain(values.iter().map(OsString::from))
+            .collect()
+    }
+
+    #[test]
+    fn complete_installed_host_validation_accepts_only_its_single_flag_before_gui() {
+        assert_eq!(
+            headless_dispatch(args(&[COMPLETE_INSTALLED_HOST_VALIDATION_FLAG])),
+            HeadlessDispatch::CompleteInstalledHostValidation
+        );
+        assert_eq!(headless_dispatch(args(&[])), HeadlessDispatch::Gui);
+        assert_eq!(
+            headless_dispatch(args(&["--tauri-debug"])),
+            HeadlessDispatch::Gui
+        );
+    }
+
+    #[test]
+    fn complete_installed_host_validation_rejects_duplicate_additional_and_conflicting_arguments() {
+        for values in [
+            vec![
+                COMPLETE_INSTALLED_HOST_VALIDATION_FLAG,
+                COMPLETE_INSTALLED_HOST_VALIDATION_FLAG,
+            ],
+            vec![COMPLETE_INSTALLED_HOST_VALIDATION_FLAG, "--tauri-debug"],
+            vec!["--tauri-debug", COMPLETE_INSTALLED_HOST_VALIDATION_FLAG],
+        ] {
+            assert_eq!(headless_dispatch(args(&values)), HeadlessDispatch::Rejected);
+        }
+    }
+}
 
 use git::{
     repository_state::{

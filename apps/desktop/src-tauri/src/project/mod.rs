@@ -10,6 +10,9 @@ use std::{
     time::{Duration, Instant},
 };
 
+use package_validation::{
+    InstalledHostValidationOutcome, PackageValidationController, PackageValidationControllerError,
+};
 use storage::{
     ProjectRepository, StorageError, StoredAssociation, StoredProject, StoredWorktreeRelation,
 };
@@ -69,6 +72,14 @@ pub struct ProjectService {
     active_executions: Mutex<HashSet<String>>,
     active_terminals: Mutex<HashMap<String, usize>>,
     promotion_reservations: Mutex<VecDeque<LocalReviewPromotionReservation>>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum InstalledHostHeadlessStatus {
+    Created,
+    Existing,
+    Failed,
+    Unavailable,
 }
 
 struct LocalReviewPromotionReservation {
@@ -1117,6 +1128,47 @@ impl ProjectService {
             active_executions: Mutex::new(HashSet::new()),
             active_terminals: Mutex::new(HashMap::new()),
             promotion_reservations: Mutex::new(VecDeque::new()),
+        }
+    }
+
+    /// Fixed native executable path for the restricted installed-host phase.
+    /// It resolves every authority input from durable metadata and delegates
+    /// recording exclusively to the package-validation controller.
+    pub(crate) fn complete_installed_host_validation(&self) -> InstalledHostHeadlessStatus {
+        let (project_id, predecessor) = match self.repository.lock().ok().and_then(|guard| {
+            guard.as_ref().and_then(|repository| {
+                repository
+                    .installed_host_headless_predecessor_for_internal()
+                    .ok()
+            })
+        }) {
+            Some(value) => value,
+            None => return InstalledHostHeadlessStatus::Unavailable,
+        };
+        let context =
+            match PackageValidationController::trusted_context_from_live_project(self, &project_id)
+            {
+                Ok(context) => context,
+                Err(_) => return InstalledHostHeadlessStatus::Unavailable,
+            };
+        let mut repository_guard = match self.repository.lock() {
+            Ok(guard) => guard,
+            Err(_) => return InstalledHostHeadlessStatus::Unavailable,
+        };
+        let Some(repository) = repository_guard.as_mut() else {
+            return InstalledHostHeadlessStatus::Unavailable;
+        };
+        let mut controller = PackageValidationController::default();
+        match controller.run_installed_host_and_record(repository, context, &predecessor.id) {
+            Ok(InstalledHostValidationOutcome::Created) => InstalledHostHeadlessStatus::Created,
+            Ok(InstalledHostValidationOutcome::Existing) => InstalledHostHeadlessStatus::Existing,
+            Ok(InstalledHostValidationOutcome::Failed) => InstalledHostHeadlessStatus::Failed,
+            Ok(InstalledHostValidationOutcome::Unavailable)
+            | Err(PackageValidationControllerError::Unavailable)
+            | Err(PackageValidationControllerError::ContextUnavailable) => {
+                InstalledHostHeadlessStatus::Unavailable
+            }
+            Err(_) => InstalledHostHeadlessStatus::Failed,
         }
     }
 

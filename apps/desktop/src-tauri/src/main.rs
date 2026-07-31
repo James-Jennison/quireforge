@@ -14,6 +14,10 @@ fn configure_linux_vfs() {
 }
 
 fn main() {
+    if quireforge_lib::run_complete_installed_host_validation_from_env() {
+        return;
+    }
+
     #[cfg(target_os = "linux")]
     configure_linux_vfs();
 

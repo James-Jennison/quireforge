@@ -4374,6 +4374,74 @@ impl ProjectRepository {
         package_validation_summary_record(&self.connection, id)
     }
 
+    /// Finds the single durable unprivileged receipt that the fixed headless
+    /// executable may extend. Both the active project context and the receipt
+    /// are deliberately resolved from migration-18 state, never from argv.
+    pub(crate) fn installed_host_headless_predecessor_for_internal(
+        &self,
+    ) -> Result<(String, PackageValidationSummary), StorageError> {
+        let project_ids = self
+            .connection
+            .prepare(
+                "SELECT project.id
+                 FROM projects AS project
+                 JOIN directory_associations AS association
+                   ON association.id = project.active_directory_association_id
+                 WHERE project.archived_at_ms IS NULL
+                   AND association.detached_at_ms IS NULL
+                 ORDER BY project.id
+                 LIMIT 2",
+            )?
+            .query_map([], |row| row.get::<_, String>(0))?
+            .collect::<Result<Vec<_>, _>>()?;
+        let [project_id] = project_ids.as_slice() else {
+            return Err(StorageError::InvalidStoredValue);
+        };
+
+        let predecessors = self
+            .connection
+            .prepare(
+                "SELECT identity.package_validation_summary_id,
+                        identity.candidate_identity_sha256,
+                        identity.attempt_identity_sha256
+                 FROM project_package_validation_candidate_identities AS identity
+                 JOIN project_package_validation_summaries AS summary
+                   ON summary.id = identity.package_validation_summary_id
+                 WHERE identity.project_id = ?1
+                   AND identity.validation_phase = 'unprivileged'
+                   AND summary.validation_complete = 0
+                   AND summary.installed_host_state = 'unavailable'
+                 ORDER BY identity.created_at_ms DESC, identity.package_validation_summary_id DESC
+                 LIMIT 2",
+            )?
+            .query_map([project_id], |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, String>(2)?,
+                ))
+            })?
+            .collect::<Result<Vec<_>, _>>()?;
+        let [(receipt_id, candidate_identity_sha256, attempt_identity_sha256)] =
+            predecessors.as_slice()
+        else {
+            return Err(StorageError::InvalidStoredValue);
+        };
+        if candidate_identity_sha256 != attempt_identity_sha256 {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let predecessor = package_validation_summary_record(&self.connection, receipt_id)?;
+        if predecessor.project_id != *project_id
+            || predecessor.input.validation_phase != PackageValidationPhase::Unprivileged
+            || predecessor.input.validation_complete
+            || predecessor.input.installed_host_state != LocalReviewEvidenceCheckState::Unavailable
+            || predecessor.input.candidate_identity_sha256 != *candidate_identity_sha256
+        {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        Ok((project_id.clone(), predecessor))
+    }
+
     /// Returns the immutable tail that an installed-host result may supersede.
     /// The caller first authenticates the supplied unprivileged receipt, then
     /// uses this lookup to extend its one linear durable chain.
@@ -6266,6 +6334,115 @@ mod tests {
         }
     }
 
+    fn headless_predecessor_input(identity: &str) -> PackageValidationRecordInput {
+        PackageValidationRecordInput {
+            candidate_identity_sha256: identity.to_owned(),
+            validation_phase: PackageValidationPhase::Unprivileged,
+            attempt_identity_sha256: None,
+            installed_host_facts: None,
+            application_version: "0.1.0-beta.48".to_owned(),
+            debian_version: "0.1.0~beta.48".to_owned(),
+            manifest_state: LocalReviewEvidenceCheckState::Passed,
+            checksum_state: LocalReviewEvidenceCheckState::Passed,
+            abi_state: LocalReviewEvidenceCheckState::Passed,
+            provenance_state: LocalReviewEvidenceCheckState::Passed,
+            visible_launch_state: LocalReviewEvidenceCheckState::Passed,
+            installed_host_state: LocalReviewEvidenceCheckState::Unavailable,
+            artifact_count: 2,
+            validation_complete: false,
+            supersedes_record_id: None,
+        }
+    }
+
+    #[test]
+    fn installed_host_headless_predecessor_requires_one_context_and_one_receipt() {
+        let (mut repository, project_id) = ProjectRepository::package_validation_test_repository();
+        assert!(repository
+            .installed_host_headless_predecessor_for_internal()
+            .is_err());
+
+        let first = package_validation_created(
+            repository
+                .record_package_validation_summary(
+                    &project_id,
+                    headless_predecessor_input(&"a".repeat(64)),
+                )
+                .expect("first receipt"),
+        );
+        let (resolved_project_id, predecessor) = repository
+            .installed_host_headless_predecessor_for_internal()
+            .expect("single receipt");
+        assert_eq!(resolved_project_id, project_id);
+        assert_eq!(predecessor.id, first.id);
+
+        package_validation_created(
+            repository
+                .record_package_validation_summary(
+                    &project_id,
+                    headless_predecessor_input(&"b".repeat(64)),
+                )
+                .expect("second receipt"),
+        );
+        assert!(repository
+            .installed_host_headless_predecessor_for_internal()
+            .is_err());
+
+        let (mut repository, project_id) = ProjectRepository::package_validation_test_repository();
+        let receipt = package_validation_created(
+            repository
+                .record_package_validation_summary(
+                    &project_id,
+                    headless_predecessor_input(&"d".repeat(64)),
+                )
+                .expect("receipt"),
+        );
+        repository
+            .connection
+            .execute_batch(
+                "DROP TRIGGER project_package_validation_candidate_identities_immutable;",
+            )
+            .expect("test removes identity immutability trigger");
+        repository
+            .connection
+            .execute(
+                "UPDATE project_package_validation_candidate_identities
+                    SET attempt_identity_sha256 = ?1
+                  WHERE package_validation_summary_id = ?2",
+                params!["e".repeat(64), receipt.id],
+            )
+            .expect("corrupt v18 association");
+        assert!(repository
+            .installed_host_headless_predecessor_for_internal()
+            .is_err());
+    }
+
+    #[test]
+    fn installed_host_headless_predecessor_fails_closed_on_corrupt_digest_or_v18_association() {
+        let (mut repository, project_id) = ProjectRepository::package_validation_test_repository();
+        let receipt = package_validation_created(
+            repository
+                .record_package_validation_summary(
+                    &project_id,
+                    headless_predecessor_input(&"c".repeat(64)),
+                )
+                .expect("receipt"),
+        );
+        repository
+            .connection
+            .execute_batch("DROP TRIGGER project_package_validation_summaries_immutable;")
+            .expect("test removes immutability trigger");
+        repository
+            .connection
+            .execute(
+                "UPDATE project_package_validation_summaries SET record_sha256 = ?1 WHERE id = ?2",
+                params!["0".repeat(64), receipt.id],
+            )
+            .expect("corrupt digest");
+        assert!(repository
+            .installed_host_headless_predecessor_for_internal()
+            .is_err());
+    }
+
     fn package_validation_created(
         outcome: PackageValidationRecordOutcome,
     ) -> PackageValidationSummary {
@@ -6639,6 +6816,7 @@ mod tests {
                 "local_review_collections".to_owned(),
                 "local_review_comparisons".to_owned(),
                 "local_review_items".to_owned(),
+                "project_package_validation_candidate_identities".to_owned(),
                 "project_package_validation_summaries".to_owned(),
                 "projects".to_owned(),
                 "schema_migrations".to_owned(),
@@ -7057,7 +7235,7 @@ mod tests {
                     0
                 ),)
                 .expect("version"),
-            15
+            18
         );
         assert_eq!(
             repository.connection.query_row(

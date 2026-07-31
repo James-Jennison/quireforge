@@ -470,6 +470,16 @@ pub(crate) enum PackageValidationControllerError {
     UnsafeChannel,
 }
 
+/// Bounded installed-host completion result. It intentionally carries no
+/// receipt, project, package, or helper detail across the executable boundary.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum InstalledHostValidationOutcome {
+    Created,
+    Existing,
+    Failed,
+    Unavailable,
+}
+
 /// Fixed, process-owned controller. `begin` is intentionally crate-private;
 /// future callers must first obtain a trusted conversation/workspace context.
 #[derive(Default)]
@@ -478,6 +488,19 @@ pub(crate) struct PackageValidationController {
 }
 
 impl PackageValidationController {
+    pub(crate) fn trusted_context_from_live_project(
+        projects: &ProjectService,
+        project_id: &str,
+    ) -> Result<TrustedValidationContext, PackageValidationControllerError> {
+        let root = projects
+            .review_root(project_id)
+            .map_err(|_| PackageValidationControllerError::ContextUnavailable)?;
+        Ok(TrustedValidationContext {
+            project_id: project_id.to_owned(),
+            project_root: root.attached_root,
+        })
+    }
+
     pub(crate) fn trusted_context_from_conversation(
         projects: &ProjectService,
         conversation_id: &str,
@@ -591,7 +614,7 @@ impl PackageValidationController {
         repository: &mut ProjectRepository,
         context: TrustedValidationContext,
         predecessor_receipt_id: &str,
-    ) -> Result<(), PackageValidationControllerError> {
+    ) -> Result<InstalledHostValidationOutcome, PackageValidationControllerError> {
         self.run_installed_host_with(repository, context, predecessor_receipt_id, |request| {
             run_installed_host_process(request)
         })
@@ -603,7 +626,7 @@ impl PackageValidationController {
         context: TrustedValidationContext,
         predecessor_receipt_id: &str,
         run: F,
-    ) -> Result<(), PackageValidationControllerError>
+    ) -> Result<InstalledHostValidationOutcome, PackageValidationControllerError>
     where
         F: FnOnce(&[u8]) -> Result<(i32, Vec<u8>, Vec<u8>), PackageValidationControllerError>,
     {
@@ -671,6 +694,21 @@ impl PackageValidationController {
                     permissions_safe: facts.permissions_safe,
                     package_integrity_verified: facts.package_integrity_verified,
                 });
+            // The helper runs outside SQLite's write transaction. Re-read the
+            // immutable tail immediately before recording so a stale or raced
+            // predecessor can never be superseded.
+            let current = repository
+                .package_validation_installed_host_predecessor_for_internal(
+                    &session.context.project_id,
+                    &root_predecessor.input.candidate_identity_sha256,
+                )
+                .map_err(|_| PackageValidationControllerError::InvalidResult)?;
+            if current.id != predecessor.id
+                || current.record_sha256 != predecessor.record_sha256
+                || current.input != predecessor.input
+            {
+                return Err(PackageValidationControllerError::InvalidResult);
+            }
             let authoritative = repository
                 .record_package_validation_summary(
                     &session.context.project_id,
@@ -707,10 +745,16 @@ impl PackageValidationController {
                     },
                 )
                 .map_err(|_| PackageValidationControllerError::Unavailable)?;
-            match authoritative {
-                PackageValidationRecordOutcome::Created(_)
-                | PackageValidationRecordOutcome::Existing(_) => Ok(()),
-            }
+            Ok(match (result.outcome, authoritative) {
+                (Outcome::Failed, _) => InstalledHostValidationOutcome::Failed,
+                (Outcome::Unavailable, _) => InstalledHostValidationOutcome::Unavailable,
+                (Outcome::Passed, PackageValidationRecordOutcome::Created(_)) => {
+                    InstalledHostValidationOutcome::Created
+                }
+                (Outcome::Passed, PackageValidationRecordOutcome::Existing(_)) => {
+                    InstalledHostValidationOutcome::Existing
+                }
+            })
         })();
         self.finish(session);
         result
@@ -2381,7 +2425,7 @@ mod tests {
             project_root: PathBuf::from("/trusted"),
         };
         let mut controller = PackageValidationController::default();
-        controller
+        let outcome = controller
             .run_installed_host_with(&mut repository, context, &predecessor.id, |request| {
                 let request: serde_json::Value = serde_json::from_slice(request).unwrap();
                 assert_eq!(request["schema_version"], 1);
@@ -2420,6 +2464,7 @@ mod tests {
                 Ok((0, serde_json::to_vec(&result).unwrap(), Vec::new()))
             })
             .unwrap();
+        assert_eq!(outcome, InstalledHostValidationOutcome::Created);
         let stored = repository
             .package_validation_phase_summary_for_test(
                 &project_id,
@@ -2477,7 +2522,7 @@ mod tests {
             project_root: PathBuf::from("/trusted"),
         };
         let mut controller = PackageValidationController::default();
-        controller
+        let outcome = controller
             .run_installed_host_with(&mut repository, context(), &predecessor.id, |request| {
                 let request: serde_json::Value = serde_json::from_slice(request).unwrap();
                 let mut result = InstalledHostResult {
@@ -2492,6 +2537,7 @@ mod tests {
                 Ok((0, serde_json::to_vec(&result).unwrap(), Vec::new()))
             })
             .unwrap();
+        assert_eq!(outcome, InstalledHostValidationOutcome::Unavailable);
         let unavailable = repository
             .package_validation_phase_summary_for_test(
                 &project_id,
@@ -2525,7 +2571,7 @@ mod tests {
         let (mut repository, project_id) = ProjectRepository::package_validation_test_repository();
         let root = installed_host_predecessor(&mut repository, &project_id, &"e".repeat(64));
         let mut controller = PackageValidationController::default();
-        controller
+        let unavailable_outcome = controller
             .run_installed_host_with(
                 &mut repository,
                 installed_host_context(project_id.clone()),
@@ -2539,6 +2585,10 @@ mod tests {
                 },
             )
             .expect("verified unavailable");
+        assert_eq!(
+            unavailable_outcome,
+            InstalledHostValidationOutcome::Unavailable
+        );
         let unavailable = repository
             .package_validation_phase_summary_for_test(
                 &project_id,
@@ -2546,7 +2596,7 @@ mod tests {
             )
             .expect("unavailable attempt");
         let mut controller = PackageValidationController::default();
-        controller
+        let failed_outcome = controller
             .run_installed_host_with(
                 &mut repository,
                 installed_host_context(project_id.clone()),
@@ -2560,6 +2610,7 @@ mod tests {
                 },
             )
             .expect("verified failed");
+        assert_eq!(failed_outcome, InstalledHostValidationOutcome::Failed);
         let failed = repository
             .package_validation_phase_summary_for_test(
                 &project_id,
@@ -2575,7 +2626,7 @@ mod tests {
             LocalReviewEvidenceCheckState::Failed
         );
         let mut controller = PackageValidationController::default();
-        controller
+        let created_outcome = controller
             .run_installed_host_with(
                 &mut repository,
                 installed_host_context(project_id.clone()),
@@ -2589,6 +2640,7 @@ mod tests {
                 },
             )
             .expect("verified passed");
+        assert_eq!(created_outcome, InstalledHostValidationOutcome::Created);
         let passed = repository
             .package_validation_phase_summary_for_test(
                 &project_id,
@@ -2607,7 +2659,7 @@ mod tests {
         // A reconstructed controller replays the durable passed attempt rather
         // than adding a duplicate, and completion blocks genuinely new work.
         let mut reopened = PackageValidationController::default();
-        reopened
+        let existing_outcome = reopened
             .run_installed_host_with(
                 &mut repository,
                 installed_host_context(project_id.clone()),
@@ -2621,6 +2673,7 @@ mod tests {
                 },
             )
             .expect("durable replay");
+        assert_eq!(existing_outcome, InstalledHostValidationOutcome::Existing);
         assert_eq!(
             repository
                 .package_validation_phase_summary_for_test(
