@@ -1159,7 +1159,7 @@ impl ProjectService {
             return InstalledHostHeadlessStatus::Unavailable;
         };
         let mut controller = PackageValidationController::default();
-        if !PackageValidationController::installed_debian_version_is("0.1.0~beta.49")
+        if !PackageValidationController::installed_debian_version_is("0.1.0~beta.50")
             .unwrap_or(false)
         {
             return InstalledHostHeadlessStatus::Unavailable;

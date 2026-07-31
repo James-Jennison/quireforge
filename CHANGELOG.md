@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — 0.1.0-beta.49
+## Unreleased — 0.1.0-beta.50
 
 ### Added
 
@@ -12,6 +12,9 @@
 - Preserve a coherent canonical release set in a versioned archive before a
   newer candidate is promoted; malformed, partial, or conflicting sets fail
   closed without replacement.
+
+- Treat canonical `SHA256SUMS` as a closed artifact filename-to-digest mapping,
+  preserving valid prior checksum ordering byte-for-byte during archival.
 
 - Begin the approved M54 local-review implementation: native-owned, bounded
   task-scoped SQLite collections for copied text, static image mockups, and

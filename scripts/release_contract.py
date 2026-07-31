@@ -277,7 +277,7 @@ def set_tree_timestamp(root: Path, timestamp: int) -> None:
 
 
 def write_sha256sums(output_dir: Path, artifacts: list[Path]) -> None:
-    lines = [f"{sha256(path)}  {path.name}" for path in sorted(artifacts)]
+    lines = [f"{sha256(path)}  {path.name}" for path in artifacts]
     (output_dir / "SHA256SUMS").write_text(
         "\n".join(lines) + "\n",
         encoding="utf-8",

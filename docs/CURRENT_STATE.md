@@ -317,18 +317,19 @@ mockups, typed evidence envelopes, inert preview, local item-level notes,
 non-Git text comparison, and explicit digest-bound M48 promotion. Review does
 not confer filesystem, network, Git, terminal, provider, approval, dispatch,
 execution, publishing, or deployment authority. M54 is explicitly approved
-and in progress locally, targeting `0.1.0-beta.49` / `0.1.0~beta.49`. Beta.48
+and in progress locally, targeting `0.1.0-beta.50` / `0.1.0~beta.50`. Beta.48
 is a validated but non-deployable candidate because the installed host still
-lacked the migration-18 unprivileged receipt bootstrap. Beta.49 adds the fixed
-native migration/unprivileged/installed-host bootstrap and preserves coherent
-canonical releases before promotion. The beta.47 normalized canonical set was
+lacked the migration-18 unprivileged receipt bootstrap. Beta.49 is a preserved,
+validated but non-promoted candidate: its promotion correctly failed on an
+order-sensitive finalizer checksum check. Beta.50 corrects checksum coherence
+to a closed filename-to-digest mapping. The beta.47 normalized canonical set was
 lost by the former finalizer; only its recorded hashes and distinct raw Tauri
 bundle remain, and no replacement beta.47 evidence was fabricated. Restricted installed-host
-validation now has a fixed native beta.49 completion branch: it resolves only
+validation now has a fixed native beta.50 completion branch: it resolves only
 the production data directory, one live attached project, and one digest-valid
 migration-18 unprivileged predecessor; it starts no Tauri/GUI surface and
-records only through the existing controller. The coherent beta.48 release set
-is retained as the non-deployable predecessor. No M53 package,
+records only through the existing controller. Beta.48 remains the active
+coherent canonical predecessor. No M53 package,
 release, publication, or deployment occurred. See
 [Milestone 53](MILESTONE_53_LOCAL_ARTIFACT_DESIGN_REVIEW_PROPOSAL.md).
 

@@ -1342,13 +1342,16 @@ Only after M53 approval, implement the approved local review surfaces by
 reusing the M48 typed artifact boundary and M49 preview/review services.
 Artifact lifecycle, selection, comparison, accessibility, and no-path/no-
 persistence boundaries must be deterministic. The provisional package
-candidate is `0.1.0-beta.49`.
+candidate is `0.1.0-beta.50`.
 
 **In progress:** M54 is explicitly approved. The former finalizer lost the
 beta.47 normalized canonical set; only its recorded hashes and distinct raw
 Tauri bundle remain, and no replacement evidence was fabricated. Beta.48 is a
 validated but non-deployable release candidate because it lacked the production
-unprivileged receipt bootstrap. The beta.49 corrective follow-on adds a
+unprivileged receipt bootstrap. Beta.49 is preserved, validated, and
+non-promoted because its promotion correctly failed on an order-sensitive
+finalizer checksum check. The beta.50 corrective follow-on accepts the closed
+checksum mapping independent of line order, then adds a
 fixed headless completion branch that resolves the production metadata path,
 one live attached project, and one migration-18 unprivileged predecessor;
 it initializes no GUI surface and records only through the native controller;
@@ -1370,7 +1373,7 @@ no package change.
 Only after the template portion of M55 is approved, implement inspectable
 local task templates using approved context only. Research, external providers,
 connectors, browser access, and hidden retrieval remain excluded. The
-provisional package candidate is `0.1.0-beta.49`.
+provisional package candidate is `0.1.0-beta.50`.
 
 ### 57 — Per-Project Connector and MCP Governance Proposal
 

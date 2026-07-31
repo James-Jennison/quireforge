@@ -95,6 +95,7 @@ vi.mock("../lib/bridge", () => ({
 afterEach(() => {
   resetLocalReviewSessionForTest();
   vi.clearAllMocks();
+  vi.restoreAllMocks();
 });
 
 const image = {
@@ -1157,7 +1158,9 @@ describe("local review image pane", () => {
       ).toBeVisible(),
     );
     expect(screen.getByLabelText("Annotation text")).toHaveValue("");
-    expect(screen.getByRole("heading", { name: "Annotations" })).toHaveFocus();
+    await waitFor(() =>
+      expect(screen.getByRole("heading", { name: "Annotations" })).toHaveFocus(),
+    );
     fireEvent.change(screen.getByLabelText("Annotation text"), {
       target: { value: "retain this" },
     });
