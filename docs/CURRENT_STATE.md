@@ -288,12 +288,17 @@ gates passed.
 
 ## Next action
 
-Milestone 56 — **Inspectable Local Task Templates** is approved and in
-progress. M56-G8 is complete: the lazy workbench now supports explicit,
-digest-bound native template application with focused accessibility/browser
-acceptance. The next action is M56-G9: full source acceptance and beta.54
-preparation. No beta.54 preparation, packaging, installation, tag, or release
-is claimed by this checkpoint.
+Milestone 56 — **Inspectable Local Task Templates** is source-complete and
+`0.1.0-beta.54` is a prepared source candidate. M56-G1 through G8 provide
+migration 21 local templates, migration 22 bounded digest-only application
+reservations, four static built-ins outside SQLite, the closed lifecycle and
+strict bridge, lazy management UI, digest-bound application workflow, and
+focused accessibility/browser acceptance. Research, providers, connectors,
+MCP, browser authority, credentials, hidden instructions, import/export,
+automatic actions, approval, dispatch, and execution remain excluded. The next
+action is M56-G10: canonical beta.54 packaging. Canonical packaging,
+installed-host validation, tag, draft prerelease, publication, and deployment
+have not occurred; beta.53 remains the installed and released M54 baseline.
 
 Milestone 46 — **Bounded Multi-Attachment** is complete at
 `1bc2e787ab785016041d70845c97ca9c2c4f84db` with its verified

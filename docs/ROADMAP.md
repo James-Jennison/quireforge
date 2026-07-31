@@ -1385,20 +1385,25 @@ adding retrieval, providers, connectors, browser authority, or product behavior.
 
 ### 56 — Inspectable Local Task Templates
 
-**Approved and in progress:** James separately approved the closed M55
-template-only contract. The foundation is complete at
+**Source-complete; beta.54 source candidate prepared:** James separately
+approved the closed M55 template-only contract. The foundation is complete at
 `614b22c870dd5a45c88e1e8f59dedc51c4b1c671` (`feat: add task template
 foundation`); private transactional storage is complete at
 `693a7e95e911ac6b50a74734171e2305fbdddbc0` (`feat: add task template
 storage`); and the native lifecycle service is complete at
 `03163389d6fe69dbf0deedfd532f8bad2f7bde03` (`feat: add task template
-lifecycle`). G5–G12 remain: application preview/reservation/confirmation,
-strict commands/bridge, management UI, application accessibility/browser
-acceptance, source acceptance/beta.54 preparation, packaging, installed-host
-validation, then tag/draft prerelease/final closure. Research reports,
-providers, connectors, browser access, and hidden retrieval remain excluded.
-The provisional package candidate remains `0.1.0-beta.54` / `0.1.0~beta.54`;
-no version declaration changes until its later approved preparation gate.
+lifecycle`). M56-G1 through G8 are source-complete: migration 21 owns local
+templates, migration 22 owns bounded digest-only application reservations, and
+four static built-ins remain outside SQLite. The closed lifecycle and strict
+bridge, lazy management UI, digest-bound application workflow, accessibility,
+and focused browser acceptance are implemented. Research reports, providers,
+connectors, MCP, browser authority, credentials, hidden instructions,
+import/export, automatic actions, approval, dispatch, and execution remain
+excluded. `0.1.0-beta.54` / `0.1.0~beta.54` is a prepared source candidate
+only: canonical packaging, installed-host validation, tag, draft prerelease,
+publication, and deployment have not occurred. Beta.53 remains the installed
+and released M54 baseline until beta.54 passes later gates. G10 canonical
+beta.54 packaging is next.
 
 ### 57 — Per-Project Connector and MCP Governance Proposal
 

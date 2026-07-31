@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased — 0.1.0-beta.54
+
+- Prepare the M56 source candidate: inspectable local templates use migration
+  21, while bounded digest-only application reservations use migration 22.
+  Four static built-ins remain outside SQLite. The closed lifecycle, strict
+  bridge, lazy management UI, digest-bound application workflow, accessibility,
+  and focused browser acceptance are source-complete.
+- Beta.54 is a prepared source candidate only. Canonical packaging,
+  installed-host validation, tag, draft prerelease, publication, and deployment
+  have not occurred; beta.53 remains the installed and released M54 baseline.
+
 ## 0.1.0-beta.53 — Milestone 54 complete
 
 - Close M54 at package/source commit
