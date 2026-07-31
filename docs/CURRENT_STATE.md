@@ -133,6 +133,14 @@ Codex-owned Integration Center boundary, grants no new external authority, and
 requires further bounded decisions before any connector implementation. M58
 browser verification remains a separate unstarted decision gate.
 
+The post-M57 prerequisite decision checkpoint is complete. It approves only a
+future, unstarted local mock-only connector foundation: static non-executable
+descriptors and opaque native lifecycle/binding/operation/audit contracts may
+be proposed, while network calls, real credentials, OAuth, providers, browser
+authority, external mutation, background activity, generic MCP execution, and
+M55 source-manifest authority remain deferred. It does not change the existing
+Codex-owned Integration Center boundary or beta.54 release state.
+
 The Rust Codex, project/SQLite, Git, worktree, terminal, preview, attachment,
 settings, and integration services are candidates for reuse. The current Tauri
 boundary is the command façade, app/plugin wiring, native dialogs/openers/
@@ -307,10 +315,11 @@ draft prerelease containing the four canonical beta.54 assets. G9 source
 acceptance, G10 canonical packaging, and G11 installed-host validation passed;
 both beta.54 packages remain installed and headless completion returned
 `created`, then `existing`, without rollback. The next action is a separate
-decision/planning goal. M57 is now complete as a governance decision and
-recommends further bounded decisions before any connector implementation; M58
-remains unstarted. The draft has not been published or deployed, and all M56
-deferred-capability exclusions remain intact.
+decision/planning goal. M57 and its connector-foundation prerequisite decisions
+are complete; they approve only a proposed, unstarted local mock-only
+foundation and defer all real connector authority. M58 remains unstarted. The
+draft has not been published or deployed, and all M56 deferred-capability
+exclusions remain intact.
 
 Milestone 46 — **Bounded Multi-Attachment** is complete at
 `1bc2e787ab785016041d70845c97ca9c2c4f84db` with its verified

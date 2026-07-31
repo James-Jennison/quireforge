@@ -1431,6 +1431,15 @@ decision artifacts before implementation: no per-project connector foundation
 is approved, and no standing write or autonomous mutation authority is
 permitted.
 
+**Prerequisite decisions complete:** [post-M57 connector foundation
+prerequisites](MILESTONE_57_CONNECTOR_FOUNDATION_PREREQUISITES.md) resolve the
+native ownership, opaque account/project/scope reference, lifecycle,
+operation/result, mutation-safety, content-free provenance/audit, retention,
+and static descriptor-trust contracts. They approve only a proposed, unstarted
+local mock-only foundation with no network, credentials, OAuth, provider,
+browser, mutation, background, generic MCP, or M55 source-manifest authority.
+Any real connector remains deferred to later provider-specific decisions.
+
 ### 58 — Controlled Browser Verification Proposal
 
 Determine whether a narrow, user-controlled verification-only browser surface
