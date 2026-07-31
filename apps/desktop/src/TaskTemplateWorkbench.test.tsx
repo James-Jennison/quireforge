@@ -75,11 +75,128 @@ function operations(overrides = {}) {
       cancelled: false,
       diagnosticCode: null,
     }),
+    loadTasks: vi.fn().mockResolvedValue({
+      schemaVersion: 1,
+      state: "ready",
+      tasks: [
+        {
+          id: localId,
+          title: "Existing task",
+          status: "active",
+          archived: false,
+          selectedPlanId: handle,
+          planCount: 1,
+          updatedAtMs: 1,
+          cleanupEligible: false,
+        },
+      ],
+      selectedTask: {
+        id: localId,
+        title: "Existing task",
+        status: "active",
+        archived: false,
+        selectedPlanId: handle,
+        planCount: 1,
+        updatedAtMs: 1,
+        cleanupEligible: false,
+      },
+      plans: [
+        {
+          id: handle,
+          label: "Primary plan",
+          position: 0,
+          body: "Existing plan text",
+        },
+      ],
+      taskCount: 1,
+      payloadBytes: 1,
+      warning: false,
+      diagnosticCode: null,
+    }),
+    preview: vi.fn().mockResolvedValue({
+      schemaVersion: 1,
+      state: "ready",
+      reservationId: "01980a10-0000-7000-8000-000000000004",
+      bindingSha256: digest,
+      expiresAtMs: 100,
+      checklist: {
+        templateActive: true,
+        taskPlanAvailable: true,
+        exactDraftRequired: true,
+        confirmationRequired: true,
+      },
+      diagnosticCode: null,
+    }),
+    confirm: vi.fn().mockResolvedValue({
+      schemaVersion: 1,
+      state: "ready",
+      applied: true,
+      cancelled: false,
+      diagnosticCode: null,
+    }),
+    cancel: vi.fn().mockResolvedValue({
+      schemaVersion: 1,
+      state: "ready",
+      applied: false,
+      cancelled: true,
+      diagnosticCode: null,
+    }),
     ...overrides,
   };
 }
 
 describe("task template management workbench", () => {
+  it("previews and confirms only selected native task/plan selectors and exact authored drafts", async () => {
+    const api = operations();
+    render(<TaskTemplateWorkbench onClose={vi.fn()} operations={api} />);
+    await screen.findByText("Built-in planning");
+    fireEvent.click(screen.getByRole("button", { name: /built-in planning/i }));
+    await screen.findByRole("button", { name: "Apply to task" });
+    fireEvent.click(screen.getByRole("button", { name: "Apply to task" }));
+    await screen.findByRole("dialog", { name: /apply template/i });
+    fireEvent.change(screen.getByLabelText("Task"), {
+      target: { value: localId },
+    });
+    await waitFor(() =>
+      expect(api.loadTasks).toHaveBeenLastCalledWith({
+        query: null,
+        includeArchived: false,
+        selectedTaskId: localId,
+      }),
+    );
+    fireEvent.change(
+      screen.getByRole("textbox", { name: /proposed task title/i }),
+      { target: { value: "Visible draft" } },
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: /request native preview/i }),
+    );
+    await screen.findByRole("region", {
+      name: "Authoritative application preview",
+    });
+    expect(api.preview).toHaveBeenCalledWith({
+      templateId: builtinId,
+      taskId: localId,
+      planId: handle,
+      title: "Visible draft",
+      planText: "Existing plan text",
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: /review confirmation/i }),
+    );
+    expect(screen.getByRole("button", { name: "Cancel" })).toHaveFocus();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Confirm application" }),
+    );
+    await waitFor(() =>
+      expect(api.confirm).toHaveBeenCalledWith({
+        reservationId: "01980a10-0000-7000-8000-000000000004",
+        title: "Visible draft",
+        planText: "Existing plan text",
+      }),
+    );
+  });
+
   it("renders empty and closed unavailable catalog states", async () => {
     const empty = operations({
       loadCatalog: vi.fn().mockResolvedValue({ ...catalog, templates: [] }),
@@ -140,8 +257,8 @@ describe("task template management workbench", () => {
     await waitFor(() =>
       expect(api.archive).toHaveBeenCalledWith({ mutationHandle: handle }),
     );
-    expect(api).not.toHaveProperty("preview");
-    expect(api).not.toHaveProperty("confirm");
+    expect(api.preview).not.toHaveBeenCalled();
+    expect(api.confirm).not.toHaveBeenCalled();
   });
 
   it("preserves authored drafts on native failure and refreshes after successful lifecycle work", async () => {

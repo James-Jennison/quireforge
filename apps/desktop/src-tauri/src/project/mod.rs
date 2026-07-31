@@ -453,6 +453,7 @@ impl ProjectService {
                 schema_version: TASK_TEMPLATE_SCHEMA_VERSION,
                 state: TaskTemplateBridgeState::Ready,
                 reservation_id: Some(preview.reservation_id),
+                binding_sha256: Some(preview.binding_sha256),
                 expires_at_ms: Some(preview.expires_at_ms),
                 checklist: Some(TaskTemplateApplicationChecklist {
                     template_active: true,
@@ -3102,6 +3103,7 @@ fn task_template_preview_unavailable(error: TemplateLifecycleError) -> TaskTempl
         schema_version: TASK_TEMPLATE_SCHEMA_VERSION,
         state: TaskTemplateBridgeState::Unavailable,
         reservation_id: None,
+        binding_sha256: None,
         expires_at_ms: None,
         checklist: None,
         diagnostic_code: Some(map_template_error(error)),

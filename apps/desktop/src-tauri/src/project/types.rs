@@ -1177,6 +1177,7 @@ pub struct TaskTemplatePreviewSnapshot {
     pub schema_version: u16,
     pub state: TaskTemplateBridgeState,
     pub reservation_id: Option<String>,
+    pub binding_sha256: Option<String>,
     pub expires_at_ms: Option<i64>,
     pub checklist: Option<TaskTemplateApplicationChecklist>,
     pub diagnostic_code: Option<TaskTemplateDiagnosticCode>,

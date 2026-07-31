@@ -193,6 +193,10 @@ export const taskTemplatePreviewSchema = z
     schemaVersion: z.literal(1),
     state: bridgeState,
     reservationId: uuid.nullable(),
+    bindingSha256: z
+      .string()
+      .regex(/^[0-9a-f]{64}$/u)
+      .nullable(),
     expiresAtMs: z.number().int().nonnegative().nullable(),
     checklist: z
       .object({
@@ -211,6 +215,7 @@ export const taskTemplatePreviewSchema = z
     if (
       ready !==
         (value.reservationId !== null &&
+          value.bindingSha256 !== null &&
           value.expiresAtMs !== null &&
           value.checklist !== null) ||
       (ready && value.diagnosticCode !== null) ||

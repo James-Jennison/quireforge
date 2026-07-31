@@ -76,6 +76,7 @@ const preview = {
   schemaVersion: 1,
   state: "ready",
   reservationId: reservation,
+  bindingSha256: "a".repeat(64),
   expiresAtMs: 1,
   checklist: {
     templateActive: true,

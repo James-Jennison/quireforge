@@ -903,6 +903,168 @@ test("Local Review uses the real shell with a deterministic path-free native fix
   ).toBe(true);
 });
 
+test("M56 task-template application remains explicit and contained", async ({
+  page,
+}) => {
+  const templateId = "01980a10-0000-7000-8000-000000000001";
+  const taskId = "018f0000-0000-7000-8000-000000000001";
+  const digest = "a".repeat(64);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await installNativeFixture(page, {
+    ...nativeResponses,
+    task_template_catalog: {
+      schemaVersion: 1,
+      state: "ready",
+      templates: [
+        {
+          id: templateId,
+          title: "Feature implementation",
+          purpose: "Plan a bounded feature.",
+          origin: "built-in",
+          state: "active",
+        },
+      ],
+      capacity: {
+        recordCount: 1,
+        canonicalBytes: 100,
+        warning: false,
+        countLimit: 64,
+        canonicalByteLimit: 2097152,
+      },
+      diagnosticCode: null,
+    },
+    task_template_inspect: {
+      schemaVersion: 1,
+      state: "ready",
+      template: {
+        id: templateId,
+        title: "Feature implementation",
+        purpose: "Plan a bounded feature.",
+        instructions:
+          "Define outcome, constraints, evidence, tests, risks, and completion criteria.",
+        origin: "built-in",
+        state: "active",
+        version: 1,
+        sha256: digest,
+      },
+      mutationHandle: "01980a10-0000-7000-8000-000000000004",
+      diagnosticCode: null,
+    },
+    task_template_preview: {
+      schemaVersion: 1,
+      state: "ready",
+      reservationId: "01980a10-0000-7000-8000-000000000005",
+      bindingSha256: digest,
+      expiresAtMs: 100,
+      checklist: {
+        templateActive: true,
+        taskPlanAvailable: true,
+        exactDraftRequired: true,
+        confirmationRequired: true,
+      },
+      diagnosticCode: null,
+    },
+    task_template_confirm: {
+      schemaVersion: 1,
+      state: "ready",
+      applied: true,
+      cancelled: false,
+      diagnosticCode: null,
+    },
+    task_template_cancel: {
+      schemaVersion: 1,
+      state: "ready",
+      applied: false,
+      cancelled: true,
+      diagnosticCode: null,
+    },
+  });
+  await page.goto("/");
+  await openWorkspace(page, "New task");
+  await page.getByRole("button", { name: "Show workbench context" }).click();
+  await page.getByRole("button", { name: "Task Templates" }).click();
+  await page.getByRole("button", { name: /Feature implementation/ }).click();
+  const apply = page.getByRole("button", { name: "Apply to task" });
+  await apply.click();
+  let application = page.getByRole("dialog", {
+    name: "Apply template to task",
+  });
+  await expect(application).toBeVisible();
+  await application.press("Escape");
+  await expect(application).toHaveCount(0);
+  await expect(apply).toBeFocused();
+  await expect(
+    page.evaluate(
+      () =>
+        document.documentElement.scrollWidth <=
+        document.documentElement.clientWidth,
+    ),
+  ).resolves.toBe(true);
+
+  await apply.click();
+  application = page.getByRole("dialog", { name: "Apply template to task" });
+  await expect(application).toBeVisible();
+  for (const viewport of [
+    { width: 720, height: 900 },
+    { width: 1280, height: 500 },
+    { width: 640, height: 450 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await application
+      .getByRole("button", { name: "Cancel" })
+      .scrollIntoViewIfNeeded();
+    await expect(application).toBeVisible();
+    await expect(
+      page.evaluate(
+        () =>
+          document.documentElement.scrollWidth <=
+          document.documentElement.clientWidth,
+      ),
+    ).resolves.toBe(true);
+  }
+  const taskSelector = application.getByRole("combobox", {
+    name: "Task",
+    exact: true,
+  });
+  const planSelector = application.getByRole("combobox", {
+    name: "Owned plan",
+    exact: true,
+  });
+  await expect(planSelector).toBeDisabled();
+  await expect(taskSelector).toBeEnabled();
+  await taskSelector.selectOption(taskId);
+  await expect(planSelector).toBeEnabled();
+  await application
+    .getByRole("button", { name: "Request native preview" })
+    .click();
+  await expect(
+    page.getByRole("region", { name: "Authoritative application preview" }),
+  ).toBeVisible();
+  await application
+    .getByRole("button", { name: "Review confirmation" })
+    .click();
+  const confirmation = page.getByRole("dialog", {
+    name: "Confirm template application",
+  });
+  await expect(confirmation).toBeVisible();
+  await expect(
+    confirmation.getByRole("button", { name: "Cancel" }),
+  ).toBeFocused();
+  await confirmation
+    .getByRole("button", { name: "Confirm application" })
+    .click();
+  await expect(
+    page.getByRole("status").filter({ hasText: "confirmed" }),
+  ).toBeVisible();
+  await expect(
+    page.evaluate(
+      () =>
+        document.documentElement.scrollWidth <=
+        document.documentElement.clientWidth,
+    ),
+  ).resolves.toBe(true);
+});
+
 test("Local Review uses the compact overlay in a narrow desktop window", async ({
   page,
 }) => {

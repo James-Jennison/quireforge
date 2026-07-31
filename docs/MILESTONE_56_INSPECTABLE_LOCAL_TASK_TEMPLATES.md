@@ -31,8 +31,9 @@ tag, or release exists.
   native mutation handles, and explicit confirmation values. No UI is added.
 - G7: complete — lazy native-backed template catalog, detail inspection, and
   local-template lifecycle UI are implemented with focused component coverage.
-- G8: application UI and accessibility/real-browser acceptance (next).
-- G9: full source acceptance and beta.54 preparation.
+- G8: complete — explicit native-reservation application UI and focused
+  accessibility/browser acceptance are implemented.
+- G9: full source acceptance and beta.54 preparation (next).
 - G10: canonical beta.54 packaging.
 - G11: guarded installed-host validation.
 - G12: tag, draft prerelease, and final M56 closure.

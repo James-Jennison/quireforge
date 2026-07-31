@@ -289,11 +289,11 @@ gates passed.
 ## Next action
 
 Milestone 56 — **Inspectable Local Task Templates** is approved and in
-progress. M56-G7 is complete: the lazy task-template management surface now
-provides bounded native catalog/detail inspection and local lifecycle actions
-through the strict bridge. The next action is M56-G8: application UI plus
-accessibility/real-browser acceptance. No template-application UI, beta.54,
-packaging, installation, tag, or release is claimed by this checkpoint.
+progress. M56-G8 is complete: the lazy workbench now supports explicit,
+digest-bound native template application with focused accessibility/browser
+acceptance. The next action is M56-G9: full source acceptance and beta.54
+preparation. No beta.54 preparation, packaging, installation, tag, or release
+is claimed by this checkpoint.
 
 Milestone 46 — **Bounded Multi-Attachment** is complete at
 `1bc2e787ab785016041d70845c97ca9c2c4f84db` with its verified

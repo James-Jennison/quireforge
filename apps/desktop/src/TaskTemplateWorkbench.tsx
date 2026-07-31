@@ -1,8 +1,10 @@
 import {
   useEffect,
+  useId,
   useRef,
   useState,
   type KeyboardEvent,
+  type MouseEvent,
   type ReactNode,
 } from "react";
 
@@ -14,13 +16,19 @@ import {
   editTaskTemplate,
   inspectTaskTemplate,
   loadTaskTemplateCatalog,
+  loadTaskCatalog,
+  previewTaskTemplateApplication,
+  confirmTaskTemplateApplication,
+  cancelTaskTemplateApplication,
   restoreTaskTemplate,
 } from "./lib/bridge";
 import type {
   TaskTemplateApplicationOutcome,
   TaskTemplateCatalogSnapshot,
   TaskTemplateInspectionSnapshot,
+  TaskTemplatePreviewSnapshot,
 } from "./lib/taskTemplates";
+import type { TaskCatalogSnapshot } from "./lib/taskRecords";
 
 type Operations = {
   loadCatalog: () => Promise<TaskTemplateCatalogSnapshot>;
@@ -51,6 +59,26 @@ type Operations = {
     mutationHandle: string;
     confirmation: "confirmed";
   }) => Promise<TaskTemplateApplicationOutcome>;
+  loadTasks: (request: {
+    query: null;
+    includeArchived: boolean;
+    selectedTaskId: string | null;
+  }) => Promise<TaskCatalogSnapshot>;
+  preview: (request: {
+    templateId: string;
+    taskId: string;
+    planId: string;
+    title: string;
+    planText: string;
+  }) => Promise<TaskTemplatePreviewSnapshot>;
+  confirm: (request: {
+    reservationId: string;
+    title: string;
+    planText: string;
+  }) => Promise<TaskTemplateApplicationOutcome>;
+  cancel: (request: {
+    reservationId: string;
+  }) => Promise<TaskTemplateApplicationOutcome>;
 };
 
 const nativeOperations: Operations = {
@@ -62,6 +90,10 @@ const nativeOperations: Operations = {
   archive: archiveTaskTemplate,
   restore: restoreTaskTemplate,
   delete: deleteTaskTemplate,
+  loadTasks: loadTaskCatalog,
+  preview: previewTaskTemplateApplication,
+  confirm: confirmTaskTemplateApplication,
+  cancel: cancelTaskTemplateApplication,
 };
 const blankDraft = { title: "", purpose: "", instructions: "" };
 type Draft = typeof blankDraft;
@@ -90,16 +122,19 @@ function Dialog({
   children,
   onCancel,
   confirm,
+  confirmLabel = "Delete template",
   trigger,
 }: {
   title: string;
   children: ReactNode;
   onCancel: () => void;
   confirm?: () => void;
+  confirmLabel?: string;
   trigger: React.MutableRefObject<HTMLElement | null>;
 }) {
   const panel = useRef<HTMLDivElement>(null);
   const cancel = useRef<HTMLButtonElement>(null);
+  const titleId = useId();
   useEffect(() => {
     cancel.current?.focus();
   }, []);
@@ -135,7 +170,7 @@ function Dialog({
       open
       className="task-template-dialog"
       aria-modal="true"
-      aria-labelledby="task-template-dialog-title"
+      aria-labelledby={titleId}
       onKeyDown={onKeyDown}
     >
       <button
@@ -145,7 +180,7 @@ function Dialog({
         onClick={close}
       />
       <div className="task-template-dialog__panel" ref={panel}>
-        <h3 id="task-template-dialog-title">{title}</h3>
+        <h3 id={titleId}>{title}</h3>
         {children}
         <div className="task-template-workbench__actions">
           <button ref={cancel} type="button" onClick={close}>
@@ -153,7 +188,7 @@ function Dialog({
           </button>
           {confirm && (
             <button type="button" className="danger-button" onClick={confirm}>
-              Delete template
+              {confirmLabel}
             </button>
           )}
         </div>
@@ -181,6 +216,20 @@ export function TaskTemplateWorkbench({
   const [deleting, setDeleting] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
+  const [applying, setApplying] = useState(false);
+  const [taskSnapshot, setTaskSnapshot] = useState<TaskCatalogSnapshot | null>(
+    null,
+  );
+  const [applicationTaskId, setApplicationTaskId] = useState("");
+  const [applicationPlanId, setApplicationPlanId] = useState("");
+  const [applicationDraft, setApplicationDraft] = useState({
+    title: "",
+    planText: "",
+  });
+  const [preview, setPreview] = useState<TaskTemplatePreviewSnapshot | null>(
+    null,
+  );
+  const [confirmingApplication, setConfirmingApplication] = useState(false);
   const list = useRef<HTMLUListElement>(null);
   const createButton = useRef<HTMLButtonElement>(null);
   const trigger = useRef<HTMLElement | null>(null);
@@ -244,6 +293,109 @@ export function TaskTemplateWorkbench({
 
   const selected = detail?.state === "ready" ? detail.template : null;
   const handle = detail?.state === "ready" ? detail.mutationHandle : null;
+  const applicationTask =
+    taskSnapshot?.tasks.find((task) => task.id === applicationTaskId) ?? null;
+  const applicationPlan =
+    taskSnapshot?.plans.find((plan) => plan.id === applicationPlanId) ?? null;
+  const loadApplicationTasks = async (taskId: string | null = null) => {
+    try {
+      const next = await operations.loadTasks({
+        query: null,
+        includeArchived: false,
+        selectedTaskId: taskId,
+      });
+      setTaskSnapshot(next);
+      return next;
+    } catch {
+      setNotice("Tasks are unavailable. Your draft is preserved.");
+      return null;
+    }
+  };
+  const beginApplication = async (event: MouseEvent<HTMLButtonElement>) => {
+    trigger.current = event.currentTarget;
+    setApplying(true);
+    setPreview(null);
+    await loadApplicationTasks();
+  };
+  const chooseTask = async (taskId: string) => {
+    const next = await loadApplicationTasks(taskId);
+    const task = next?.selectedTask;
+    const plan = next?.plans.find((entry) => entry.id === task?.selectedPlanId);
+    setApplicationTaskId(taskId);
+    setApplicationPlanId(plan?.id ?? "");
+    setApplicationDraft({
+      title: task?.title ?? "",
+      planText: plan?.body ?? "",
+    });
+    setPreview(null);
+  };
+  const requestPreview = async () => {
+    if (!selected || !applicationTask || !applicationPlan) return;
+    try {
+      const next = await operations.preview({
+        templateId: selected.id,
+        taskId: applicationTask.id,
+        planId: applicationPlan.id,
+        title: applicationDraft.title,
+        planText: applicationDraft.planText,
+      });
+      if (next.diagnosticCode) {
+        setNotice(message(next.diagnosticCode));
+        setPreview(null);
+      } else {
+        setPreview(next);
+        setNotice("Native preview is ready for explicit confirmation.");
+      }
+    } catch {
+      setPreview(null);
+      setNotice(
+        "Preview failed. Your draft is preserved; request a fresh preview.",
+      );
+    }
+  };
+  const cancelPreview = async () => {
+    const reservationId = preview?.reservationId;
+    setConfirmingApplication(false);
+    setPreview(null);
+    if (reservationId) {
+      try {
+        await operations.cancel({ reservationId });
+      } catch {
+        /* closed native cancellation failure leaves the draft editable */
+      }
+    }
+    setNotice("Preview cancelled. Your draft is preserved.");
+  };
+  const confirmApplication = async () => {
+    const reservationId = preview?.reservationId;
+    if (!reservationId) return;
+    try {
+      const outcome = await operations.confirm({
+        reservationId,
+        title: applicationDraft.title,
+        planText: applicationDraft.planText,
+      });
+      if (outcome.diagnosticCode) {
+        setNotice(message(outcome.diagnosticCode));
+        setPreview(null);
+        setConfirmingApplication(false);
+        return;
+      }
+      setNotice("Template application confirmed.");
+      setPreview(null);
+      setConfirmingApplication(false);
+      await loadApplicationTasks(applicationTaskId);
+      await refresh(true);
+      setApplying(false);
+      requestAnimationFrame(() => trigger.current?.focus());
+    } catch {
+      setNotice(
+        "Confirmation failed. Your draft is preserved; request a fresh preview.",
+      );
+      setPreview(null);
+      setConfirmingApplication(false);
+    }
+  };
   const mutate = async (
     action: () => Promise<TaskTemplateInspectionSnapshot>,
     success: string,
@@ -507,6 +659,15 @@ export function TaskTemplateWorkbench({
                 </button>
               </>
             )}
+            {selected.state === "active" && (
+              <button
+                type="button"
+                onClick={(event) => void beginApplication(event)}
+                disabled={busy}
+              >
+                Apply to task
+              </button>
+            )}
           </div>
         </article>
       )}
@@ -603,6 +764,190 @@ export function TaskTemplateWorkbench({
           <p>
             This permanently removes the archived local template. It cannot be
             undone.
+          </p>
+        </Dialog>
+      )}
+      {applying && selected && (
+        <Dialog
+          title="Apply template to task"
+          onCancel={() => {
+            void cancelPreview();
+            setApplying(false);
+          }}
+          trigger={trigger}
+        >
+          <section
+            className="task-template-workbench__application"
+            aria-labelledby="task-template-application-title"
+          >
+            <h4 id="task-template-application-title">
+              Review visible draft before preview
+            </h4>
+            <p>
+              <strong>{selected.title}</strong> · {selected.origin} ·{" "}
+              {selected.state}
+            </p>
+            <p>{selected.purpose}</p>
+            <p className="task-template-workbench__instructions">
+              {selected.instructions}
+            </p>
+            <dl>
+              <div>
+                <dt>Version</dt>
+                <dd>{selected.version}</dd>
+              </div>
+              <div>
+                <dt>SHA-256</dt>
+                <dd>
+                  <code>{selected.sha256}</code>
+                </dd>
+              </div>
+            </dl>
+            <label>
+              Task{" "}
+              <select
+                value={applicationTaskId}
+                onChange={(event) => void chooseTask(event.target.value)}
+              >
+                <option value="">Select an eligible task</option>
+                {taskSnapshot?.tasks
+                  .filter((task) => !task.archived)
+                  .map((task) => (
+                    <option key={task.id} value={task.id}>
+                      {task.title}
+                    </option>
+                  ))}
+              </select>
+            </label>
+            <label>
+              Owned plan{" "}
+              <select
+                value={applicationPlanId}
+                disabled={!applicationTask}
+                onChange={(event) => {
+                  setApplicationPlanId(event.target.value);
+                  const plan = taskSnapshot?.plans.find(
+                    (entry) => entry.id === event.target.value,
+                  );
+                  if (plan)
+                    setApplicationDraft((draft) => ({
+                      ...draft,
+                      planText: plan.body,
+                    }));
+                  setPreview(null);
+                }}
+              >
+                <option value="">Select a plan</option>
+                {taskSnapshot?.plans.map((plan) => (
+                  <option key={plan.id} value={plan.id}>
+                    {plan.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Proposed task title{" "}
+              <input
+                value={applicationDraft.title}
+                maxLength={120}
+                onChange={(event) => {
+                  setApplicationDraft({
+                    ...applicationDraft,
+                    title: event.target.value,
+                  });
+                  setPreview(null);
+                }}
+              />
+              <small>{applicationDraft.title.length}/120 characters</small>
+            </label>
+            <label>
+              Proposed plan text{" "}
+              <textarea
+                value={applicationDraft.planText}
+                maxLength={8_192}
+                rows={8}
+                onChange={(event) => {
+                  setApplicationDraft({
+                    ...applicationDraft,
+                    planText: event.target.value,
+                  });
+                  setPreview(null);
+                }}
+              />
+              <small>{applicationDraft.planText.length}/8192 characters</small>
+            </label>
+            {!preview ? (
+              <button
+                type="button"
+                onClick={() => void requestPreview()}
+                disabled={
+                  !applicationTask ||
+                  !applicationPlan ||
+                  !applicationDraft.title ||
+                  !applicationDraft.planText
+                }
+              >
+                Request native preview
+              </button>
+            ) : (
+              <section
+                className="task-template-workbench__preview"
+                aria-label="Authoritative application preview"
+              >
+                <h4>Authoritative preview</h4>
+                <p>Task: {applicationTask?.title}</p>
+                <p>Plan: {applicationPlan?.label}</p>
+                <p>Proposed title: {applicationDraft.title}</p>
+                <p className="task-template-workbench__instructions">
+                  Proposed plan text: {applicationDraft.planText}
+                </p>
+                <p>
+                  Binding SHA-256: <code>{preview.bindingSha256}</code>
+                </p>
+                <p>Reservation expiry: {preview.expiresAtMs}</p>
+                <ul>
+                  {preview.checklist && (
+                    <>
+                      <li>Template is active</li>
+                      <li>Task and owned plan are available</li>
+                      <li>Exact draft is required</li>
+                      <li>Explicit confirmation is required</li>
+                    </>
+                  )}
+                </ul>
+                <div className="task-template-workbench__actions">
+                  <button type="button" onClick={() => void cancelPreview()}>
+                    Cancel preview
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setApplying(false);
+                      setConfirmingApplication(true);
+                    }}
+                  >
+                    Review confirmation
+                  </button>
+                </div>
+              </section>
+            )}
+          </section>
+        </Dialog>
+      )}
+      {confirmingApplication && preview && (
+        <Dialog
+          title="Confirm template application"
+          onCancel={() => {
+            setApplying(true);
+            void cancelPreview();
+          }}
+          trigger={trigger}
+          confirmLabel="Confirm application"
+          confirm={() => void confirmApplication()}
+        >
+          <p>
+            This applies only the visible proposed title and plan text to the
+            selected task and owned plan.
           </p>
         </Dialog>
       )}
