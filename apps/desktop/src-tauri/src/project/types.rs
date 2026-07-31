@@ -381,10 +381,6 @@ pub struct LocalReviewGitStatusDiffSummaryDetails {
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-#[allow(
-    dead_code,
-    reason = "Activity evidence is reserved by the closed source contract and has no capture command in this slice."
-)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct LocalReviewActivityPresentationDetails {
     pub scope: LocalReviewActivityScope,
@@ -556,6 +552,7 @@ pub struct LocalReviewSnapshot {
     pub warning: bool,
     pub package_manifest_summary_available: bool,
     pub git_status_diff_summary_available: bool,
+    pub activity_presentation_available: bool,
     pub diagnostic_code: Option<LocalReviewDiagnosticCode>,
 }
 
@@ -651,6 +648,12 @@ pub struct LocalReviewPackageManifestSummaryEvidenceRequest {
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct LocalReviewGitStatusDiffSummaryEvidenceRequest {
+    pub collection_id: String,
+    pub expected_collection_updated_at_ms: i64,
+}
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct LocalReviewActivityPresentationEvidenceRequest {
     pub collection_id: String,
     pub expected_collection_updated_at_ms: i64,
 }
@@ -897,6 +900,19 @@ pub struct LocalReviewGitStatusDiffSummaryEvidencePreview {
     pub title: String,
     pub summary: String,
     pub details: LocalReviewGitStatusDiffSummaryDetails,
+    pub byte_size: u64,
+    pub sha256: String,
+    pub created_at_ms: i64,
+}
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LocalReviewActivityPresentationEvidencePreview {
+    pub schema_version: u16,
+    pub item_id: String,
+    pub source: LocalReviewEvidenceSource,
+    pub title: String,
+    pub summary: String,
+    pub details: LocalReviewActivityPresentationDetails,
     pub byte_size: u64,
     pub sha256: String,
     pub created_at_ms: i64,

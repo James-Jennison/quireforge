@@ -39,6 +39,9 @@
   and offers a persisted-bytes-only inert preview; it cannot alter repository
   state or expose paths, refs, remotes, patches, commands, or diagnostics.
 
+- Add native append-only Local Review activity ownership for future Activity
+  presentation evidence; frontend session events remain non-authoritative.
+
 - Implement M52's native-owned local task catalogue with migration 11, opaque
   UUIDv7 task and plan identities, explicit status/archive/delete lifecycle,
   bounded title/label search, one to four visible plan records, closed capacity

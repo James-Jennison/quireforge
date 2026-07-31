@@ -53,4 +53,8 @@ Git-status capture accepts the same two-field collection request, resolves the
 task project and attached repository natively, and stores only closed aggregate
 facts from the native Git service. Its preview reads persisted evidence bytes
 only. The remaining listed sources have no capture command in this slice. Frontend
+in-memory Activity events are presentation-only and never evidence authority.
+Activity capture uses only future native append-only ledger rows owned by the
+selected collection and immutable task; no historical frontend activity is
+migrated or reconstructed.
 snapshots and generic filesystem, Git, or approval inputs are not evidence APIs.

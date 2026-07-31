@@ -231,6 +231,7 @@ export const localReviewSnapshotSchema = z
     warning: z.boolean(),
     packageManifestSummaryAvailable: z.boolean(),
     gitStatusDiffSummaryAvailable: z.boolean(),
+    activityPresentationAvailable: z.boolean(),
     diagnosticCode: diagnostic.nullable(),
   })
   .strict();
@@ -607,6 +608,7 @@ export const localReviewPackageManifestSummaryEvidenceCreateRequestSchema = z
   })
   .strict();
 export const localReviewGitStatusDiffSummaryEvidenceCreateRequestSchema = z.object({ collectionId: id, expectedCollectionUpdatedAtMs: z.number().int().nonnegative() }).strict();
+export const localReviewActivityPresentationEvidenceCreateRequestSchema = z.object({ collectionId: id, expectedCollectionUpdatedAtMs: z.number().int().nonnegative() }).strict();
 export const localReviewM48GeneratedArtifactMetadataEvidenceCreateResultSchema =
   z.discriminatedUnion("outcome", [
     z
@@ -675,6 +677,7 @@ export const localReviewPackageManifestSummaryEvidenceCreateResultSchema =
     z.object({ outcome: z.literal("failed"), snapshot: localReviewSnapshotSchema }).strict(),
   ]);
 export const localReviewGitStatusDiffSummaryEvidenceCreateResultSchema = z.discriminatedUnion("outcome", [z.object({ outcome: z.literal("created"), createdItemId: id, source: z.literal("git-status-diff-summary"), snapshot: localReviewSnapshotSchema }).strict(), z.object({ outcome: z.literal("failed"), snapshot: localReviewSnapshotSchema }).strict()]);
+export const localReviewActivityPresentationEvidenceCreateResultSchema = z.discriminatedUnion("outcome", [z.object({ outcome: z.literal("created"), createdItemId: id, source: z.literal("activity-presentation"), snapshot: localReviewSnapshotSchema }).strict(), z.object({ outcome: z.literal("failed"), snapshot: localReviewSnapshotSchema }).strict()]);
 export const localReviewManualEvidencePreviewSchema = z
   .object({
     schemaVersion: z.literal(1),
@@ -762,6 +765,7 @@ export const localReviewPackageManifestSummaryEvidencePreviewSchema = z
     byteSize: z.number().int().positive().max(16 * 1024), sha256, createdAtMs: z.number().int().nonnegative(),
   }).strict();
 export const localReviewGitStatusDiffSummaryEvidencePreviewSchema = z.object({ schemaVersion: z.literal(1), itemId: id, source: z.literal("git-status-diff-summary"), title: safeLabel, summary: evidenceSummary, details: z.object({ workspaceState: z.enum(["clean", "ready"]), dirty: z.boolean(), stagedCount: nonnegativeCount, modifiedCount: nonnegativeCount, addedCount: nonnegativeCount, deletedCount: nonnegativeCount, renamedCount: nonnegativeCount, untrackedCount: nonnegativeCount, conflictedCount: nonnegativeCount, changedFileCount: nonnegativeCount, additions: nonnegativeCount, deletions: nonnegativeCount, diffAvailable: z.boolean(), diffTruncated: z.boolean() }).strict(), byteSize: z.number().int().positive().max(16 * 1024), sha256, createdAtMs: z.number().int().nonnegative() }).strict();
+export const localReviewActivityPresentationEvidencePreviewSchema = z.object({ schemaVersion: z.literal(1), itemId: id, source: z.literal("activity-presentation"), title: safeLabel, summary: evidenceSummary, details: z.object({ scope: z.literal("current-session"), eventCount: z.number().int().min(1).max(12), itemAddedCount: z.number().int().min(0).max(12), itemDiscardedCount: z.number().int().min(0).max(12), annotationChangedCount: z.number().int().min(0).max(12), comparisonChangedCount: z.number().int().min(0).max(12), promotionPreparedCount: z.number().int().min(0).max(12), promotionCompletedCount: z.number().int().min(0).max(12), collectionChangedCount: z.number().int().min(0).max(12), truncated: z.boolean() }).strict(), byteSize: z.number().int().positive().max(16 * 1024), sha256, createdAtMs: z.number().int().nonnegative() }).strict();
 export const localReviewImagePreviewRequestSchema = z
   .object({ itemId: id, sha256 })
   .strict();

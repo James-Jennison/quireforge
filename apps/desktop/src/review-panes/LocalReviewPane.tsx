@@ -19,6 +19,8 @@ import {
   previewLocalReviewPackageManifestSummaryEvidence,
   createLocalReviewGitStatusDiffSummaryEvidence,
   previewLocalReviewGitStatusDiffSummaryEvidence,
+  createLocalReviewActivityPresentationEvidence,
+  previewLocalReviewActivityPresentationEvidence,
   discardLocalReviewItem,
   createLocalReviewAnnotation,
   editLocalReviewAnnotation,
@@ -50,6 +52,7 @@ const unavailable: LocalReviewSnapshot = {
   warning: false,
   packageManifestSummaryAvailable: false,
   gitStatusDiffSummaryAvailable: false,
+  activityPresentationAvailable: false,
   diagnosticCode: "metadata-unavailable",
 };
 
@@ -119,6 +122,7 @@ export default function LocalReviewPane({
   const [packageManifestEvidencePreview, setPackageManifestEvidencePreview] =
     useState<Awaited<ReturnType<typeof previewLocalReviewPackageManifestSummaryEvidence>> | null>(null);
   const [gitEvidencePreview, setGitEvidencePreview] = useState<Awaited<ReturnType<typeof previewLocalReviewGitStatusDiffSummaryEvidence>> | null>(null);
+  const [activityEvidencePreview, setActivityEvidencePreview] = useState<Awaited<ReturnType<typeof previewLocalReviewActivityPresentationEvidence>> | null>(null);
   const [artifactCandidates, setArtifactCandidates] = useState<
     Awaited<ReturnType<ReviewPaneData["loadArtifacts"]>>["artifacts"]
   >([]);
@@ -658,6 +662,18 @@ export default function LocalReviewPane({
       recordLocalReviewActivity({ kind: "item-added", label: item.title, status: "success", digest: item.sha256 });
       return previewLocalReviewGitStatusDiffSummaryEvidence({ itemId: item.itemId, sha256: item.sha256 }).then(setGitEvidencePreview);
     }).catch(() => setError("Git status and diff summary could not be captured.")).finally(() => setBusy(false));
+  };
+  const captureActivityPresentation = () => {
+    const collection = snapshot?.selectedCollection;
+    if (!collection || busy || !snapshot?.activityPresentationAvailable) return;
+    setBusy(true); setError(null);
+    void createLocalReviewActivityPresentationEvidence({ collectionId: collection.collectionId, expectedCollectionUpdatedAtMs: collection.updatedAtMs }).then((result) => {
+      setSnapshot(result.snapshot); if (result.outcome !== "created") { setError("Activity presentation could not be captured."); return; }
+      const item = result.snapshot.items.find((candidate) => candidate.itemId === result.createdItemId && candidate.class === "evidence" && candidate.evidenceSource === result.source);
+      if (!item) { setError("Activity presentation could not be captured."); return; }
+      setSelectedItemId(item.itemId); recordLocalReviewActivity({ kind: "item-added", label: item.title, status: "success", digest: item.sha256 });
+      return previewLocalReviewActivityPresentationEvidence({ itemId: item.itemId, sha256: item.sha256 }).then(setActivityEvidencePreview);
+    }).catch(() => setError("Activity presentation could not be captured.")).finally(() => setBusy(false));
   };
   const discardSelectedItem = () => {
     const collection = snapshot?.selectedCollection;
@@ -2219,6 +2235,7 @@ export default function LocalReviewPane({
             <button type="button" disabled={busy || !snapshot.gitStatusDiffSummaryAvailable} onClick={captureGitStatusDiffSummary}>
               Capture Git status and diff summary…
             </button>
+            <button type="button" disabled={busy || !snapshot.activityPresentationAvailable} onClick={captureActivityPresentation}>Capture activity presentation…</button>
           </section>
           {evidencePreview ? (
             <section aria-label="Evidence preview">
@@ -2308,6 +2325,7 @@ export default function LocalReviewPane({
               <p>Not comparable</p><p>Not promotion eligible</p>
             </section>
           ) : null}
+          {activityEvidencePreview ? (<section aria-label="Activity presentation evidence preview"><h4 ref={evidenceHeading} tabIndex={-1}>Activity presentation evidence</h4><p>{activityEvidencePreview.title}</p><p>Evidence · Activity presentation</p><pre>{activityEvidencePreview.summary}</pre><p>{activityEvidencePreview.details.eventCount} native current-session events</p></section>) : null}
           {selectedItemId ? (
             <button type="button" disabled={busy} onClick={discardSelectedItem}>
               Discard selected item

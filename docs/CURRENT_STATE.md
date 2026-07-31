@@ -103,7 +103,9 @@ package. Activity and Approval M54 evidence flows remain pending.
 M54 git-status-diff-summary capture is also unreleased post-beta.51 source
 work. It resolves the bound attached project and native Git authority, stores
 only redacted aggregate state, and previews only persisted canonical bytes.
-Activity and Approval evidence flows remain pending.
+Activity presentation now uses a native append-only collection/task ledger for
+future successful Local Review operations; frontend session events remain
+presentation-only. Approval evidence remains pending.
 
 The Rust Codex, project/SQLite, Git, worktree, terminal, preview, attachment,
 settings, and integration services are candidates for reuse. The current Tauri

@@ -46,6 +46,7 @@ const snapshot = {
   warning: false,
   packageManifestSummaryAvailable: false,
   gitStatusDiffSummaryAvailable: false,
+  activityPresentationAvailable: false,
   diagnosticCode: null,
 };
 
@@ -408,6 +409,7 @@ describe("local review image contracts", () => {
         warning: false,
         packageManifestSummaryAvailable: false,
         gitStatusDiffSummaryAvailable: false,
+        activityPresentationAvailable: false,
         diagnosticCode: null,
       },
     };

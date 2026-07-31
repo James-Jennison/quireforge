@@ -22,14 +22,15 @@ use crate::advisor::{
 use crate::preview::validate_attachment_image;
 
 use super::types::{
-    EvidenceEnvelopeV1, LocalReviewAnnotationState, LocalReviewAnnotationSummary,
-    LocalReviewCollectionState, LocalReviewCollectionSummary, LocalReviewComparisonState,
-    LocalReviewComparisonSummary, LocalReviewDiagnosticCode, LocalReviewEvidenceCheckState,
-    LocalReviewEvidenceSource, LocalReviewEvidenceWorkspaceState,
-    LocalReviewGitStatusDiffSummaryDetails, LocalReviewGitStatusDiffSummaryEvidencePreview,
-    LocalReviewImagePreview, LocalReviewItemClass, LocalReviewItemState, LocalReviewItemSummary,
-    LocalReviewLineComparison, LocalReviewLineKind, LocalReviewLineRecord,
-    LocalReviewM48GeneratedArtifactMetadataDetails,
+    EvidenceEnvelopeV1, LocalReviewActivityPresentationDetails,
+    LocalReviewActivityPresentationEvidencePreview, LocalReviewActivityScope,
+    LocalReviewAnnotationState, LocalReviewAnnotationSummary, LocalReviewCollectionState,
+    LocalReviewCollectionSummary, LocalReviewComparisonState, LocalReviewComparisonSummary,
+    LocalReviewDiagnosticCode, LocalReviewEvidenceCheckState, LocalReviewEvidenceSource,
+    LocalReviewEvidenceWorkspaceState, LocalReviewGitStatusDiffSummaryDetails,
+    LocalReviewGitStatusDiffSummaryEvidencePreview, LocalReviewImagePreview, LocalReviewItemClass,
+    LocalReviewItemState, LocalReviewItemSummary, LocalReviewLineComparison, LocalReviewLineKind,
+    LocalReviewLineRecord, LocalReviewM48GeneratedArtifactMetadataDetails,
     LocalReviewM48GeneratedArtifactMetadataEvidencePreview, LocalReviewManualEvidencePreview,
     LocalReviewManualValidationDetails, LocalReviewPackageManifestSummaryDetails,
     LocalReviewPackageManifestSummaryEvidencePreview, LocalReviewSafePreviewMetadataDetails,
@@ -644,6 +645,23 @@ CREATE INDEX project_package_validation_candidate_identities_summary
     ON project_package_validation_candidate_identities(package_validation_summary_id);
 "#;
 
+const LOCAL_REVIEW_ACTIVITY_LEDGER_MIGRATION: &str = r#"
+CREATE TABLE local_review_activity_ledger (
+    id TEXT PRIMARY KEY NOT NULL CHECK(length(id) = 36),
+    collection_id TEXT NOT NULL CHECK(length(collection_id) = 36),
+    task_id TEXT NOT NULL CHECK(length(task_id) = 36),
+    session_id TEXT NOT NULL CHECK(length(session_id) = 36),
+    kind TEXT NOT NULL CHECK(kind IN ('item-added', 'activity-evidence-captured')),
+    created_at_ms INTEGER NOT NULL CHECK(created_at_ms >= 0)
+);
+CREATE INDEX local_review_activity_ledger_collection_session_recent
+    ON local_review_activity_ledger(collection_id, task_id, session_id, created_at_ms DESC, id DESC);
+CREATE TRIGGER local_review_activity_ledger_immutable
+BEFORE UPDATE ON local_review_activity_ledger BEGIN SELECT RAISE(ABORT, 'activity ledger immutable'); END;
+CREATE TRIGGER local_review_activity_ledger_append_only
+BEFORE DELETE ON local_review_activity_ledger BEGIN SELECT RAISE(ABORT, 'activity ledger append only'); END;
+"#;
+
 const MIGRATIONS: &[(i64, &str, &str)] = &[
     (1, "projects-and-directory-associations", INITIAL_MIGRATION),
     (
@@ -714,6 +732,11 @@ const MIGRATIONS: &[(i64, &str, &str)] = &[
         18,
         "project-package-validation-attempt-identities-v1",
         PROJECT_PACKAGE_VALIDATION_ATTEMPT_IDENTITIES_MIGRATION,
+    ),
+    (
+        19,
+        "local-review-activity-ledger-v1",
+        LOCAL_REVIEW_ACTIVITY_LEDGER_MIGRATION,
     ),
 ];
 
@@ -1050,6 +1073,73 @@ fn git_status_diff_summary_evidence_envelope_bytes(
         details,
     })
     .map_err(|_| StorageError::InvalidStoredValue)
+}
+
+fn activity_presentation_evidence_envelope_bytes(
+    title: &str,
+    summary: &str,
+    details: &LocalReviewActivityPresentationDetails,
+) -> Result<Vec<u8>, StorageError> {
+    serde_json::to_vec(&EvidenceEnvelopeV1 {
+        schema_version: 1,
+        source: LocalReviewEvidenceSource::ActivityPresentation,
+        source_schema_version: 1,
+        title: title.to_owned(),
+        summary: summary.to_owned(),
+        details,
+    })
+    .map_err(|_| StorageError::InvalidStoredValue)
+}
+
+fn parse_activity_presentation_evidence_envelope(
+    bytes: &[u8],
+    title: &str,
+) -> Result<(String, LocalReviewActivityPresentationDetails), StorageError> {
+    let envelope: EvidenceEnvelopeV1<LocalReviewActivityPresentationDetails> =
+        serde_json::from_slice(bytes).map_err(|_| StorageError::InvalidStoredValue)?;
+    if envelope.schema_version != 1
+        || envelope.source_schema_version != 1
+        || envelope.source != LocalReviewEvidenceSource::ActivityPresentation
+        || envelope.title != title
+        || normalize_review_label(&envelope.title)? != envelope.title
+        || normalize_review_text(&envelope.summary, LocalReviewTextFormat::Plain)?
+            != envelope.summary
+        || envelope.details.scope != LocalReviewActivityScope::CurrentSession
+        || envelope.details.event_count > 12
+        || [
+            envelope.details.item_added_count,
+            envelope.details.item_discarded_count,
+            envelope.details.annotation_changed_count,
+            envelope.details.comparison_changed_count,
+            envelope.details.promotion_prepared_count,
+            envelope.details.promotion_completed_count,
+            envelope.details.collection_changed_count,
+        ]
+        .into_iter()
+        .any(|count| count > 12)
+    {
+        return Err(StorageError::InvalidStoredValue);
+    }
+    Ok((envelope.summary, envelope.details))
+}
+
+fn append_local_review_activity(
+    tx: &Transaction<'_>,
+    collection_id: &str,
+    task_id: &str,
+    session_id: &str,
+    kind: &str,
+    now: i64,
+) -> Result<(), StorageError> {
+    if !matches!(kind, "item-added" | "activity-evidence-captured")
+        || !valid_task_id(collection_id)
+        || !valid_task_id(task_id)
+        || !valid_task_id(session_id)
+    {
+        return Err(StorageError::InvalidStoredValue);
+    }
+    tx.execute("INSERT INTO local_review_activity_ledger (id, collection_id, task_id, session_id, kind, created_at_ms) VALUES (?1, ?2, ?3, ?4, ?5, ?6)", params![Uuid::now_v7().to_string(), collection_id, task_id, session_id, kind, now])?;
+    Ok(())
 }
 
 fn parse_manual_evidence_envelope(bytes: &[u8], title: &str) -> Result<String, StorageError> {
@@ -1721,6 +1811,7 @@ type TaskCatalogProjection = (
 
 pub(crate) struct ProjectRepository {
     connection: Connection,
+    activity_session_id: String,
 }
 
 pub(crate) struct LocalReviewPromotionSource {
@@ -2189,10 +2280,11 @@ impl ProjectRepository {
         let content = normalize_review_text(content, format)?;
         let bytes = content.as_bytes();
         let now = now_millis();
+        let session_id = self.activity_session_id.clone();
         let tx = self
             .connection
             .transaction_with_behavior(TransactionBehavior::Immediate)?;
-        local_review_mutation_context(
+        let context = local_review_mutation_context(
             &tx,
             collection_id,
             Some(expected_updated_at_ms),
@@ -2215,6 +2307,14 @@ impl ProjectRepository {
         tx.execute(
             "UPDATE local_review_collections SET updated_at_ms = CASE WHEN updated_at_ms >= ?1 THEN updated_at_ms + 1 ELSE ?1 END WHERE id = ?2",
             params![now, collection_id],
+        )?;
+        append_local_review_activity(
+            &tx,
+            collection_id,
+            &context.task_id,
+            &session_id,
+            "item-added",
+            now,
         )?;
         tx.commit()?;
         Ok(id)
@@ -3078,6 +3178,119 @@ impl ProjectRepository {
                AND association.detached_at_ms IS NULL",
             [collection_id], |row| row.get(0),
         ).map_err(|_| StorageError::ProjectNotFound)
+    }
+
+    pub(crate) fn activity_presentation_available_for_local_review(
+        &self,
+        collection_id: &str,
+    ) -> bool {
+        self.activity_presentation_details_for_local_review(collection_id)
+            .is_ok()
+    }
+
+    fn activity_presentation_details_for_local_review(
+        &self,
+        collection_id: &str,
+    ) -> Result<LocalReviewActivityPresentationDetails, StorageError> {
+        let task_id = self.connection.query_row("SELECT task_id FROM local_review_collections WHERE id = ?1 AND state = 'active' AND discarded_at_ms IS NULL", [collection_id], |row| row.get::<_, String>(0))?;
+        let valid: i64 = self.connection.query_row("SELECT count(*) FROM task_records WHERE id = ?1 AND archived_at_ms IS NULL AND status IN ('active', 'paused')", [&task_id], |row| row.get(0))?;
+        if valid != 1 {
+            return Err(StorageError::TaskArchived);
+        }
+        let mut statement = self.connection.prepare("SELECT kind FROM local_review_activity_ledger WHERE collection_id = ?1 AND task_id = ?2 AND session_id = ?3 ORDER BY created_at_ms DESC, id DESC LIMIT 13")?;
+        let rows = statement
+            .query_map(
+                params![collection_id, task_id, self.activity_session_id],
+                |row| row.get::<_, String>(0),
+            )?
+            .collect::<Result<Vec<_>, _>>()?;
+        if rows.is_empty() {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let mut details = LocalReviewActivityPresentationDetails {
+            scope: LocalReviewActivityScope::CurrentSession,
+            event_count: rows.len().min(12) as u8,
+            item_added_count: 0,
+            item_discarded_count: 0,
+            annotation_changed_count: 0,
+            comparison_changed_count: 0,
+            promotion_prepared_count: 0,
+            promotion_completed_count: 0,
+            collection_changed_count: 0,
+            truncated: rows.len() > 12,
+        };
+        for kind in rows.iter().take(12) {
+            match kind.as_str() {
+                "item-added" | "activity-evidence-captured" => details.item_added_count += 1,
+                _ => return Err(StorageError::InvalidStoredValue),
+            }
+        }
+        Ok(details)
+    }
+
+    pub(crate) fn create_local_review_activity_presentation_evidence_item(
+        &mut self,
+        collection_id: &str,
+        expected_updated_at_ms: i64,
+    ) -> Result<String, StorageError> {
+        let details = self.activity_presentation_details_for_local_review(collection_id)?;
+        let title = "Activity presentation";
+        let summary = "Captured current-session native Local Review activity.";
+        let bytes = activity_presentation_evidence_envelope_bytes(title, summary, &details)?;
+        parse_activity_presentation_evidence_envelope(&bytes, title)?;
+        let now = now_millis();
+        let session_id = self.activity_session_id.clone();
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let context = local_review_mutation_context(
+            &tx,
+            collection_id,
+            Some(expected_updated_at_ms),
+            LocalReviewMutationPermission::ActiveContent,
+        )?;
+        if bytes.len() > REVIEW_EVIDENCE_BYTES_LIMIT {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let id = Uuid::now_v7().to_string();
+        tx.execute("INSERT INTO local_review_items (id, schema_version, collection_id, class, text_format, mime_type, width, height, state, title, source_kind, provenance, evidence_source, content, sha256, byte_size, created_at_ms, updated_at_ms) VALUES (?1, 1, ?2, 'evidence', NULL, 'application/json; profile=evidence-envelope-v1', NULL, NULL, 'ready', ?3, 'typed-evidence-snapshot', 'activity-presentation', 'activity-presentation', ?4, ?5, ?6, ?7, ?7)", params![id, collection_id, title, bytes, review_digest(&bytes), bytes.len() as i64, now])?;
+        tx.execute("UPDATE local_review_collections SET updated_at_ms = CASE WHEN updated_at_ms >= ?1 THEN updated_at_ms + 1 ELSE ?1 END WHERE id = ?2", params![now, collection_id])?;
+        append_local_review_activity(
+            &tx,
+            collection_id,
+            &context.task_id,
+            &session_id,
+            "activity-evidence-captured",
+            now,
+        )?;
+        tx.commit()?;
+        Ok(id)
+    }
+
+    pub(crate) fn local_review_activity_presentation_evidence_preview(
+        &self,
+        item_id: &str,
+        sha256: &str,
+    ) -> Result<LocalReviewActivityPresentationEvidencePreview, StorageError> {
+        let (title, content, stored_sha, byte_size, created_at_ms): (String, Vec<u8>, String, i64, i64) = self.connection.query_row("SELECT title, content, sha256, byte_size, created_at_ms FROM local_review_items WHERE id = ?1 AND provenance = 'activity-presentation' AND evidence_source = 'activity-presentation'", [item_id], |row| Ok((row.get(0)?,row.get(1)?,row.get(2)?,row.get(3)?,row.get(4)?)))?;
+        if sha256 != stored_sha
+            || stored_sha != review_digest(&content)
+            || byte_size != content.len() as i64
+        {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let (summary, details) = parse_activity_presentation_evidence_envelope(&content, &title)?;
+        Ok(LocalReviewActivityPresentationEvidencePreview {
+            schema_version: 1,
+            item_id: item_id.to_owned(),
+            source: LocalReviewEvidenceSource::ActivityPresentation,
+            title,
+            summary,
+            details,
+            byte_size: byte_size as u64,
+            sha256: stored_sha,
+            created_at_ms,
+        })
     }
 
     pub(crate) fn create_local_review_git_status_diff_summary_evidence_item(
@@ -4273,7 +4486,10 @@ impl ProjectRepository {
         verify_schema(&connection)?;
         recover_interrupted_conversations(&connection)?;
         recover_interrupted_terminals(&connection)?;
-        Ok(Self { connection })
+        Ok(Self {
+            connection,
+            activity_session_id: Uuid::now_v7().to_string(),
+        })
     }
 
     pub(crate) fn list_projects(&self) -> Result<Vec<StoredProject>, StorageError> {
@@ -7066,7 +7282,7 @@ mod tests {
                     0
                 ))
                 .expect("version"),
-            18
+            19
         );
     }
 

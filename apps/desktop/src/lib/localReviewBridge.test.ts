@@ -56,6 +56,7 @@ const snapshot = {
   warning: false,
   packageManifestSummaryAvailable: false,
   gitStatusDiffSummaryAvailable: false,
+  activityPresentationAvailable: false,
   diagnosticCode: null,
 };
 const annotationSnapshot = {
@@ -124,6 +125,7 @@ const annotationSnapshot = {
   warning: false,
   packageManifestSummaryAvailable: false,
   gitStatusDiffSummaryAvailable: false,
+  activityPresentationAvailable: false,
   diagnosticCode: null,
 };
 

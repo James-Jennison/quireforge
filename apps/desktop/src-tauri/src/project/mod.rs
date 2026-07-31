@@ -18,12 +18,14 @@ use storage::{
 };
 pub(crate) use storage::{StoredConversationReference, StoredTerminalSession};
 use types::{
-    DirectoryAccessibilityState, DirectorySummary, GitSummary, LocalReviewAnnotationCreateRequest,
-    LocalReviewAnnotationEditRequest, LocalReviewAnnotationMutationRequest,
-    LocalReviewCollectionCreateRequest, LocalReviewCollectionMutationRequest,
-    LocalReviewComparisonCreateRequest, LocalReviewComparisonDiscardRequest,
-    LocalReviewComparisonReadRequest, LocalReviewDiagnosticCode, LocalReviewEvidenceArtifactKind,
-    LocalReviewEvidenceArtifactState, LocalReviewEvidenceSource, LocalReviewEvidenceWorkspaceState,
+    DirectoryAccessibilityState, DirectorySummary, GitSummary,
+    LocalReviewActivityPresentationEvidencePreview, LocalReviewActivityPresentationEvidenceRequest,
+    LocalReviewAnnotationCreateRequest, LocalReviewAnnotationEditRequest,
+    LocalReviewAnnotationMutationRequest, LocalReviewCollectionCreateRequest,
+    LocalReviewCollectionMutationRequest, LocalReviewComparisonCreateRequest,
+    LocalReviewComparisonDiscardRequest, LocalReviewComparisonReadRequest,
+    LocalReviewDiagnosticCode, LocalReviewEvidenceArtifactKind, LocalReviewEvidenceArtifactState,
+    LocalReviewEvidenceSource, LocalReviewEvidenceWorkspaceState,
     LocalReviewGitStatusDiffSummaryDetails, LocalReviewGitStatusDiffSummaryEvidencePreview,
     LocalReviewGitStatusDiffSummaryEvidenceRequest, LocalReviewImagePickRequest,
     LocalReviewImagePreview, LocalReviewImagePreviewRequest, LocalReviewItemDiscardRequest,
@@ -228,11 +230,16 @@ impl ProjectService {
                     .git_status_diff_summary_project_for_local_review(&collection.collection_id)
                     .is_ok()
             });
+            let activity_presentation_available = snapshot.1.as_ref().is_some_and(|collection| {
+                repository
+                    .activity_presentation_available_for_local_review(&collection.collection_id)
+            });
             Some((
                 snapshot,
                 comparisons,
                 package_manifest_summary_available,
                 git_status_diff_summary_available,
+                activity_presentation_available,
             ))
         });
         match result {
@@ -241,6 +248,7 @@ impl ProjectService {
                 comparisons,
                 package_manifest_summary_available,
                 git_status_diff_summary_available,
+                activity_presentation_available,
             )) => LocalReviewSnapshot {
                 schema_version: LOCAL_REVIEW_SCHEMA_VERSION,
                 collections,
@@ -252,6 +260,7 @@ impl ProjectService {
                 warning,
                 package_manifest_summary_available,
                 git_status_diff_summary_available,
+                activity_presentation_available,
                 diagnostic_code: None,
             },
             None => local_review_unavailable(LocalReviewDiagnosticCode::MetadataUnavailable),
@@ -730,6 +739,39 @@ impl ProjectService {
         LocalReviewManualEvidenceCreateResult::Failed { snapshot }
     }
 
+    pub fn create_local_review_activity_presentation_evidence(
+        &self,
+        request: LocalReviewActivityPresentationEvidenceRequest,
+    ) -> LocalReviewManualEvidenceCreateResult {
+        let collection_id = request.collection_id.clone();
+        let result = self.repository.lock().ok().and_then(|mut repository| {
+            repository
+                .as_mut()?
+                .create_local_review_activity_presentation_evidence_item(
+                    &collection_id,
+                    request.expected_collection_updated_at_ms,
+                )
+                .ok()
+        });
+        let mut snapshot = self.local_review(LocalReviewListRequest {
+            selected_collection_id: Some(collection_id),
+        });
+        if let Some(created_item_id) = result {
+            if snapshot.items.iter().any(|item| {
+                item.item_id == created_item_id
+                    && item.evidence_source == Some(LocalReviewEvidenceSource::ActivityPresentation)
+            }) {
+                return LocalReviewManualEvidenceCreateResult::Created {
+                    created_item_id,
+                    source: LocalReviewEvidenceSource::ActivityPresentation,
+                    snapshot,
+                };
+            }
+        }
+        snapshot.diagnostic_code = Some(LocalReviewDiagnosticCode::InvalidRequest);
+        LocalReviewManualEvidenceCreateResult::Failed { snapshot }
+    }
+
     pub fn create_local_review_annotation(
         &self,
         request: LocalReviewAnnotationCreateRequest,
@@ -1074,6 +1116,19 @@ impl ProjectService {
             .as_ref()
             .ok_or(())?
             .local_review_git_status_diff_summary_evidence_preview(&item_id, &sha256)
+            .map_err(|_| ())
+    }
+    pub fn local_review_activity_presentation_evidence_preview(
+        &self,
+        item_id: String,
+        sha256: String,
+    ) -> Result<LocalReviewActivityPresentationEvidencePreview, ()> {
+        self.repository
+            .lock()
+            .map_err(|_| ())?
+            .as_ref()
+            .ok_or(())?
+            .local_review_activity_presentation_evidence_preview(&item_id, &sha256)
             .map_err(|_| ())
     }
     pub fn task_catalog(&self, request: TaskCatalogListRequest) -> TaskCatalogSnapshot {
@@ -2635,6 +2690,7 @@ fn local_review_unavailable(diagnostic_code: LocalReviewDiagnosticCode) -> Local
         warning: false,
         package_manifest_summary_available: false,
         git_status_diff_summary_available: false,
+        activity_presentation_available: false,
         diagnostic_code: Some(diagnostic_code),
     }
 }
