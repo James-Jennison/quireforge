@@ -21,6 +21,7 @@ import {
   previewLocalReviewGitStatusDiffSummaryEvidence,
   createLocalReviewActivityPresentationEvidence,
   previewLocalReviewActivityPresentationEvidence,
+  createLocalReviewApprovalPresentationEvidence,
   discardLocalReviewItem,
   createLocalReviewAnnotation,
   editLocalReviewAnnotation,
@@ -53,6 +54,7 @@ const unavailable: LocalReviewSnapshot = {
   packageManifestSummaryAvailable: false,
   gitStatusDiffSummaryAvailable: false,
   activityPresentationAvailable: false,
+  approvalPresentationAvailable: false,
   diagnosticCode: "metadata-unavailable",
 };
 
@@ -674,6 +676,17 @@ export default function LocalReviewPane({
       setSelectedItemId(item.itemId); recordLocalReviewActivity({ kind: "item-added", label: item.title, status: "success", digest: item.sha256 });
       return previewLocalReviewActivityPresentationEvidence({ itemId: item.itemId, sha256: item.sha256 }).then(setActivityEvidencePreview);
     }).catch(() => setError("Activity presentation could not be captured.")).finally(() => setBusy(false));
+  };
+  const captureApprovalPresentation = () => {
+    const collection = snapshot?.selectedCollection;
+    if (!collection || busy || !snapshot?.approvalPresentationAvailable) return;
+    setBusy(true); setError(null);
+    void createLocalReviewApprovalPresentationEvidence({ collectionId: collection.collectionId, expectedCollectionUpdatedAtMs: collection.updatedAtMs }).then((result) => {
+      setSnapshot(result.snapshot); if (result.outcome !== "created") { setError("Approval presentation could not be captured."); return; }
+      const item = result.snapshot.items.find((candidate) => candidate.itemId === result.createdItemId && candidate.class === "evidence" && candidate.evidenceSource === result.source);
+      if (!item) { setError("Approval presentation could not be captured."); return; }
+      setSelectedItemId(item.itemId); recordLocalReviewActivity({ kind: "item-added", label: item.title, status: "success", digest: item.sha256 });
+    }).catch(() => setError("Approval presentation could not be captured.")).finally(() => setBusy(false));
   };
   const discardSelectedItem = () => {
     const collection = snapshot?.selectedCollection;
@@ -2236,6 +2249,7 @@ export default function LocalReviewPane({
               Capture Git status and diff summary…
             </button>
             <button type="button" disabled={busy || !snapshot.activityPresentationAvailable} onClick={captureActivityPresentation}>Capture activity presentation…</button>
+            <button type="button" disabled={busy || !snapshot.approvalPresentationAvailable} onClick={captureApprovalPresentation}>Capture approval presentation…</button>
           </section>
           {evidencePreview ? (
             <section aria-label="Evidence preview">

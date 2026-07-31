@@ -24,13 +24,15 @@ use crate::preview::validate_attachment_image;
 use super::types::{
     EvidenceEnvelopeV1, LocalReviewActivityPresentationDetails,
     LocalReviewActivityPresentationEvidencePreview, LocalReviewActivityScope,
-    LocalReviewAnnotationState, LocalReviewAnnotationSummary, LocalReviewCollectionState,
-    LocalReviewCollectionSummary, LocalReviewComparisonState, LocalReviewComparisonSummary,
-    LocalReviewDiagnosticCode, LocalReviewEvidenceCheckState, LocalReviewEvidenceSource,
-    LocalReviewEvidenceWorkspaceState, LocalReviewGitStatusDiffSummaryDetails,
-    LocalReviewGitStatusDiffSummaryEvidencePreview, LocalReviewImagePreview, LocalReviewItemClass,
-    LocalReviewItemState, LocalReviewItemSummary, LocalReviewLineComparison, LocalReviewLineKind,
-    LocalReviewLineRecord, LocalReviewM48GeneratedArtifactMetadataDetails,
+    LocalReviewAnnotationState, LocalReviewAnnotationSummary,
+    LocalReviewApprovalPresentationDetails, LocalReviewApprovalPresentationEvidencePreview,
+    LocalReviewCollectionState, LocalReviewCollectionSummary, LocalReviewComparisonState,
+    LocalReviewComparisonSummary, LocalReviewDiagnosticCode, LocalReviewEvidenceApprovalState,
+    LocalReviewEvidenceCheckState, LocalReviewEvidenceSource, LocalReviewEvidenceWorkspaceState,
+    LocalReviewGitStatusDiffSummaryDetails, LocalReviewGitStatusDiffSummaryEvidencePreview,
+    LocalReviewImagePreview, LocalReviewItemClass, LocalReviewItemState, LocalReviewItemSummary,
+    LocalReviewLineComparison, LocalReviewLineKind, LocalReviewLineRecord,
+    LocalReviewM48GeneratedArtifactMetadataDetails,
     LocalReviewM48GeneratedArtifactMetadataEvidencePreview, LocalReviewManualEvidencePreview,
     LocalReviewManualValidationDetails, LocalReviewPackageManifestSummaryDetails,
     LocalReviewPackageManifestSummaryEvidencePreview, LocalReviewSafePreviewMetadataDetails,
@@ -1186,6 +1188,54 @@ fn parse_activity_presentation_evidence_envelope(
         .into_iter()
         .any(|count| count > 12)
     {
+        return Err(StorageError::InvalidStoredValue);
+    }
+    Ok((envelope.summary, envelope.details))
+}
+
+fn approval_presentation_evidence_envelope_bytes(
+    title: &str,
+    summary: &str,
+    details: &LocalReviewApprovalPresentationDetails,
+) -> Result<Vec<u8>, StorageError> {
+    serde_json::to_vec(&EvidenceEnvelopeV1 {
+        schema_version: 1,
+        source: LocalReviewEvidenceSource::ApprovalPresentation,
+        source_schema_version: 1,
+        title: title.to_owned(),
+        summary: summary.to_owned(),
+        details,
+    })
+    .map_err(|_| StorageError::InvalidStoredValue)
+}
+
+fn parse_approval_presentation_evidence_envelope(
+    bytes: &[u8],
+    title: &str,
+) -> Result<(String, LocalReviewApprovalPresentationDetails), StorageError> {
+    let envelope: EvidenceEnvelopeV1<LocalReviewApprovalPresentationDetails> =
+        serde_json::from_slice(bytes).map_err(|_| StorageError::InvalidStoredValue)?;
+    if envelope.schema_version != 1
+        || envelope.source_schema_version != 1
+        || envelope.source != LocalReviewEvidenceSource::ApprovalPresentation
+        || envelope.title != title
+        || normalize_review_label(&envelope.title)? != envelope.title
+        || normalize_review_text(&envelope.summary, LocalReviewTextFormat::Plain)?
+            != envelope.summary
+        || envelope.details.approval_state != LocalReviewEvidenceApprovalState::Approved
+        || !envelope.details.request_present
+        || !envelope.details.decision_present
+        || !envelope.details.dispatch_present
+        || !envelope.details.execution_present
+    {
+        return Err(StorageError::InvalidStoredValue);
+    }
+    let canonical = approval_presentation_evidence_envelope_bytes(
+        &envelope.title,
+        &envelope.summary,
+        &envelope.details,
+    )?;
+    if canonical != bytes {
         return Err(StorageError::InvalidStoredValue);
     }
     Ok((envelope.summary, envelope.details))
@@ -3352,6 +3402,81 @@ impl ProjectRepository {
             schema_version: 1,
             item_id: item_id.to_owned(),
             source: LocalReviewEvidenceSource::ActivityPresentation,
+            title,
+            summary,
+            details,
+            byte_size: byte_size as u64,
+            sha256: stored_sha,
+            created_at_ms,
+        })
+    }
+
+    pub(crate) fn approval_presentation_available_for_local_review(
+        &self,
+        collection_id: &str,
+    ) -> bool {
+        let tx = match self.connection.unchecked_transaction() {
+            Ok(tx) => tx,
+            Err(_) => return false,
+        };
+        let result = local_review_mutation_context(
+            &tx,
+            collection_id,
+            None,
+            LocalReviewMutationPermission::ActiveContent,
+        )
+        .and_then(|context| approval_presentation_details_for_task(&tx, &context.task_id));
+        let _ = tx.rollback();
+        result.is_ok()
+    }
+
+    pub(crate) fn create_local_review_approval_presentation_evidence_item(
+        &mut self,
+        collection_id: &str,
+        expected_updated_at_ms: i64,
+    ) -> Result<String, StorageError> {
+        let now = now_millis();
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let context = local_review_mutation_context(
+            &tx,
+            collection_id,
+            Some(expected_updated_at_ms),
+            LocalReviewMutationPermission::ActiveContent,
+        )?;
+        let details = approval_presentation_details_for_task(&tx, &context.task_id)?;
+        let title = "Approval presentation";
+        let summary = "Captured approved Advisor dispatch presentation.";
+        let bytes = approval_presentation_evidence_envelope_bytes(title, summary, &details)?;
+        parse_approval_presentation_evidence_envelope(&bytes, title)?;
+        if bytes.len() > REVIEW_EVIDENCE_BYTES_LIMIT {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let id = Uuid::now_v7().to_string();
+        tx.execute("INSERT INTO local_review_items (id, schema_version, collection_id, class, text_format, mime_type, width, height, state, title, source_kind, provenance, evidence_source, content, sha256, byte_size, created_at_ms, updated_at_ms) VALUES (?1, 1, ?2, 'evidence', NULL, 'application/json; profile=evidence-envelope-v1', NULL, NULL, 'ready', ?3, 'typed-evidence-snapshot', 'approval-presentation', 'approval-presentation', ?4, ?5, ?6, ?7, ?7)", params![id, collection_id, title, bytes, review_digest(&bytes), bytes.len() as i64, now])?;
+        tx.execute("UPDATE local_review_collections SET updated_at_ms = CASE WHEN updated_at_ms >= ?1 THEN updated_at_ms + 1 ELSE ?1 END WHERE id = ?2", params![now, collection_id])?;
+        tx.commit()?;
+        Ok(id)
+    }
+
+    pub(crate) fn local_review_approval_presentation_evidence_preview(
+        &self,
+        item_id: &str,
+        sha256: &str,
+    ) -> Result<LocalReviewApprovalPresentationEvidencePreview, StorageError> {
+        let (title, content, stored_sha, byte_size, created_at_ms): (String, Vec<u8>, String, i64, i64) = self.connection.query_row("SELECT title, content, sha256, byte_size, created_at_ms FROM local_review_items WHERE id = ?1 AND provenance = 'approval-presentation' AND evidence_source = 'approval-presentation'", [item_id], |row| Ok((row.get(0)?,row.get(1)?,row.get(2)?,row.get(3)?,row.get(4)?)))?;
+        if sha256 != stored_sha
+            || stored_sha != review_digest(&content)
+            || byte_size != content.len() as i64
+        {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let (summary, details) = parse_approval_presentation_evidence_envelope(&content, &title)?;
+        Ok(LocalReviewApprovalPresentationEvidencePreview {
+            schema_version: 1,
+            item_id: item_id.to_owned(),
+            source: LocalReviewEvidenceSource::ApprovalPresentation,
             title,
             summary,
             details,
@@ -6227,6 +6352,85 @@ fn task_advisor_dispatch_origin(
     Ok(Some((advisor_conversation_id, dispatch_id)))
 }
 
+fn approval_presentation_details_for_task(
+    tx: &Transaction<'_>,
+    task_id: &str,
+) -> Result<LocalReviewApprovalPresentationDetails, StorageError> {
+    let (project_id, advisor_conversation_id, dispatch_id): (Option<String>, Option<String>, Option<String>) = tx.query_row(
+        "SELECT project_id, origin_advisor_conversation_id, origin_advisor_dispatch_record_id FROM task_records WHERE id = ?1",
+        [task_id], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+    )?;
+    let (Some(project_id), Some(origin_conversation_id), Some(origin_dispatch_id)) =
+        (project_id, advisor_conversation_id, dispatch_id)
+    else {
+        return Err(StorageError::InvalidStoredValue);
+    };
+    if !is_uuid_v7(&project_id)
+        || !is_uuid_v7(&origin_conversation_id)
+        || !is_uuid_v7(&origin_dispatch_id)
+    {
+        return Err(StorageError::InvalidStoredValue);
+    }
+    #[expect(clippy::type_complexity, reason = "fixed advisor dispatch row is immediately validated")]
+    let row: Option<(String, String, String, String, String, String, i64, Option<i64>, i64, Option<String>, Option<String>, String, String)> = tx.query_row(
+        "SELECT id, advisor_conversation_id, target_project_id, request_sha256, context_manifest_sha256, capability_manifest_sha256, requires_explicit_approval, decided_at_ms, expires_at_ms, execution_dispatch_state, execution_conversation_id, state, provenance_source FROM advisor_dispatch_records WHERE id = ?1",
+        [&origin_dispatch_id], |row| Ok((row.get(0)?,row.get(1)?,row.get(2)?,row.get(3)?,row.get(4)?,row.get(5)?,row.get(6)?,row.get(7)?,row.get(8)?,row.get(9)?,row.get(10)?,row.get(11)?,row.get(12)?)),
+    ).optional()?;
+    let Some((
+        id,
+        conversation_id,
+        target_project_id,
+        request_sha,
+        context_sha,
+        capability_sha,
+        explicit,
+        decided_at,
+        expires_at,
+        execution_state,
+        execution_id,
+        state,
+        provenance_source,
+    )) = row
+    else {
+        return Err(StorageError::TaskNotFound);
+    };
+    if id != origin_dispatch_id
+        || conversation_id != origin_conversation_id
+        || target_project_id != project_id
+        || !is_uuid_v7(&id)
+        || !is_uuid_v7(&conversation_id)
+        || !valid_lower_sha256(&request_sha)
+        || !valid_lower_sha256(&context_sha)
+        || !valid_lower_sha256(&capability_sha)
+        || explicit != 1
+        || state != "approved"
+        || decided_at.is_none()
+        || expires_at <= decided_at.unwrap_or_default()
+        || execution_state.as_deref() != Some("started")
+        || !execution_id.as_deref().is_some_and(is_uuid_v7)
+        || parse_advisor_provenance_source(&provenance_source).is_err()
+    {
+        return Err(StorageError::InvalidStoredValue);
+    }
+    let execution_matches: Option<i64> = tx
+        .query_row(
+            "SELECT 1 FROM conversation_references WHERE id = ?1 AND project_id = ?2",
+            params![execution_id, project_id],
+            |row| row.get(0),
+        )
+        .optional()?;
+    if execution_matches != Some(1) {
+        return Err(StorageError::InvalidStoredValue);
+    }
+    Ok(LocalReviewApprovalPresentationDetails {
+        approval_state: LocalReviewEvidenceApprovalState::Approved,
+        request_present: true,
+        decision_present: true,
+        dispatch_present: true,
+        execution_present: true,
+    })
+}
+
 fn is_uuid_v7(value: &str) -> bool {
     Uuid::parse_str(value).is_ok_and(|uuid| uuid.get_version_num() == 7)
 }
@@ -6955,8 +7159,9 @@ mod tests {
     };
     use crate::project::types::{
         LocalReviewAnnotationState, LocalReviewCollectionState, LocalReviewComparisonState,
-        LocalReviewEvidenceCheckState, LocalReviewItemClass, LocalReviewItemState,
-        LocalReviewLineKind, LocalReviewSourceKind, LocalReviewTextFormat, TaskStatus,
+        LocalReviewEvidenceApprovalState, LocalReviewEvidenceCheckState, LocalReviewItemClass,
+        LocalReviewItemState, LocalReviewLineKind, LocalReviewSourceKind, LocalReviewTextFormat,
+        TaskStatus,
     };
     use crate::project::{
         ChatConversationMetadata, ConversationPendingSelection, ConversationReference,
@@ -8356,6 +8561,72 @@ mod tests {
                 ))
                 .expect("migration version"),
             20
+        );
+    }
+
+    #[test]
+    fn local_review_approval_presentation_uses_only_immutable_task_origin_and_persisted_bytes() {
+        let mut repository = ProjectRepository::in_memory().expect("schema");
+        let (project_id, execution_conversation_id) = insert_live_task_context(&repository);
+        let advisor_conversation_id = "018f0000-0000-7000-8000-000000000151";
+        let dispatch_id = "018f0000-0000-7000-8000-000000000152";
+        insert_started_advisor_dispatch(
+            &repository,
+            advisor_conversation_id,
+            dispatch_id,
+            &project_id,
+            &execution_conversation_id,
+        );
+        let task_id = repository
+            .create_task_from_conversation_context(&execution_conversation_id)
+            .expect("task");
+        let collection_id = repository
+            .create_local_review_collection(&task_id, None, "Approval")
+            .expect("collection");
+        let updated_at_ms: i64 = repository
+            .connection
+            .query_row(
+                "SELECT updated_at_ms FROM local_review_collections WHERE id = ?1",
+                [&collection_id],
+                |row| row.get(0),
+            )
+            .expect("timestamp");
+        let item_id = repository
+            .create_local_review_approval_presentation_evidence_item(&collection_id, updated_at_ms)
+            .expect("evidence");
+        let sha256: String = repository
+            .connection
+            .query_row(
+                "SELECT sha256 FROM local_review_items WHERE id = ?1",
+                [&item_id],
+                |row| row.get(0),
+            )
+            .expect("digest");
+        let preview = repository
+            .local_review_approval_presentation_evidence_preview(&item_id, &sha256)
+            .expect("persisted preview");
+        assert_eq!(
+            preview.details.approval_state,
+            LocalReviewEvidenceApprovalState::Approved
+        );
+        assert!(
+            preview.details.request_present
+                && preview.details.decision_present
+                && preview.details.dispatch_present
+                && preview.details.execution_present
+        );
+        repository
+            .connection
+            .execute(
+                "UPDATE advisor_dispatch_records SET state = 'rejected' WHERE id = ?1",
+                [dispatch_id],
+            )
+            .expect("live mutation");
+        assert_eq!(
+            repository
+                .local_review_approval_presentation_evidence_preview(&item_id, &sha256)
+                .expect("inert preview"),
+            preview
         );
     }
 

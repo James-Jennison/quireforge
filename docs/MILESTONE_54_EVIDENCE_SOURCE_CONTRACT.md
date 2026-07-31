@@ -33,7 +33,7 @@ Preview is inert bounded copied-envelope fields only.
 | `safe-preview-metadata` | `previewState`, `kind`, `rendering`, `mediaType`, `byteLength`, `truncated`, nullable `widthPx`/`heightPx` | Source-unbound unless native preview has a task binding; otherwise target collection only. |
 | `git-status-diff-summary` | aggregate workspace/change/addition/deletion/diff availability values | Native project/workspace must match the target task project, or capture is unavailable. |
 | `activity-presentation` | `scope: current-session`, bounded local-review aggregate counters, `truncated` | Only activity already owned by the target collection/task is eligible. |
-| `approval-presentation` | `approvalState`, `requestPresent`, `decisionPresent`, `dispatchPresent`, `executionPresent` | Native presentation must already match target task/plan context, or capture is unavailable. |
+| `approval-presentation` | `approvalState`, `requestPresent`, `decisionPresent`, `dispatchPresent`, `executionPresent` | The target task's immutable migration-20 Advisor conversation/dispatch origin must resolve to one approved, started same-project dispatch. A collection plan is checked only for current task-context eligibility; this source does not claim approval of a later plan body or revision. |
 | `package-manifest-summary` | application/Debian version, closed validation states, artifact count, completion | Native project identity must match the target task project, or capture is unavailable. |
 
 All numeric detail values are bounded non-negative integers. No details object

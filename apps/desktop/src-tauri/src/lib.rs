@@ -1548,6 +1548,13 @@ fn local_review_activity_presentation_evidence_create(
 ) -> project::types::LocalReviewManualEvidenceCreateResult {
     projects.create_local_review_activity_presentation_evidence(request)
 }
+#[tauri::command]
+fn local_review_approval_presentation_evidence_create(
+    request: project::types::LocalReviewApprovalPresentationEvidenceRequest,
+    projects: tauri::State<'_, ProjectService>,
+) -> project::types::LocalReviewManualEvidenceCreateResult {
+    projects.create_local_review_approval_presentation_evidence(request)
+}
 
 #[tauri::command]
 fn local_review_collection_resume(
@@ -1669,6 +1676,14 @@ fn local_review_activity_presentation_evidence_preview(
     service: tauri::State<'_, ProjectService>,
 ) -> Result<project::types::LocalReviewActivityPresentationEvidencePreview, ()> {
     service.local_review_activity_presentation_evidence_preview(item_id, sha256)
+}
+#[tauri::command]
+fn local_review_approval_presentation_evidence_preview(
+    item_id: String,
+    sha256: String,
+    service: tauri::State<'_, ProjectService>,
+) -> Result<project::types::LocalReviewApprovalPresentationEvidencePreview, ()> {
+    service.local_review_approval_presentation_evidence_preview(item_id, sha256)
 }
 #[tauri::command]
 fn local_review_annotation_create(
@@ -2667,6 +2682,7 @@ pub fn run() {
             local_review_package_manifest_summary_evidence_create,
             local_review_git_status_diff_summary_evidence_create,
             local_review_activity_presentation_evidence_create,
+            local_review_approval_presentation_evidence_create,
             local_review_collection_resume,
             local_review_collection_discard,
             local_review_item_discard,
@@ -2680,6 +2696,7 @@ pub fn run() {
             local_review_package_manifest_summary_evidence_preview,
             local_review_git_status_diff_summary_evidence_preview,
             local_review_activity_presentation_evidence_preview,
+            local_review_approval_presentation_evidence_preview,
             local_review_annotation_create,
             local_review_annotation_edit,
             local_review_annotation_resolve,
