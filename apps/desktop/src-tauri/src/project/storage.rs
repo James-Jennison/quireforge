@@ -4442,6 +4442,26 @@ impl ProjectRepository {
         Ok((project_id.clone(), predecessor))
     }
 
+    pub(crate) fn installed_host_headless_context_project_id_for_internal(
+        &self,
+    ) -> Result<String, StorageError> {
+        let project_ids = self
+            .connection
+            .prepare(
+                "SELECT project.id FROM projects AS project
+             JOIN directory_associations AS association
+               ON association.id = project.active_directory_association_id
+             WHERE project.archived_at_ms IS NULL AND association.detached_at_ms IS NULL
+             ORDER BY project.id LIMIT 2",
+            )?
+            .query_map([], |row| row.get::<_, String>(0))?
+            .collect::<Result<Vec<_>, _>>()?;
+        let [project_id] = project_ids.as_slice() else {
+            return Err(StorageError::InvalidStoredValue);
+        };
+        Ok(project_id.clone())
+    }
+
     /// Returns the immutable tail that an installed-host result may supersede.
     /// The caller first authenticates the supplied unprivileged receipt, then
     /// uses this lookup to extend its one linear durable chain.
@@ -6340,8 +6360,8 @@ mod tests {
             validation_phase: PackageValidationPhase::Unprivileged,
             attempt_identity_sha256: None,
             installed_host_facts: None,
-            application_version: "0.1.0-beta.48".to_owned(),
-            debian_version: "0.1.0~beta.48".to_owned(),
+            application_version: "0.1.0-beta.49".to_owned(),
+            debian_version: "0.1.0~beta.49".to_owned(),
             manifest_state: LocalReviewEvidenceCheckState::Passed,
             checksum_state: LocalReviewEvidenceCheckState::Passed,
             abi_state: LocalReviewEvidenceCheckState::Passed,
@@ -6414,6 +6434,17 @@ mod tests {
         assert!(repository
             .installed_host_headless_predecessor_for_internal()
             .is_err());
+    }
+
+    #[test]
+    fn installed_host_headless_context_requires_exactly_one_live_attached_project() {
+        let (repository, project_id) = ProjectRepository::package_validation_test_repository();
+        assert_eq!(
+            repository
+                .installed_host_headless_context_project_id_for_internal()
+                .expect("single live attached project"),
+            project_id,
+        );
     }
 
     #[test]

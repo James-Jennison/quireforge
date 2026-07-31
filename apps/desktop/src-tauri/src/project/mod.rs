@@ -1135,10 +1135,10 @@ impl ProjectService {
     /// It resolves every authority input from durable metadata and delegates
     /// recording exclusively to the package-validation controller.
     pub(crate) fn complete_installed_host_validation(&self) -> InstalledHostHeadlessStatus {
-        let (project_id, predecessor) = match self.repository.lock().ok().and_then(|guard| {
+        let project_id = match self.repository.lock().ok().and_then(|guard| {
             guard.as_ref().and_then(|repository| {
                 repository
-                    .installed_host_headless_predecessor_for_internal()
+                    .installed_host_headless_context_project_id_for_internal()
                     .ok()
             })
         }) {
@@ -1159,6 +1159,23 @@ impl ProjectService {
             return InstalledHostHeadlessStatus::Unavailable;
         };
         let mut controller = PackageValidationController::default();
+        if !PackageValidationController::installed_debian_version_is("0.1.0~beta.49")
+            .unwrap_or(false)
+        {
+            return InstalledHostHeadlessStatus::Unavailable;
+        }
+        if controller
+            .run_and_record(repository, context.clone())
+            .is_err()
+        {
+            return InstalledHostHeadlessStatus::Failed;
+        }
+        let predecessor = match repository.installed_host_headless_predecessor_for_internal() {
+            Ok((resolved_project_id, predecessor)) if resolved_project_id == project_id => {
+                predecessor
+            }
+            _ => return InstalledHostHeadlessStatus::Failed,
+        };
         match controller.run_installed_host_and_record(repository, context, &predecessor.id) {
             Ok(InstalledHostValidationOutcome::Created) => InstalledHostHeadlessStatus::Created,
             Ok(InstalledHostValidationOutcome::Existing) => InstalledHostHeadlessStatus::Existing,

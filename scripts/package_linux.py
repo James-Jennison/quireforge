@@ -148,22 +148,126 @@ def finalize(output_dir: Path, version: str) -> int:
     }
     if not candidate.is_dir() or {path.name for path in candidate.iterdir()} != expected:
         raise RuntimeError("validated candidate set is incomplete")
-    for existing in output_dir.iterdir():
-        if existing == candidate:
-            continue
-        if existing.is_file() and (
-            existing.name in {"SHA256SUMS", "release-manifest.json"}
-            or existing.suffix == ".deb"
-            or existing.name.endswith(".AppImage")
-        ):
-            existing.unlink()
+    candidate_manifest = coherent_release_set(candidate)
+    if candidate_manifest["version"] != version:
+        raise RuntimeError("validated candidate version is incoherent")
+    archive_root = output_dir.parent / "archive"
+    existing = [path for path in output_dir.iterdir() if path != candidate]
+    prior_archive: Path | None = None
+    if existing:
+        if any(not path.is_file() for path in existing):
+            raise RuntimeError("refusing non-file canonical release entry")
+        prior = coherent_release_set(output_dir)
+        archive = archive_root / prior["version"]
+        prior_archive = archive
+        archive_root.mkdir(exist_ok=True)
+        if archive.exists():
+            if not archive.is_dir() or not release_sets_identical(output_dir, archive):
+                raise RuntimeError("existing release archive conflicts")
         else:
-            raise RuntimeError(f"refusing unexpected package output: {existing}")
-    for artifact in candidate.iterdir():
-        shutil.move(artifact, output_dir / artifact.name)
-    candidate.rmdir()
-    print(f"promoted validated Linux release candidates: {output_dir.relative_to(ROOT)}")
+            archive.mkdir()
+            moved = []
+            try:
+                for path in existing:
+                    destination = archive / path.name
+                    shutil.move(path, destination)
+                    moved.append((path, destination))
+                coherent_release_set(archive)
+            except Exception:
+                for source, destination in reversed(moved):
+                    if destination.exists():
+                        shutil.move(destination, source)
+                raise
+        if archive.exists():
+            coherent_release_set(archive)
+            for path in existing:
+                if path.exists():
+                    path.unlink()
+    moved_candidate = []
+    try:
+        for artifact in candidate.iterdir():
+            destination = output_dir / artifact.name
+            shutil.move(artifact, destination)
+            moved_candidate.append((artifact, destination))
+        candidate.rmdir()
+    except Exception:
+        for source, destination in reversed(moved_candidate):
+            if destination.exists():
+                shutil.move(destination, source)
+        if prior_archive is not None:
+            try:
+                for archived in prior_archive.iterdir():
+                    if archived.is_file():
+                        shutil.copy2(archived, output_dir / archived.name)
+                coherent_release_set(output_dir)
+            except Exception as restoration_error:
+                raise RuntimeError(
+                    "candidate promotion failed and prior release restoration failed"
+                ) from restoration_error
+        raise RuntimeError("candidate promotion failed without replacement")
+    print(f"promoted validated Linux release candidates: {output_dir}")
     return 0
+
+
+def coherent_release_set(root: Path) -> dict[str, object]:
+    manifest_path = root / "release-manifest.json"
+    checksums_path = root / "SHA256SUMS"
+    if not manifest_path.is_file() or not checksums_path.is_file():
+        raise RuntimeError("canonical release set is incomplete")
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise RuntimeError("canonical release manifest is malformed") from error
+    artifacts = manifest.get("artifacts")
+    version = manifest.get("version")
+    source = manifest.get("source")
+    if (manifest.get("schemaVersion") != 3 or manifest.get("state") != "release-candidate"
+            or not isinstance(version, str) or not isinstance(source, dict)
+            or not isinstance(source.get("commit"), str)
+            or len(source["commit"]) != 40
+            or any(character not in "0123456789abcdef" for character in source["commit"])
+            or not isinstance(artifacts, list)
+            or len(artifacts) != 2):
+        raise RuntimeError("canonical release manifest is incoherent")
+    names = {"release-manifest.json", "SHA256SUMS"}
+    checksum_lines = []
+    expected_names = {
+        debian_artifact_filename(version),
+        sandboxd_artifact_filename(version),
+    }
+    for artifact in artifacts:
+        if not isinstance(artifact, dict):
+            raise RuntimeError("canonical release artifact is malformed")
+        name, digest, size = artifact.get("filename"), artifact.get("sha256"), artifact.get("size")
+        if not isinstance(name, str) or Path(name).name != name or not isinstance(digest, str) or not isinstance(size, int):
+            raise RuntimeError("canonical release artifact is incoherent")
+        path = root / name
+        if not path.is_file() or path.stat().st_size != size or sha256(path) != digest:
+            raise RuntimeError("canonical release artifact does not match manifest")
+        names.add(name)
+        checksum_lines.append(f"{digest}  {name}")
+    if ({item["filename"] for item in artifacts} != expected_names
+            or {item.get("format") for item in artifacts} != {"deb", "sandboxd-deb"}):
+        raise RuntimeError("canonical release artifact names are incoherent")
+    if {path.name for path in root.iterdir() if path.is_file()} != names:
+        raise RuntimeError("canonical release file set is incoherent")
+    if checksums_path.read_text(encoding="utf-8").splitlines() != sorted(checksum_lines):
+        raise RuntimeError("canonical release checksums are incoherent")
+    return manifest
+
+
+def release_sets_identical(source: Path, archive: Path) -> bool:
+    try:
+        source_manifest = coherent_release_set(source)
+        archive_manifest = coherent_release_set(archive)
+    except RuntimeError:
+        return False
+    if source_manifest.get("version") != archive_manifest.get("version"):
+        return False
+    source_names = {path.name for path in source.iterdir() if path.is_file()}
+    return source_names == {path.name for path in archive.iterdir() if path.is_file()} and all(
+        sha256(source / name) == sha256(archive / name) for name in source_names
+    )
 
 
 def main() -> int:

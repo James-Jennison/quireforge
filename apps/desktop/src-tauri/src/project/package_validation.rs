@@ -39,6 +39,7 @@ const STAGE_TIMEOUT: Duration = Duration::from_secs(30);
 const CANDIDATE_IDENTITY_DOMAIN: &str = "quireforge-package-candidate-identity-v1";
 const INSTALLED_HOST_HELPER: &str = "/usr/local/sbin/quireforge-validate-deb";
 const SUDO: &str = "/usr/bin/sudo";
+const DPKG_QUERY: &str = "/usr/bin/dpkg-query";
 
 #[derive(Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -543,7 +544,7 @@ impl PackageValidationController {
         &mut self,
         repository: &mut ProjectRepository,
         context: TrustedValidationContext,
-    ) -> Result<(), PackageValidationControllerError> {
+    ) -> Result<PackageValidationRecordOutcome, PackageValidationControllerError> {
         let mut session = self.begin(context)?;
         let result = (|| {
             let candidate_root = session
@@ -605,6 +606,30 @@ impl PackageValidationController {
         })();
         self.finish(session);
         result
+    }
+
+    /// Read-only installed-package gate for the fixed executable bootstrap.
+    /// The version never comes from argv, metadata, or the candidate directory.
+    pub(crate) fn installed_debian_version_is(
+        expected_debian_version: &str,
+    ) -> Result<bool, PackageValidationControllerError> {
+        let output = Command::new(DPKG_QUERY)
+            .args([
+                "--showformat=${db:Status-Status}\\n${Version}\\n",
+                "--show",
+                "quireforge",
+            ])
+            .env_clear()
+            .env("PATH", "/usr/bin:/bin")
+            .current_dir("/")
+            .output()
+            .map_err(|_| PackageValidationControllerError::Unavailable)?;
+        if !output.status.success() || output.stdout.len() > 256 {
+            return Ok(false);
+        }
+        Ok(std::str::from_utf8(&output.stdout)
+            .ok()
+            .is_some_and(|value| value == format!("installed\n{expected_debian_version}\n")))
     }
 
     /// Internal-only installed-host phase. The predecessor receipt is native
@@ -883,7 +908,7 @@ fn record_verified_package_candidate(
     candidate_root: &Path,
     initial: &VerifiedPackageCandidate,
     stages: &[StageResultV1],
-) -> Result<(), PackageValidationControllerError> {
+) -> Result<PackageValidationRecordOutcome, PackageValidationControllerError> {
     require_verified_candidate_unchanged(candidate_root, initial, stages)?;
     let authoritative = repository
         .record_package_validation_summary(
@@ -932,13 +957,7 @@ fn record_verified_package_candidate(
             },
         )
         .map_err(|_| PackageValidationControllerError::Unavailable)?;
-    match authoritative {
-        super::storage::PackageValidationRecordOutcome::Created(summary)
-        | super::storage::PackageValidationRecordOutcome::Existing(summary) => {
-            let _authoritative_summary = summary;
-        }
-    }
-    Ok(())
+    Ok(authoritative)
 }
 
 fn require_verified_candidate_unchanged(

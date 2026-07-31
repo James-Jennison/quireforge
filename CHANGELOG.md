@@ -1,13 +1,17 @@
 # Changelog
 
-## Unreleased — 0.1.0-beta.48
+## Unreleased — 0.1.0-beta.49
 
 ### Added
 
-- Add the fixed `--complete-installed-host-validation` executable branch.
-  It resolves only the production metadata database and one durable M54
-  predecessor, starts no Tauri/GUI surface, revalidates migration-18 state
-  before recording, and emits only a bounded completion status.
+- Extend the fixed `--complete-installed-host-validation` executable branch
+  with native migration, unprivileged-record bootstrap, installed-version
+  gating, and digest-bound predecessor revalidation before the installed-host
+  phase. It starts no Tauri/GUI surface and emits only a bounded status.
+
+- Preserve a coherent canonical release set in a versioned archive before a
+  newer candidate is promoted; malformed, partial, or conflicting sets fail
+  closed without replacement.
 
 - Begin the approved M54 local-review implementation: native-owned, bounded
   task-scoped SQLite collections for copied text, static image mockups, and

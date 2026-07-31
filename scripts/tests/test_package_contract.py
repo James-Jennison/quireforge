@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import re
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -23,11 +25,109 @@ from scripts.release_contract import (
     replace_control_field,
     source_version,
 )
+sys.path.insert(0, str(ROOT / "scripts"))
+from package_linux import finalize, staging_dir
 
 
 class PackageContractTests(unittest.TestCase):
+    def write_release_set(self, root: Path, version: str) -> None:
+        artifacts = []
+        for artifact_format, name in [
+            ("deb", f"quireforge_0.1.0.beta.{version}_amd64.deb"),
+            ("sandboxd-deb", f"quireforge-sandboxd_0.1.0.beta.{version}_amd64.deb"),
+        ]:
+            path = root / name
+            path.write_bytes(f"{artifact_format}-{version}".encode())
+            artifacts.append({"format": artifact_format, "filename": name,
+                              "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+                              "size": path.stat().st_size})
+        (root / "release-manifest.json").write_text(json.dumps({
+            "schemaVersion": 3, "state": "release-candidate",
+            "version": f"0.1.0-beta.{version}",
+            "source": {"commit": "a" * 40}, "artifacts": artifacts,
+        }), encoding="utf-8")
+        (root / "SHA256SUMS").write_text(
+            "\n".join(sorted(f"{item['sha256']}  {item['filename']}" for item in artifacts)) + "\n",
+            encoding="utf-8")
+
+    def test_finalizer_archives_a_coherent_prior_release_before_promoting(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "packages"
+            output.mkdir()
+            self.write_release_set(output, "48")
+            candidate = staging_dir(output, "0.1.0-beta.49")
+            candidate.mkdir()
+            self.write_release_set(candidate, "49")
+            self.assertEqual(finalize(output, "0.1.0-beta.49"), 0)
+            archived = output.parent / "archive" / "0.1.0-beta.48"
+            self.assertTrue((archived / "release-manifest.json").is_file())
+            self.assertTrue((output / "quireforge_0.1.0.beta.49_amd64.deb").is_file())
+
+    def test_finalizer_refuses_a_partial_prior_release_without_deleting_it(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "packages"
+            output.mkdir()
+            (output / "release-manifest.json").write_text("{}", encoding="utf-8")
+            candidate = staging_dir(output, "0.1.0-beta.49")
+            candidate.mkdir()
+            self.write_release_set(candidate, "49")
+            with self.assertRaisesRegex(RuntimeError, "incomplete|incoherent"):
+                finalize(output, "0.1.0-beta.49")
+            self.assertTrue((output / "release-manifest.json").is_file())
+            self.assertTrue((candidate / "release-manifest.json").is_file())
+
+    def test_finalizer_allows_first_promotion_without_an_archive(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "packages"
+            output.mkdir()
+            candidate = staging_dir(output, "0.1.0-beta.49")
+            candidate.mkdir()
+            self.write_release_set(candidate, "49")
+            finalize(output, "0.1.0-beta.49")
+            self.assertFalse((output.parent / "archive").exists())
+            self.assertTrue((output / "release-manifest.json").is_file())
+
+    def test_finalizer_refuses_a_conflicting_existing_archive(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "packages"
+            output.mkdir()
+            self.write_release_set(output, "48")
+            archive = output.parent / "archive" / "0.1.0-beta.48"
+            archive.mkdir(parents=True)
+            self.write_release_set(archive, "48")
+            (archive / "quireforge_0.1.0.beta.48_amd64.deb").write_bytes(b"conflict")
+            candidate = staging_dir(output, "0.1.0-beta.49")
+            candidate.mkdir()
+            self.write_release_set(candidate, "49")
+            with self.assertRaisesRegex(RuntimeError, "archive conflicts"):
+                finalize(output, "0.1.0-beta.49")
+            self.assertTrue((output / "quireforge_0.1.0.beta.48_amd64.deb").is_file())
+
+    def test_finalizer_restores_prior_canonical_set_after_promotion_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "packages"
+            output.mkdir()
+            self.write_release_set(output, "48")
+            prior_bytes = (output / "quireforge_0.1.0.beta.48_amd64.deb").read_bytes()
+            candidate = staging_dir(output, "0.1.0-beta.49")
+            candidate.mkdir()
+            self.write_release_set(candidate, "49")
+            real_move = __import__("shutil").move
+
+            def fail_candidate_move(source: Path, destination: Path):
+                if Path(source).parent == candidate:
+                    raise OSError("promotion failed")
+                return real_move(source, destination)
+
+            with patch("package_linux.shutil.move", side_effect=fail_candidate_move):
+                with self.assertRaisesRegex(RuntimeError, "promotion failed"):
+                    finalize(output, "0.1.0-beta.49")
+            self.assertEqual(
+                (output / "quireforge_0.1.0.beta.48_amd64.deb").read_bytes(),
+                prior_bytes,
+            )
     def test_all_source_versions_match_the_beta_candidate(self) -> None:
-        self.assertEqual(source_version(), "0.1.0-beta.48")
+        self.assertEqual(source_version(), "0.1.0-beta.49")
 
     def test_temporary_desktop_bundle_envelope_is_closed_and_bounded(self) -> None:
         budget = json.loads(
