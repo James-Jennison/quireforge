@@ -1362,7 +1362,10 @@ it also begins preservation by archiving the coherent beta.48 release set.
 No release or deployment is authorized. Post-beta.51 unreleased source work
 implements the package-manifest-summary evidence capture from the completed
 immutable same-project migration-18 record; Git, Activity, and Approval
-evidence flows remain pending and M54 is not complete.
+evidence flows remain pending and M54 is not complete. Git-status-diff-summary
+capture is now implemented as separate unreleased source work using native
+project association and redacted Git aggregates; only Activity and Approval
+flows remain pending.
 
 ### 55 — Research Reports and Inspectable Task Templates Proposal
 

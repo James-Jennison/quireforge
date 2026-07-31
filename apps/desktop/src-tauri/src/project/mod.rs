@@ -23,7 +23,9 @@ use types::{
     LocalReviewCollectionCreateRequest, LocalReviewCollectionMutationRequest,
     LocalReviewComparisonCreateRequest, LocalReviewComparisonDiscardRequest,
     LocalReviewComparisonReadRequest, LocalReviewDiagnosticCode, LocalReviewEvidenceArtifactKind,
-    LocalReviewEvidenceArtifactState, LocalReviewEvidenceSource, LocalReviewImagePickRequest,
+    LocalReviewEvidenceArtifactState, LocalReviewEvidenceSource, LocalReviewEvidenceWorkspaceState,
+    LocalReviewGitStatusDiffSummaryDetails, LocalReviewGitStatusDiffSummaryEvidencePreview,
+    LocalReviewGitStatusDiffSummaryEvidenceRequest, LocalReviewImagePickRequest,
     LocalReviewImagePreview, LocalReviewImagePreviewRequest, LocalReviewItemDiscardRequest,
     LocalReviewListRequest, LocalReviewM48ArtifactCopyRequest,
     LocalReviewM48GeneratedArtifactMetadataDetails,
@@ -48,6 +50,10 @@ use crate::advisor_generated_artifact::{
     AdvisorGeneratedArtifactService, GeneratedArtifactClaimRequest, GeneratedArtifactClass,
     GeneratedArtifactCreateRequest, GeneratedArtifactManifestV1, GeneratedArtifactSourceKind,
     GeneratedArtifactState, MAX_ARTIFACTS,
+};
+use crate::git::{
+    types::{GitChangeKind, GitWorkspaceSnapshot, GitWorkspaceState},
+    GitService,
 };
 
 use crate::advisor::{
@@ -217,13 +223,24 @@ impl ProjectService {
                         &collection.collection_id,
                     )
                 });
-            Some((snapshot, comparisons, package_manifest_summary_available))
+            let git_status_diff_summary_available = snapshot.1.as_ref().is_some_and(|collection| {
+                repository
+                    .git_status_diff_summary_project_for_local_review(&collection.collection_id)
+                    .is_ok()
+            });
+            Some((
+                snapshot,
+                comparisons,
+                package_manifest_summary_available,
+                git_status_diff_summary_available,
+            ))
         });
         match result {
             Some((
                 (collections, selected_collection, items, collection_count, payload_bytes, warning),
                 comparisons,
                 package_manifest_summary_available,
+                git_status_diff_summary_available,
             )) => LocalReviewSnapshot {
                 schema_version: LOCAL_REVIEW_SCHEMA_VERSION,
                 collections,
@@ -234,6 +251,7 @@ impl ProjectService {
                 payload_bytes,
                 warning,
                 package_manifest_summary_available,
+                git_status_diff_summary_available,
                 diagnostic_code: None,
             },
             None => local_review_unavailable(LocalReviewDiagnosticCode::MetadataUnavailable),
@@ -662,6 +680,56 @@ impl ProjectService {
         LocalReviewManualEvidenceCreateResult::Failed { snapshot }
     }
 
+    pub async fn create_local_review_git_status_diff_summary_evidence(
+        &self,
+        request: LocalReviewGitStatusDiffSummaryEvidenceRequest,
+    ) -> LocalReviewManualEvidenceCreateResult {
+        let collection_id = request.collection_id.clone();
+        let project_id = self.repository.lock().ok().and_then(|repository| {
+            repository
+                .as_ref()?
+                .git_status_diff_summary_project_for_local_review(&collection_id)
+                .ok()
+        });
+        let result = if let Some(project_id) = project_id {
+            let workspace = GitService::default().status(project_id.clone(), self).await;
+            git_status_diff_summary_details(&workspace).and_then(|details| {
+                self.repository.lock().ok().and_then(|mut repository| {
+                    repository
+                        .as_mut()?
+                        .create_local_review_git_status_diff_summary_evidence_item(
+                            &collection_id,
+                            request.expected_collection_updated_at_ms,
+                            &project_id,
+                            &details,
+                        )
+                        .ok()
+                })
+            })
+        } else {
+            None
+        };
+        let mut snapshot = self.local_review(LocalReviewListRequest {
+            selected_collection_id: Some(collection_id),
+        });
+        if let Some(created_item_id) = result {
+            if snapshot.items.iter().any(|item| {
+                item.item_id == created_item_id
+                    && item.evidence_source == Some(LocalReviewEvidenceSource::GitStatusDiffSummary)
+            }) {
+                return LocalReviewManualEvidenceCreateResult::Created {
+                    created_item_id,
+                    source: LocalReviewEvidenceSource::GitStatusDiffSummary,
+                    snapshot,
+                };
+            }
+        }
+        if snapshot.diagnostic_code.is_none() {
+            snapshot.diagnostic_code = Some(LocalReviewDiagnosticCode::InvalidRequest);
+        }
+        LocalReviewManualEvidenceCreateResult::Failed { snapshot }
+    }
+
     pub fn create_local_review_annotation(
         &self,
         request: LocalReviewAnnotationCreateRequest,
@@ -993,6 +1061,19 @@ impl ProjectService {
             .as_ref()
             .ok_or(())?
             .local_review_package_manifest_summary_evidence_preview(&item_id, &sha256)
+            .map_err(|_| ())
+    }
+    pub fn local_review_git_status_diff_summary_evidence_preview(
+        &self,
+        item_id: String,
+        sha256: String,
+    ) -> Result<LocalReviewGitStatusDiffSummaryEvidencePreview, ()> {
+        self.repository
+            .lock()
+            .map_err(|_| ())?
+            .as_ref()
+            .ok_or(())?
+            .local_review_git_status_diff_summary_evidence_preview(&item_id, &sha256)
             .map_err(|_| ())
     }
     pub fn task_catalog(&self, request: TaskCatalogListRequest) -> TaskCatalogSnapshot {
@@ -2471,6 +2552,50 @@ fn directory_display_name(path: &Path) -> String {
         .unwrap_or_else(|| "Local project".to_owned())
 }
 
+fn git_status_diff_summary_details(
+    workspace: &GitWorkspaceSnapshot,
+) -> Option<LocalReviewGitStatusDiffSummaryDetails> {
+    let state = match workspace.state {
+        GitWorkspaceState::Clean => LocalReviewEvidenceWorkspaceState::Clean,
+        GitWorkspaceState::Ready => LocalReviewEvidenceWorkspaceState::Ready,
+        GitWorkspaceState::Unavailable => return None,
+    };
+    if workspace.project_id.is_none() || workspace.diagnostic_code.is_some() {
+        return None;
+    }
+    let mut details = LocalReviewGitStatusDiffSummaryDetails {
+        workspace_state: state,
+        dirty: !workspace.changes.is_empty(),
+        staged_count: 0,
+        modified_count: 0,
+        added_count: 0,
+        deleted_count: 0,
+        renamed_count: 0,
+        untracked_count: 0,
+        conflicted_count: 0,
+        changed_file_count: u32::try_from(workspace.changes.len()).ok()?,
+        additions: 0,
+        deletions: 0,
+        diff_available: false,
+        diff_truncated: workspace.truncated,
+    };
+    for change in &workspace.changes {
+        details.staged_count += u32::from(change.staged.is_some());
+        details.conflicted_count += u32::from(change.conflict);
+        for kind in [change.staged, change.worktree].into_iter().flatten() {
+            match kind {
+                GitChangeKind::Modified | GitChangeKind::TypeChanged => details.modified_count += 1,
+                GitChangeKind::Added => details.added_count += 1,
+                GitChangeKind::Deleted => details.deleted_count += 1,
+                GitChangeKind::Renamed => details.renamed_count += 1,
+                GitChangeKind::Untracked => details.untracked_count += 1,
+                GitChangeKind::Copied | GitChangeKind::Unmerged => {}
+            }
+        }
+    }
+    Some(details)
+}
+
 fn valid_id(value: &str) -> bool {
     value.len() == 36
         && value == value.to_ascii_lowercase()
@@ -2509,6 +2634,7 @@ fn local_review_unavailable(diagnostic_code: LocalReviewDiagnosticCode) -> Local
         payload_bytes: 0,
         warning: false,
         package_manifest_summary_available: false,
+        git_status_diff_summary_available: false,
         diagnostic_code: Some(diagnostic_code),
     }
 }

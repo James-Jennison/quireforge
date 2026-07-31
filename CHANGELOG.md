@@ -34,6 +34,11 @@
   preview. No package build, installation, validation run, or host operation
   is performed.
 
+- Add unreleased post-beta.51 M54 git-status-diff-summary capture using the
+  bound project’s native Git service. It persists only closed aggregate facts
+  and offers a persisted-bytes-only inert preview; it cannot alter repository
+  state or expose paths, refs, remotes, patches, commands, or diagnostics.
+
 - Implement M52's native-owned local task catalogue with migration 11, opaque
   UUIDv7 task and plan identities, explicit status/archive/delete lifecycle,
   bounded title/label search, one to four visible plan records, closed capacity

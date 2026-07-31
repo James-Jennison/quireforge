@@ -25,8 +25,10 @@ use super::types::{
     EvidenceEnvelopeV1, LocalReviewAnnotationState, LocalReviewAnnotationSummary,
     LocalReviewCollectionState, LocalReviewCollectionSummary, LocalReviewComparisonState,
     LocalReviewComparisonSummary, LocalReviewDiagnosticCode, LocalReviewEvidenceCheckState,
-    LocalReviewEvidenceSource, LocalReviewImagePreview, LocalReviewItemClass, LocalReviewItemState,
-    LocalReviewItemSummary, LocalReviewLineComparison, LocalReviewLineKind, LocalReviewLineRecord,
+    LocalReviewEvidenceSource, LocalReviewEvidenceWorkspaceState,
+    LocalReviewGitStatusDiffSummaryDetails, LocalReviewGitStatusDiffSummaryEvidencePreview,
+    LocalReviewImagePreview, LocalReviewItemClass, LocalReviewItemState, LocalReviewItemSummary,
+    LocalReviewLineComparison, LocalReviewLineKind, LocalReviewLineRecord,
     LocalReviewM48GeneratedArtifactMetadataDetails,
     LocalReviewM48GeneratedArtifactMetadataEvidencePreview, LocalReviewManualEvidencePreview,
     LocalReviewManualValidationDetails, LocalReviewPackageManifestSummaryDetails,
@@ -1034,6 +1036,22 @@ fn package_manifest_summary_evidence_envelope_bytes(
     .map_err(|_| StorageError::InvalidStoredValue)
 }
 
+fn git_status_diff_summary_evidence_envelope_bytes(
+    title: &str,
+    summary: &str,
+    details: &LocalReviewGitStatusDiffSummaryDetails,
+) -> Result<Vec<u8>, StorageError> {
+    serde_json::to_vec(&EvidenceEnvelopeV1 {
+        schema_version: 1,
+        source: LocalReviewEvidenceSource::GitStatusDiffSummary,
+        source_schema_version: 1,
+        title: title.to_owned(),
+        summary: summary.to_owned(),
+        details,
+    })
+    .map_err(|_| StorageError::InvalidStoredValue)
+}
+
 fn parse_manual_evidence_envelope(bytes: &[u8], title: &str) -> Result<String, StorageError> {
     let envelope: EvidenceEnvelopeV1<LocalReviewManualValidationDetails> =
         serde_json::from_slice(bytes).map_err(|_| StorageError::InvalidStoredValue)?;
@@ -1115,6 +1133,36 @@ fn parse_package_manifest_summary_evidence_envelope(
         ]
         .into_iter()
         .all(|state| state == LocalReviewEvidenceCheckState::Passed)
+    {
+        return Err(StorageError::InvalidStoredValue);
+    }
+    Ok((envelope.summary, envelope.details))
+}
+
+fn parse_git_status_diff_summary_evidence_envelope(
+    bytes: &[u8],
+    title: &str,
+) -> Result<(String, LocalReviewGitStatusDiffSummaryDetails), StorageError> {
+    let envelope: EvidenceEnvelopeV1<LocalReviewGitStatusDiffSummaryDetails> =
+        serde_json::from_slice(bytes).map_err(|_| StorageError::InvalidStoredValue)?;
+    if envelope.schema_version != 1
+        || envelope.source_schema_version != 1
+        || envelope.source != LocalReviewEvidenceSource::GitStatusDiffSummary
+        || envelope.title != title
+        || normalize_review_label(&envelope.title)? != envelope.title
+        || normalize_review_text(&envelope.summary, LocalReviewTextFormat::Plain)?
+            != envelope.summary
+        || envelope.details.changed_file_count > 512
+        || envelope.details.staged_count > 512
+        || envelope.details.modified_count > 512
+        || envelope.details.added_count > 512
+        || envelope.details.deleted_count > 512
+        || envelope.details.renamed_count > 512
+        || envelope.details.untracked_count > 512
+        || envelope.details.conflicted_count > 512
+        || (!envelope.details.dirty
+            && (envelope.details.changed_file_count != 0
+                || envelope.details.workspace_state != LocalReviewEvidenceWorkspaceState::Clean))
     {
         return Err(StorageError::InvalidStoredValue);
     }
@@ -3010,6 +3058,105 @@ impl ProjectRepository {
     ) -> bool {
         self.package_manifest_summary_source_for_local_review(collection_id)
             .is_ok()
+    }
+
+    pub(crate) fn git_status_diff_summary_project_for_local_review(
+        &self,
+        collection_id: &str,
+    ) -> Result<String, StorageError> {
+        if !valid_task_id(collection_id) {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        self.connection.query_row(
+            "SELECT task.project_id FROM local_review_collections AS collection
+             JOIN task_records AS task ON task.id = collection.task_id
+             JOIN projects AS project ON project.id = task.project_id
+             JOIN directory_associations AS association ON association.id = project.active_directory_association_id
+             WHERE collection.id = ?1 AND collection.discarded_at_ms IS NULL AND collection.state = 'active'
+               AND task.archived_at_ms IS NULL AND task.status IN ('active', 'paused')
+               AND task.project_id IS NOT NULL AND project.archived_at_ms IS NULL
+               AND association.detached_at_ms IS NULL",
+            [collection_id], |row| row.get(0),
+        ).map_err(|_| StorageError::ProjectNotFound)
+    }
+
+    pub(crate) fn create_local_review_git_status_diff_summary_evidence_item(
+        &mut self,
+        collection_id: &str,
+        expected_updated_at_ms: i64,
+        project_id: &str,
+        details: &LocalReviewGitStatusDiffSummaryDetails,
+    ) -> Result<String, StorageError> {
+        if self.git_status_diff_summary_project_for_local_review(collection_id)? != project_id {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let title = "Git status and diff summary";
+        let summary = "Captured native Git status and diff aggregate summary.";
+        let bytes = git_status_diff_summary_evidence_envelope_bytes(title, summary, details)?;
+        parse_git_status_diff_summary_evidence_envelope(&bytes, title)?;
+        if bytes.len() > REVIEW_EVIDENCE_BYTES_LIMIT {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let now = now_millis();
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        local_review_mutation_context(
+            &tx,
+            collection_id,
+            Some(expected_updated_at_ms),
+            LocalReviewMutationPermission::ActiveContent,
+        )?;
+        let bound: String = tx.query_row("SELECT project_id FROM task_records WHERE id = (SELECT task_id FROM local_review_collections WHERE id = ?1)", [collection_id], |row| row.get(0))?;
+        if bound != project_id {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let count: i64 = tx.query_row("SELECT count(*) FROM local_review_items WHERE collection_id = ?1 AND class = 'evidence'", [collection_id], |row| row.get(0))?;
+        if count >= 6 {
+            return Err(StorageError::TaskCapacity);
+        }
+        let added = bytes.len() as i64 + title.len() as i64 + 256;
+        if review_payload_bytes(&tx, Some(collection_id))? + added > REVIEW_COLLECTION_PAYLOAD_LIMIT
+            || review_payload_bytes(&tx, None)? + added > REVIEW_PAYLOAD_LIMIT
+        {
+            return Err(StorageError::TaskCapacity);
+        }
+        let id = Uuid::now_v7().to_string();
+        tx.execute("INSERT INTO local_review_items (id, schema_version, collection_id, class, text_format, mime_type, width, height, state, title, source_kind, provenance, evidence_source, content, sha256, byte_size, created_at_ms, updated_at_ms) VALUES (?1, 1, ?2, 'evidence', NULL, 'application/json; profile=evidence-envelope-v1', NULL, NULL, 'ready', ?3, 'typed-evidence-snapshot', 'git-status-diff-summary', 'git-status-diff-summary', ?4, ?5, ?6, ?7, ?7)", params![id, collection_id, title, bytes, review_digest(&bytes), bytes.len() as i64, now])?;
+        tx.execute("UPDATE local_review_collections SET updated_at_ms = CASE WHEN updated_at_ms >= ?1 THEN updated_at_ms + 1 ELSE ?1 END WHERE id = ?2", params![now, collection_id])?;
+        tx.commit()?;
+        Ok(id)
+    }
+
+    pub(crate) fn local_review_git_status_diff_summary_evidence_preview(
+        &self,
+        item_id: &str,
+        sha256: &str,
+    ) -> Result<LocalReviewGitStatusDiffSummaryEvidencePreview, StorageError> {
+        if !valid_task_id(item_id) || !valid_review_sha256(sha256) {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let (title, provenance, evidence_source, content, stored_sha, byte_size, created_at_ms): (String, String, Option<String>, Vec<u8>, String, i64, i64) = self.connection.query_row("SELECT title, provenance, evidence_source, content, sha256, byte_size, created_at_ms FROM local_review_items WHERE id = ?1 AND class = 'evidence' AND state = 'ready'", [item_id], |row| Ok((row.get(0)?,row.get(1)?,row.get(2)?,row.get(3)?,row.get(4)?,row.get(5)?,row.get(6)?)))?;
+        if provenance != "git-status-diff-summary"
+            || evidence_source.as_deref() != Some("git-status-diff-summary")
+            || sha256 != stored_sha
+            || byte_size != content.len() as i64
+            || stored_sha != review_digest(&content)
+        {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let (summary, details) = parse_git_status_diff_summary_evidence_envelope(&content, &title)?;
+        Ok(LocalReviewGitStatusDiffSummaryEvidencePreview {
+            schema_version: 1,
+            item_id: item_id.to_owned(),
+            source: LocalReviewEvidenceSource::GitStatusDiffSummary,
+            title,
+            summary,
+            details,
+            byte_size: byte_size as u64,
+            sha256: stored_sha,
+            created_at_ms,
+        })
     }
 
     fn package_manifest_summary_source_for_local_review(

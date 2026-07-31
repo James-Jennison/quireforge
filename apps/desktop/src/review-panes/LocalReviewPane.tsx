@@ -17,6 +17,8 @@ import {
   previewLocalReviewSafePreviewMetadataEvidence,
   createLocalReviewPackageManifestSummaryEvidence,
   previewLocalReviewPackageManifestSummaryEvidence,
+  createLocalReviewGitStatusDiffSummaryEvidence,
+  previewLocalReviewGitStatusDiffSummaryEvidence,
   discardLocalReviewItem,
   createLocalReviewAnnotation,
   editLocalReviewAnnotation,
@@ -47,6 +49,7 @@ const unavailable: LocalReviewSnapshot = {
   payloadBytes: 0,
   warning: false,
   packageManifestSummaryAvailable: false,
+  gitStatusDiffSummaryAvailable: false,
   diagnosticCode: "metadata-unavailable",
 };
 
@@ -115,6 +118,7 @@ export default function LocalReviewPane({
     > | null>(null);
   const [packageManifestEvidencePreview, setPackageManifestEvidencePreview] =
     useState<Awaited<ReturnType<typeof previewLocalReviewPackageManifestSummaryEvidence>> | null>(null);
+  const [gitEvidencePreview, setGitEvidencePreview] = useState<Awaited<ReturnType<typeof previewLocalReviewGitStatusDiffSummaryEvidence>> | null>(null);
   const [artifactCandidates, setArtifactCandidates] = useState<
     Awaited<ReturnType<ReviewPaneData["loadArtifacts"]>>["artifacts"]
   >([]);
@@ -640,6 +644,20 @@ export default function LocalReviewPane({
       recordLocalReviewActivity({ kind: "item-added", label: item.title, status: "success", digest: item.sha256 });
       return previewLocalReviewPackageManifestSummaryEvidence({ itemId: item.itemId, sha256: item.sha256 }).then(setPackageManifestEvidencePreview);
     }).catch(() => setError("Package validation summary could not be captured.")).finally(() => setBusy(false));
+  };
+  const captureGitStatusDiffSummary = () => {
+    const collection = snapshot?.selectedCollection;
+    if (!collection || busy || !snapshot?.gitStatusDiffSummaryAvailable) return;
+    setBusy(true); setError(null);
+    void createLocalReviewGitStatusDiffSummaryEvidence({ collectionId: collection.collectionId, expectedCollectionUpdatedAtMs: collection.updatedAtMs }).then((result) => {
+      setSnapshot(result.snapshot);
+      if (result.outcome !== "created") { setError("Git status and diff summary could not be captured."); return; }
+      const item = result.snapshot.items.find((candidate) => candidate.itemId === result.createdItemId && candidate.class === "evidence" && candidate.evidenceSource === result.source);
+      if (!item) { setError("Git status and diff summary could not be captured."); return; }
+      setSelectedItemId(item.itemId);
+      recordLocalReviewActivity({ kind: "item-added", label: item.title, status: "success", digest: item.sha256 });
+      return previewLocalReviewGitStatusDiffSummaryEvidence({ itemId: item.itemId, sha256: item.sha256 }).then(setGitEvidencePreview);
+    }).catch(() => setError("Git status and diff summary could not be captured.")).finally(() => setBusy(false));
   };
   const discardSelectedItem = () => {
     const collection = snapshot?.selectedCollection;
@@ -2198,6 +2216,9 @@ export default function LocalReviewPane({
             <button type="button" disabled={busy || !snapshot.packageManifestSummaryAvailable} onClick={capturePackageManifestSummary}>
               Capture package validation summary…
             </button>
+            <button type="button" disabled={busy || !snapshot.gitStatusDiffSummaryAvailable} onClick={captureGitStatusDiffSummary}>
+              Capture Git status and diff summary…
+            </button>
           </section>
           {evidencePreview ? (
             <section aria-label="Evidence preview">
@@ -2275,6 +2296,15 @@ export default function LocalReviewPane({
               <pre>{packageManifestEvidencePreview.summary}</pre>
               <p>{packageManifestEvidencePreview.details.applicationVersion} · {packageManifestEvidencePreview.details.debianVersion} · 2 artifacts · complete</p>
               <p>All validation checks passed.</p>
+              <p>Not comparable</p><p>Not promotion eligible</p>
+            </section>
+          ) : null}
+          {gitEvidencePreview ? (
+            <section aria-label="Git status and diff summary evidence preview">
+              <h4 ref={evidenceHeading} tabIndex={-1}>Git status and diff summary evidence</h4>
+              <p>{gitEvidencePreview.title}</p><p>Evidence · Git status and diff summary</p>
+              <pre>{gitEvidencePreview.summary}</pre>
+              <p>{gitEvidencePreview.details.workspaceState} · {gitEvidencePreview.details.changedFileCount} changed files · {gitEvidencePreview.details.stagedCount} staged</p>
               <p>Not comparable</p><p>Not promotion eligible</p>
             </section>
           ) : null}

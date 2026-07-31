@@ -228,6 +228,9 @@ import {
   localReviewPackageManifestSummaryEvidenceCreateRequestSchema,
   localReviewPackageManifestSummaryEvidenceCreateResultSchema,
   localReviewPackageManifestSummaryEvidencePreviewSchema,
+  localReviewGitStatusDiffSummaryEvidenceCreateRequestSchema,
+  localReviewGitStatusDiffSummaryEvidenceCreateResultSchema,
+  localReviewGitStatusDiffSummaryEvidencePreviewSchema,
   localReviewLineComparisonSchema,
   localReviewListRequestSchema,
   localReviewM48ArtifactCopyRequestSchema,
@@ -356,6 +359,8 @@ export const LOCAL_REVIEW_PACKAGE_MANIFEST_SUMMARY_EVIDENCE_CREATE_COMMAND =
   "local_review_package_manifest_summary_evidence_create";
 export const LOCAL_REVIEW_PACKAGE_MANIFEST_SUMMARY_EVIDENCE_PREVIEW_COMMAND =
   "local_review_package_manifest_summary_evidence_preview";
+export const LOCAL_REVIEW_GIT_STATUS_DIFF_SUMMARY_EVIDENCE_CREATE_COMMAND = "local_review_git_status_diff_summary_evidence_create";
+export const LOCAL_REVIEW_GIT_STATUS_DIFF_SUMMARY_EVIDENCE_PREVIEW_COMMAND = "local_review_git_status_diff_summary_evidence_preview";
 export const LOCAL_REVIEW_ANNOTATION_CREATE_COMMAND =
   "local_review_annotation_create";
 export const LOCAL_REVIEW_ANNOTATION_EDIT_COMMAND =
@@ -1223,6 +1228,7 @@ export async function createLocalReviewPackageManifestSummaryEvidence(
     await invokeFunction(LOCAL_REVIEW_PACKAGE_MANIFEST_SUMMARY_EVIDENCE_CREATE_COMMAND, { request: localReviewPackageManifestSummaryEvidenceCreateRequestSchema.parse(request) }),
   );
 }
+export async function createLocalReviewGitStatusDiffSummaryEvidence(request: unknown, invokeFunction: InvokeFunction = invokeTauri) { return localReviewGitStatusDiffSummaryEvidenceCreateResultSchema.parse(await invokeFunction(LOCAL_REVIEW_GIT_STATUS_DIFF_SUMMARY_EVIDENCE_CREATE_COMMAND, { request: localReviewGitStatusDiffSummaryEvidenceCreateRequestSchema.parse(request) })); }
 async function mutateLocalReview(
   command: string,
   request: unknown,
@@ -1344,6 +1350,7 @@ export async function previewLocalReviewPackageManifestSummaryEvidence(
     await invokeFunction(LOCAL_REVIEW_PACKAGE_MANIFEST_SUMMARY_EVIDENCE_PREVIEW_COMMAND, parsed),
   );
 }
+export async function previewLocalReviewGitStatusDiffSummaryEvidence(request: unknown, invokeFunction: InvokeFunction = invokeTauri) { const parsed = localReviewImagePreviewRequestSchema.parse(request); return localReviewGitStatusDiffSummaryEvidencePreviewSchema.parse(await invokeFunction(LOCAL_REVIEW_GIT_STATUS_DIFF_SUMMARY_EVIDENCE_PREVIEW_COMMAND, parsed)); }
 export const createLocalReviewAnnotation = (
   request: unknown,
   invokeFunction?: InvokeFunction,

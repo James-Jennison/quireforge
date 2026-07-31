@@ -230,6 +230,7 @@ export const localReviewSnapshotSchema = z
       .max(32 * 1024 * 1024),
     warning: z.boolean(),
     packageManifestSummaryAvailable: z.boolean(),
+    gitStatusDiffSummaryAvailable: z.boolean(),
     diagnosticCode: diagnostic.nullable(),
   })
   .strict();
@@ -605,6 +606,7 @@ export const localReviewPackageManifestSummaryEvidenceCreateRequestSchema = z
     expectedCollectionUpdatedAtMs: z.number().int().nonnegative(),
   })
   .strict();
+export const localReviewGitStatusDiffSummaryEvidenceCreateRequestSchema = z.object({ collectionId: id, expectedCollectionUpdatedAtMs: z.number().int().nonnegative() }).strict();
 export const localReviewM48GeneratedArtifactMetadataEvidenceCreateResultSchema =
   z.discriminatedUnion("outcome", [
     z
@@ -672,6 +674,7 @@ export const localReviewPackageManifestSummaryEvidenceCreateResultSchema =
     z.object({ outcome: z.literal("created"), createdItemId: id, source: z.literal("package-manifest-summary"), snapshot: localReviewSnapshotSchema }).strict(),
     z.object({ outcome: z.literal("failed"), snapshot: localReviewSnapshotSchema }).strict(),
   ]);
+export const localReviewGitStatusDiffSummaryEvidenceCreateResultSchema = z.discriminatedUnion("outcome", [z.object({ outcome: z.literal("created"), createdItemId: id, source: z.literal("git-status-diff-summary"), snapshot: localReviewSnapshotSchema }).strict(), z.object({ outcome: z.literal("failed"), snapshot: localReviewSnapshotSchema }).strict()]);
 export const localReviewManualEvidencePreviewSchema = z
   .object({
     schemaVersion: z.literal(1),
@@ -758,6 +761,7 @@ export const localReviewPackageManifestSummaryEvidencePreviewSchema = z
     details: z.object({ applicationVersion: z.string().min(1).max(64), debianVersion: z.string().min(1).max(64), manifestState: z.literal("passed"), checksumState: z.literal("passed"), abiState: z.literal("passed"), provenanceState: z.literal("passed"), visibleLaunchState: z.literal("passed"), installedHostState: z.literal("passed"), artifactCount: z.literal(2), validationComplete: z.literal(true) }).strict(),
     byteSize: z.number().int().positive().max(16 * 1024), sha256, createdAtMs: z.number().int().nonnegative(),
   }).strict();
+export const localReviewGitStatusDiffSummaryEvidencePreviewSchema = z.object({ schemaVersion: z.literal(1), itemId: id, source: z.literal("git-status-diff-summary"), title: safeLabel, summary: evidenceSummary, details: z.object({ workspaceState: z.enum(["clean", "ready"]), dirty: z.boolean(), stagedCount: nonnegativeCount, modifiedCount: nonnegativeCount, addedCount: nonnegativeCount, deletedCount: nonnegativeCount, renamedCount: nonnegativeCount, untrackedCount: nonnegativeCount, conflictedCount: nonnegativeCount, changedFileCount: nonnegativeCount, additions: nonnegativeCount, deletions: nonnegativeCount, diffAvailable: z.boolean(), diffTruncated: z.boolean() }).strict(), byteSize: z.number().int().positive().max(16 * 1024), sha256, createdAtMs: z.number().int().nonnegative() }).strict();
 export const localReviewImagePreviewRequestSchema = z
   .object({ itemId: id, sha256 })
   .strict();

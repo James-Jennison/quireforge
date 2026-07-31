@@ -45,6 +45,7 @@ const snapshot = {
   payloadBytes: 0,
   warning: false,
   packageManifestSummaryAvailable: false,
+  gitStatusDiffSummaryAvailable: false,
   diagnosticCode: null,
 };
 
@@ -406,6 +407,7 @@ describe("local review image contracts", () => {
         payloadBytes: 0,
         warning: false,
         packageManifestSummaryAvailable: false,
+        gitStatusDiffSummaryAvailable: false,
         diagnosticCode: null,
       },
     };

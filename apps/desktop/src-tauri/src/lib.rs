@@ -1532,6 +1532,15 @@ fn local_review_package_manifest_summary_evidence_create(
 ) -> project::types::LocalReviewManualEvidenceCreateResult {
     projects.create_local_review_package_manifest_summary_evidence(request)
 }
+#[tauri::command]
+async fn local_review_git_status_diff_summary_evidence_create(
+    request: project::types::LocalReviewGitStatusDiffSummaryEvidenceRequest,
+    projects: tauri::State<'_, ProjectService>,
+) -> Result<project::types::LocalReviewManualEvidenceCreateResult, ()> {
+    Ok(projects
+        .create_local_review_git_status_diff_summary_evidence(request)
+        .await)
+}
 
 #[tauri::command]
 fn local_review_collection_resume(
@@ -1637,6 +1646,14 @@ fn local_review_package_manifest_summary_evidence_preview(
     service: tauri::State<'_, ProjectService>,
 ) -> Result<project::types::LocalReviewPackageManifestSummaryEvidencePreview, ()> {
     service.local_review_package_manifest_summary_evidence_preview(item_id, sha256)
+}
+#[tauri::command]
+fn local_review_git_status_diff_summary_evidence_preview(
+    item_id: String,
+    sha256: String,
+    service: tauri::State<'_, ProjectService>,
+) -> Result<project::types::LocalReviewGitStatusDiffSummaryEvidencePreview, ()> {
+    service.local_review_git_status_diff_summary_evidence_preview(item_id, sha256)
 }
 #[tauri::command]
 fn local_review_annotation_create(
@@ -2633,6 +2650,7 @@ pub fn run() {
             local_review_safe_preview_metadata_claim,
             local_review_safe_preview_metadata_evidence_create,
             local_review_package_manifest_summary_evidence_create,
+            local_review_git_status_diff_summary_evidence_create,
             local_review_collection_resume,
             local_review_collection_discard,
             local_review_item_discard,
@@ -2644,6 +2662,7 @@ pub fn run() {
             local_review_m48_generated_artifact_metadata_evidence_preview,
             local_review_safe_preview_metadata_evidence_preview,
             local_review_package_manifest_summary_evidence_preview,
+            local_review_git_status_diff_summary_evidence_preview,
             local_review_annotation_create,
             local_review_annotation_edit,
             local_review_annotation_resolve,

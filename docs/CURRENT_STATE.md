@@ -98,7 +98,12 @@ M54 package-manifest-summary Local Review capture is implemented as unreleased
 source work after the authoritative installed `0.1.0~beta.51` package. It uses
 only a completed immutable same-project migration-18 package-validation record
 and stores the closed redacted summary envelope; it does not build or install a
-package. Git, Activity, and Approval M54 evidence flows remain pending.
+package. Activity and Approval M54 evidence flows remain pending.
+
+M54 git-status-diff-summary capture is also unreleased post-beta.51 source
+work. It resolves the bound attached project and native Git authority, stores
+only redacted aggregate state, and previews only persisted canonical bytes.
+Activity and Approval evidence flows remain pending.
 
 The Rust Codex, project/SQLite, Git, worktree, terminal, preview, attachment,
 settings, and integration services are candidates for reuse. The current Tauri
