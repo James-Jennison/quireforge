@@ -7,7 +7,7 @@ use std::{
 };
 
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
-use rusqlite::{params, Connection, OptionalExtension, Transaction, TransactionBehavior};
+use rusqlite::{params, Connection, OptionalExtension, Row, Transaction, TransactionBehavior};
 use sha2::{Digest, Sha256};
 use thiserror::Error;
 use unicode_casefold::{Locale, UnicodeCaseFold, Variant};
@@ -21,6 +21,10 @@ use crate::advisor::{
 };
 use crate::preview::validate_attachment_image;
 
+use super::task_template::{
+    builtins, canonical as canonical_template, valid as valid_template, TaskTemplate,
+    TemplateOrigin, TemplateState, TEMPLATE_SCHEMA_VERSION,
+};
 use super::types::{
     EvidenceEnvelopeV1, LocalReviewActivityPresentationDetails,
     LocalReviewActivityPresentationEvidencePreview, LocalReviewActivityScope,
@@ -1965,6 +1969,169 @@ pub(crate) struct ProjectRepository {
     activity_session_id: String,
 }
 
+#[allow(dead_code)]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct StoredLocalTaskTemplate {
+    pub template: TaskTemplate,
+    pub created_at_ms: i64,
+    pub updated_at_ms: i64,
+    pub archived_at_ms: Option<i64>,
+}
+
+#[allow(dead_code)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) struct LocalTemplateCapacity {
+    pub record_count: usize,
+    pub canonical_bytes: usize,
+}
+
+#[allow(dead_code)]
+type LocalTemplateRow = (
+    String,
+    i64,
+    String,
+    String,
+    String,
+    String,
+    i64,
+    String,
+    String,
+    i64,
+    i64,
+    Option<i64>,
+);
+
+#[allow(dead_code)]
+fn local_template_row(row: &Row<'_>) -> rusqlite::Result<LocalTemplateRow> {
+    Ok((
+        row.get(0)?,
+        row.get(1)?,
+        row.get(2)?,
+        row.get(3)?,
+        row.get(4)?,
+        row.get(5)?,
+        row.get(6)?,
+        row.get(7)?,
+        row.get(8)?,
+        row.get(9)?,
+        row.get(10)?,
+        row.get(11)?,
+    ))
+}
+
+#[allow(dead_code)]
+fn validate_local_template_id(id: &str) -> Result<(), StorageError> {
+    if Uuid::parse_str(id).is_ok_and(|value| value.get_version_num() == 7)
+        && !builtins().iter().any(|builtin| builtin.id == id)
+    {
+        Ok(())
+    } else {
+        Err(StorageError::InvalidStoredValue)
+    }
+}
+
+#[allow(dead_code)]
+fn validate_local_template(template: &TaskTemplate) -> Result<(), StorageError> {
+    if template.origin != TemplateOrigin::Local || !valid_template(template) {
+        return Err(StorageError::InvalidStoredValue);
+    }
+    validate_local_template_id(&template.id)
+}
+
+#[allow(dead_code)]
+fn template_state_value(state: TemplateState) -> &'static str {
+    match state {
+        TemplateState::Active => "active",
+        TemplateState::Archived => "archived",
+    }
+}
+
+#[allow(dead_code)]
+fn stored_local_template_from_row(
+    raw: LocalTemplateRow,
+) -> Result<StoredLocalTaskTemplate, StorageError> {
+    let (
+        id,
+        schema_version,
+        origin,
+        title,
+        purpose,
+        instructions,
+        version,
+        sha256,
+        state,
+        created_at_ms,
+        updated_at_ms,
+        archived_at_ms,
+    ) = raw;
+    if schema_version != i64::from(TEMPLATE_SCHEMA_VERSION)
+        || origin != "local"
+        || created_at_ms < 0
+        || updated_at_ms < created_at_ms
+    {
+        return Err(StorageError::InvalidStoredValue);
+    }
+    let state = match state.as_str() {
+        "active" if archived_at_ms.is_none() => TemplateState::Active,
+        "archived"
+            if archived_at_ms.is_some_and(|archived_at_ms| {
+                archived_at_ms >= created_at_ms && archived_at_ms <= updated_at_ms
+            }) =>
+        {
+            TemplateState::Archived
+        }
+        _ => return Err(StorageError::InvalidStoredValue),
+    };
+    let version = u32::try_from(version).map_err(|_| StorageError::InvalidStoredValue)?;
+    let template = TaskTemplate {
+        id,
+        origin: TemplateOrigin::Local,
+        title,
+        purpose,
+        instructions,
+        version,
+        state,
+        sha256,
+    };
+    validate_local_template(&template)?;
+    Ok(StoredLocalTaskTemplate {
+        template,
+        created_at_ms,
+        updated_at_ms,
+        archived_at_ms,
+    })
+}
+
+#[allow(dead_code)]
+fn insert_local_template_row(
+    transaction: &Transaction<'_>,
+    template: &TaskTemplate,
+    created_at_ms: i64,
+    updated_at_ms: i64,
+    archived_at_ms: Option<i64>,
+) -> Result<(), StorageError> {
+    transaction.execute(
+        "INSERT INTO local_task_templates (
+             id, schema_version, origin, title, purpose, instructions, version, sha256, state,
+             created_at_ms, updated_at_ms, archived_at_ms
+         ) VALUES (?1, ?2, 'local', ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+        params![
+            template.id,
+            i64::from(TEMPLATE_SCHEMA_VERSION),
+            template.title,
+            template.purpose,
+            template.instructions,
+            template.version,
+            template.sha256,
+            template_state_value(template.state),
+            created_at_ms,
+            updated_at_ms,
+            archived_at_ms,
+        ],
+    )?;
+    Ok(())
+}
+
 pub(crate) struct LocalReviewPromotionSource {
     pub collection_id: String,
     pub item_id: String,
@@ -1978,6 +2145,154 @@ pub(crate) struct LocalReviewPromotionSource {
 }
 
 impl ProjectRepository {
+    #[allow(dead_code)]
+    pub(crate) fn insert_local_template(
+        &mut self,
+        template: &TaskTemplate,
+    ) -> Result<StoredLocalTaskTemplate, StorageError> {
+        validate_local_template(template)?;
+        let timestamp = now_millis();
+        let archived_at_ms = matches!(template.state, TemplateState::Archived).then_some(timestamp);
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        insert_local_template_row(&tx, template, timestamp, timestamp, archived_at_ms)?;
+        tx.commit()?;
+        Ok(StoredLocalTaskTemplate {
+            template: template.clone(),
+            created_at_ms: timestamp,
+            updated_at_ms: timestamp,
+            archived_at_ms,
+        })
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn local_template(
+        &self,
+        id: &str,
+    ) -> Result<Option<StoredLocalTaskTemplate>, StorageError> {
+        validate_local_template_id(id)?;
+        self.connection
+            .query_row(
+                "SELECT id, schema_version, origin, title, purpose, instructions, version, sha256,
+                        state, created_at_ms, updated_at_ms, archived_at_ms
+                 FROM local_task_templates WHERE id = ?1",
+                [id],
+                local_template_row,
+            )
+            .optional()?
+            .map(stored_local_template_from_row)
+            .transpose()
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn local_templates(&self) -> Result<Vec<StoredLocalTaskTemplate>, StorageError> {
+        let mut statement = self.connection.prepare(
+            "SELECT id, schema_version, origin, title, purpose, instructions, version, sha256,
+                    state, created_at_ms, updated_at_ms, archived_at_ms
+             FROM local_task_templates ORDER BY updated_at_ms DESC, id ASC",
+        )?;
+        let rows = statement
+            .query_map([], local_template_row)?
+            .collect::<Result<Vec<_>, _>>()?;
+        rows.into_iter()
+            .map(stored_local_template_from_row)
+            .collect()
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn local_template_capacity(&self) -> Result<LocalTemplateCapacity, StorageError> {
+        let templates = self.local_templates()?;
+        let canonical_bytes = templates
+            .iter()
+            .map(|record| {
+                canonical_template(&record.template).ok_or(StorageError::InvalidStoredValue)
+            })
+            .collect::<Result<Vec<_>, _>>()?
+            .iter()
+            .map(String::len)
+            .sum();
+        Ok(LocalTemplateCapacity {
+            record_count: templates.len(),
+            canonical_bytes,
+        })
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn replace_local_template(
+        &mut self,
+        expected_version: u32,
+        template: &TaskTemplate,
+    ) -> Result<StoredLocalTaskTemplate, StorageError> {
+        validate_local_template(template)?;
+        if expected_version == 0 || expected_version.checked_add(1) != Some(template.version) {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let previous = tx
+            .query_row(
+                "SELECT id, schema_version, origin, title, purpose, instructions, version, sha256,
+                        state, created_at_ms, updated_at_ms, archived_at_ms
+                 FROM local_task_templates WHERE id = ?1",
+                [&template.id],
+                local_template_row,
+            )
+            .optional()?
+            .map(stored_local_template_from_row)
+            .transpose()?
+            .ok_or(StorageError::TaskNotFound)?;
+        if previous.template.version != expected_version {
+            return Err(StorageError::InvalidStatusTransition);
+        }
+        let updated_at_ms = now_millis().max(previous.updated_at_ms.saturating_add(1));
+        let archived_at_ms = match template.state {
+            TemplateState::Active => None,
+            TemplateState::Archived => previous.archived_at_ms.or(Some(updated_at_ms)),
+        };
+        let changed = tx.execute(
+            "UPDATE local_task_templates
+             SET title = ?1, purpose = ?2, instructions = ?3, version = ?4, sha256 = ?5,
+                 state = ?6, updated_at_ms = ?7, archived_at_ms = ?8
+             WHERE id = ?9 AND version = ?10",
+            params![
+                template.title,
+                template.purpose,
+                template.instructions,
+                template.version,
+                template.sha256,
+                template_state_value(template.state),
+                updated_at_ms,
+                archived_at_ms,
+                template.id,
+                expected_version,
+            ],
+        )?;
+        if changed != 1 {
+            return Err(StorageError::InvalidStatusTransition);
+        }
+        tx.commit()?;
+        Ok(StoredLocalTaskTemplate {
+            template: template.clone(),
+            created_at_ms: previous.created_at_ms,
+            updated_at_ms,
+            archived_at_ms,
+        })
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn delete_local_template(&mut self, id: &str) -> Result<(), StorageError> {
+        validate_local_template_id(id)?;
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        if tx.execute("DELETE FROM local_task_templates WHERE id = ?1", [id])? != 1 {
+            return Err(StorageError::TaskNotFound);
+        }
+        tx.commit()?;
+        Ok(())
+    }
     pub(crate) fn local_review_promotion_source(
         &mut self,
         collection_id: &str,
@@ -7190,6 +7505,10 @@ mod tests {
         PACKAGE_VALIDATION_PROTECTION_MS, TASK_CLEANUP_AGE_MS, TASK_COUNT_LIMIT,
         TASK_PAYLOAD_LIMIT,
     };
+    use crate::project::task_template::{
+        builtins, canonical as canonical_template, digest as template_digest, TaskTemplate,
+        TemplateOrigin, TemplateState,
+    };
     use crate::project::types::{
         LocalReviewAnnotationState, LocalReviewCollectionState, LocalReviewComparisonState,
         LocalReviewEvidenceApprovalState, LocalReviewEvidenceCheckState, LocalReviewItemClass,
@@ -7200,6 +7519,21 @@ mod tests {
         ChatConversationMetadata, ConversationPendingSelection, ConversationReference,
         ConversationSelectionMetadata,
     };
+
+    fn local_template(id: String, title: &str) -> TaskTemplate {
+        let mut template = TaskTemplate {
+            id,
+            origin: TemplateOrigin::Local,
+            title: title.to_owned(),
+            purpose: format!("Purpose for {title}."),
+            instructions: format!("Instructions for {title}."),
+            version: 1,
+            state: TemplateState::Active,
+            sha256: String::new(),
+        };
+        template.sha256 = template_digest(&template).expect("template fixture is canonical");
+        template
+    }
 
     fn png(width: u32, height: u32, animated: bool) -> Vec<u8> {
         let mut bytes = b"\x89PNG\r\n\x1a\n".to_vec();
@@ -12586,5 +12920,221 @@ mod tests {
         for forbidden in ["path", "url", "git", "repository", "shell", "command"] {
             assert!(!projected.to_string().contains(forbidden));
         }
+    }
+
+    #[test]
+    fn local_template_storage_inserts_fetches_and_lists_deterministically() {
+        let mut repository = ProjectRepository::in_memory().expect("schema migrates");
+        let first = local_template(Uuid::now_v7().to_string(), "First");
+        let second = local_template(Uuid::now_v7().to_string(), "Second");
+        repository
+            .insert_local_template(&first)
+            .expect("first template inserts");
+        repository
+            .insert_local_template(&second)
+            .expect("second template inserts");
+        repository
+            .connection
+            .execute(
+                "UPDATE local_task_templates SET updated_at_ms = 9999999999999 WHERE id = ?1",
+                [&first.id],
+            )
+            .expect("first timestamp fixture");
+        repository
+            .connection
+            .execute(
+                "UPDATE local_task_templates SET updated_at_ms = 9999999999999 WHERE id = ?1",
+                [&second.id],
+            )
+            .expect("second timestamp fixture");
+
+        assert_eq!(
+            repository
+                .local_template(&first.id)
+                .expect("fetch succeeds")
+                .expect("first exists")
+                .template,
+            first
+        );
+        let listed = repository.local_templates().expect("list succeeds");
+        let mut expected = vec![first.id.clone(), second.id.clone()];
+        expected.sort();
+        assert_eq!(
+            listed
+                .iter()
+                .map(|record| record.template.id.clone())
+                .collect::<Vec<_>>(),
+            expected
+        );
+    }
+
+    #[test]
+    fn local_template_storage_round_trips_canonical_fields_and_capacity() {
+        let mut repository = ProjectRepository::in_memory().expect("schema migrates");
+        let template = local_template(Uuid::now_v7().to_string(), "Round trip");
+        let inserted = repository
+            .insert_local_template(&template)
+            .expect("template inserts");
+        let fetched = repository
+            .local_template(&template.id)
+            .expect("fetch succeeds")
+            .expect("template exists");
+        assert_eq!(fetched, inserted);
+        assert_eq!(
+            canonical_template(&fetched.template),
+            canonical_template(&template)
+        );
+        assert_eq!(fetched.template.sha256, template.sha256);
+        assert_eq!(
+            repository
+                .local_template_capacity()
+                .expect("capacity succeeds"),
+            super::LocalTemplateCapacity {
+                record_count: 1,
+                canonical_bytes: canonical_template(&template).expect("canonical").len(),
+            }
+        );
+    }
+
+    #[test]
+    fn local_template_storage_replaces_once_and_rejects_stale_authority() {
+        let mut repository = ProjectRepository::in_memory().expect("schema migrates");
+        let original = local_template(Uuid::now_v7().to_string(), "Original");
+        repository
+            .insert_local_template(&original)
+            .expect("template inserts");
+        let mut replacement = original.clone();
+        replacement.title = "Replacement".to_owned();
+        replacement.version = 2;
+        replacement.sha256 = template_digest(&replacement).expect("replacement canonical");
+        let stored = repository
+            .replace_local_template(1, &replacement)
+            .expect("current authority replaces");
+        assert_eq!(stored.template, replacement);
+        assert!(stored.updated_at_ms >= stored.created_at_ms);
+
+        let mut stale = replacement.clone();
+        stale.title = "Stale replacement".to_owned();
+        stale.version = 2;
+        stale.sha256 = template_digest(&stale).expect("stale fixture canonical");
+        assert!(matches!(
+            repository.replace_local_template(1, &stale),
+            Err(StorageError::InvalidStatusTransition)
+        ));
+        assert_eq!(
+            repository
+                .local_template(&original.id)
+                .expect("fetch succeeds")
+                .expect("template remains")
+                .template,
+            replacement
+        );
+    }
+
+    #[test]
+    fn local_template_storage_deletes_only_the_requested_record_and_never_stores_builtins() {
+        let mut repository = ProjectRepository::in_memory().expect("schema migrates");
+        let first = local_template(Uuid::now_v7().to_string(), "Delete me");
+        let second = local_template(Uuid::now_v7().to_string(), "Keep me");
+        repository
+            .insert_local_template(&first)
+            .expect("first template inserts");
+        repository
+            .insert_local_template(&second)
+            .expect("second template inserts");
+        repository
+            .delete_local_template(&first.id)
+            .expect("requested template deletes");
+        assert!(repository
+            .local_template(&first.id)
+            .expect("fetch succeeds")
+            .is_none());
+        assert!(repository
+            .local_template(&second.id)
+            .expect("fetch succeeds")
+            .is_some());
+        for builtin in builtins() {
+            assert!(matches!(
+                repository.insert_local_template(&builtin),
+                Err(StorageError::InvalidStoredValue)
+            ));
+        }
+        let builtins_in_sqlite: i64 = repository
+            .connection
+            .query_row(
+                "SELECT COUNT(*) FROM local_task_templates WHERE id IN (?1, ?2, ?3, ?4)",
+                rusqlite::params![
+                    builtins()[0].id,
+                    builtins()[1].id,
+                    builtins()[2].id,
+                    builtins()[3].id,
+                ],
+                |row| row.get(0),
+            )
+            .expect("builtin count reads");
+        assert_eq!(builtins_in_sqlite, 0);
+    }
+
+    #[test]
+    fn local_template_storage_fails_closed_for_corrupt_persisted_rows() {
+        for (column, value) in [
+            ("id", "'not-a-uuid'"),
+            ("schema_version", "2"),
+            ("origin", "'built-in'"),
+            ("version", "0"),
+            ("state", "'unknown'"),
+            ("title", "' not canonical '"),
+            ("updated_at_ms", "-1"),
+            ("sha256", "replace(printf('%064d', 0), '0', 'f')"),
+        ] {
+            let mut repository = ProjectRepository::in_memory().expect("schema migrates");
+            let template = local_template(Uuid::now_v7().to_string(), "Integrity");
+            repository
+                .insert_local_template(&template)
+                .expect("template inserts");
+            repository
+                .connection
+                .execute_batch(
+                    "PRAGMA ignore_check_constraints = ON;
+                     DROP TRIGGER local_task_templates_identity_immutable;
+                     DROP TRIGGER local_task_templates_version_monotonic;",
+                )
+                .expect("test permits corrupt row");
+            repository
+                .connection
+                .execute(
+                    &format!("UPDATE local_task_templates SET {column} = {value}"),
+                    [],
+                )
+                .expect("corrupt fixture writes");
+            assert!(matches!(
+                repository.local_templates(),
+                Err(StorageError::InvalidStoredValue)
+            ));
+        }
+    }
+
+    #[test]
+    fn local_template_storage_failed_mutation_rolls_back_completely() {
+        let mut repository = ProjectRepository::in_memory().expect("schema migrates");
+        repository
+            .connection
+            .execute_batch(
+                "CREATE TEMP TRIGGER fail_local_template_insert
+                 BEFORE INSERT ON local_task_templates
+                 BEGIN SELECT RAISE(ABORT, 'forced template failure'); END;",
+            )
+            .expect("failure trigger installs");
+        let template = local_template(Uuid::now_v7().to_string(), "Rollback");
+        assert!(repository.insert_local_template(&template).is_err());
+        assert_eq!(
+            repository
+                .local_template_capacity()
+                .expect("capacity succeeds"),
+            super::LocalTemplateCapacity {
+                record_count: 0,
+                canonical_bytes: 0,
+            }
+        );
     }
 }
