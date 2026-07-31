@@ -1465,6 +1465,16 @@ credential, browser-verification, and automation lanes, and recommends
 Provider-Neutral Capability Registry and Descriptor Governance as the next
 separately approved decision gate. M58 remains unchanged and unstarted.
 
+**Provider-neutral capability registry and descriptor governance complete:**
+the unnumbered [Provider-Neutral Capability Registry and Descriptor
+Governance](PROVIDER_NEUTRAL_CAPABILITY_REGISTRY_AND_DESCRIPTOR_GOVERNANCE.md)
+decision defines metadata-only descriptor identity, provenance, capability
+claims, lifecycle, extensions, and authority separation. It grants no package,
+version, implementation, provider, network, credential, or M55 source-admission
+authority, and recommends Canonical Provider-Neutral Interaction and Event
+Protocol as the next separately approved decision. M58 remains unchanged and
+unstarted.
+
 ### 58 — Controlled Browser Verification Proposal
 
 Determine whether a narrow, user-controlled verification-only browser surface

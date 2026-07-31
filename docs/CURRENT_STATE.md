@@ -164,6 +164,14 @@ Provider-Neutral Capability Registry and Descriptor Governance as the next
 separately approved decision gate. M58 remains unstarted and independent;
 beta.54 remains the latest packaged generation.
 
+The **Provider-Neutral Capability Registry and Descriptor Governance** decision
+is complete as a non-authorizing architecture artifact. It defines descriptor
+entities, opaque identity, provenance, capability claims, lifecycle, extensions,
+and authority separation; it grants no provider implementation or authority.
+Canonical Provider-Neutral Interaction and Event Protocol is the next
+separately approved decision recommendation. M58 remains unstarted and
+independent, and beta.54 remains the latest packaged generation.
+
 The Rust Codex, project/SQLite, Git, worktree, terminal, preview, attachment,
 settings, and integration services are candidates for reuse. The current Tauri
 boundary is the command façade, app/plugin wiring, native dialogs/openers/
