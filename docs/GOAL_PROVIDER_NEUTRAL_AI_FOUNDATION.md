@@ -100,18 +100,25 @@ conformance, extension handling, and failure-closed behavior. It grants no
 adapter implementation, credential, transport, context, native-operation, or
 provider authority.
 
+### Credential Broker and Account/Project/Scope Custody
+
+Status: complete, decision-only. The
+[credential broker and custody decision](CREDENTIAL_BROKER_AND_ACCOUNT_PROJECT_SCOPE_CUSTODY.md)
+defines native ownership, opaque credential references, account/organization/
+project/endpoint/deployment/scope bindings, non-secret credential classes,
+least-authority leases, lifecycle and recovery, no-ambient-authority rules,
+content-free audit, and failure-closed behavior. It grants no secret custody,
+account connection, context transmission, invocation, or native authority.
+
 ## Pending decision gates
 
 Every gate requires separate explicit approval. Completing one gate does not
 automatically begin the next.
 
-1. **Credential Broker and Account/Project/Scope Custody** — define real
-   credential custody, leases, account binding, expiry, rotation, revocation,
-   and non-exportable references.
-2. **Context Assembly and Transmission Manifests** — define what context may be
+1. **Context Assembly and Transmission Manifests** — define what context may be
    selected, transformed, authorized, transmitted, audited, retained, and
    invalidated.
-3. **Limited Provider Inference Boundary** — define the first model-invocation
+2. **Limited Provider Inference Boundary** — define the first model-invocation
    authority without retrieval, native tool execution, browser behavior,
    connected-service access, or external mutation.
 
@@ -207,10 +214,9 @@ When a gate completes, record it as progress under this goal.
 
 ## Immediate next gate
 
-The goal is active. Four decision gates are complete and no gate is currently
-active. **Credential Broker and Account/Project/Scope Custody** is the
-recommended next gate, but it still requires separate explicit approval and
-does not begin here.
+The goal is active. Five decision gates are complete and no gate is currently
+active. **Context Assembly and Transmission Manifests** is the recommended next
+gate, but it still requires separate explicit approval and does not begin here.
 
 ## Package and release policy
 
