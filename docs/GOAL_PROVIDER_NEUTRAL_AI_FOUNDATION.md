@@ -110,15 +110,22 @@ least-authority leases, lifecycle and recovery, no-ambient-authority rules,
 content-free audit, and failure-closed behavior. It grants no secret custody,
 account connection, context transmission, invocation, or native authority.
 
+### Context Assembly and Transmission Manifests
+
+Status: complete, decision-only. The
+[context assembly and transmission decision](CONTEXT_ASSEMBLY_AND_TRANSMISSION_MANIFESTS.md)
+defines native-owned selection, exact item/projection bindings, transformations
+and omissions, exclusions, destination-aware authorization, revalidation,
+continuation confinement, privacy/retention, and content-free audit evidence.
+It grants no assembly implementation, transmission, invocation, retrieval,
+credential resolution, or native authority.
+
 ## Pending decision gates
 
 Every gate requires separate explicit approval. Completing one gate does not
 automatically begin the next.
 
-1. **Context Assembly and Transmission Manifests** — define what context may be
-   selected, transformed, authorized, transmitted, audited, retained, and
-   invalidated.
-2. **Limited Provider Inference Boundary** — define the first model-invocation
+1. **Limited Provider Inference Boundary** — define the first model-invocation
    authority without retrieval, native tool execution, browser behavior,
    connected-service access, or external mutation.
 
@@ -214,9 +221,9 @@ When a gate completes, record it as progress under this goal.
 
 ## Immediate next gate
 
-The goal is active. Five decision gates are complete and no gate is currently
-active. **Context Assembly and Transmission Manifests** is the recommended next
-gate, but it still requires separate explicit approval and does not begin here.
+The goal is active. Six decision gates are complete and no gate is currently
+active. **Limited Provider Inference Boundary** is the recommended next gate,
+but it still requires separate explicit approval and does not begin here.
 
 ## Package and release policy
 

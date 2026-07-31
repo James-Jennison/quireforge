@@ -1488,12 +1488,18 @@ version. M55, M57, and M58 remain separate authority boundaries.
   native broker ownership, opaque references, account/project/scope bindings,
   non-secret credential classes, least-authority leases, lifecycle/recovery,
   no-ambient-authority rules, content-free audit, and failure-closed behavior.
+- [Context Assembly and Transmission
+  Manifests](CONTEXT_ASSEMBLY_AND_TRANSMISSION_MANIFESTS.md) defines native-owned
+  selection, exact item/projection bindings, transformations/omissions,
+  exclusions, destination-aware authorization, revalidation, continuation
+  confinement, privacy/retention, and content-free audit evidence.
 
-**Recommended next decision gate:** Context Assembly and Transmission Manifests
-is not started and requires separate explicit approval.
+**Recommended next decision gate:** Limited Provider Inference Boundary is not
+started and requires separate explicit approval.
 
-**Later planned decision gates:** Limited Provider Inference Boundary. It is
-non-authorizing and may be refined only through later decisions.
+There are no later planned core decision gates. The remaining Limited Provider
+Inference Boundary is non-authorizing and may be refined only through its later
+separate decision.
 
 **Future implementation milestones:** Native capability-registry contracts,
 canonical interaction/event contracts, mock adapter conformance, credential
