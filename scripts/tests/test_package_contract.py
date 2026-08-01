@@ -165,7 +165,7 @@ class PackageContractTests(unittest.TestCase):
                 prior_bytes,
             )
     def test_all_source_versions_match_the_beta_candidate(self) -> None:
-        self.assertEqual(source_version(), "0.1.0-beta.54")
+        self.assertEqual(source_version(), "0.1.0-beta.55")
 
     def test_temporary_desktop_bundle_envelope_is_closed_and_bounded(self) -> None:
         budget = json.loads(
