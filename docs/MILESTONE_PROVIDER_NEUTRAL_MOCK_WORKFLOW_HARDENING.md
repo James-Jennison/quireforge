@@ -26,15 +26,19 @@ release, publication, or deployment.
 
 ## Acceptance
 
-Focused Rust lifecycle and registry tests, bridge-schema/component tests, and
-desktop/mobile Playwright invalidation acceptance cover the bounded surface.
-Repository safeguards, formatting, type checking, and focused build checks are
-run before the local follow-up commit. Full packaging and release evidence are
-intentionally outside this milestone.
+Focused Rust lifecycle and registry tests, bridge-schema/component tests, and a
+desktop/mobile Playwright flow cover live-workbench launch, edit invalidation,
+fresh preparation, keyboard activation, one-event polling, cancellation
+request/confirmation, and a constrained viewport. Repository safeguards,
+formatting, type checking, focused build checks, and the Rust workspace suite
+are recorded locally. Full packaging and release evidence are intentionally
+outside this milestone.
 
 ## Release readiness
 
 The mock slice is source-ready for a separate **Mock Vertical Slice Release
-Decision and Packaging** checkpoint. That checkpoint must independently decide
-whether a version, package, installed-host validation, or release action is
-appropriate.
+Decision and Packaging** checkpoint. Before that decision, remaining browser
+evidence should explicitly cover ambiguous and authority-failure messaging,
+focus restoration, and reduced-height/high-zoom overflow. The checkpoint must
+independently decide whether a version, package, installed-host validation, or
+release action is appropriate.
