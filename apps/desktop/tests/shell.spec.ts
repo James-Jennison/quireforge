@@ -674,6 +674,13 @@ async function installNativeFixture(
   responses: Record<string, unknown> = nativeResponses,
 ) {
   await page.addInitScript((responses) => {
+    const hasFixtureSequence = (
+      value: unknown,
+    ): value is { sequence: unknown[] } =>
+      typeof value === "object" &&
+      value !== null &&
+      "sequence" in value &&
+      Array.isArray((value as Record<string, unknown>).sequence);
     const target = window as unknown as {
       __TAURI_INTERNALS__: {
         invoke: (command: string) => Promise<unknown>;
@@ -684,12 +691,7 @@ async function installNativeFixture(
         if (!(command in responses))
           throw new Error(`Unexpected command: ${command}`);
         const response = responses[command];
-        if (
-          response &&
-          typeof response === "object" &&
-          "sequence" in response &&
-          Array.isArray(response.sequence)
-        ) {
+        if (hasFixtureSequence(response)) {
           const next = response.sequence.shift();
           if (next === undefined)
             throw new Error(`Exhausted fixture sequence: ${command}`);
