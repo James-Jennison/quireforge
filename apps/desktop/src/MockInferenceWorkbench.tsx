@@ -5,6 +5,7 @@ import {
   cancelMockInference,
   loadMockInferenceCatalog,
   loadTaskCatalog,
+  pollMockInference,
   prepareMockInference,
   submitMockInference,
 } from "./lib/bridge";
@@ -36,6 +37,10 @@ type Operations = {
     taskId: string;
     attemptId: string;
   }) => Promise<MockInferenceSnapshot>;
+  poll: (request: {
+    taskId: string;
+    attemptId: string;
+  }) => Promise<MockInferenceSnapshot>;
 };
 
 const nativeOperations: Operations = {
@@ -50,6 +55,7 @@ const nativeOperations: Operations = {
   authorize: authorizeMockInference,
   submit: submitMockInference,
   cancel: cancelMockInference,
+  poll: pollMockInference,
 };
 
 function diagnostic(snapshot: MockInferenceSnapshot | null) {
@@ -120,7 +126,19 @@ export function MockInferenceWorkbench({
   const canAuthorize =
     snapshot?.state === "ready" && attemptId && authorizationId;
   const canCancel =
-    snapshot?.state === "ready" || snapshot?.state === "authorized";
+    snapshot?.state === "ready" ||
+    snapshot?.state === "authorized" ||
+    snapshot?.state === "submitted" ||
+    snapshot?.state === "streaming";
+  const canPoll =
+    snapshot?.state === "submitted" || snapshot?.state === "streaming";
+  const invalidateVisibleReview = () => {
+    if (snapshot)
+      setNotice(
+        "The reviewed binding changed. Prepare a fresh local mock review.",
+      );
+    setSnapshot(null);
+  };
 
   return (
     <section className="mock-inference-workbench" aria-labelledby={titleId}>
@@ -152,7 +170,10 @@ export function MockInferenceWorkbench({
           Durable task
           <select
             value={taskId}
-            onChange={(event) => setTaskId(event.target.value)}
+            onChange={(event) => {
+              setTaskId(event.target.value);
+              invalidateVisibleReview();
+            }}
             disabled={busy || !tasks?.tasks.length}
           >
             {tasks?.tasks.map((task) => (
@@ -166,7 +187,10 @@ export function MockInferenceWorkbench({
           Fictional destination
           <select
             value={profileId}
-            onChange={(event) => setProfileId(event.target.value)}
+            onChange={(event) => {
+              setProfileId(event.target.value);
+              invalidateVisibleReview();
+            }}
             disabled={busy || !catalog}
           >
             {catalog?.profiles.map((profile) => (
@@ -181,7 +205,10 @@ export function MockInferenceWorkbench({
           Bounded authored input
           <textarea
             value={input}
-            onChange={(event) => setInput(event.target.value)}
+            onChange={(event) => {
+              setInput(event.target.value);
+              invalidateVisibleReview();
+            }}
             maxLength={2000}
             rows={5}
             disabled={busy}
@@ -235,6 +262,16 @@ export function MockInferenceWorkbench({
               }
             >
               Authorize one local mock submission
+            </button>
+            <button
+              type="button"
+              disabled={busy || !canPoll || !attemptId}
+              onClick={() =>
+                attemptId &&
+                void apply(() => operations.poll({ taskId, attemptId }))
+              }
+            >
+              Advance local stream
             </button>
             <button
               type="button"

@@ -16,15 +16,6 @@ const POLICY_VERSION: u16 = 1;
 const INPUT_LIMIT: usize = 2_000;
 const EXPIRY_TICKS: u64 = 24;
 
-const LANTERN_PROVIDER_ID: &str = "019a5800-0000-7000-8000-000000000001";
-const LANTERN_ENDPOINT_ID: &str = "019a5800-0000-7000-8000-000000000002";
-const LANTERN_MODEL_ID: &str = "019a5800-0000-7000-8000-000000000003";
-const LANTERN_ADAPTER_ID: &str = "019a5800-0000-7000-8000-000000000004";
-const EMBER_PROVIDER_ID: &str = "019a5800-0000-7000-8000-000000000011";
-const EMBER_ENDPOINT_ID: &str = "019a5800-0000-7000-8000-000000000012";
-const EMBER_MODEL_ID: &str = "019a5800-0000-7000-8000-000000000013";
-const EMBER_ADAPTER_ID: &str = "019a5800-0000-7000-8000-000000000014";
-
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct MockInferencePrepareRequest {
@@ -99,6 +90,7 @@ pub(crate) enum MockAttemptState {
     Completed,
     Refused,
     Failed,
+    TimedOut,
     Interrupted,
     Ambiguous,
     Invalidated,
@@ -241,6 +233,7 @@ struct AttemptRecord {
     id: String,
     binding: TaskBinding,
     profile: ProfileDefinition,
+    destination: crate::provider_capability_registry::LocalMockDestinationProjection,
     input_sha256: String,
     input_char_count: u16,
     manifest_id: String,
@@ -260,109 +253,50 @@ struct AttemptRecord {
 #[derive(Clone)]
 struct ProfileDefinition {
     id: &'static str,
-    provider_id: &'static str,
-    endpoint_id: &'static str,
-    model_id: &'static str,
-    adapter_id: &'static str,
-    provider_label: &'static str,
-    endpoint_label: &'static str,
-    model_label: &'static str,
-    adapter_label: &'static str,
     scenario: MockScenario,
 }
 
 const PROFILES: [ProfileDefinition; 7] = [
     ProfileDefinition {
         id: "lantern-stream",
-        provider_id: LANTERN_PROVIDER_ID,
-        endpoint_id: LANTERN_ENDPOINT_ID,
-        model_id: LANTERN_MODEL_ID,
-        adapter_id: LANTERN_ADAPTER_ID,
-        provider_label: "Fictional Lantern",
-        endpoint_label: "Local fixture endpoint",
-        model_label: "Lantern Text Fixture",
-        adapter_label: "Lantern fixture adapter",
         scenario: MockScenario::StreamedText,
     },
     ProfileDefinition {
         id: "lantern-structured",
-        provider_id: LANTERN_PROVIDER_ID,
-        endpoint_id: LANTERN_ENDPOINT_ID,
-        model_id: LANTERN_MODEL_ID,
-        adapter_id: LANTERN_ADAPTER_ID,
-        provider_label: "Fictional Lantern",
-        endpoint_label: "Local fixture endpoint",
-        model_label: "Lantern Structured Fixture",
-        adapter_label: "Lantern fixture adapter",
         scenario: MockScenario::Structured,
     },
     ProfileDefinition {
         id: "ember-refusal",
-        provider_id: EMBER_PROVIDER_ID,
-        endpoint_id: EMBER_ENDPOINT_ID,
-        model_id: EMBER_MODEL_ID,
-        adapter_id: EMBER_ADAPTER_ID,
-        provider_label: "Fictional Ember",
-        endpoint_label: "Local fixture endpoint",
-        model_label: "Ember Refusal Fixture",
-        adapter_label: "Ember fixture adapter",
         scenario: MockScenario::Refusal,
     },
     ProfileDefinition {
         id: "ember-failure",
-        provider_id: EMBER_PROVIDER_ID,
-        endpoint_id: EMBER_ENDPOINT_ID,
-        model_id: EMBER_MODEL_ID,
-        adapter_id: EMBER_ADAPTER_ID,
-        provider_label: "Fictional Ember",
-        endpoint_label: "Local fixture endpoint",
-        model_label: "Ember Failure Fixture",
-        adapter_label: "Ember fixture adapter",
         scenario: MockScenario::Failure,
     },
     ProfileDefinition {
         id: "ember-timeout",
-        provider_id: EMBER_PROVIDER_ID,
-        endpoint_id: EMBER_ENDPOINT_ID,
-        model_id: EMBER_MODEL_ID,
-        adapter_id: EMBER_ADAPTER_ID,
-        provider_label: "Fictional Ember",
-        endpoint_label: "Local fixture endpoint",
-        model_label: "Ember Timeout Fixture",
-        adapter_label: "Ember fixture adapter",
         scenario: MockScenario::Timeout,
     },
     ProfileDefinition {
         id: "ember-interrupted",
-        provider_id: EMBER_PROVIDER_ID,
-        endpoint_id: EMBER_ENDPOINT_ID,
-        model_id: EMBER_MODEL_ID,
-        adapter_id: EMBER_ADAPTER_ID,
-        provider_label: "Fictional Ember",
-        endpoint_label: "Local fixture endpoint",
-        model_label: "Ember Interrupted Fixture",
-        adapter_label: "Ember fixture adapter",
         scenario: MockScenario::Interrupted,
     },
     ProfileDefinition {
         id: "ember-ambiguous",
-        provider_id: EMBER_PROVIDER_ID,
-        endpoint_id: EMBER_ENDPOINT_ID,
-        model_id: EMBER_MODEL_ID,
-        adapter_id: EMBER_ADAPTER_ID,
-        provider_label: "Fictional Ember",
-        endpoint_label: "Local fixture endpoint",
-        model_label: "Ember Ambiguous Fixture",
-        adapter_label: "Ember fixture adapter",
         scenario: MockScenario::Ambiguous,
     },
 ];
 
 impl MockInferenceService {
     pub(crate) fn catalog(&self) -> MockInferenceCatalog {
+        let destination = crate::provider_capability_registry::local_mock_destination_projection()
+            .expect("built-in local mock registry fixture must remain valid");
         MockInferenceCatalog {
             schema_version: SCHEMA_VERSION,
-            profiles: PROFILES.iter().map(profile_snapshot).collect(),
+            profiles: PROFILES
+                .iter()
+                .map(|profile| profile_snapshot(profile, &destination))
+                .collect(),
         }
     }
 
@@ -382,6 +316,16 @@ impl MockInferenceService {
                 MockDiagnostic::InvalidRequest,
             );
         };
+        let destination =
+            match crate::provider_capability_registry::local_mock_destination_projection() {
+                Ok(destination) => destination,
+                Err(_) => {
+                    return diagnostic(
+                        MockAttemptState::Invalidated,
+                        MockDiagnostic::InvalidRequest,
+                    )
+                }
+            };
         if request.task_id != binding.task_id
             || !valid_uuidv7(&binding.project_id)
             || !valid_uuidv7(&binding.task_id)
@@ -410,19 +354,20 @@ impl MockInferenceService {
         let credential_reference_id = Uuid::now_v7().to_string();
         let authorization_id = Uuid::now_v7().to_string();
         let input_sha256 = digest(input);
-        let destination = destination_digest(&profile);
+        let destination_digest = destination.descriptor_sha256.clone();
         let manifest_sha256 = digest(&format!(
             "{}:{}:{}:{}",
-            binding.project_id, binding.task_id, input_sha256, destination
+            binding.project_id, binding.task_id, input_sha256, destination_digest
         ));
         let authorization_sha256 = digest(&format!(
             "{}:{}:{}:{}:{}",
-            attempt_id, manifest_sha256, lease_id, destination, POLICY_VERSION
+            attempt_id, manifest_sha256, lease_id, destination_digest, POLICY_VERSION
         ));
         let record = AttemptRecord {
             id: attempt_id.clone(),
             binding,
             profile,
+            destination,
             input_sha256,
             input_char_count: input.chars().count() as u16,
             manifest_id,
@@ -534,7 +479,58 @@ impl MockInferenceService {
         }
         record.consumed = true;
         record.state = MockAttemptState::Submitted;
-        record.events = fixture_events(record);
+        snapshot(record, tick, None)
+    }
+
+    pub(crate) fn poll(
+        &self,
+        request: MockInferenceAttemptRequest,
+        binding: &TaskBinding,
+    ) -> MockInferenceSnapshot {
+        let mut store = match self.store.lock() {
+            Ok(store) => store,
+            Err(_) => {
+                return diagnostic(
+                    MockAttemptState::Invalidated,
+                    MockDiagnostic::AttemptUnavailable,
+                )
+            }
+        };
+        store.tick += 1;
+        let tick = store.tick;
+        let Some(record) = store.attempts.get_mut(&request.attempt_id) else {
+            return diagnostic(
+                MockAttemptState::Invalidated,
+                MockDiagnostic::AttemptUnavailable,
+            );
+        };
+        if &record.binding != binding {
+            return diagnostic(
+                MockAttemptState::Invalidated,
+                MockDiagnostic::CrossTaskRejected,
+            );
+        }
+        if is_terminal(record.state) {
+            return diagnostic(record.state, MockDiagnostic::TerminalAttempt);
+        }
+        if !matches!(
+            record.state,
+            MockAttemptState::Submitted | MockAttemptState::Streaming
+        ) {
+            return diagnostic(record.state, MockDiagnostic::AuthorizationInvalid);
+        }
+        let fixtures = fixture_events(record);
+        let index = record.events.len();
+        if let Some(next) = fixtures.get(index).cloned() {
+            let terminal = next.kind == "terminal";
+            record.events.push(next);
+            record.state = if terminal {
+                terminal_for(record.profile.scenario)
+            } else {
+                MockAttemptState::Streaming
+            };
+            return snapshot(record, tick, None);
+        }
         record.state = terminal_for(record.profile.scenario);
         snapshot(record, tick, None)
     }
@@ -594,11 +590,11 @@ fn snapshot(
     diagnostic_value: Option<MockDiagnostic>,
 ) -> MockInferenceSnapshot {
     let destination = MockDestination {
-        provider_id: record.profile.provider_id.into(),
-        endpoint_id: record.profile.endpoint_id.into(),
-        model_id: record.profile.model_id.into(),
-        adapter_id: record.profile.adapter_id.into(),
-        descriptor_sha256: destination_digest(&record.profile),
+        provider_id: record.destination.provider_id.clone(),
+        endpoint_id: record.destination.endpoint_id.clone(),
+        model_id: record.destination.model_id.clone(),
+        adapter_id: record.destination.adapter_id.clone(),
+        descriptor_sha256: record.destination.descriptor_sha256.clone(),
         capability_profile_sha256: digest("fictional-text-only-v1"),
     };
     MockInferenceSnapshot {
@@ -685,13 +681,15 @@ pub(crate) fn diagnostic(state: MockAttemptState, code: MockDiagnostic) -> MockI
 fn valid_for_submit(record: &AttemptRecord, tick: u64) -> bool {
     record.lease_state == MockLeaseState::Issued
         && tick <= record.created_tick + EXPIRY_TICKS
+        && crate::provider_capability_registry::local_mock_destination_projection()
+            .is_ok_and(|current| current == record.destination)
         && record.manifest_sha256
             == digest(&format!(
                 "{}:{}:{}:{}",
                 record.binding.project_id,
                 record.binding.task_id,
                 record.input_sha256,
-                destination_digest(&record.profile)
+                record.destination.descriptor_sha256
             ))
 }
 fn terminal_for(scenario: MockScenario) -> MockAttemptState {
@@ -699,7 +697,7 @@ fn terminal_for(scenario: MockScenario) -> MockAttemptState {
         MockScenario::StreamedText | MockScenario::Structured => MockAttemptState::Completed,
         MockScenario::Refusal => MockAttemptState::Refused,
         MockScenario::Failure => MockAttemptState::Failed,
-        MockScenario::Timeout => MockAttemptState::Interrupted,
+        MockScenario::Timeout => MockAttemptState::TimedOut,
         MockScenario::Interrupted => MockAttemptState::Interrupted,
         MockScenario::Ambiguous => MockAttemptState::Ambiguous,
     }
@@ -711,6 +709,7 @@ fn is_terminal(state: MockAttemptState) -> bool {
             | MockAttemptState::Completed
             | MockAttemptState::Refused
             | MockAttemptState::Failed
+            | MockAttemptState::TimedOut
             | MockAttemptState::Interrupted
             | MockAttemptState::Ambiguous
             | MockAttemptState::Invalidated
@@ -794,7 +793,7 @@ fn fixture_events(record: &AttemptRecord) -> Vec<MockInteractionEvent> {
                 Some("submission outcome not established"),
                 None,
             ));
-            events.push(event(4, "terminal", Some("interrupted"), None));
+            events.push(event(4, "terminal", Some("timed-out"), None));
         }
         MockScenario::Interrupted => {
             events.push(event(3, "text-delta", Some("partial fixture output"), None));
@@ -841,22 +840,19 @@ fn event(
         sha256: digest(&rendered),
     }
 }
-fn profile_snapshot(profile: &ProfileDefinition) -> MockInferenceProfile {
+fn profile_snapshot(
+    profile: &ProfileDefinition,
+    destination: &crate::provider_capability_registry::LocalMockDestinationProjection,
+) -> MockInferenceProfile {
     MockInferenceProfile {
         id: profile.id.into(),
-        provider_label: profile.provider_label.into(),
-        endpoint_label: profile.endpoint_label.into(),
-        model_label: profile.model_label.into(),
-        adapter_label: profile.adapter_label.into(),
+        provider_label: destination.provider_label.clone(),
+        endpoint_label: destination.endpoint_label.clone(),
+        model_label: destination.model_label.clone(),
+        adapter_label: destination.adapter_label.clone(),
         scenario: profile.scenario,
-        descriptor_sha256: destination_digest(profile),
+        descriptor_sha256: destination.descriptor_sha256.clone(),
     }
-}
-fn destination_digest(profile: &ProfileDefinition) -> String {
-    digest(&format!(
-        "{}:{}:{}:{}:{}",
-        profile.id, profile.provider_id, profile.endpoint_id, profile.model_id, profile.adapter_id
-    ))
 }
 fn digest(value: &str) -> String {
     format!("{:x}", Sha256::digest(value.as_bytes()))
@@ -896,7 +892,7 @@ mod tests {
         assert_eq!(catalog.profiles[0].descriptor_sha256.len(), 64);
     }
     #[test]
-    fn successful_flow_requires_one_use_authorization_and_reconstructs_ordered_stream() {
+    fn successful_flow_requires_one_use_authorization_and_exposes_one_ordered_event_per_poll() {
         let service = MockInferenceService::default();
         let ready = prepared(&service);
         let attempt_id = ready.attempt_id.unwrap();
@@ -910,7 +906,7 @@ mod tests {
             &binding(),
         );
         assert_eq!(authorized.state, MockAttemptState::Authorized);
-        let completed = service.submit(
+        let submitted = service.submit(
             MockInferenceAuthorizationRequest {
                 task_id: binding().task_id,
                 attempt_id: attempt_id.clone(),
@@ -918,6 +914,22 @@ mod tests {
             },
             &binding(),
         );
+        assert_eq!(submitted.state, MockAttemptState::Submitted);
+        let mut completed = submitted;
+        for expected_events in 1..=5 {
+            completed = service.poll(
+                MockInferenceAttemptRequest {
+                    task_id: binding().task_id,
+                    attempt_id: attempt_id.clone(),
+                },
+                &binding(),
+            );
+            assert_eq!(completed.events.len(), expected_events);
+            assert_eq!(
+                completed.events.last().map(|event| event.sequence),
+                Some(expected_events as u16)
+            );
+        }
         assert_eq!(completed.state, MockAttemptState::Completed);
         assert_eq!(
             completed
@@ -960,10 +972,28 @@ mod tests {
         );
     }
     #[test]
-    fn cancellation_is_terminal_and_never_retries() {
+    fn cancellation_remains_available_after_submission_and_is_terminal() {
         let service = MockInferenceService::default();
         let ready = prepared(&service);
         let attempt_id = ready.attempt_id.unwrap();
+        let authorization_id = ready.authorization.unwrap().id;
+        service.authorize(
+            MockInferenceAuthorizationRequest {
+                task_id: binding().task_id,
+                attempt_id: attempt_id.clone(),
+                authorization_id: authorization_id.clone(),
+            },
+            &binding(),
+        );
+        let submitted = service.submit(
+            MockInferenceAuthorizationRequest {
+                task_id: binding().task_id,
+                attempt_id: attempt_id.clone(),
+                authorization_id,
+            },
+            &binding(),
+        );
+        assert_eq!(submitted.state, MockAttemptState::Submitted);
         let cancelled = service.cancel(
             MockInferenceAttemptRequest {
                 task_id: binding().task_id,
@@ -972,6 +1002,14 @@ mod tests {
             &binding(),
         );
         assert_eq!(cancelled.state, MockAttemptState::Cancelled);
+        assert_eq!(
+            cancelled
+                .events
+                .iter()
+                .map(|event| event.kind.as_str())
+                .collect::<Vec<_>>(),
+            vec!["cancellation-requested", "terminal"]
+        );
         assert_eq!(
             service
                 .cancel(
@@ -991,7 +1029,7 @@ mod tests {
         for (profile_id, state) in [
             ("ember-refusal", MockAttemptState::Refused),
             ("ember-failure", MockAttemptState::Failed),
-            ("ember-timeout", MockAttemptState::Interrupted),
+            ("ember-timeout", MockAttemptState::TimedOut),
             ("ember-ambiguous", MockAttemptState::Ambiguous),
         ] {
             let snapshot = service.prepare(
@@ -1012,19 +1050,29 @@ mod tests {
                 },
                 &binding(),
             );
-            assert_eq!(
-                service
-                    .submit(
-                        MockInferenceAuthorizationRequest {
-                            task_id: binding().task_id,
-                            attempt_id,
-                            authorization_id
-                        },
-                        &binding()
-                    )
-                    .state,
-                state
+            service.submit(
+                MockInferenceAuthorizationRequest {
+                    task_id: binding().task_id,
+                    attempt_id: attempt_id.clone(),
+                    authorization_id,
+                },
+                &binding(),
             );
+            let mut final_snapshot = None;
+            for _ in 0..6 {
+                let next = service.poll(
+                    MockInferenceAttemptRequest {
+                        task_id: binding().task_id,
+                        attempt_id: attempt_id.clone(),
+                    },
+                    &binding(),
+                );
+                if is_terminal(next.state) {
+                    final_snapshot = Some(next);
+                    break;
+                }
+            }
+            assert_eq!(final_snapshot.expect("terminal fixture").state, state);
         }
     }
 
@@ -1065,7 +1113,7 @@ mod tests {
                 .attempts
                 .get_mut(&attempt_id)
                 .expect("fixture attempt");
-            record.profile.adapter_id = EMBER_ADAPTER_ID;
+            record.destination.adapter_id = "019a5800-0000-7000-8000-000000000014".into();
         }
         assert_eq!(
             service
@@ -1079,6 +1127,32 @@ mod tests {
                 )
                 .diagnostic,
             Some(MockDiagnostic::ManifestInvalidated)
+        );
+    }
+    #[test]
+    fn polling_before_submit_is_rejected_and_retry_is_a_fresh_attempt() {
+        let service = MockInferenceService::default();
+        let ready = prepared(&service);
+        let attempt_id = ready.attempt_id.unwrap();
+        assert_eq!(
+            service
+                .poll(
+                    MockInferenceAttemptRequest {
+                        task_id: binding().task_id,
+                        attempt_id,
+                    },
+                    &binding(),
+                )
+                .diagnostic,
+            Some(MockDiagnostic::AuthorizationInvalid)
+        );
+
+        let first = prepared(&service);
+        let retry = prepared(&service);
+        assert_ne!(first.attempt_id, retry.attempt_id);
+        assert_ne!(
+            first.authorization.unwrap().id,
+            retry.authorization.unwrap().id
         );
     }
 }

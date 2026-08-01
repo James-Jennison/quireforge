@@ -41,6 +41,7 @@ const attemptState = z.enum([
   "completed",
   "refused",
   "failed",
+  "timed-out",
   "interrupted",
   "ambiguous",
   "invalidated",

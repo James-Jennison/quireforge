@@ -25,6 +25,15 @@ const catalog = mockInferenceCatalogSchema.parse({
       scenario: "streamed-text",
       descriptorSha256: digest,
     },
+    {
+      id: "ember-failure",
+      providerLabel: "Fictional Lantern",
+      endpointLabel: "Local fixture endpoint",
+      modelLabel: "Lantern Text Fixture",
+      adapterLabel: "registry fixture adapter",
+      scenario: "failure",
+      descriptorSha256: digest,
+    },
   ],
 });
 const taskCatalog = taskCatalogSchema.parse({
@@ -34,6 +43,16 @@ const taskCatalog = taskCatalogSchema.parse({
     {
       id,
       title: "Durable task",
+      status: "active",
+      archived: false,
+      selectedPlanId: planId,
+      planCount: 1,
+      updatedAtMs: 1,
+      cleanupEligible: false,
+    },
+    {
+      id: "019a5900-0000-7000-8000-000000000005",
+      title: "Second durable task",
       status: "active",
       archived: false,
       selectedPlanId: planId,
@@ -137,6 +156,7 @@ describe("MockInferenceWorkbench", () => {
           authorize,
           submit,
           cancel: vi.fn(),
+          poll: vi.fn(),
         }}
       />,
     );
@@ -163,4 +183,48 @@ describe("MockInferenceWorkbench", () => {
     await waitFor(() => expect(submit).toHaveBeenCalledTimes(1));
     expect(screen.getByText(/fixture output/i)).toBeInTheDocument();
   });
+
+  it.each([
+    ["input", "Bounded authored input", "Changed visible input"],
+    ["task", "Durable task", "019a5900-0000-7000-8000-000000000005"],
+    ["destination", "Fictional destination", "ember-failure"],
+  ])(
+    "invalidates the visible review when the bound %s changes",
+    async (_, label, value) => {
+      const prepare = vi.fn().mockResolvedValue(snapshot("ready"));
+      render(
+        <MockInferenceWorkbench
+          onClose={vi.fn()}
+          operations={{
+            catalog: () => Promise.resolve(catalog),
+            tasks: () => Promise.resolve(taskCatalog),
+            prepare,
+            authorize: vi.fn(),
+            submit: vi.fn(),
+            cancel: vi.fn(),
+            poll: vi.fn(),
+          }}
+        />,
+      );
+      await screen.findByText(/ready for an explicit review/i);
+      const input = screen.getByLabelText("Bounded authored input");
+      fireEvent.change(input, { target: { value: "First visible input" } });
+      fireEvent.click(
+        screen.getByRole("button", { name: "Prepare local mock review" }),
+      );
+      await screen.findByText("Exact local review");
+      if (label === "Bounded authored input") {
+        fireEvent.change(input, { target: { value } });
+      } else {
+        fireEvent.change(screen.getByLabelText(label), { target: { value } });
+      }
+      expect(screen.queryByText("Exact local review")).not.toBeInTheDocument();
+      expect(screen.getByText(/reviewed binding changed/i)).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", {
+          name: "Authorize one local mock submission",
+        }),
+      ).not.toBeInTheDocument();
+    },
+  );
 });

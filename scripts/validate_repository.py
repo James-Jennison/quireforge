@@ -630,6 +630,7 @@ def validate() -> list[str]:
             "mock_inference_authorize",
             "mock_inference_submit",
             "mock_inference_cancel",
+            "mock_inference_poll",
         ):
             if lib_source.count(command) < 2:
                 errors.append(

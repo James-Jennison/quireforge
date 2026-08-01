@@ -1562,6 +1562,21 @@ fn mock_inference_cancel(
 }
 
 #[tauri::command]
+fn mock_inference_poll(
+    request: mock_inference::MockInferenceAttemptRequest,
+    service: tauri::State<'_, mock_inference::MockInferenceService>,
+    projects: tauri::State<'_, ProjectService>,
+) -> mock_inference::MockInferenceSnapshot {
+    let Some(binding) = projects.task_mock_inference_binding(&request.task_id) else {
+        return mock_inference::diagnostic(
+            mock_inference::MockAttemptState::Invalidated,
+            mock_inference::MockDiagnostic::TaskUnavailable,
+        );
+    };
+    service.poll(request, &binding)
+}
+
+#[tauri::command]
 fn local_review_status(
     request: LocalReviewListRequest,
     service: tauri::State<'_, ProjectService>,
@@ -2840,6 +2855,7 @@ pub fn run() {
             mock_inference_authorize,
             mock_inference_submit,
             mock_inference_cancel,
+            mock_inference_poll,
             local_review_status,
             local_review_collection_create,
             local_review_text_item_create,
@@ -3022,6 +3038,7 @@ mod phase_a_tests {
             "mock_inference_authorize",
             "mock_inference_submit",
             "mock_inference_cancel",
+            "mock_inference_poll",
         ] {
             assert_eq!(handler.matches(command).count(), 1, "{command}");
         }

@@ -1270,6 +1270,89 @@ test("Local Review remains usable at effective 200% desktop reflow", async ({
   ).toBe(true);
 });
 
+test("mock inference clears a prepared review when its bound input changes", async ({
+  page,
+}) => {
+  const id = "018f0000-0000-7000-8000-000000000001";
+  const attemptId = "019a5900-0000-7000-8000-000000000002";
+  const authorizationId = "019a5900-0000-7000-8000-000000000003";
+  const digest = "a".repeat(64);
+  const ready = {
+    schemaVersion: 1,
+    mockOnly: true,
+    attemptId,
+    state: "ready",
+    diagnostic: null,
+    destination: {
+      providerId: id,
+      endpointId: id,
+      modelId: id,
+      adapterId: id,
+      descriptorSha256: digest,
+      capabilityProfileSha256: digest,
+    },
+    manifest: {
+      id,
+      sha256: digest,
+      inputSha256: digest,
+      itemCount: 1,
+      inputCharCount: 12,
+      exclusions: ["ambient-context"],
+      retention: "transient-local-mock",
+      expiresAtTick: 3,
+      state: "ready",
+    },
+    lease: {
+      credentialReferenceId: id,
+      leaseId: id,
+      accountReference: "fictional-account-reference",
+      scopes: ["mock-inference-submit"],
+      state: "issued",
+      expiresAtTick: 3,
+    },
+    authorization: {
+      id: authorizationId,
+      bindingSha256: digest,
+      state: "pending",
+      expiresAtTick: 3,
+    },
+    events: [],
+    usage: null,
+    evidence: [],
+  } as const;
+  await installNativeFixture(page, {
+    ...nativeResponses,
+    mock_inference_catalog: {
+      schemaVersion: 1,
+      profiles: [
+        {
+          id: "lantern-stream",
+          providerLabel: "Fictional Lantern",
+          endpointLabel: "Local fixture endpoint",
+          modelLabel: "Lantern Text Fixture",
+          adapterLabel: "registry fixture adapter",
+          scenario: "streamed-text",
+          descriptorSha256: digest,
+        },
+      ],
+    },
+    mock_inference_prepare: ready,
+  });
+  await page.goto("/");
+  await openWorkspace(page, "New task");
+  await page.getByRole("button", { name: "Fictional mock inference" }).click();
+  const input = page.getByLabel("Bounded authored input");
+  await input.fill("Visible input");
+  await page.getByRole("button", { name: "Prepare local mock review" }).click();
+  await expect(page.getByText("Exact local review")).toBeVisible();
+  await input.fill("Changed visible input");
+  await expect(page.getByText("Exact local review")).toHaveCount(0);
+  await expect(page.getByText(/reviewed binding changed/i)).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Authorize one local mock submission" }),
+  ).toHaveCount(0);
+});
+
 test("desktop preview renders the honest semantic shell", async ({ page }) => {
   const response = await page.goto("/");
 

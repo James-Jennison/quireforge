@@ -23,7 +23,9 @@ resolves only the exact project/task identity; no task text, plans, files, or
 ambient context is sent into the fixture service.
 
 The closed Tauri and Zod bridge exposes catalog, prepare, authorize, submit,
-cancel, and retry requests only. The workbench clearly labels every destination
+poll, and cancel requests only. Submit enters `submitted`; each explicit poll
+appends at most one canonical event in sequence order, then transitions to
+`streaming` or the terminal fixture state. The workbench clearly labels every destination
 and result as fictional/local mock behavior. It presents manifest and
 authorization digests, explicit exclusions, ordered canonical events, bounded
 usage, and content-free evidence.
@@ -36,19 +38,30 @@ after application restart.
 
 An attempt is task/project/destination/profile/lease/manifest/policy bound.
 Prepare creates a fresh attempt; authorization is explicit; submit consumes the
-authorization exactly once. Cross-task use, replay, stale or invalidated
-manifests, unavailable tasks, and terminal transitions fail closed. Retry is a
-new attempt and never an automatic resend. Cancellation is explicit and final.
+authorization exactly once. Polling before submit, cross-task use, replay,
+stale or invalidated registry/manifest state, unavailable tasks, and terminal
+transitions fail closed. Retry is a fresh prepared attempt and never an
+automatic resend. Cancellation remains available through `submitted` and
+`streaming`, and is explicit and final.
 
 Fixture outcomes are deterministic: streamed text, structured output, refusal,
-failure, timeout/interruption, and ambiguous outcome. An ambiguous outcome
-states that no automatic retry occurs.
+failure, distinct `timed-out` and `interrupted` terminal states, and ambiguous
+outcome. A timeout is not represented as an interruption and neither it nor an
+ambiguous outcome triggers an automatic retry.
+
+The destination identity is a deterministic, validated projection of the
+authoritative static registry descriptors. A stale or mismatched projection
+invalidates the attempt before authorization or submission. Changing the
+selected task, fictional destination, or authored input in the workbench clears
+the visible review, so no stale authorization control remains available.
 
 ## Validation
 
-Focused native and workbench tests cover ordered events, explicit authorization,
-replay rejection, cross-task rejection, cancellation, deterministic failure
-taxonomy, mock labeling, and the task-catalog entry. The repository validator
+Focused native, workbench, and browser-acceptance tests cover one-event polling,
+ordered terminal sequences, explicit authorization, replay rejection,
+cross-task rejection, cancellation before completion, timeout and failure
+taxonomy, fresh retry attempts, registry drift, and review invalidation for
+task, destination, and input changes. The repository validator
 adds a narrow guard against authority-bearing imports and real provider or
 destination identifiers in this local fixture boundary.
 

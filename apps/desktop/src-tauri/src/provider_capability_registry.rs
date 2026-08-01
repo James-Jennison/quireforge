@@ -205,8 +205,23 @@ struct RegistryFixture {
     claims: Vec<CapabilityClaim>,
 }
 
+/// The only destination identity that the local mock workflow may project.
+/// Every field originates from a validated static registry descriptor.
 #[derive(Clone, Debug, Eq, PartialEq)]
-enum RegistryError {
+pub(crate) struct LocalMockDestinationProjection {
+    pub(crate) provider_id: String,
+    pub(crate) endpoint_id: String,
+    pub(crate) model_id: String,
+    pub(crate) adapter_id: String,
+    pub(crate) provider_label: String,
+    pub(crate) endpoint_label: String,
+    pub(crate) model_label: String,
+    pub(crate) adapter_label: String,
+    pub(crate) descriptor_sha256: String,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) enum RegistryError {
     InvalidIdentity,
     InvalidVersion,
     InvalidDigest,
@@ -324,6 +339,56 @@ fn fictional_fixture() -> RegistryFixture {
         capabilities,
         claims: vec![claim],
     }
+}
+
+/// Bounded identity projection used by the local mock workflow. It exposes no
+/// provider route or descriptor mutation surface. Invalid or stale registry
+/// state cannot produce a mock destination.
+pub(crate) fn local_mock_destination_projection(
+) -> Result<LocalMockDestinationProjection, RegistryError> {
+    let fixture = fictional_fixture();
+    local_mock_destination_projection_for(&fixture)
+}
+
+fn local_mock_destination_projection_for(
+    fixture: &RegistryFixture,
+) -> Result<LocalMockDestinationProjection, RegistryError> {
+    validate_fixture(fixture)?;
+    let model = fixture
+        .models
+        .iter()
+        .find(|model| {
+            model.lifecycle == LifecycleState::Active
+                && model.compatibility == CompatibilityState::Compatible
+        })
+        .ok_or(RegistryError::InvalidDescriptor)?;
+    let endpoint = fixture
+        .endpoints
+        .iter()
+        .find(|endpoint| endpoint.id == model.endpoint_id)
+        .ok_or(RegistryError::InvalidDescriptor)?;
+    let descriptor_sha256 = digest(&[
+        "local-mock-destination-v1".into(),
+        fixture.provider.id.clone(),
+        fixture.provider.sha256.clone(),
+        endpoint.id.clone(),
+        endpoint.sha256.clone(),
+        model.id.clone(),
+        model.sha256.clone(),
+        fixture.adapter.id.clone(),
+        fixture.adapter.sha256.clone(),
+    ]);
+    Ok(LocalMockDestinationProjection {
+        provider_id: fixture.provider.id.clone(),
+        endpoint_id: endpoint.id.clone(),
+        model_id: model.id.clone(),
+        adapter_id: fixture.adapter.id.clone(),
+        provider_label: fixture.provider.display_name.clone(),
+        endpoint_label: endpoint.deployment_label.clone(),
+        model_label: model.model_label.clone(),
+        adapter_label: "registry fixture adapter".into(),
+        descriptor_sha256,
+    })
 }
 
 fn parse_fixture(input: &str) -> Result<RegistryFixture, RegistryError> {
@@ -711,5 +776,33 @@ mod tests {
         assert_ne!(fixture.models[0].endpoint_id, fixture.models[1].endpoint_id);
         assert_ne!(fixture.models[0].id, fixture.models[1].id);
         assert_ne!(fixture.models[0].sha256, fixture.models[1].sha256);
+    }
+    #[test]
+    fn local_mock_projection_is_deterministic_and_registry_derived() {
+        let fixture = fictional_fixture();
+        let projection = local_mock_destination_projection_for(&fixture).unwrap();
+        assert_eq!(projection, local_mock_destination_projection().unwrap());
+        assert_eq!(projection.provider_id, fixture.provider.id);
+        assert_eq!(projection.model_id, fixture.models[0].id);
+        assert_eq!(projection.endpoint_id, fixture.models[0].endpoint_id);
+        assert_eq!(projection.adapter_id, fixture.adapter.id);
+    }
+    #[test]
+    fn stale_or_mismatched_registry_state_cannot_project_a_mock_destination() {
+        let mut stale = fictional_fixture();
+        stale.models[0].endpoint_id = stale.endpoints[0].id.clone();
+        stale.models[0].sha256 = model_digest(&stale.models[0]);
+        assert_eq!(
+            local_mock_destination_projection_for(&stale),
+            Err(RegistryError::InvalidClaim)
+        );
+
+        let mut mismatched = fictional_fixture();
+        mismatched.adapter.provider_id = mismatched.endpoints[0].id.clone();
+        mismatched.adapter.sha256 = adapter_digest(&mismatched.adapter);
+        assert_eq!(
+            local_mock_destination_projection_for(&mismatched),
+            Err(RegistryError::InvalidDescriptor)
+        );
     }
 }

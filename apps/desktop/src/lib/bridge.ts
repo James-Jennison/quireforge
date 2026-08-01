@@ -372,6 +372,7 @@ export const MOCK_INFERENCE_PREPARE_COMMAND = "mock_inference_prepare";
 export const MOCK_INFERENCE_AUTHORIZE_COMMAND = "mock_inference_authorize";
 export const MOCK_INFERENCE_SUBMIT_COMMAND = "mock_inference_submit";
 export const MOCK_INFERENCE_CANCEL_COMMAND = "mock_inference_cancel";
+export const MOCK_INFERENCE_POLL_COMMAND = "mock_inference_poll";
 export const LOCAL_REVIEW_STATUS_COMMAND = "local_review_status";
 export const LOCAL_REVIEW_COLLECTION_CREATE_COMMAND =
   "local_review_collection_create";
@@ -1377,6 +1378,16 @@ export const cancelMockInference = (
 ) =>
   mockInferenceInvoke(
     MOCK_INFERENCE_CANCEL_COMMAND,
+    request,
+    mockInferenceAttemptRequestSchema,
+    invokeFunction,
+  );
+export const pollMockInference = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+) =>
+  mockInferenceInvoke(
+    MOCK_INFERENCE_POLL_COMMAND,
     request,
     mockInferenceAttemptRequestSchema,
     invokeFunction,

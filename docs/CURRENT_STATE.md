@@ -202,12 +202,14 @@ source-complete: the [local mock inference vertical
 slice](MILESTONE_PROVIDER_NEUTRAL_MOCK_INFERENCE_VERTICAL_SLICE.md) is a
 user-visible but fictional/in-memory task-bound workflow. It uses an explicit
 bounded authored-text manifest review, inert opaque lease, digest-bound one-use
-authorization, deterministic canonical event fixtures, and content-free
-evidence. It introduces no real provider, credentials, network route, context
-transmission, retrieval, native tool authority, persistence, or external action.
-Existing release policy leaves it source-only: beta.54 and its draft prerelease
-remain unchanged. Additional Mock Hardening is the recommended next separately
-approved milestone; M55, M57, and M58 remain separate.
+authorization, explicit one-event polling, deterministic canonical event
+fixtures, and content-free evidence. Its destination is a validated static
+registry projection; timeout is distinct from interruption; and the UI clears a
+review when its task, destination, or input changes. It introduces no real
+provider, credentials, network route, context transmission, retrieval, native
+tool authority, persistence, or external action. Existing release policy leaves
+it source-only: beta.54 and its draft prerelease remain unchanged. M55, M57,
+and M58 remain separate.
 
 The Rust Codex, project/SQLite, Git, worktree, terminal, preview, attachment,
 settings, and integration services are candidates for reuse. The current Tauri
