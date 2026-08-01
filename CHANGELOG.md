@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.0-beta.58 — Durable Source Admission
+
+- Adds governed project-owned local textual source admission with explicit
+  review and confirmation, immutable identity, SHA-256, bounded preview, and
+  private copied content.
+- Keeps retrieval, provider/context transmission, credentials, connectors,
+  browser authority, MCP, and automation out of scope.
+
 ## 0.1.0-beta.57 — Project-bound durable Task Catalog creation
 
 - Replace beta.56 after installed-host acceptance proved that its Task Catalog

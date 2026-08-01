@@ -1,3 +1,4 @@
+mod durable_source;
 mod identity;
 mod package_validation;
 mod storage;
@@ -14,6 +15,7 @@ use std::{
     time::{Duration, Instant},
 };
 
+use durable_source::DurableSourceController;
 use package_validation::{
     InstalledHostValidationOutcome, PackageValidationController, PackageValidationControllerError,
 };
@@ -23,19 +25,22 @@ use storage::{
 };
 pub(crate) use storage::{StoredConversationReference, StoredTerminalSession};
 use types::{
-    DirectoryAccessibilityState, DirectorySummary, GitSummary,
-    LocalReviewActivityPresentationEvidencePreview, LocalReviewActivityPresentationEvidenceRequest,
-    LocalReviewAnnotationCreateRequest, LocalReviewAnnotationEditRequest,
-    LocalReviewAnnotationMutationRequest, LocalReviewApprovalPresentationEvidencePreview,
-    LocalReviewApprovalPresentationEvidenceRequest, LocalReviewCollectionCreateRequest,
-    LocalReviewCollectionMutationRequest, LocalReviewComparisonCreateRequest,
-    LocalReviewComparisonDiscardRequest, LocalReviewComparisonReadRequest,
-    LocalReviewDiagnosticCode, LocalReviewEvidenceArtifactKind, LocalReviewEvidenceArtifactState,
-    LocalReviewEvidenceCheckState, LocalReviewEvidenceSource, LocalReviewEvidenceWorkspaceState,
-    LocalReviewGitStatusDiffSummaryDetails, LocalReviewGitStatusDiffSummaryEvidencePreview,
-    LocalReviewGitStatusDiffSummaryEvidenceRequest, LocalReviewImagePickRequest,
-    LocalReviewImagePreview, LocalReviewImagePreviewRequest, LocalReviewItemDiscardRequest,
-    LocalReviewListRequest, LocalReviewM48ArtifactCopyRequest,
+    DirectoryAccessibilityState, DirectorySummary, DurableSourceArtifactPrepareRequest,
+    DurableSourceConfirmRequest, DurableSourceDeleteConfirmRequest, DurableSourceDiagnosticCode,
+    DurableSourceFilePrepareRequest, DurableSourceManualPrepareRequest, DurableSourcePreparation,
+    DurableSourceProjectRequest, DurableSourceReadRequest, DurableSourceSnapshot,
+    DurableSourceSummary, GitSummary, LocalReviewActivityPresentationEvidencePreview,
+    LocalReviewActivityPresentationEvidenceRequest, LocalReviewAnnotationCreateRequest,
+    LocalReviewAnnotationEditRequest, LocalReviewAnnotationMutationRequest,
+    LocalReviewApprovalPresentationEvidencePreview, LocalReviewApprovalPresentationEvidenceRequest,
+    LocalReviewCollectionCreateRequest, LocalReviewCollectionMutationRequest,
+    LocalReviewComparisonCreateRequest, LocalReviewComparisonDiscardRequest,
+    LocalReviewComparisonReadRequest, LocalReviewDiagnosticCode, LocalReviewEvidenceArtifactKind,
+    LocalReviewEvidenceArtifactState, LocalReviewEvidenceCheckState, LocalReviewEvidenceSource,
+    LocalReviewEvidenceWorkspaceState, LocalReviewGitStatusDiffSummaryDetails,
+    LocalReviewGitStatusDiffSummaryEvidencePreview, LocalReviewGitStatusDiffSummaryEvidenceRequest,
+    LocalReviewImagePickRequest, LocalReviewImagePreview, LocalReviewImagePreviewRequest,
+    LocalReviewItemDiscardRequest, LocalReviewListRequest, LocalReviewM48ArtifactCopyRequest,
     LocalReviewM48GeneratedArtifactMetadataDetails,
     LocalReviewM48GeneratedArtifactMetadataEvidencePreview,
     LocalReviewM48GeneratedArtifactMetadataEvidenceRequest, LocalReviewManualEvidenceCreateRequest,
@@ -96,6 +101,7 @@ struct PendingAttachment {
 
 pub struct ProjectService {
     repository: Mutex<Option<ProjectRepository>>,
+    durable_sources: Mutex<Option<DurableSourceController>>,
     pending: Mutex<Option<PendingAttachment>>,
     active_executions: Mutex<HashSet<String>>,
     active_terminals: Mutex<HashMap<String, usize>>,
@@ -121,6 +127,25 @@ struct LocalReviewPromotionReservation {
 
 const LOCAL_REVIEW_PROMOTION_RESERVATION_LIMIT: usize = 16;
 const LOCAL_REVIEW_PROMOTION_RESERVATION_TTL: Duration = Duration::from_secs(5 * 60);
+
+fn durable_source_unavailable(code: DurableSourceDiagnosticCode) -> DurableSourcePreparation {
+    DurableSourcePreparation {
+        schema_version: 1,
+        preparation_id: String::new(),
+        nonce: String::new(),
+        expires_at_ms: 0,
+        project_id: String::new(),
+        task_id: None,
+        source_class: types::DurableSourceClass::ManualText,
+        title: String::new(),
+        origin_display: None,
+        sha256: String::new(),
+        byte_size: 0,
+        line_count: 0,
+        preview: String::new(),
+        diagnostic_code: Some(code),
+    }
+}
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum ProjectExecutionError {
@@ -1701,9 +1726,246 @@ impl ProjectService {
             selected_task_id: Some(task_id.to_owned()),
         })
     }
+
+    pub fn durable_source_prepare_manual(
+        &self,
+        request: DurableSourceManualPrepareRequest,
+    ) -> DurableSourcePreparation {
+        let repository = match self.repository.lock() {
+            Ok(value) => value,
+            Err(_) => {
+                return durable_source_unavailable(DurableSourceDiagnosticCode::ProjectUnavailable)
+            }
+        };
+        let Some(repository) = repository.as_ref() else {
+            return durable_source_unavailable(DurableSourceDiagnosticCode::ProjectUnavailable);
+        };
+        let mut controller = match self.durable_sources.lock() {
+            Ok(value) => value,
+            Err(_) => {
+                return durable_source_unavailable(
+                    DurableSourceDiagnosticCode::PrivateStorageFailure,
+                )
+            }
+        };
+        let Some(controller) = controller.as_mut() else {
+            return durable_source_unavailable(DurableSourceDiagnosticCode::PrivateStorageFailure);
+        };
+        controller.prepare_manual(
+            repository,
+            request.project_id,
+            request.task_id,
+            request.title,
+            request.text,
+        )
+    }
+
+    pub fn durable_source_prepare_file(
+        &self,
+        request: DurableSourceFilePrepareRequest,
+        path: PathBuf,
+    ) -> DurableSourcePreparation {
+        let repository = match self.repository.lock() {
+            Ok(value) => value,
+            Err(_) => {
+                return durable_source_unavailable(DurableSourceDiagnosticCode::ProjectUnavailable)
+            }
+        };
+        let Some(repository) = repository.as_ref() else {
+            return durable_source_unavailable(DurableSourceDiagnosticCode::ProjectUnavailable);
+        };
+        let mut controller = match self.durable_sources.lock() {
+            Ok(value) => value,
+            Err(_) => {
+                return durable_source_unavailable(
+                    DurableSourceDiagnosticCode::PrivateStorageFailure,
+                )
+            }
+        };
+        let Some(controller) = controller.as_mut() else {
+            return durable_source_unavailable(DurableSourceDiagnosticCode::PrivateStorageFailure);
+        };
+        controller.prepare_file(
+            repository,
+            request.project_id,
+            request.task_id,
+            request.title,
+            path,
+        )
+    }
+
+    pub fn durable_source_prepare_artifact(
+        &self,
+        request: DurableSourceArtifactPrepareRequest,
+        artifacts: &AdvisorGeneratedArtifactService,
+    ) -> DurableSourcePreparation {
+        let claim = GeneratedArtifactClaimRequest {
+            artifact_id: request.artifact_id.clone(),
+            manifest_sha256: request.artifact_sha256,
+        };
+        let copy = match artifacts.local_review_copy_source(&claim) {
+            Ok(value) => value,
+            Err(_) => {
+                return durable_source_unavailable(DurableSourceDiagnosticCode::ArtifactIneligible)
+            }
+        };
+        let repository = match self.repository.lock() {
+            Ok(value) => value,
+            Err(_) => {
+                return durable_source_unavailable(DurableSourceDiagnosticCode::ProjectUnavailable)
+            }
+        };
+        let Some(repository) = repository.as_ref() else {
+            return durable_source_unavailable(DurableSourceDiagnosticCode::ProjectUnavailable);
+        };
+        let mut controller = match self.durable_sources.lock() {
+            Ok(value) => value,
+            Err(_) => {
+                return durable_source_unavailable(
+                    DurableSourceDiagnosticCode::PrivateStorageFailure,
+                )
+            }
+        };
+        let Some(controller) = controller.as_mut() else {
+            return durable_source_unavailable(DurableSourceDiagnosticCode::PrivateStorageFailure);
+        };
+        controller.prepare_artifact(
+            repository,
+            request.project_id,
+            request.task_id,
+            request.title,
+            copy.artifact_id,
+            copy.bytes,
+        )
+    }
+
+    pub fn durable_source_confirm(
+        &self,
+        request: DurableSourceConfirmRequest,
+    ) -> Result<DurableSourceSummary, DurableSourceDiagnosticCode> {
+        let mut repository = self
+            .repository
+            .lock()
+            .map_err(|_| DurableSourceDiagnosticCode::ProjectUnavailable)?;
+        let repository = repository
+            .as_mut()
+            .ok_or(DurableSourceDiagnosticCode::ProjectUnavailable)?;
+        let mut controller = self
+            .durable_sources
+            .lock()
+            .map_err(|_| DurableSourceDiagnosticCode::PrivateStorageFailure)?;
+        controller
+            .as_mut()
+            .ok_or(DurableSourceDiagnosticCode::PrivateStorageFailure)?
+            .confirm(
+                repository,
+                &request.preparation_id,
+                &request.nonce,
+                &request.sha256,
+            )
+    }
+
+    pub fn durable_sources(&self, request: DurableSourceProjectRequest) -> DurableSourceSnapshot {
+        let repository = match self.repository.lock() {
+            Ok(value) => value,
+            Err(_) => {
+                return DurableSourceSnapshot {
+                    schema_version: 1,
+                    sources: Vec::new(),
+                    diagnostic_code: Some(DurableSourceDiagnosticCode::ProjectUnavailable),
+                }
+            }
+        };
+        let Some(repository) = repository.as_ref() else {
+            return DurableSourceSnapshot {
+                schema_version: 1,
+                sources: Vec::new(),
+                diagnostic_code: Some(DurableSourceDiagnosticCode::ProjectUnavailable),
+            };
+        };
+        match repository.durable_sources_for_project(&request.project_id) {
+            Ok(sources) => DurableSourceSnapshot {
+                schema_version: 1,
+                sources,
+                diagnostic_code: None,
+            },
+            Err(_) => DurableSourceSnapshot {
+                schema_version: 1,
+                sources: Vec::new(),
+                diagnostic_code: Some(DurableSourceDiagnosticCode::ProjectUnavailable),
+            },
+        }
+    }
+
+    pub fn durable_source_read(
+        &self,
+        request: DurableSourceReadRequest,
+    ) -> Option<DurableSourceSummary> {
+        self.repository
+            .lock()
+            .ok()?
+            .as_ref()?
+            .durable_source(&request.source_id)
+            .ok()
+            .flatten()
+    }
+
+    pub fn durable_source_prepare_delete(
+        &self,
+        request: DurableSourceReadRequest,
+    ) -> DurableSourcePreparation {
+        let repository = match self.repository.lock() {
+            Ok(value) => value,
+            Err(_) => {
+                return durable_source_unavailable(DurableSourceDiagnosticCode::ProjectUnavailable)
+            }
+        };
+        let Some(repository) = repository.as_ref() else {
+            return durable_source_unavailable(DurableSourceDiagnosticCode::ProjectUnavailable);
+        };
+        let mut controller = match self.durable_sources.lock() {
+            Ok(value) => value,
+            Err(_) => {
+                return durable_source_unavailable(
+                    DurableSourceDiagnosticCode::PrivateStorageFailure,
+                )
+            }
+        };
+        controller.as_mut().map_or_else(
+            || durable_source_unavailable(DurableSourceDiagnosticCode::PrivateStorageFailure),
+            |controller| controller.prepare_delete(repository, &request.source_id),
+        )
+    }
+
+    pub fn durable_source_confirm_delete(
+        &self,
+        request: DurableSourceDeleteConfirmRequest,
+    ) -> Result<(), DurableSourceDiagnosticCode> {
+        let mut repository = self
+            .repository
+            .lock()
+            .map_err(|_| DurableSourceDiagnosticCode::ProjectUnavailable)?;
+        let repository = repository
+            .as_mut()
+            .ok_or(DurableSourceDiagnosticCode::ProjectUnavailable)?;
+        let mut controller = self
+            .durable_sources
+            .lock()
+            .map_err(|_| DurableSourceDiagnosticCode::PrivateStorageFailure)?;
+        controller
+            .as_mut()
+            .ok_or(DurableSourceDiagnosticCode::PrivateStorageFailure)?
+            .confirm_delete(
+                repository,
+                &request.preparation_id,
+                &request.nonce,
+                &request.source_id,
+            )
+    }
     pub fn unavailable() -> Self {
         Self {
             repository: Mutex::new(None),
+            durable_sources: Mutex::new(None),
             pending: Mutex::new(None),
             active_executions: Mutex::new(HashSet::new()),
             active_terminals: Mutex::new(HashMap::new()),
@@ -1715,6 +1977,7 @@ impl ProjectService {
     pub fn open(database_path: &Path) -> Self {
         Self {
             repository: Mutex::new(ProjectRepository::open(database_path).ok()),
+            durable_sources: Mutex::new(DurableSourceController::open(database_path).ok()),
             pending: Mutex::new(None),
             active_executions: Mutex::new(HashSet::new()),
             active_terminals: Mutex::new(HashMap::new()),
@@ -1789,6 +2052,7 @@ impl ProjectService {
     pub(crate) fn in_memory() -> Self {
         Self {
             repository: Mutex::new(ProjectRepository::in_memory().ok()),
+            durable_sources: Mutex::new(Some(DurableSourceController::temporary())),
             pending: Mutex::new(None),
             active_executions: Mutex::new(HashSet::new()),
             active_terminals: Mutex::new(HashMap::new()),
@@ -3365,8 +3629,9 @@ mod tests {
 
     use super::{
         types::{
-            DirectoryAccessibilityState, LocalReviewEvidenceSource,
-            LocalReviewM48ArtifactCopyRequest,
+            DirectoryAccessibilityState, DurableSourceConfirmRequest, DurableSourceDiagnosticCode,
+            DurableSourceManualPrepareRequest, DurableSourceProjectRequest,
+            LocalReviewEvidenceSource, LocalReviewM48ArtifactCopyRequest,
             LocalReviewM48GeneratedArtifactMetadataEvidenceRequest,
             LocalReviewManualEvidenceCreateRequest, LocalReviewManualEvidenceCreateResult,
             LocalReviewPromotionPrepareRequest, LocalReviewPromotionReservationRequest,
@@ -3893,6 +4158,92 @@ mod tests {
         assert!(preflight.cwd_ready);
         assert!(directory.join("kept-in-place.txt").is_file());
         fs::remove_dir_all(directory).expect("temporary directory must be removed");
+    }
+
+    #[test]
+    fn durable_source_manual_admission_is_project_bound_digest_checked_and_one_use() {
+        let directory = temporary_directory("m55-manual");
+        let service = ProjectService::in_memory();
+        service.prepare_attachment(directory.clone());
+        let project_id = service.confirm_pending().projects[0].id.clone();
+        let preparation =
+            service.durable_source_prepare_manual(DurableSourceManualPrepareRequest {
+                project_id: project_id.clone(),
+                task_id: None,
+                title: "Safety notes".to_owned(),
+                text: "first line\nsecond line".to_owned(),
+            });
+        assert_eq!(preparation.diagnostic_code, None);
+        assert_eq!(preparation.line_count, 2);
+        assert_eq!(
+            preparation.sha256,
+            "73621482ff083eca9ea88880393298f7d3f53402200780b0c16354a9beb0535a"
+        );
+        let source = service
+            .durable_source_confirm(DurableSourceConfirmRequest {
+                preparation_id: preparation.preparation_id.clone(),
+                nonce: preparation.nonce.clone(),
+                sha256: preparation.sha256.clone(),
+            })
+            .expect("confirmation must create exactly one durable source");
+        assert_eq!(source.project_id, project_id);
+        assert_eq!(source.byte_size, 22);
+        let listed = service.durable_sources(DurableSourceProjectRequest { project_id });
+        assert_eq!(listed.sources.len(), 1);
+        assert_eq!(
+            service.durable_source_confirm(DurableSourceConfirmRequest {
+                preparation_id: preparation.preparation_id,
+                nonce: preparation.nonce,
+                sha256: preparation.sha256
+            }),
+            Err(DurableSourceDiagnosticCode::PreparationMissing)
+        );
+        fs::remove_dir_all(directory).expect("temporary project must be removed");
+    }
+
+    #[test]
+    fn durable_source_rejects_task_project_mismatch_without_a_record() {
+        let first = temporary_directory("m55-first");
+        let second = temporary_directory("m55-second");
+        let service = ProjectService::in_memory();
+        service.prepare_attachment(first.clone());
+        let first_id = service.confirm_pending().projects[0].id.clone();
+        service.prepare_attachment(second.clone());
+        let second_id = service
+            .confirm_pending()
+            .projects
+            .iter()
+            .find(|project| project.id != first_id)
+            .expect("second project")
+            .id
+            .clone();
+        let task_id = service
+            .repository
+            .lock()
+            .expect("repository")
+            .as_mut()
+            .expect("repository")
+            .create_task_for_project(&first_id, "Bound task")
+            .expect("bound task");
+        let preparation =
+            service.durable_source_prepare_manual(DurableSourceManualPrepareRequest {
+                project_id: second_id.clone(),
+                task_id: Some(task_id),
+                title: "Refused".to_owned(),
+                text: "safe".to_owned(),
+            });
+        assert_eq!(
+            preparation.diagnostic_code,
+            Some(DurableSourceDiagnosticCode::ProjectTaskMismatch)
+        );
+        assert!(service
+            .durable_sources(DurableSourceProjectRequest {
+                project_id: second_id
+            })
+            .sources
+            .is_empty());
+        fs::remove_dir_all(first).expect("first project removal");
+        fs::remove_dir_all(second).expect("second project removal");
     }
 
     #[test]

@@ -212,20 +212,24 @@ use preview::{
 };
 use project::{
     types::{
-        LocalReviewAnnotationCreateRequest, LocalReviewAnnotationEditRequest,
-        LocalReviewAnnotationMutationRequest, LocalReviewCollectionCreateRequest,
-        LocalReviewCollectionMutationRequest, LocalReviewComparisonCreateRequest,
-        LocalReviewComparisonDiscardRequest, LocalReviewComparisonReadRequest,
-        LocalReviewImagePickOutcome, LocalReviewImagePickRequest, LocalReviewImagePreview,
-        LocalReviewImagePreviewRequest, LocalReviewItemDiscardRequest, LocalReviewListRequest,
-        LocalReviewM48ArtifactCopyRequest, LocalReviewManualEvidenceCreateRequest,
-        LocalReviewManualEvidenceCreateResult, LocalReviewManualEvidencePreview,
-        LocalReviewPromotionPrepareRequest, LocalReviewPromotionReservationRequest,
-        LocalReviewSnapshot, LocalReviewTextItemCreateRequest, LocalReviewTextPreview,
-        LocalReviewTextPreviewRequest, PlanCreateRequest, PlanEditRequest, PlanIdRequest,
-        ProjectPreflightSnapshot, ProjectWorkspaceSnapshot, TaskCatalogContextCreateRequest,
-        TaskCatalogCreateRequest, TaskCatalogListRequest, TaskCatalogSnapshot, TaskIdRequest,
-        TaskStatusRequest, TaskTitleRequest,
+        DurableSourceArtifactPrepareRequest, DurableSourceConfirmRequest,
+        DurableSourceDeleteConfirmRequest, DurableSourceFilePrepareRequest,
+        DurableSourceManualPrepareRequest, DurableSourcePreparation, DurableSourceProjectRequest,
+        DurableSourceReadRequest, DurableSourceSnapshot, LocalReviewAnnotationCreateRequest,
+        LocalReviewAnnotationEditRequest, LocalReviewAnnotationMutationRequest,
+        LocalReviewCollectionCreateRequest, LocalReviewCollectionMutationRequest,
+        LocalReviewComparisonCreateRequest, LocalReviewComparisonDiscardRequest,
+        LocalReviewComparisonReadRequest, LocalReviewImagePickOutcome, LocalReviewImagePickRequest,
+        LocalReviewImagePreview, LocalReviewImagePreviewRequest, LocalReviewItemDiscardRequest,
+        LocalReviewListRequest, LocalReviewM48ArtifactCopyRequest,
+        LocalReviewManualEvidenceCreateRequest, LocalReviewManualEvidenceCreateResult,
+        LocalReviewManualEvidencePreview, LocalReviewPromotionPrepareRequest,
+        LocalReviewPromotionReservationRequest, LocalReviewSnapshot,
+        LocalReviewTextItemCreateRequest, LocalReviewTextPreview, LocalReviewTextPreviewRequest,
+        PlanCreateRequest, PlanEditRequest, PlanIdRequest, ProjectPreflightSnapshot,
+        ProjectWorkspaceSnapshot, TaskCatalogContextCreateRequest, TaskCatalogCreateRequest,
+        TaskCatalogListRequest, TaskCatalogSnapshot, TaskIdRequest, TaskStatusRequest,
+        TaskTitleRequest,
     },
     ProjectService,
 };
@@ -1418,6 +1422,96 @@ fn task_catalog_delete(
     service: tauri::State<'_, ProjectService>,
 ) -> TaskCatalogSnapshot {
     service.task_action(request.task_id, |repo, id| repo.delete_task(id))
+}
+
+#[tauri::command]
+fn durable_source_prepare_manual(
+    request: DurableSourceManualPrepareRequest,
+    service: tauri::State<'_, ProjectService>,
+) -> DurableSourcePreparation {
+    service.durable_source_prepare_manual(request)
+}
+
+#[tauri::command]
+fn durable_source_prepare_local_text_file(
+    request: DurableSourceFilePrepareRequest,
+    app: tauri::AppHandle,
+    service: tauri::State<'_, ProjectService>,
+) -> DurableSourcePreparation {
+    let selection = app
+        .dialog()
+        .file()
+        .set_title("Select one UTF-8 text source to copy into QuireForge")
+        .add_filter("Text", &["txt", "md", "csv", "json", "log", "py"])
+        .blocking_pick_file();
+    match selection.and_then(|file| file.into_path().ok()) {
+        Some(path) => service.durable_source_prepare_file(request, path),
+        None => project::types::DurableSourcePreparation {
+            schema_version: 1,
+            preparation_id: String::new(),
+            nonce: String::new(),
+            expires_at_ms: 0,
+            project_id: String::new(),
+            task_id: None,
+            source_class: project::types::DurableSourceClass::LocalTextFile,
+            title: String::new(),
+            origin_display: None,
+            sha256: String::new(),
+            byte_size: 0,
+            line_count: 0,
+            preview: String::new(),
+            diagnostic_code: Some(project::types::DurableSourceDiagnosticCode::SourceUnavailable),
+        },
+    }
+}
+
+#[tauri::command]
+fn durable_source_prepare_reviewed_artifact_text(
+    request: DurableSourceArtifactPrepareRequest,
+    service: tauri::State<'_, ProjectService>,
+    artifacts: tauri::State<'_, AdvisorGeneratedArtifactService>,
+) -> DurableSourcePreparation {
+    service.durable_source_prepare_artifact(request, &artifacts)
+}
+
+#[tauri::command]
+fn durable_source_confirm_admission(
+    request: DurableSourceConfirmRequest,
+    service: tauri::State<'_, ProjectService>,
+) -> Result<project::types::DurableSourceSummary, project::types::DurableSourceDiagnosticCode> {
+    service.durable_source_confirm(request)
+}
+
+#[tauri::command]
+fn durable_source_list_active(
+    request: DurableSourceProjectRequest,
+    service: tauri::State<'_, ProjectService>,
+) -> DurableSourceSnapshot {
+    service.durable_sources(request)
+}
+
+#[tauri::command]
+fn durable_source_read_details(
+    request: DurableSourceReadRequest,
+    service: tauri::State<'_, ProjectService>,
+) -> Option<project::types::DurableSourceSummary> {
+    service.durable_source_read(request)
+}
+
+#[tauri::command]
+fn durable_source_prepare_deletion(
+    request: DurableSourceReadRequest,
+    service: tauri::State<'_, ProjectService>,
+) -> DurableSourcePreparation {
+    service.durable_source_prepare_delete(request)
+}
+
+#[tauri::command]
+fn durable_source_confirm_deletion(
+    request: DurableSourceDeleteConfirmRequest,
+    service: tauri::State<'_, ProjectService>,
+) -> Result<(), project::types::DurableSourceDiagnosticCode> {
+    service.durable_source_confirm_delete(request)
 }
 
 #[tauri::command]
@@ -2842,6 +2936,14 @@ pub fn run() {
             task_catalog_archive,
             task_catalog_restore,
             task_catalog_delete,
+            durable_source_prepare_manual,
+            durable_source_prepare_local_text_file,
+            durable_source_prepare_reviewed_artifact_text,
+            durable_source_confirm_admission,
+            durable_source_list_active,
+            durable_source_read_details,
+            durable_source_prepare_deletion,
+            durable_source_confirm_deletion,
             task_template_catalog,
             task_template_inspect,
             task_template_create,

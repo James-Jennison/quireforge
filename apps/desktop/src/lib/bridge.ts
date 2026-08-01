@@ -212,6 +212,21 @@ import {
   type TaskTemplateCatalogSnapshot,
 } from "./taskTemplates";
 import {
+  durableSourceArtifactPrepareRequestSchema,
+  durableSourceConfirmRequestSchema,
+  durableSourceDeleteConfirmRequestSchema,
+  durableSourceFilePrepareRequestSchema,
+  durableSourceManualPrepareRequestSchema,
+  durableSourcePreparationSchema,
+  durableSourceProjectRequestSchema,
+  durableSourceReadRequestSchema,
+  durableSourceSnapshotSchema,
+  durableSourceSummarySchema,
+  type DurableSourcePreparation,
+  type DurableSourceSnapshot,
+  type DurableSourceSummary,
+} from "./durableSources";
+import {
   mockInferenceAttemptRequestSchema,
   mockInferenceAuthorizationRequestSchema,
   mockInferenceCatalogSchema,
@@ -368,6 +383,20 @@ export const TASK_TEMPLATE_DELETE_COMMAND = "task_template_delete";
 export const TASK_TEMPLATE_PREVIEW_COMMAND = "task_template_preview";
 export const TASK_TEMPLATE_CONFIRM_COMMAND = "task_template_confirm";
 export const TASK_TEMPLATE_CANCEL_COMMAND = "task_template_cancel";
+export const DURABLE_SOURCE_PREPARE_MANUAL_COMMAND =
+  "durable_source_prepare_manual";
+export const DURABLE_SOURCE_PREPARE_FILE_COMMAND =
+  "durable_source_prepare_local_text_file";
+export const DURABLE_SOURCE_PREPARE_ARTIFACT_COMMAND =
+  "durable_source_prepare_reviewed_artifact_text";
+export const DURABLE_SOURCE_CONFIRM_COMMAND =
+  "durable_source_confirm_admission";
+export const DURABLE_SOURCE_LIST_COMMAND = "durable_source_list_active";
+export const DURABLE_SOURCE_READ_COMMAND = "durable_source_read_details";
+export const DURABLE_SOURCE_PREPARE_DELETE_COMMAND =
+  "durable_source_prepare_deletion";
+export const DURABLE_SOURCE_CONFIRM_DELETE_COMMAND =
+  "durable_source_confirm_deletion";
 export const MOCK_INFERENCE_CATALOG_COMMAND = "mock_inference_catalog";
 export const MOCK_INFERENCE_PREPARE_COMMAND = "mock_inference_prepare";
 export const MOCK_INFERENCE_AUTHORIZE_COMMAND = "mock_inference_authorize";
@@ -1326,6 +1355,107 @@ export const cancelTaskTemplateApplication = (
     request,
     taskTemplateCancelRequestSchema,
     taskTemplateApplicationOutcomeSchema,
+    invokeFunction,
+  );
+
+async function durableSourceInvoke<T>(
+  command: string,
+  request: unknown,
+  requestSchema: z.ZodType,
+  responseSchema: z.ZodType<T>,
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<T> {
+  return responseSchema.parse(
+    await invokeFunction(command, { request: requestSchema.parse(request) }),
+  );
+}
+
+export const prepareDurableSourceManual = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+): Promise<DurableSourcePreparation> =>
+  durableSourceInvoke(
+    DURABLE_SOURCE_PREPARE_MANUAL_COMMAND,
+    request,
+    durableSourceManualPrepareRequestSchema,
+    durableSourcePreparationSchema,
+    invokeFunction,
+  );
+export const prepareDurableSourceFile = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+): Promise<DurableSourcePreparation> =>
+  durableSourceInvoke(
+    DURABLE_SOURCE_PREPARE_FILE_COMMAND,
+    request,
+    durableSourceFilePrepareRequestSchema,
+    durableSourcePreparationSchema,
+    invokeFunction,
+  );
+export const prepareDurableSourceArtifact = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+): Promise<DurableSourcePreparation> =>
+  durableSourceInvoke(
+    DURABLE_SOURCE_PREPARE_ARTIFACT_COMMAND,
+    request,
+    durableSourceArtifactPrepareRequestSchema,
+    durableSourcePreparationSchema,
+    invokeFunction,
+  );
+export const confirmDurableSource = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+): Promise<DurableSourceSummary> =>
+  durableSourceInvoke(
+    DURABLE_SOURCE_CONFIRM_COMMAND,
+    request,
+    durableSourceConfirmRequestSchema,
+    durableSourceSummarySchema,
+    invokeFunction,
+  );
+export const loadDurableSources = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+): Promise<DurableSourceSnapshot> =>
+  durableSourceInvoke(
+    DURABLE_SOURCE_LIST_COMMAND,
+    request,
+    durableSourceProjectRequestSchema,
+    durableSourceSnapshotSchema,
+    invokeFunction,
+  );
+export const readDurableSource = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+): Promise<DurableSourceSummary | null> =>
+  durableSourceInvoke(
+    DURABLE_SOURCE_READ_COMMAND,
+    request,
+    durableSourceReadRequestSchema,
+    durableSourceSummarySchema.nullable(),
+    invokeFunction,
+  );
+export const prepareDurableSourceDeletion = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+): Promise<DurableSourcePreparation> =>
+  durableSourceInvoke(
+    DURABLE_SOURCE_PREPARE_DELETE_COMMAND,
+    request,
+    durableSourceReadRequestSchema,
+    durableSourcePreparationSchema,
+    invokeFunction,
+  );
+export const confirmDurableSourceDeletion = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+): Promise<void> =>
+  durableSourceInvoke(
+    DURABLE_SOURCE_CONFIRM_DELETE_COMMAND,
+    request,
+    durableSourceDeleteConfirmRequestSchema,
+    z.void(),
     invokeFunction,
   );
 

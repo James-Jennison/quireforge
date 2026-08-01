@@ -27,9 +27,9 @@ use super::task_template::{
     TEMPLATE_SCHEMA_VERSION,
 };
 use super::types::{
-    EvidenceEnvelopeV1, LocalReviewActivityPresentationDetails,
-    LocalReviewActivityPresentationEvidencePreview, LocalReviewActivityScope,
-    LocalReviewAnnotationState, LocalReviewAnnotationSummary,
+    DurableSourceClass, DurableSourceLifecycleState, DurableSourceSummary, EvidenceEnvelopeV1,
+    LocalReviewActivityPresentationDetails, LocalReviewActivityPresentationEvidencePreview,
+    LocalReviewActivityScope, LocalReviewAnnotationState, LocalReviewAnnotationSummary,
     LocalReviewApprovalPresentationDetails, LocalReviewApprovalPresentationEvidencePreview,
     LocalReviewCollectionState, LocalReviewCollectionSummary, LocalReviewComparisonState,
     LocalReviewComparisonSummary, LocalReviewDiagnosticCode, LocalReviewEvidenceApprovalState,
@@ -793,6 +793,34 @@ WHEN NOT ((OLD.state = 'pending' AND NEW.state IN ('consumed', 'cancelled', 'exp
 BEGIN SELECT RAISE(ABORT, 'template application reservation transition is invalid'); END;
 "#;
 
+// M55 keeps only a native-controlled opaque locator in SQLite. Canonical
+// bytes are private application data, never repository content or provider
+// context. A deleted record is a metadata-only tombstone.
+const DURABLE_SOURCES_MIGRATION: &str = r#"
+CREATE TABLE durable_sources (
+ id TEXT PRIMARY KEY NOT NULL CHECK(length(id) = 36),
+ schema_version INTEGER NOT NULL CHECK(schema_version = 1),
+ project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE RESTRICT,
+ task_id TEXT REFERENCES task_records(id) ON DELETE RESTRICT,
+ source_class TEXT NOT NULL CHECK(source_class IN ('manual-text', 'local-text-file', 'reviewed-artifact-text')),
+ title TEXT NOT NULL CHECK(length(title) BETWEEN 1 AND 240),
+ origin_display TEXT CHECK(origin_display IS NULL OR length(origin_display) BETWEEN 1 AND 255),
+ byte_size INTEGER NOT NULL CHECK(byte_size BETWEEN 0 AND 131072),
+ line_count INTEGER NOT NULL CHECK(line_count BETWEEN 0 AND 2000),
+ sha256 TEXT NOT NULL CHECK(length(sha256) = 64),
+ content_locator TEXT NOT NULL CHECK(length(content_locator) = 36),
+ state TEXT NOT NULL CHECK(state IN ('active', 'deleted')),
+ created_at_ms INTEGER NOT NULL CHECK(created_at_ms >= 0),
+ updated_at_ms INTEGER NOT NULL CHECK(updated_at_ms >= created_at_ms),
+ deleted_at_ms INTEGER CHECK(deleted_at_ms >= created_at_ms),
+ CHECK((state = 'active' AND deleted_at_ms IS NULL) OR (state = 'deleted' AND deleted_at_ms IS NOT NULL))
+);
+CREATE INDEX durable_sources_project_active ON durable_sources(project_id, state, created_at_ms DESC, id);
+CREATE INDEX durable_sources_task_active ON durable_sources(task_id, state, created_at_ms DESC, id) WHERE task_id IS NOT NULL;
+CREATE TRIGGER durable_sources_identity_immutable BEFORE UPDATE OF id, schema_version, project_id, task_id, source_class, byte_size, line_count, sha256, content_locator, created_at_ms ON durable_sources BEGIN SELECT RAISE(ABORT, 'durable source identity is immutable'); END;
+CREATE TRIGGER durable_sources_lifecycle_transition BEFORE UPDATE OF state ON durable_sources WHEN NOT ((OLD.state = 'active' AND NEW.state = 'deleted') OR OLD.state = NEW.state) BEGIN SELECT RAISE(ABORT, 'durable source lifecycle transition is invalid'); END;
+"#;
+
 const MIGRATIONS: &[(i64, &str, &str)] = &[
     (1, "projects-and-directory-associations", INITIAL_MIGRATION),
     (
@@ -884,6 +912,7 @@ const MIGRATIONS: &[(i64, &str, &str)] = &[
         "task-template-application-reservations-v1",
         TASK_TEMPLATE_APPLICATION_RESERVATIONS_MIGRATION,
     ),
+    (23, "durable-sources-v1", DURABLE_SOURCES_MIGRATION),
 ];
 
 #[derive(Debug, Error)]
@@ -914,6 +943,18 @@ pub(crate) enum StorageError {
     InvalidStatusTransition,
     #[error("generated task identifier collided")]
     DuplicateId,
+}
+
+pub(crate) struct DurableSourceInsert<'a> {
+    pub id: &'a str,
+    pub project_id: &'a str,
+    pub task_id: Option<&'a str>,
+    pub source_class: DurableSourceClass,
+    pub title: &'a str,
+    pub origin_display: Option<&'a str>,
+    pub byte_size: u64,
+    pub line_count: u32,
+    pub sha256: &'a str,
 }
 
 const PACKAGE_VALIDATION_RECORD_LIMIT: usize = 32;
@@ -998,6 +1039,49 @@ fn task_status(value: &str) -> Result<TaskStatus, StorageError> {
         "completed" => Ok(TaskStatus::Completed),
         _ => Err(StorageError::InvalidStoredValue),
     }
+}
+
+fn durable_source_class_name(value: DurableSourceClass) -> &'static str {
+    match value {
+        DurableSourceClass::ManualText => "manual-text",
+        DurableSourceClass::LocalTextFile => "local-text-file",
+        DurableSourceClass::ReviewedArtifactText => "reviewed-artifact-text",
+    }
+}
+
+fn durable_source_class(value: &str) -> Result<DurableSourceClass, rusqlite::Error> {
+    match value {
+        "manual-text" => Ok(DurableSourceClass::ManualText),
+        "local-text-file" => Ok(DurableSourceClass::LocalTextFile),
+        "reviewed-artifact-text" => Ok(DurableSourceClass::ReviewedArtifactText),
+        _ => Err(rusqlite::Error::InvalidQuery),
+    }
+}
+
+fn durable_source_state(value: &str) -> Result<DurableSourceLifecycleState, rusqlite::Error> {
+    match value {
+        "active" => Ok(DurableSourceLifecycleState::Active),
+        "deleted" => Ok(DurableSourceLifecycleState::Deleted),
+        _ => Err(rusqlite::Error::InvalidQuery),
+    }
+}
+
+fn durable_source_from_row(row: &Row<'_>) -> Result<DurableSourceSummary, rusqlite::Error> {
+    let class: String = row.get(3)?;
+    let state: String = row.get(9)?;
+    Ok(DurableSourceSummary {
+        source_id: row.get(0)?,
+        project_id: row.get(1)?,
+        task_id: row.get(2)?,
+        source_class: durable_source_class(&class)?,
+        title: row.get(4)?,
+        origin_display: row.get(5)?,
+        byte_size: row.get::<_, i64>(6)? as u64,
+        line_count: row.get::<_, i64>(7)? as u32,
+        sha256: row.get(8)?,
+        state: durable_source_state(&state)?,
+        created_at_ms: row.get(10)?,
+    })
 }
 
 pub(super) fn normalize_task_text(
@@ -4865,6 +4949,115 @@ impl ProjectRepository {
             .ok_or(StorageError::TaskNotFound)
     }
 
+    pub(crate) fn durable_source_insert(
+        &mut self,
+        source: DurableSourceInsert<'_>,
+    ) -> Result<DurableSourceSummary, StorageError> {
+        if !valid_task_id(source.id)
+            || !valid_task_id(source.project_id)
+            || source.task_id.is_some_and(|id| !valid_task_id(id))
+            || source.sha256.len() != 64
+            || !source
+                .sha256
+                .bytes()
+                .all(|byte| byte.is_ascii_hexdigit() && !byte.is_ascii_uppercase())
+            || source.byte_size > 128 * 1024
+            || source.line_count > 2_000
+            || source.title.chars().count() > 240
+            || source.title.trim().is_empty()
+            || source.origin_display.is_some_and(|value| {
+                value.contains('/') || value.contains('\\') || value.len() > 255
+            })
+        {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let now = now_millis();
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let project_exists: Option<String> = tx
+            .query_row(
+                "SELECT id FROM projects WHERE id = ?1 AND archived_at_ms IS NULL",
+                [source.project_id],
+                |row| row.get(0),
+            )
+            .optional()?;
+        if project_exists.is_none() {
+            return Err(StorageError::ProjectNotFound);
+        }
+        if let Some(task_id) = source.task_id {
+            let binding: Option<String> = tx
+                .query_row(
+                    "SELECT project_id FROM task_records WHERE id = ?1 AND archived_at_ms IS NULL",
+                    [task_id],
+                    |row| row.get(0),
+                )
+                .optional()?;
+            if binding.as_deref() != Some(source.project_id) {
+                return Err(StorageError::TaskNotFound);
+            }
+        }
+        let class = durable_source_class_name(source.source_class);
+        tx.execute(
+            "INSERT INTO durable_sources (id, schema_version, project_id, task_id, source_class, title, origin_display, byte_size, line_count, sha256, content_locator, state, created_at_ms, updated_at_ms, deleted_at_ms) VALUES (?1, 1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?1, 'active', ?10, ?10, NULL)",
+            params![source.id, source.project_id, source.task_id, class, source.title, source.origin_display, source.byte_size as i64, source.line_count as i64, source.sha256, now]
+        )?;
+        tx.commit()?;
+        Ok(DurableSourceSummary {
+            source_id: source.id.to_owned(),
+            project_id: source.project_id.to_owned(),
+            task_id: source.task_id.map(str::to_owned),
+            source_class: source.source_class,
+            title: source.title.to_owned(),
+            origin_display: source.origin_display.map(str::to_owned),
+            byte_size: source.byte_size,
+            line_count: source.line_count,
+            sha256: source.sha256.to_owned(),
+            state: DurableSourceLifecycleState::Active,
+            created_at_ms: now,
+        })
+    }
+
+    pub(crate) fn durable_sources_for_project(
+        &self,
+        project_id: &str,
+    ) -> Result<Vec<DurableSourceSummary>, StorageError> {
+        if !valid_task_id(project_id) {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let mut statement = self.connection.prepare("SELECT id, project_id, task_id, source_class, title, origin_display, byte_size, line_count, sha256, state, created_at_ms FROM durable_sources WHERE project_id = ?1 AND state = 'active' ORDER BY created_at_ms DESC, id DESC LIMIT 100")?;
+        let rows = statement
+            .query_map([project_id], durable_source_from_row)?
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(rows)
+    }
+
+    pub(crate) fn durable_source(
+        &self,
+        source_id: &str,
+    ) -> Result<Option<DurableSourceSummary>, StorageError> {
+        if !valid_task_id(source_id) {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        Ok(self.connection.query_row("SELECT id, project_id, task_id, source_class, title, origin_display, byte_size, line_count, sha256, state, created_at_ms FROM durable_sources WHERE id = ?1", [source_id], durable_source_from_row).optional()?)
+    }
+
+    pub(crate) fn durable_source_delete(
+        &mut self,
+        source_id: &str,
+    ) -> Result<DurableSourceSummary, StorageError> {
+        let mut source = self
+            .durable_source(source_id)?
+            .ok_or(StorageError::TaskNotFound)?;
+        if source.state == DurableSourceLifecycleState::Deleted {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let now = now_millis();
+        if self.connection.execute("UPDATE durable_sources SET state = 'deleted', deleted_at_ms = ?1, updated_at_ms = ?1 WHERE id = ?2 AND state = 'active'", params![now, source_id])? != 1 { return Err(StorageError::InvalidStoredValue); }
+        source.state = DurableSourceLifecycleState::Deleted;
+        Ok(source)
+    }
+
     /// Returns only the durable project/task identity required by the local
     /// mock-inference boundary. It intentionally projects no task text, plan,
     /// artifact, or other project content.
@@ -8550,7 +8743,7 @@ mod tests {
                     0
                 ))
                 .expect("version"),
-            22
+            23
         );
     }
 
@@ -8711,6 +8904,7 @@ mod tests {
                 "advisor_dispatch_records".to_owned(),
                 "conversation_references".to_owned(),
                 "directory_associations".to_owned(),
+                "durable_sources".to_owned(),
                 "local_review_activity_ledger".to_owned(),
                 "local_review_annotations".to_owned(),
                 "local_review_collections".to_owned(),
@@ -9137,7 +9331,7 @@ mod tests {
                     0
                 ),)
                 .expect("version"),
-            22
+            23
         );
         assert_eq!(
             repository.connection.query_row(
@@ -9491,7 +9685,7 @@ mod tests {
                     0
                 ))
                 .expect("migration version"),
-            22
+            23
         );
     }
 
@@ -9663,7 +9857,7 @@ mod tests {
                     0
                 ))
                 .expect("version"),
-            22
+            23
         );
 
         let mut failed = Connection::open_in_memory().expect("database opens");
@@ -10045,7 +10239,7 @@ mod tests {
                 1
             );
         }
-        assert_eq!(MIGRATIONS.len(), 22);
+        assert_eq!(MIGRATIONS.len(), 23);
 
         let connection = Connection::open_in_memory().expect("database");
         connection
@@ -10093,7 +10287,7 @@ mod tests {
                     0
                 ))
                 .expect("version"),
-            22
+            23
         );
         assert_eq!(
             repository
@@ -10150,7 +10344,7 @@ mod tests {
                     0
                 ))
                 .expect("version"),
-            22
+            23
         );
     }
 

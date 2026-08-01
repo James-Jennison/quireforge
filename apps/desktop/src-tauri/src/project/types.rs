@@ -1268,3 +1268,147 @@ pub struct TaskTemplateConfirmRequest {
 pub struct TaskTemplateCancelRequest {
     pub reservation_id: String,
 }
+
+// M55 deliberately models durable local sources separately from Local Review,
+// task plans, context manifests, and provider traffic.  These payloads form a
+// closed native bridge; none contains a filesystem path or source bytes once a
+// preparation has been created.
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum DurableSourceClass {
+    ManualText,
+    LocalTextFile,
+    ReviewedArtifactText,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum DurableSourceLifecycleState {
+    Active,
+    Deleted,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum DurableSourceDiagnosticCode {
+    ProjectUnavailable,
+    TaskUnavailable,
+    ProjectTaskMismatch,
+    SourceClassUnsupported,
+    InvalidUtf8,
+    FileNotRegular,
+    SymlinkRejected,
+    FileChangedDuringIntake,
+    SourceOversized,
+    TooManyLines,
+    ArtifactUnavailable,
+    ArtifactIneligible,
+    PreparationExpired,
+    PreparationMissing,
+    PreparationReplayed,
+    ConfirmationMismatch,
+    AdmissionAmbiguous,
+    SourceUnavailable,
+    SourceAlreadyDeleted,
+    DeletionAmbiguous,
+    PrivateStorageFailure,
+    RecoveryCleanupFailure,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct DurableSourceManualPrepareRequest {
+    pub project_id: String,
+    pub task_id: Option<String>,
+    pub title: String,
+    pub text: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct DurableSourceFilePrepareRequest {
+    pub project_id: String,
+    pub task_id: Option<String>,
+    pub title: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct DurableSourceArtifactPrepareRequest {
+    pub project_id: String,
+    pub task_id: Option<String>,
+    pub title: String,
+    pub artifact_id: String,
+    pub artifact_sha256: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct DurableSourceConfirmRequest {
+    pub preparation_id: String,
+    pub nonce: String,
+    pub sha256: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct DurableSourceProjectRequest {
+    pub project_id: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct DurableSourceReadRequest {
+    pub source_id: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct DurableSourceDeleteConfirmRequest {
+    pub preparation_id: String,
+    pub nonce: String,
+    pub source_id: String,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DurableSourcePreparation {
+    pub schema_version: u16,
+    pub preparation_id: String,
+    pub nonce: String,
+    pub expires_at_ms: i64,
+    pub project_id: String,
+    pub task_id: Option<String>,
+    pub source_class: DurableSourceClass,
+    pub title: String,
+    pub origin_display: Option<String>,
+    pub sha256: String,
+    pub byte_size: u64,
+    pub line_count: u32,
+    pub preview: String,
+    pub diagnostic_code: Option<DurableSourceDiagnosticCode>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DurableSourceSummary {
+    pub source_id: String,
+    pub project_id: String,
+    pub task_id: Option<String>,
+    pub source_class: DurableSourceClass,
+    pub title: String,
+    pub origin_display: Option<String>,
+    pub byte_size: u64,
+    pub line_count: u32,
+    pub sha256: String,
+    pub state: DurableSourceLifecycleState,
+    pub created_at_ms: i64,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DurableSourceSnapshot {
+    pub schema_version: u16,
+    pub sources: Vec<DurableSourceSummary>,
+    pub diagnostic_code: Option<DurableSourceDiagnosticCode>,
+}

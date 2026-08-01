@@ -292,6 +292,13 @@ const MockInferenceWorkbench = lazy(() =>
     }),
   ),
 );
+const DurableSourcesWorkbench = lazy(() =>
+  import("./DurableSourcesWorkbench").then(
+    ({ DurableSourcesWorkbench: workspace }) => ({
+      default: workspace,
+    }),
+  ),
+);
 
 type BridgeState = "connecting" | "native" | "preview";
 type RuntimeState =
@@ -1164,6 +1171,8 @@ export default function App({
   const [taskTemplateWorkbenchOpen, setTaskTemplateWorkbenchOpen] =
     useState(false);
   const [mockInferenceWorkbenchOpen, setMockInferenceWorkbenchOpen] =
+    useState(false);
+  const [durableSourcesWorkbenchOpen, setDurableSourcesWorkbenchOpen] =
     useState(false);
   const mockInferenceLauncherRef = useRef<HTMLButtonElement>(null);
   const [workbenchLayout, setWorkbenchLayout] = useState(
@@ -4382,6 +4391,12 @@ export default function App({
                       >
                         {taskCatalogOpen ? "Hide Task Catalog" : "Task Catalog"}
                       </button>
+                      <button
+                        type="button"
+                        onClick={() => setDurableSourcesWorkbenchOpen(true)}
+                      >
+                        Durable Sources
+                      </button>
                     </section>
                     {taskCatalogOpen && (
                       <TaskCatalog
@@ -4484,6 +4499,23 @@ export default function App({
                               mockInferenceLauncherRef.current?.focus(),
                             );
                           }}
+                        />
+                      </Suspense>
+                    )}
+                    {durableSourcesWorkbenchOpen && (
+                      <Suspense
+                        fallback={
+                          <section
+                            className="task-template-workbench"
+                            aria-label="Durable Sources"
+                          >
+                            <p role="status">Loading durable sources…</p>
+                          </section>
+                        }
+                      >
+                        <DurableSourcesWorkbench
+                          projectId={currentProject?.id ?? null}
+                          onClose={() => setDurableSourcesWorkbenchOpen(false)}
                         />
                       </Suspense>
                     )}
