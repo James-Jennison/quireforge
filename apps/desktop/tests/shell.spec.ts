@@ -1413,6 +1413,9 @@ test("mock inference clears a prepared review when its bound input changes", asy
   await openWorkspace(page, "New task");
   await page.getByRole("button", { name: "Fictional mock inference" }).click();
   await page.setViewportSize({ width: 640, height: 450 });
+  await page.evaluate(() => {
+    document.documentElement.style.zoom = "2";
+  });
   await expect(
     page.getByRole("heading", { name: "Fictional mock inference" }),
   ).toBeVisible();
