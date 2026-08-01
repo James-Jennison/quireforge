@@ -683,7 +683,19 @@ async function installNativeFixture(
       invoke: (command) => {
         if (!(command in responses))
           throw new Error(`Unexpected command: ${command}`);
-        return Promise.resolve(structuredClone(responses[command]));
+        const response = responses[command];
+        if (
+          response &&
+          typeof response === "object" &&
+          "sequence" in response &&
+          Array.isArray(response.sequence)
+        ) {
+          const next = response.sequence.shift();
+          if (next === undefined)
+            throw new Error(`Exhausted fixture sequence: ${command}`);
+          return Promise.resolve(structuredClone(next));
+        }
+        return Promise.resolve(structuredClone(response));
       },
     };
   }, responses);
@@ -1320,6 +1332,30 @@ test("mock inference clears a prepared review when its bound input changes", asy
     usage: null,
     evidence: [],
   } as const;
+  const authorized = {
+    ...ready,
+    state: "authorized",
+    authorization: { ...ready.authorization, state: "authorized" },
+  } as const;
+  const submitted = {
+    ...ready,
+    state: "submitted",
+    authorization: { ...ready.authorization, state: "consumed" },
+  } as const;
+  const streaming = {
+    ...submitted,
+    state: "streaming",
+    events: [
+      {
+        id,
+        sequence: 1,
+        kind: "text-delta",
+        text: "incremental fixture output",
+        structuredState: null,
+        sha256: digest,
+      },
+    ],
+  } as const;
   await installNativeFixture(page, {
     ...nativeResponses,
     mock_inference_catalog: {
@@ -1337,7 +1373,10 @@ test("mock inference clears a prepared review when its bound input changes", asy
         },
       ],
     },
-    mock_inference_prepare: ready,
+    mock_inference_prepare: { sequence: [ready, ready] },
+    mock_inference_authorize: authorized,
+    mock_inference_submit: submitted,
+    mock_inference_poll: { sequence: [streaming] },
   });
   await page.goto("/");
   await openWorkspace(page, "New task");
@@ -1352,6 +1391,21 @@ test("mock inference clears a prepared review when its bound input changes", asy
   await expect(
     page.getByRole("button", { name: "Authorize one local mock submission" }),
   ).toHaveCount(0);
+  await input.fill("Fresh visible input");
+  await page.getByRole("button", { name: "Prepare local mock review" }).click();
+  await page
+    .getByRole("button", { name: "Authorize one local mock submission" })
+    .click();
+  await page.getByRole("button", { name: "Submit deterministic mock" }).click();
+  await expect(
+    page.getByRole("button", {
+      name: "Continue bounded local fixture stream",
+    }),
+  ).toBeEnabled();
+  await page
+    .getByRole("button", { name: "Continue bounded local fixture stream" })
+    .click();
+  await expect(page.getByText("incremental fixture output")).toBeVisible();
 });
 
 test("desktop preview renders the honest semantic shell", async ({ page }) => {
