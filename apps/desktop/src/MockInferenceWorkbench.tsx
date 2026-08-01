@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 
 import {
   authorizeMockInference,
@@ -73,8 +73,11 @@ export function MockInferenceWorkbench({
   projectId: string | null;
   operations?: Operations;
 }) {
-  const activeOperations =
-    suppliedOperations ?? (projectId ? nativeOperations(projectId) : null);
+  const activeOperations = useMemo(
+    () =>
+      suppliedOperations ?? (projectId ? nativeOperations(projectId) : null),
+    [projectId, suppliedOperations],
+  );
   const titleId = useId();
   const closeRef = useRef<HTMLButtonElement>(null);
   const [catalog, setCatalog] = useState<MockInferenceCatalog | null>(null);

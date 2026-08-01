@@ -148,7 +148,13 @@ function operations(overrides = {}) {
 describe("task template management workbench", () => {
   it("previews and confirms only selected native task/plan selectors and exact authored drafts", async () => {
     const api = operations();
-    render(<TaskTemplateWorkbench onClose={vi.fn()} operations={api} />);
+    render(
+      <TaskTemplateWorkbench
+        onClose={vi.fn()}
+        projectId="018f0000-0000-7000-8000-000000000001"
+        operations={api}
+      />,
+    );
     await screen.findByText("Built-in planning");
     fireEvent.click(screen.getByRole("button", { name: /built-in planning/i }));
     await screen.findByRole("button", { name: "Apply to task" });
@@ -159,6 +165,7 @@ describe("task template management workbench", () => {
     });
     await waitFor(() =>
       expect(api.loadTasks).toHaveBeenLastCalledWith({
+        projectId: "018f0000-0000-7000-8000-000000000001",
         query: null,
         includeArchived: false,
         selectedTaskId: localId,
@@ -202,7 +209,11 @@ describe("task template management workbench", () => {
       loadCatalog: vi.fn().mockResolvedValue({ ...catalog, templates: [] }),
     });
     const { rerender } = render(
-      <TaskTemplateWorkbench onClose={vi.fn()} operations={empty} />,
+      <TaskTemplateWorkbench
+        onClose={vi.fn()}
+        projectId="018f0000-0000-7000-8000-000000000001"
+        operations={empty}
+      />,
     );
     await screen.findByText("No task templates are available.");
     const unavailable = operations({
@@ -215,14 +226,24 @@ describe("task template management workbench", () => {
       }),
     });
     rerender(
-      <TaskTemplateWorkbench onClose={vi.fn()} operations={unavailable} />,
+      <TaskTemplateWorkbench
+        onClose={vi.fn()}
+        projectId="018f0000-0000-7000-8000-000000000001"
+        operations={unavailable}
+      />,
     );
     await screen.findByRole("alert");
   });
 
   it("loads lazily with native catalog states and renders full inspectable details", async () => {
     const api = operations();
-    render(<TaskTemplateWorkbench onClose={vi.fn()} operations={api} />);
+    render(
+      <TaskTemplateWorkbench
+        onClose={vi.fn()}
+        projectId="018f0000-0000-7000-8000-000000000001"
+        operations={api}
+      />,
+    );
     expect(screen.getByText("Loading task templates…")).toHaveTextContent(
       "Loading task templates",
     );
@@ -246,7 +267,13 @@ describe("task template management workbench", () => {
         capacity: { ...catalog.capacity, warning: true },
       }),
     });
-    render(<TaskTemplateWorkbench onClose={vi.fn()} operations={api} />);
+    render(
+      <TaskTemplateWorkbench
+        onClose={vi.fn()}
+        projectId="018f0000-0000-7000-8000-000000000001"
+        operations={api}
+      />,
+    );
     await screen.findByRole("alert");
     const list = screen.getByRole("listbox", { name: "Task templates" });
     fireEvent.keyDown(list, { key: "End" });
@@ -271,7 +298,13 @@ describe("task template management workbench", () => {
         diagnosticCode: "capacity-reached",
       }),
     });
-    render(<TaskTemplateWorkbench onClose={vi.fn()} operations={api} />);
+    render(
+      <TaskTemplateWorkbench
+        onClose={vi.fn()}
+        projectId="018f0000-0000-7000-8000-000000000001"
+        operations={api}
+      />,
+    );
     await screen.findByText("Local planning");
     fireEvent.click(screen.getByRole("button", { name: "New local template" }));
     fireEvent.change(screen.getByRole("textbox", { name: /title/i }), {
@@ -297,7 +330,13 @@ describe("task template management workbench", () => {
     const api = operations({
       inspect: vi.fn().mockResolvedValue(detail(localId, "local", "archived")),
     });
-    render(<TaskTemplateWorkbench onClose={vi.fn()} operations={api} />);
+    render(
+      <TaskTemplateWorkbench
+        onClose={vi.fn()}
+        projectId="018f0000-0000-7000-8000-000000000001"
+        operations={api}
+      />,
+    );
     await screen.findByText("Local planning");
     fireEvent.click(screen.getByRole("button", { name: /local planning/i }));
     await screen.findByRole("button", { name: "Delete permanently" });

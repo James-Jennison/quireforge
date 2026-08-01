@@ -4460,6 +4460,7 @@ export default function App({
                         }
                       >
                         <TaskTemplateWorkbench
+                          projectId={currentProject?.id ?? null}
                           onClose={() => setTaskTemplateWorkbenchOpen(false)}
                         />
                       </Suspense>

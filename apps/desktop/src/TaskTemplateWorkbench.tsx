@@ -60,6 +60,7 @@ type Operations = {
     confirmation: "confirmed";
   }) => Promise<TaskTemplateApplicationOutcome>;
   loadTasks: (request: {
+    projectId: string;
     query: null;
     includeArchived: boolean;
     selectedTaskId: string | null;
@@ -199,9 +200,11 @@ function Dialog({
 
 export function TaskTemplateWorkbench({
   onClose,
+  projectId,
   operations = nativeOperations,
 }: {
   onClose: () => void;
+  projectId: string | null;
   operations?: Operations;
 }) {
   const [catalog, setCatalog] = useState<TaskTemplateCatalogSnapshot | null>(
@@ -298,8 +301,14 @@ export function TaskTemplateWorkbench({
   const applicationPlan =
     taskSnapshot?.plans.find((plan) => plan.id === applicationPlanId) ?? null;
   const loadApplicationTasks = async (taskId: string | null = null) => {
+    if (!projectId) {
+      setTaskSnapshot(null);
+      setNotice("Select an attached project before applying a task template.");
+      return null;
+    }
     try {
       const next = await operations.loadTasks({
+        projectId,
         query: null,
         includeArchived: false,
         selectedTaskId: taskId,

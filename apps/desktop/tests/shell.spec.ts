@@ -1451,7 +1451,12 @@ test("mock inference clears a prepared review when its bound input changes", asy
   await expect(
     page.getByRole("heading", { name: "Fictional mock inference" }),
   ).toBeVisible();
+  await expect(
+    page.getByRole("combobox", { name: "Durable task" }),
+  ).toHaveValue(id);
+  await expect(page.getByLabel("Fictional destination")).toBeEnabled();
   const input = page.getByLabel("Bounded authored input");
+  await input.scrollIntoViewIfNeeded();
   await input.fill("Visible input");
   await page.getByRole("button", { name: "Prepare local mock review" }).click();
   await expect(page.getByText("Exact local review")).toBeVisible();
@@ -1586,7 +1591,7 @@ test("production New task creates one durable task for the fictional mock select
   const selector = page.getByRole("combobox", { name: "Durable task" });
   await expect(selector).toBeEnabled();
   await expect(selector).toHaveValue(taskId);
-  await expect(selector.locator("option")).toHaveText(["Untitled task"]);
+  await expect(selector.locator("option")).toHaveText(["Mock task"]);
 });
 
 test("mock inference exposes an ambiguous result without automatic retry", async ({
@@ -1687,7 +1692,13 @@ test("mock inference exposes an ambiguous result without automatic retry", async
   await page.goto("/");
   await openWorkspace(page, "New task");
   await page.getByRole("button", { name: "Fictional mock inference" }).click();
-  await page.getByLabel("Bounded authored input").fill("Visible input");
+  await expect(
+    page.getByRole("combobox", { name: "Durable task" }),
+  ).toHaveValue(taskCatalogFixture.selectedTask!.id);
+  await expect(page.getByLabel("Fictional destination")).toBeEnabled();
+  const input = page.getByLabel("Bounded authored input");
+  await input.scrollIntoViewIfNeeded();
+  await input.fill("Visible input");
   await page.getByRole("button", { name: "Prepare local mock review" }).click();
   await page
     .getByRole("button", { name: "Authorize one local mock submission" })
