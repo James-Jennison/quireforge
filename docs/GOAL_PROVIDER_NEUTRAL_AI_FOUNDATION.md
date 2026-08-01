@@ -186,12 +186,12 @@ in-memory, fictional, non-networked, and non-operational; it adds no real
 provider, credential, retrieval, context transmission, native operation, or
 external authority.
 
-The approved **Provider-Neutral Mock Workflow Hardening and Release
-Readiness** milestone extends this local fixture with registry-backed
-destination selection, bounded polling, explicit cancellation confirmation,
-authority-failure fixtures, and focused browser acceptance. It remains local,
-ephemeral, and non-operational; no real-provider readiness decision begins
-automatically.
+The source-complete [**Provider-Neutral Mock Workflow Hardening and Release
+Readiness**](MILESTONE_PROVIDER_NEUTRAL_MOCK_WORKFLOW_HARDENING.md) milestone
+extends this local fixture with registry-backed destination selection, bounded
+polling, explicit cancellation confirmation, authority-failure fixtures, and
+focused browser acceptance. It remains local, ephemeral, and non-operational;
+no real-provider readiness decision begins automatically.
 
 ## Separate goals and lanes
 

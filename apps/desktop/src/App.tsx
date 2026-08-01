@@ -1163,6 +1163,7 @@ export default function App({
     useState(false);
   const [mockInferenceWorkbenchOpen, setMockInferenceWorkbenchOpen] =
     useState(false);
+  const mockInferenceLauncherRef = useRef<HTMLButtonElement>(null);
   const [workbenchLayout, setWorkbenchLayout] = useState(
     initialWorkbenchLayoutPreferences,
   );
@@ -4463,6 +4464,7 @@ export default function App({
                     aria-label="Fictional local mock workflow"
                   >
                     <button
+                      ref={mockInferenceLauncherRef}
                       type="button"
                       onClick={() => setMockInferenceWorkbenchOpen(true)}
                     >
@@ -4480,7 +4482,12 @@ export default function App({
                         }
                       >
                         <MockInferenceWorkbench
-                          onClose={() => setMockInferenceWorkbenchOpen(false)}
+                          onClose={() => {
+                            setMockInferenceWorkbenchOpen(false);
+                            window.requestAnimationFrame(() =>
+                              mockInferenceLauncherRef.current?.focus(),
+                            );
+                          }}
                         />
                       </Suspense>
                     )}

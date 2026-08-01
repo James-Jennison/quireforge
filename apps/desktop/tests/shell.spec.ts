@@ -1401,6 +1401,16 @@ test("mock inference clears a prepared review when its bound input changes", asy
           descriptorSha256: digest,
           capabilityProfileSha256: digest,
         },
+        {
+          id: "ember-ambiguous",
+          providerLabel: "Fictional Ember",
+          endpointLabel: "Local fixture endpoint",
+          modelLabel: "Ember Ambiguity Fixture",
+          adapterLabel: "registry fixture adapter",
+          scenario: "ambiguous",
+          descriptorSha256: "b".repeat(64),
+          capabilityProfileSha256: "b".repeat(64),
+        },
       ],
     },
     mock_inference_prepare: { sequence: [ready, ready] },
@@ -1423,6 +1433,11 @@ test("mock inference clears a prepared review when its bound input changes", asy
   await input.fill("Visible input");
   await page.getByRole("button", { name: "Prepare local mock review" }).click();
   await expect(page.getByText("Exact local review")).toBeVisible();
+  await page
+    .getByLabel("Fictional destination")
+    .selectOption("ember-ambiguous");
+  await expect(page.getByText("Exact local review")).toHaveCount(0);
+  await expect(page.getByText(/reviewed binding changed/i)).toBeVisible();
   await input.fill("Changed visible input");
   await expect(page.getByText("Exact local review")).toHaveCount(0);
   await expect(page.getByText(/reviewed binding changed/i)).toBeVisible();
@@ -1454,6 +1469,132 @@ test("mock inference clears a prepared review when its bound input changes", asy
     .getByRole("button", { name: "Continue bounded local fixture stream" })
     .press("Enter");
   await expect(page.getByText(/Mock attempt is cancelled/i)).toBeVisible();
+  await page
+    .getByRole("button", { name: "Prepare fresh retry or regeneration" })
+    .press("Enter");
+  await expect(page.getByText("Prior local attempt")).toBeVisible();
+  await expect(page.getByText("Exact local review")).toHaveCount(0);
+  await page.getByRole("button", { name: "Close", exact: true }).press("Enter");
+  await expect(
+    page.getByRole("button", { name: "Fictional mock inference" }),
+  ).toBeFocused();
+});
+
+test("mock inference exposes an ambiguous result without automatic retry", async ({
+  page,
+}) => {
+  const id = "018f0000-0000-7000-8000-000000000021";
+  const attemptId = "019a5900-0000-7000-8000-000000000022";
+  const authorizationId = "019a5900-0000-7000-8000-000000000023";
+  const digest = "c".repeat(64);
+  const ready = {
+    schemaVersion: 1,
+    mockOnly: true,
+    attemptId,
+    state: "ready",
+    diagnostic: null,
+    destination: {
+      providerId: id,
+      endpointId: id,
+      modelId: id,
+      adapterId: id,
+      descriptorSha256: digest,
+      capabilityProfileSha256: digest,
+    },
+    manifest: {
+      id,
+      sha256: digest,
+      inputSha256: digest,
+      itemCount: 1,
+      inputCharCount: 12,
+      exclusions: ["ambient-context"],
+      retention: "transient-local-mock",
+      expiresAtTick: 3,
+      state: "ready",
+    },
+    lease: {
+      credentialReferenceId: id,
+      leaseId: id,
+      accountReference: "fictional-account-reference",
+      scopes: ["mock-inference-submit"],
+      state: "issued",
+      expiresAtTick: 3,
+    },
+    authorization: {
+      id: authorizationId,
+      bindingSha256: digest,
+      state: "pending",
+      expiresAtTick: 3,
+    },
+    events: [],
+    usage: null,
+    evidence: [],
+  } as const;
+  const submitted = {
+    ...ready,
+    state: "submitted",
+    authorization: { ...ready.authorization, state: "consumed" },
+  } as const;
+  const ambiguous = {
+    ...submitted,
+    state: "ambiguous",
+    events: [
+      {
+        id,
+        sequence: 1,
+        kind: "ambiguous-outcome",
+        text: "no automatic retry",
+        structuredState: null,
+        sha256: digest,
+      },
+    ],
+  } as const;
+  await installNativeFixture(page, {
+    ...nativeResponses,
+    mock_inference_catalog: {
+      schemaVersion: 1,
+      profiles: [
+        {
+          id: "ember-ambiguous",
+          providerLabel: "Fictional Ember",
+          endpointLabel: "Local fixture endpoint",
+          modelLabel: "Ember Ambiguity Fixture",
+          adapterLabel: "registry fixture adapter",
+          scenario: "ambiguous",
+          descriptorSha256: digest,
+          capabilityProfileSha256: digest,
+        },
+      ],
+    },
+    mock_inference_prepare: ready,
+    mock_inference_authorize: {
+      ...ready,
+      state: "authorized",
+      authorization: { ...ready.authorization, state: "authorized" },
+    },
+    mock_inference_submit: submitted,
+    mock_inference_poll: ambiguous,
+  });
+  await page.goto("/");
+  await openWorkspace(page, "New task");
+  await page.getByRole("button", { name: "Fictional mock inference" }).click();
+  await page.getByLabel("Bounded authored input").fill("Visible input");
+  await page.getByRole("button", { name: "Prepare local mock review" }).click();
+  await page
+    .getByRole("button", { name: "Authorize one local mock submission" })
+    .click();
+  await page.getByRole("button", { name: "Submit deterministic mock" }).click();
+  await page
+    .getByRole("button", { name: "Continue bounded local fixture stream" })
+    .click();
+  await expect(page.getByText(/Mock attempt is ambiguous/i)).toBeVisible();
+  await expect(page.getByText("no automatic retry")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Continue bounded local fixture stream" }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Prepare fresh retry or regeneration" }),
+  ).toBeEnabled();
 });
 
 test("desktop preview renders the honest semantic shell", async ({ page }) => {

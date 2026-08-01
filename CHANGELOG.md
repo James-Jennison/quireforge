@@ -4,8 +4,9 @@
 
 - Harden the local fictional mock-inference workflow with registry-backed
   Lantern/Ember destinations, bounded polling, separately observable
-  cancellation confirmation, and fail-closed authority fixtures. No provider,
-  network, credential, package, or release capability is added.
+  cancellation confirmation, fail-closed authority fixtures, and representative
+  desktop/mobile browser acceptance. No provider, network, credential,
+  package, or release capability is added.
 
 ## Unreleased — Provider-Neutral AI Foundation local mock slice
 

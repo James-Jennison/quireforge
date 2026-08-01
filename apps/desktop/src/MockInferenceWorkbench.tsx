@@ -272,16 +272,18 @@ export function MockInferenceWorkbench({
             >
               Authorize one local mock submission
             </button>
-            <button
-              type="button"
-              disabled={busy || !canPoll || !attemptId}
-              onClick={() =>
-                attemptId &&
-                void apply(() => operations.poll({ taskId, attemptId }))
-              }
-            >
-              Continue bounded local fixture stream
-            </button>
+            {canPoll && (
+              <button
+                type="button"
+                disabled={busy || !attemptId}
+                onClick={() =>
+                  attemptId &&
+                  void apply(() => operations.poll({ taskId, attemptId }))
+                }
+              >
+                Continue bounded local fixture stream
+              </button>
+            )}
             <button
               type="button"
               disabled={busy || !canSubmit}
@@ -295,16 +297,18 @@ export function MockInferenceWorkbench({
             >
               Submit deterministic mock
             </button>
-            <button
-              type="button"
-              disabled={busy || !canCancel || !attemptId}
-              onClick={() =>
-                attemptId &&
-                void apply(() => operations.cancel({ taskId, attemptId }))
-              }
-            >
-              Cancel
-            </button>
+            {canCancel && (
+              <button
+                type="button"
+                disabled={busy || !attemptId}
+                onClick={() =>
+                  attemptId &&
+                  void apply(() => operations.cancel({ taskId, attemptId }))
+                }
+              >
+                Cancel
+              </button>
+            )}
             <button
               type="button"
               disabled={busy || !attemptId}

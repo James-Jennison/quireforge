@@ -1525,12 +1525,12 @@ closed, bounded, and local only; it has no real provider, network, credential,
 context-transmission, retrieval, native-operation, persistence, package, or
 release authority.
 
-**Approved local hardening milestone:** Provider-Neutral Mock Workflow
-Hardening and Release Readiness retains the local fixture boundary while
-covering registry-backed destinations, bounded lifecycle polling, cancellation
-confirmation, authority failure, recovery, and browser acceptance. A
-real-provider readiness or provider-selection decision does not begin
-automatically.
+**Source-complete local hardening milestone:** [Provider-Neutral Mock Workflow
+Hardening and Release Readiness](MILESTONE_PROVIDER_NEUTRAL_MOCK_WORKFLOW_HARDENING.md)
+retains the local fixture boundary while covering registry-backed destinations,
+bounded lifecycle polling, cancellation confirmation, authority failure,
+recovery, and representative browser acceptance. A real-provider readiness or
+provider-selection decision does not begin automatically.
 
 **Later implementation milestones:** Credential broker, context assembly,
 limited inference, and the first separately approved provider or local-runtime

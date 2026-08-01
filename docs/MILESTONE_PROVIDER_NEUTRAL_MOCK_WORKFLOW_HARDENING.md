@@ -26,19 +26,23 @@ release, publication, or deployment.
 
 ## Acceptance
 
-Focused Rust lifecycle and registry tests, bridge-schema/component tests, and a
-desktop/mobile Playwright flow cover live-workbench launch, edit invalidation,
-fresh preparation, keyboard activation, one-event polling, cancellation
-request/confirmation, and a constrained viewport. Repository safeguards,
-formatting, type checking, focused build checks, and the Rust workspace suite
-are recorded locally. Full packaging and release evidence are intentionally
-outside this milestone.
+Focused Rust lifecycle and registry tests cover the complete deterministic
+state-machine taxonomy, sequencing, authority drift, isolation, and state-loss
+rejection. Bridge-schema and component tests cover strict payloads, editable
+binding invalidation, incremental rendering, cancellation confirmation, and
+fresh-attempt presentation. Desktop/mobile Playwright acceptance covers the
+live-workbench launch; input and destination invalidation; a streamed,
+keyboard-operated cancellation flow; ambiguous-result messaging without an
+automatic retry; fresh retry; close-focus restoration; and narrow,
+reduced-height, effective-200%-zoom completion. This deliberately
+keeps exhaustive fixture-enum checks below the browser layer. Repository
+safeguards, formatting, type checking, focused build checks, and the Rust
+workspace suite are recorded locally. Full packaging and release evidence are
+intentionally outside this milestone.
 
 ## Release readiness
 
 The mock slice is source-ready for a separate **Mock Vertical Slice Release
-Decision and Packaging** checkpoint. Before that decision, remaining browser
-evidence should explicitly cover ambiguous and authority-failure messaging,
-focus restoration, and reduced-height/high-zoom overflow. The checkpoint must
-independently decide whether a version, package, installed-host validation, or
-release action is appropriate.
+Decision and Packaging** checkpoint. That checkpoint must independently decide
+whether a version, package, installed-host validation, or release action is
+appropriate.

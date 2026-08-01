@@ -6506,12 +6506,15 @@ body,
 
 .mock-inference-workbench {
   display: grid;
+  box-sizing: border-box;
   min-width: 0;
+  max-width: 100%;
   gap: 14px;
   padding: 14px;
   border: 1px solid var(--border);
   border-radius: 12px;
   background: var(--surface);
+  overflow-x: hidden;
 }
 
 .mock-inference-workbench__form,
@@ -6559,9 +6562,17 @@ body,
 
 .mock-inference-workbench__details ol {
   display: grid;
+  min-width: 0;
+  max-height: 12rem;
+  overflow: auto;
   gap: 6px;
   margin: 0;
   padding-left: 24px;
+}
+
+.mock-inference-workbench__details li {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .mock-inference-workbench__actions {
