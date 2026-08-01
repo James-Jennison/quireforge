@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Ratify the M57 Connector Governance Contract and executable,
+  fictional/local-only beta.60 implementation plan without adding connector
+  runtime authority.
+
 ## 0.1.0-beta.59 — Durable Source Admission fail-safe correction
 
 - Replaces beta.58 after installed-host acceptance found that its synchronous

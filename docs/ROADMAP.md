@@ -1377,11 +1377,14 @@ provider integration. It excludes opaque personalization, hidden retrieval,
 automatic browsing, and automatic actions. This is a decision-only gate with
 no package change.
 
-**Superseded implementation decision:** the earlier proposal's M55 deferral is
-replaced by the ratified [M55 Durable Source Admission Implementation
-Contract](MILESTONE_55_DURABLE_SOURCE_ADMISSION_CONTRACT.md). Beta.58 may add
-only explicit, local, private textual admission; retrieval, provider traffic,
-context inclusion, connectors, browser authority, and MCP remain excluded.
+**Complete and published:** the earlier proposal's M55 deferral was replaced by
+the ratified [M55 Durable Source Admission Implementation
+Contract](MILESTONE_55_DURABLE_SOURCE_ADMISSION_CONTRACT.md). Beta.59 is
+published at `v0.1.0-beta.59`, bound to
+`d6967e8bfd82acbef7dfa0dc74f085720f8b0384`. It adds only explicit, local,
+private textual admission and chooser fail-safe handling; retrieval, provider
+traffic, context inclusion, connectors, browser authority, and MCP remain
+excluded.
 
 ### 56 — Inspectable Local Task Templates
 
@@ -1420,6 +1423,16 @@ not start automatically.
 
 ### 57 — Connector Governance and External Authority
 
+**Current authoritative contract:** [M57 Connector Governance Contract and
+Executable Implementation Plan](MILESTONE_57_CONNECTOR_GOVERNANCE_CONTRACT.md)
+ratifies the provider-neutral connector identity, capability/grant, lifecycle,
+one-use authorization, ambiguous-outcome, audit, M55/context/transmission, and
+generic-MCP exclusion boundary. It explicitly supersedes the earlier
+implementation deferral and defines the next separately approvable beta.60
+fictional/local-only vertical slice. It does not authorize source work, a real
+connector, credentials, network, retrieval, external mutation, M58 browser
+behavior, MCP dispatch, or automation.
+
 **Decision complete:** [M57 connector governance](MILESTONE_57_CONNECTOR_GOVERNANCE.md)
 defines the least-authority connector classification, authority ladder,
 consent, credential, provenance, privacy, audit, failure, and revocation
@@ -1450,12 +1463,12 @@ records. It adds no persistence, Tauri command, bridge, UI, network, provider,
 credential, OAuth, browser, external mutation, or M55 source-manifest
 authority. Packaging and release work remain separate future goals.
 
-**Source-only closure:** [M57 source acceptance and release
+**Historical source-only closure:** [M57 source acceptance and release
 policy](MILESTONE_57_SOURCE_ACCEPTANCE_AND_RELEASE_POLICY.md) accepts
 `a1d407469626e34cd5d4921abdb6c8d305895d7e` as source-complete and closes M57
-without a package or version. Beta.54 remains the latest packaged generation;
-its M56 draft prerelease is unchanged. Future provider-neutral architecture
-requires separately approved decision gates and must not be folded into M58.
+without a package or version. Its beta.54 release statements are historical;
+beta.59 is now the latest published generation. The new M57 contract retains
+M58 as a separate, unstarted lane.
 
 ### Goal — Provider-Neutral AI Foundation
 

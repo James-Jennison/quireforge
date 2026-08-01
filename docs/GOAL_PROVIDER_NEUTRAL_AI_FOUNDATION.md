@@ -213,8 +213,12 @@ any later context inclusion remain separate decisions.
 
 ### M57 connector governance
 
-M57 remains reusable least-authority architecture evidence. It is not this goal
-and does not grant a real connector or provider.
+The earlier local mock foundation remains reusable least-authority evidence.
+The ratified [M57 Connector Governance Contract and Executable Implementation
+Plan](MILESTONE_57_CONNECTOR_GOVERNANCE_CONTRACT.md) defines the next separately
+approvable fictional/local-only beta.60 vertical slice. It grants no runtime
+work, real connector, provider, credential, network, browser, MCP, automation,
+or external authority.
 
 ### M58 browser verification
 
@@ -278,19 +282,19 @@ When a gate completes, record it as progress under this goal.
 
 ## Immediate next gate
 
-The goal is active. Seven decision gates and three implementation milestones
-are complete; no new milestone is active. **Additional Mock Hardening** is the
-recommended next separately approved implementation milestone and does not
-begin here.
+The goal is active. The next separately approvable implementation milestone is
+**M57 Fictional Connector Governance Vertical Slice** for beta.60. It remains
+local-only and does not begin without explicit approval. M58 remains unstarted.
 
 ## Package and release policy
 
 Establishing or advancing this goal through decision-only gates requires no
 package or version. Implementation milestones receive versions only when they
 alter source or user-visible/operational behavior and a release policy is
-separately approved. Beta.54 remains the latest packaged generation, and its
-draft prerelease remains unchanged. Goal completion will require future package
-and installed-host evidence; none is authorized now.
+separately approved. Beta.59 is the latest published generation; beta.60 is
+reserved only as the next M57 fictional/local-only candidate if that
+implementation is approved. Goal completion will require future package and
+installed-host evidence.
 
 ## Explicit exclusions
 

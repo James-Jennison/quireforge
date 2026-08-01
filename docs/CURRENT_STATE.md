@@ -104,8 +104,15 @@ persisted-bytes-only previews. Migration 19 is the native Activity ownership
 ledger; migration 20 immutably binds Advisor-dispatched tasks. Beta.52 remains
 preserved as an unreleased failed installed-host candidate.
 
-Milestone 55 remains a decision-only milestone: research-report implementation is
-deferred pending approved durable source-manifest authority. M56 is complete at
+M55 Durable Source Admission is complete and published as
+`0.1.0-beta.59` / `0.1.0~beta.59`, tagged `v0.1.0-beta.59` at
+`d6967e8bfd82acbef7dfa0dc74f085720f8b0384`. It admits only governed manual
+text, one selected local UTF-8 file, and eligible reviewed artifact text as
+private project/task-bound copies. Beta.59 corrects the installed-host
+chooser/GVFS fail-safe: cancellation, unavailability, timeout, or ambiguity
+returns bounded control and creates neither a durable source nor a private copy.
+M55 does not authorize retrieval, connector access, context inclusion, or
+provider transmission. M56 is complete at
 package/source commit `e2b084ed0bdf17fb6f4b0b47663cdf6952ec8e73`, annotated tag
 `v0.1.0-beta.54`, and a `James-Jennison/quireforge` draft prerelease. Migration
 21 owns local templates,
@@ -149,16 +156,15 @@ Tauri command, bridge, or UI. Static fictional descriptors are digest/version
 bound, credential references are inert opaque metadata, confirmations are
 one-use/expiring/cancellable, and audit records are content-free/mock-only.
 Real connector authority, credentials, providers, network access, and M58
-browser verification remain deferred. M55's earlier implementation deferral
-is superseded by the bounded beta.58 Durable Source Admission contract. The
-beta.59 replacement candidate corrects the beta.58 installed-host chooser
-fail-safe without adding authority; it
-does not authorize retrieval, provider transmission, or context inclusion. No M57 package or
-version exists: beta.54 remains the latest packaged generation and its draft
-prerelease is unchanged. The all-in-one workspace direction is non-authorizing
-guidance: QuireForge remains the future owner of project context, authority,
-credential policy, operation validation, artifacts, audit, and recovery while
-provider-neutral work requires separate decisions.
+browser verification remain deferred. M55's earlier implementation deferral is
+superseded by the completed beta.59 contract and published release. The ratified
+[M57 Connector Governance Contract](MILESTONE_57_CONNECTOR_GOVERNANCE_CONTRACT.md)
+supersedes the earlier M57 implementation deferral only: it defines the next
+separately approvable beta.60 fictional/local-only connector-governance vertical
+slice. It grants no source implementation, real connector, credential, network,
+MCP dispatch, browser/M58, automation, retrieval, context, provider
+transmission, or external mutation. The all-in-one workspace direction remains
+non-authorizing guidance.
 
 The **External Capability Taxonomy and Sequencing** decision checkpoint is
 complete. It grants no implementation authority, separates inference,
