@@ -4430,7 +4430,6 @@ export default function App({
                         onOpenMockInference={() =>
                           setMockInferenceWorkbenchOpen(true)
                         }
-                        mockInferenceTriggerRef={mockInferenceLauncherRef}
                       />
                     )}
                     {taskTemplateWorkbenchOpen && (

@@ -1430,6 +1430,7 @@ test("mock inference clears a prepared review when its bound input changes", asy
   const primaryWorkspace = page.locator(
     '[data-workspace-view="conversation"] .conversation-mode-workspace',
   );
+  await primaryWorkspace.getByRole("button", { name: "Task Catalog" }).click();
   await expect(
     primaryWorkspace.getByRole("heading", { name: "Tasks" }),
   ).toBeVisible();
@@ -1497,7 +1498,9 @@ test("mock inference clears a prepared review when its bound input changes", asy
   await expect(page.getByText("Exact local review")).toHaveCount(0);
   await page.getByRole("button", { name: "Close", exact: true }).press("Enter");
   await expect(
-    page.getByRole("button", { name: "Fictional mock inference" }),
+    page
+      .getByRole("region", { name: "Fictional local mock workflow" })
+      .getByRole("button", { name: "Fictional mock inference" }),
   ).toBeFocused();
 });
 
