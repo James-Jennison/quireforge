@@ -1159,6 +1159,7 @@ export default function App({
   const [taskCatalog, setTaskCatalog] =
     useState<TaskCatalogSnapshot>(scaffoldTaskCatalog);
   const [taskCatalogBusy, setTaskCatalogBusy] = useState(false);
+  const [taskCatalogOpen, setTaskCatalogOpen] = useState(false);
   const [taskTemplateWorkbenchOpen, setTaskTemplateWorkbenchOpen] =
     useState(false);
   const [mockInferenceWorkbenchOpen, setMockInferenceWorkbenchOpen] =
@@ -4358,62 +4359,80 @@ export default function App({
                   </p>
                 ) : (
                   <>
-                    <TaskCatalog
-                      snapshot={taskCatalog}
-                      busy={taskCatalogBusy}
-                      onLoad={refreshTaskCatalog}
-                      onCreate={() =>
-                        applyTaskCatalogMutation(createTaskRecord)
-                      }
-                      onRename={(taskId, title) => () =>
-                        applyTaskCatalogMutation(() =>
-                          renameTaskRecord({ taskId, title }),
-                        )
-                      }
-                      onStatus={(taskId, status) => () =>
-                        applyTaskCatalogMutation(() =>
-                          setTaskRecordStatus({ taskId, status }),
-                        )
-                      }
-                      onArchive={(taskId) => () =>
-                        applyTaskCatalogMutation(() =>
-                          archiveTaskRecord({ taskId }),
-                        )
-                      }
-                      onRestore={(taskId) => () =>
-                        applyTaskCatalogMutation(() =>
-                          restoreTaskRecord({ taskId }),
-                        )
-                      }
-                      onDelete={(taskId) => () =>
-                        applyTaskCatalogMutation(() =>
-                          deleteTaskRecord({ taskId }),
-                        )
-                      }
-                      onPlanCreate={(taskId, copyPrimaryBody) => () =>
-                        applyTaskCatalogMutation(() =>
-                          createTaskPlan({ taskId, copyPrimaryBody }),
-                        )
-                      }
-                      onPlanSelect={(taskId, planId) => () =>
-                        selectDurableTaskPlan(taskId, planId)
-                      }
-                      onPlanEdit={(taskId, planId, label, body) => () =>
-                        applyTaskCatalogMutation(() =>
-                          editTaskPlan({ taskId, planId, label, body }),
-                        )
-                      }
-                      onPlanDelete={(taskId, planId) => () =>
-                        applyTaskCatalogMutation(() =>
-                          deleteTaskPlan({ taskId, planId }),
-                        )
-                      }
-                      onOpenTemplates={() => setTaskTemplateWorkbenchOpen(true)}
-                      onOpenMockInference={() =>
-                        setMockInferenceWorkbenchOpen(true)
-                      }
-                      mockInferenceTriggerRef={mockInferenceLauncherRef}
-                    />
+                    <section
+                      className="mock-inference-launcher"
+                      aria-label="Durable task catalog"
+                    >
+                      <button
+                        type="button"
+                        aria-expanded={taskCatalogOpen}
+                        onClick={() =>
+                          setTaskCatalogOpen((current) => !current)
+                        }
+                      >
+                        {taskCatalogOpen ? "Hide Task Catalog" : "Task Catalog"}
+                      </button>
+                    </section>
+                    {taskCatalogOpen && (
+                      <TaskCatalog
+                        snapshot={taskCatalog}
+                        busy={taskCatalogBusy}
+                        onLoad={refreshTaskCatalog}
+                        onCreate={() =>
+                          applyTaskCatalogMutation(createTaskRecord)
+                        }
+                        onRename={(taskId, title) => () =>
+                          applyTaskCatalogMutation(() =>
+                            renameTaskRecord({ taskId, title }),
+                          )
+                        }
+                        onStatus={(taskId, status) => () =>
+                          applyTaskCatalogMutation(() =>
+                            setTaskRecordStatus({ taskId, status }),
+                          )
+                        }
+                        onArchive={(taskId) => () =>
+                          applyTaskCatalogMutation(() =>
+                            archiveTaskRecord({ taskId }),
+                          )
+                        }
+                        onRestore={(taskId) => () =>
+                          applyTaskCatalogMutation(() =>
+                            restoreTaskRecord({ taskId }),
+                          )
+                        }
+                        onDelete={(taskId) => () =>
+                          applyTaskCatalogMutation(() =>
+                            deleteTaskRecord({ taskId }),
+                          )
+                        }
+                        onPlanCreate={(taskId, copyPrimaryBody) => () =>
+                          applyTaskCatalogMutation(() =>
+                            createTaskPlan({ taskId, copyPrimaryBody }),
+                          )
+                        }
+                        onPlanSelect={(taskId, planId) => () =>
+                          selectDurableTaskPlan(taskId, planId)
+                        }
+                        onPlanEdit={(taskId, planId, label, body) => () =>
+                          applyTaskCatalogMutation(() =>
+                            editTaskPlan({ taskId, planId, label, body }),
+                          )
+                        }
+                        onPlanDelete={(taskId, planId) => () =>
+                          applyTaskCatalogMutation(() =>
+                            deleteTaskPlan({ taskId, planId }),
+                          )
+                        }
+                        onOpenTemplates={() =>
+                          setTaskTemplateWorkbenchOpen(true)
+                        }
+                        onOpenMockInference={() =>
+                          setMockInferenceWorkbenchOpen(true)
+                        }
+                        mockInferenceTriggerRef={mockInferenceLauncherRef}
+                      />
+                    )}
                     {taskTemplateWorkbenchOpen && (
                       <Suspense
                         fallback={
@@ -4474,6 +4493,18 @@ export default function App({
                       handoffBrief={acceptedTaskHandoff?.brief ?? null}
                       onReturnTaskReceipt={returnTaskHandoffToAdvisor}
                     />
+                    <section
+                      className="mock-inference-launcher"
+                      aria-label="Fictional local mock workflow"
+                    >
+                      <button
+                        ref={mockInferenceLauncherRef}
+                        type="button"
+                        onClick={() => setMockInferenceWorkbenchOpen(true)}
+                      >
+                        Fictional mock inference
+                      </button>
+                    </section>
                   </>
                 )}
                 {conversationMode === "codex" && (

@@ -506,6 +506,18 @@ describe("QuireForge desktop shell", () => {
       '[data-workspace-view="conversation"]',
     );
     expect(workspace).not.toBeNull();
+    const catalogLauncher = within(workspace as HTMLElement).getByRole(
+      "button",
+      { name: "Task Catalog" },
+    );
+    expect(catalogLauncher).toHaveAttribute("aria-expanded", "false");
+    expect(
+      within(workspace as HTMLElement).queryByRole("heading", {
+        name: "Tasks",
+      }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(catalogLauncher);
+    expect(catalogLauncher).toHaveAttribute("aria-expanded", "true");
     expect(
       within(workspace as HTMLElement).getByRole("heading", { name: "Tasks" }),
     ).toBeVisible();
@@ -1157,6 +1169,7 @@ describe("QuireForge desktop shell", () => {
     fireEvent.click(
       screen.getByRole("button", { name: "Show workbench context" }),
     );
+    fireEvent.click(screen.getByRole("button", { name: "Task Catalog" }));
     fireEvent.click(await screen.findByRole("tab", { name: "Alternate" }));
 
     await waitFor(() =>

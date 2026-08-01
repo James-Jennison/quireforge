@@ -869,6 +869,10 @@ const localReviewBrowserSnapshot = {
   collectionCount: 1,
   payloadBytes: 12,
   warning: false,
+  packageManifestSummaryAvailable: false,
+  gitStatusDiffSummaryAvailable: false,
+  activityPresentationAvailable: false,
+  approvalPresentationAvailable: false,
   diagnosticCode: null,
 } as const;
 
@@ -995,7 +999,7 @@ test("M56 task-template application remains explicit and contained", async ({
   });
   await page.goto("/");
   await openWorkspace(page, "New task");
-  await page.getByRole("button", { name: "Show workbench context" }).click();
+  await page.getByRole("button", { name: "Task Catalog" }).click();
   await page.getByRole("button", { name: "Task Templates" }).click();
   await page.getByRole("button", { name: /Feature implementation/ }).click();
   const apply = page.getByRole("button", { name: "Apply to task" });
@@ -1435,7 +1439,10 @@ test("mock inference clears a prepared review when its bound input changes", asy
   await expect(
     primaryWorkspace.getByText("Review local task records"),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Fictional mock inference" }).click();
+  await page
+    .getByRole("region", { name: "Fictional local mock workflow" })
+    .getByRole("button", { name: "Fictional mock inference" })
+    .click();
   await page.setViewportSize({ width: 640, height: 450 });
   await page.evaluate(() => {
     document.documentElement.style.zoom = "2";
@@ -1564,9 +1571,13 @@ test("production New task creates one durable task for the fictional mock select
   });
   await page.goto("/");
   await openWorkspace(page, "New task");
+  await page.getByRole("button", { name: "Task Catalog" }).click();
   await page.getByRole("button", { name: "New task" }).click();
   await expect(page.getByText("Untitled task")).toBeVisible();
-  await page.getByRole("button", { name: "Fictional mock inference" }).click();
+  await page
+    .getByRole("region", { name: "Fictional local mock workflow" })
+    .getByRole("button", { name: "Fictional mock inference" })
+    .click();
   const selector = page.getByRole("combobox", { name: "Durable task" });
   await expect(selector).toBeEnabled();
   await expect(selector).toHaveValue(taskId);
@@ -2091,9 +2102,11 @@ test("QuireForge workbench controls remain optional, keyboard-operable, and boun
   ).toBeVisible();
   await page.getByRole("tab", { name: "Problems" }).click();
   await expect(page.getByText("No problem feed available")).toBeVisible();
+  await page.getByRole("button", { name: "Hide workbench context" }).click();
   await expect(
     page.getByRole("button", { name: "Open terminal dock" }),
   ).toHaveAttribute("aria-expanded", "false");
+  await page.getByRole("button", { name: "Task Catalog" }).click();
   const taskList = page.getByRole("navigation", { name: "Task list" });
   await expect(taskList).toBeVisible();
   await expect(
