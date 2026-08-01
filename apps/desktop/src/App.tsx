@@ -1253,7 +1253,7 @@ export default function App({
   }, [loadAuth]);
 
   useEffect(() => {
-    if (!accessGranted || !currentProject) return;
+    if (!accessGranted) return;
     let active = true;
     void loadAdvisorConversationTask()
       .then((result) => {
@@ -1325,7 +1325,7 @@ export default function App({
     return () => {
       active = false;
     };
-  }, [accessGranted, currentProject?.id, loadTaskCatalogTask]);
+  }, [accessGranted, currentProject, loadTaskCatalogTask]);
 
   useEffect(() => {
     if (!accessGranted) return;

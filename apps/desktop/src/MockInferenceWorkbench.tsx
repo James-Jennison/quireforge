@@ -97,7 +97,6 @@ export function MockInferenceWorkbench({
   useEffect(() => {
     let active = true;
     if (!activeOperations) {
-      setNotice("Select an attached project before using local mock inference.");
       return;
     }
     void Promise.all([activeOperations.catalog(), activeOperations.tasks()])
@@ -118,6 +117,10 @@ export function MockInferenceWorkbench({
       active = false;
     };
   }, [activeOperations]);
+
+  const displayedNotice = activeOperations
+    ? notice
+    : "Select an attached project before using local mock inference.";
 
   const apply = async (action: () => Promise<MockInferenceSnapshot>) => {
     setBusy(true);
@@ -174,7 +177,7 @@ export function MockInferenceWorkbench({
         </button>
       </header>
       <p role="status" className="context-note">
-        {notice}
+        {displayedNotice}
       </p>
       <form
         className="mock-inference-workbench__form"
