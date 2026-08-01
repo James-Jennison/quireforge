@@ -292,6 +292,11 @@ const MockInferenceWorkbench = lazy(() =>
     }),
   ),
 );
+const ConnectorGovernanceWorkbench = lazy(() =>
+  import("./ConnectorGovernanceWorkbench").then(
+    ({ ConnectorGovernanceWorkbench: workspace }) => ({ default: workspace }),
+  ),
+);
 const DurableSourcesWorkbench = lazy(() =>
   import("./DurableSourcesWorkbench").then(
     ({ DurableSourcesWorkbench: workspace }) => ({
@@ -1172,6 +1177,10 @@ export default function App({
     useState(false);
   const [mockInferenceWorkbenchOpen, setMockInferenceWorkbenchOpen] =
     useState(false);
+  const [
+    connectorGovernanceWorkbenchOpen,
+    setConnectorGovernanceWorkbenchOpen,
+  ] = useState(false);
   const [durableSourcesWorkbenchOpen, setDurableSourcesWorkbenchOpen] =
     useState(false);
   const mockInferenceLauncherRef = useRef<HTMLButtonElement>(null);
@@ -4502,6 +4511,27 @@ export default function App({
                         />
                       </Suspense>
                     )}
+                    {connectorGovernanceWorkbenchOpen && (
+                      <Suspense
+                        fallback={
+                          <section
+                            className="mock-inference-workbench"
+                            aria-label="Fictional connector governance"
+                          >
+                            <p role="status">
+                              Loading fictional connector governance…
+                            </p>
+                          </section>
+                        }
+                      >
+                        <ConnectorGovernanceWorkbench
+                          projectId={currentProject?.id ?? null}
+                          onClose={() =>
+                            setConnectorGovernanceWorkbenchOpen(false)
+                          }
+                        />
+                      </Suspense>
+                    )}
                     {durableSourcesWorkbenchOpen && (
                       <Suspense
                         fallback={
@@ -4552,6 +4582,14 @@ export default function App({
                         onClick={() => setMockInferenceWorkbenchOpen(true)}
                       >
                         Fictional mock inference
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setConnectorGovernanceWorkbenchOpen(true)
+                        }
+                      >
+                        Fictional connector governance
                       </button>
                     </section>
                   </>

@@ -1433,6 +1433,14 @@ fictional/local-only vertical slice. It does not authorize source work, a real
 connector, credentials, network, retrieval, external mutation, M58 browser
 behavior, MCP dispatch, or automation.
 
+**Beta.60 candidate implementation:** migration 24 and the closed Tauri/React
+fixture implement the approved fictional/local-only read and mutation exercise.
+They persist only bounded project/task, descriptor-digest, operation,
+authorization, lifecycle, terminal-outcome, and audit linkage; no connector
+content or secret is retained. The fixture has no network or external side
+effect. Packaging is candidate validation only; installation, release mutation,
+publication, and deployment remain separate approvals.
+
 **Decision complete:** [M57 connector governance](MILESTONE_57_CONNECTOR_GOVERNANCE.md)
 defines the least-authority connector classification, authority ladder,
 consent, credential, provenance, privacy, audit, failure, and revocation

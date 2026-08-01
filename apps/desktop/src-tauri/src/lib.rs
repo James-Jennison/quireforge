@@ -231,7 +231,7 @@ use project::{
         TaskCatalogListRequest, TaskCatalogSnapshot, TaskIdRequest, TaskStatusRequest,
         TaskTitleRequest,
     },
-    ProjectService,
+    FictionalConnectorOperationRecord, ProjectService,
 };
 use task_handoff::{
     TaskHandoffCreateRequest, TaskHandoffDirection, TaskHandoffReceiptRequest, TaskHandoffService,
@@ -1610,6 +1610,157 @@ fn mock_inference_catalog(
 }
 
 #[tauri::command]
+fn connector_governance_catalog(
+    service: tauri::State<'_, connector_foundation::ConnectorGovernanceService>,
+) -> connector_foundation::ConnectorSnapshot {
+    service.catalog()
+}
+
+#[tauri::command]
+fn connector_governance_prepare(
+    request: connector_foundation::ConnectorPrepareRequest,
+    service: tauri::State<'_, connector_foundation::ConnectorGovernanceService>,
+    projects: tauri::State<'_, ProjectService>,
+) -> connector_foundation::ConnectorSnapshot {
+    let Some(binding) = projects.task_mock_inference_binding(&request.task_id) else {
+        return service.unavailable();
+    };
+    let snapshot = service.prepare(request, binding.project_id);
+    if let (
+        Some(project_id),
+        Some(task_id),
+        Some(binding_id),
+        Some(operation_id),
+        Some(operation),
+        Some(descriptor_id),
+        Some(descriptor_version),
+        Some(descriptor_sha256),
+        Some(scope_digest),
+        Some(request_digest),
+        Some(expires_at_ms),
+    ) = (
+        snapshot.project_id.as_deref(),
+        snapshot.task_id.as_deref(),
+        snapshot.binding_id.as_deref(),
+        snapshot.operation_id.as_deref(),
+        snapshot.operation.as_deref(),
+        snapshot.descriptor_id.as_deref(),
+        snapshot.descriptor_version,
+        snapshot.descriptor_sha256.as_deref(),
+        snapshot.scope_digest.as_deref(),
+        snapshot.request_digest.as_deref(),
+        snapshot.expires_at_ms,
+    ) {
+        let state = match snapshot.state.as_str() {
+            "succeeded" => "completed",
+            "prepared" => "prepared",
+            _ => "rejected",
+        };
+        if !projects.record_fictional_connector_operation(FictionalConnectorOperationRecord {
+            project_id,
+            task_id,
+            binding_id,
+            operation_id,
+            authorization_id: snapshot.authorization_id.as_deref(),
+            operation_class: operation,
+            state,
+            descriptor_id,
+            descriptor_version,
+            descriptor_sha256,
+            scope_digest,
+            request_digest,
+            expires_at_ms: expires_at_ms as i64,
+        }) {
+            return service.unavailable();
+        }
+    }
+    snapshot
+}
+
+#[tauri::command]
+fn connector_governance_confirm(
+    request: connector_foundation::ConnectorConfirmRequest,
+    service: tauri::State<'_, connector_foundation::ConnectorGovernanceService>,
+    projects: tauri::State<'_, ProjectService>,
+) -> connector_foundation::ConnectorSnapshot {
+    let snapshot = service.confirm(request);
+    if let (Some(project_id), Some(task_id), Some(operation_id)) = (
+        snapshot.project_id.as_deref(),
+        snapshot.task_id.as_deref(),
+        snapshot.operation_id.as_deref(),
+    ) {
+        let state = if snapshot.state == "outcome-unknown" {
+            "outcome-unknown"
+        } else if snapshot.state == "succeeded" {
+            "completed"
+        } else {
+            "rejected"
+        };
+        if !projects.complete_fictional_connector_operation(
+            project_id,
+            task_id,
+            operation_id,
+            state,
+            &sha256(&format!("{}:{}:{}", project_id, operation_id, state)),
+        ) {
+            return service.unavailable();
+        }
+    }
+    snapshot
+}
+
+#[tauri::command]
+fn connector_governance_cancel(
+    request: connector_foundation::ConnectorCancelRequest,
+    service: tauri::State<'_, connector_foundation::ConnectorGovernanceService>,
+    projects: tauri::State<'_, ProjectService>,
+) -> connector_foundation::ConnectorSnapshot {
+    let snapshot = service.cancel(request);
+    if let (Some(project_id), Some(task_id), Some(operation_id)) = (
+        snapshot.project_id.as_deref(),
+        snapshot.task_id.as_deref(),
+        snapshot.operation_id.as_deref(),
+    ) {
+        if !projects.complete_fictional_connector_operation(
+            project_id,
+            task_id,
+            operation_id,
+            "cancelled",
+            &sha256(&format!("{}:{}:cancelled", project_id, operation_id)),
+        ) {
+            return service.unavailable();
+        }
+    }
+    snapshot
+}
+
+#[tauri::command]
+fn connector_governance_revoke(
+    request: connector_foundation::ConnectorOperationRequest,
+    service: tauri::State<'_, connector_foundation::ConnectorGovernanceService>,
+    projects: tauri::State<'_, ProjectService>,
+) -> connector_foundation::ConnectorSnapshot {
+    let snapshot = service.revoke(request);
+    if let (Some(project_id), Some(task_id), Some(operation_id)) = (
+        snapshot.project_id.as_deref(),
+        snapshot.task_id.as_deref(),
+        snapshot.operation_id.as_deref(),
+    ) {
+        if !projects.invalidate_fictional_connector_operation(
+            project_id,
+            task_id,
+            operation_id,
+            "revoked",
+            "revoked",
+            &sha256(&format!("{}:{}:revoked", project_id, operation_id)),
+        ) {
+            return service.unavailable();
+        }
+    }
+    snapshot
+}
+
+#[tauri::command]
 fn mock_inference_prepare(
     request: mock_inference::MockInferencePrepareRequest,
     service: tauri::State<'_, mock_inference::MockInferenceService>,
@@ -2839,6 +2990,7 @@ pub fn run() {
         .manage(FilePreviewService::default())
         .manage(TerminalService::default())
         .manage(mock_inference::MockInferenceService::default())
+        .manage(connector_foundation::ConnectorGovernanceService::default())
         .setup(|app| {
             match app.path().app_data_dir() {
                 Ok(directory) => {
@@ -2968,6 +3120,11 @@ pub fn run() {
             task_template_confirm,
             task_template_cancel,
             mock_inference_catalog,
+            connector_governance_catalog,
+            connector_governance_prepare,
+            connector_governance_confirm,
+            connector_governance_cancel,
+            connector_governance_revoke,
             mock_inference_prepare,
             mock_inference_authorize,
             mock_inference_submit,

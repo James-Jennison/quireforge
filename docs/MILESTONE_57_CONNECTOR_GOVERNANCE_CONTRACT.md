@@ -1,10 +1,13 @@
 # M57 — Connector Governance Contract and Executable Implementation Plan
 
-Status: ratified architecture and implementation contract. This is the
-authoritative current M57 contract. It supersedes the *implementation deferral*
-in the earlier [M57 governance record](MILESTONE_57_CONNECTOR_GOVERNANCE.md)
-and prerequisite/source-only closure records, while preserving their historical
-private local-mock foundation unchanged. It authorizes no runtime work itself.
+Status: ratified architecture and implementation contract; beta.60 fictional
+local-only candidate implementation. This is the authoritative current M57
+contract. It supersedes the *implementation deferral* in the earlier [M57
+governance record](MILESTONE_57_CONNECTOR_GOVERNANCE.md) and
+prerequisite/source-only closure records, while preserving their historical
+private local-mock foundation unchanged. The separately approved beta.60 slice
+implements this contract without broadening it; installation, release mutation,
+publication, and deployment remain unapproved.
 
 M55 Durable Source Admission is complete and published as `0.1.0-beta.59`.
 M58 Controlled Browser Verification remains unstarted and out of scope.
@@ -152,9 +155,9 @@ M58 remains wholly unstarted.
 
 ## Required fictional/local-only beta.60 vertical slice
 
-The next separately approvable implementation is **Provider-Neutral AI
-Foundation — M57 Fictional Connector Governance Vertical Slice**, targeting
-`0.1.0-beta.60` because beta.59 is the published generation. It is limited to:
+The separately approved **Provider-Neutral AI Foundation — M57 Fictional
+Connector Governance Vertical Slice** targets `0.1.0-beta.60` because beta.59
+is the published generation. It is limited to:
 
 - static non-executable `local_mock` descriptor/capability contracts and a
   deterministic fictional fixture;
@@ -179,10 +182,10 @@ M55 admission, context inclusion, provider transmission, or automatic retry.
 
 ## Separate approval remains required
 
-This contract ratifies vocabulary, invariants, and an executable boundary; it
-does **not** authorize implementation. Approval for the exact beta.60 vertical
-slice above is required before source changes. Real network read requires named
+The exact beta.60 fictional/local-only slice above has been separately approved
+and implemented as a candidate. Real network read still requires named
 provider/class/route, credential custody, retention/provenance, and retrieval
 decisions. Real mutation additionally requires provider-specific
 finality/postcondition approval. M58, generic MCP dispatch, browser behavior,
-automation, and excluded native authority remain independent approvals.
+automation, and excluded native authority remain independent approvals. Beta.60
+installation and installed-host validation require a separate bounded plan.

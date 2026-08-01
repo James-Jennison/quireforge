@@ -109,6 +109,24 @@ pub struct ProjectService {
     template_mutation_handles: Mutex<HashMap<String, TemplateMutationAuthority>>,
 }
 
+/// The complete immutable evidence required to persist one fictional M57
+/// operation. This remains native-only and contains no request or result bytes.
+pub(crate) struct FictionalConnectorOperationRecord<'a> {
+    pub project_id: &'a str,
+    pub task_id: &'a str,
+    pub binding_id: &'a str,
+    pub operation_id: &'a str,
+    pub authorization_id: Option<&'a str>,
+    pub operation_class: &'a str,
+    pub state: &'a str,
+    pub descriptor_id: &'a str,
+    pub descriptor_version: u32,
+    pub descriptor_sha256: &'a str,
+    pub scope_digest: &'a str,
+    pub request_digest: &'a str,
+    pub expires_at_ms: i64,
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum InstalledHostHeadlessStatus {
     Created,
@@ -274,6 +292,113 @@ impl ProjectService {
             project_id,
             task_id: task_id.to_owned(),
         })
+    }
+
+    pub(crate) fn record_fictional_connector_operation(
+        &self,
+        record: FictionalConnectorOperationRecord<'_>,
+    ) -> bool {
+        if !valid_id(record.project_id)
+            || !valid_id(record.task_id)
+            || !valid_id(record.binding_id)
+            || !valid_id(record.operation_id)
+            || record
+                .authorization_id
+                .is_some_and(|value| !valid_id(value))
+            || !matches!(record.operation_class, "read" | "mutation")
+            || record.descriptor_id.len() > 80
+            || record.descriptor_version == 0
+            || record.descriptor_sha256.len() != 64
+            || record.scope_digest.len() != 64
+            || record.request_digest.len() != 64
+            || record.expires_at_ms < 0
+        {
+            return false;
+        }
+        self.repository
+            .lock()
+            .ok()
+            .and_then(|mut repository| {
+                repository
+                    .as_mut()
+                    .map(|repo| repo.record_fictional_connector_operation(&record))
+            })
+            .is_some_and(|result| result.is_ok())
+    }
+
+    pub(crate) fn complete_fictional_connector_operation(
+        &self,
+        project_id: &str,
+        task_id: &str,
+        operation_id: &str,
+        state: &str,
+        evidence_digest: &str,
+    ) -> bool {
+        if !valid_id(project_id)
+            || !valid_id(task_id)
+            || !valid_id(operation_id)
+            || !matches!(
+                state,
+                "cancelled" | "completed" | "outcome-unknown" | "rejected"
+            )
+            || evidence_digest.len() != 64
+        {
+            return false;
+        }
+        self.repository
+            .lock()
+            .ok()
+            .and_then(|mut repository| {
+                repository.as_mut().map(|repo| {
+                    repo.complete_fictional_connector_operation(
+                        project_id,
+                        task_id,
+                        operation_id,
+                        state,
+                        evidence_digest,
+                    )
+                })
+            })
+            .is_some_and(|result| result.is_ok())
+    }
+
+    pub(crate) fn invalidate_fictional_connector_operation(
+        &self,
+        project_id: &str,
+        task_id: &str,
+        operation_id: &str,
+        binding_state: &str,
+        operation_state: &str,
+        evidence_digest: &str,
+    ) -> bool {
+        if !valid_id(project_id)
+            || !valid_id(task_id)
+            || !valid_id(operation_id)
+            || !matches!(
+                binding_state,
+                "revoked" | "quarantined" | "incompatible" | "expired"
+            )
+            || !matches!(operation_state, "revoked" | "rejected" | "expired")
+            || evidence_digest.len() != 64
+        {
+            return false;
+        }
+        self.repository
+            .lock()
+            .ok()
+            .and_then(|mut repository| {
+                repository.as_mut().map(|repo| {
+                    repo.transition_fictional_connector_binding(
+                        project_id,
+                        task_id,
+                        operation_id,
+                        binding_state,
+                        operation_state,
+                        evidence_digest,
+                    )
+                })
+            })
+            .is_some_and(|result| result.is_ok())
     }
 
     fn with_template_service<T>(

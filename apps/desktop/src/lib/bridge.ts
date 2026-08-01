@@ -38,6 +38,14 @@ import { codexRuntimeSchema, type CodexRuntimeSnapshot } from "./codex";
 import { codexUsageSchema, type CodexUsageSnapshot } from "./usage";
 import { desktopBootstrapSchema, type DesktopBootstrap } from "./contract";
 import {
+  connectorCancelRequestSchema,
+  connectorConfirmRequestSchema,
+  connectorPrepareRequestSchema,
+  connectorOperationRequestSchema,
+  connectorSnapshotSchema,
+  type ConnectorSnapshot,
+} from "./connectorGovernance";
+import {
   filePreviewHandoffRequestSchema,
   filePreviewSchema,
   type FilePreviewHandoffRequest,
@@ -405,6 +413,16 @@ export const MOCK_INFERENCE_AUTHORIZE_COMMAND = "mock_inference_authorize";
 export const MOCK_INFERENCE_SUBMIT_COMMAND = "mock_inference_submit";
 export const MOCK_INFERENCE_CANCEL_COMMAND = "mock_inference_cancel";
 export const MOCK_INFERENCE_POLL_COMMAND = "mock_inference_poll";
+export const CONNECTOR_GOVERNANCE_CATALOG_COMMAND =
+  "connector_governance_catalog";
+export const CONNECTOR_GOVERNANCE_PREPARE_COMMAND =
+  "connector_governance_prepare";
+export const CONNECTOR_GOVERNANCE_CONFIRM_COMMAND =
+  "connector_governance_confirm";
+export const CONNECTOR_GOVERNANCE_CANCEL_COMMAND =
+  "connector_governance_cancel";
+export const CONNECTOR_GOVERNANCE_REVOKE_COMMAND =
+  "connector_governance_revoke";
 export const LOCAL_REVIEW_STATUS_COMMAND = "local_review_status";
 export const LOCAL_REVIEW_COLLECTION_CREATE_COMMAND =
   "local_review_collection_create";
@@ -1537,6 +1555,64 @@ export const pollMockInference = (
     MOCK_INFERENCE_POLL_COMMAND,
     request,
     mockInferenceAttemptRequestSchema,
+    invokeFunction,
+  );
+
+async function connectorInvoke(
+  command: string,
+  request: unknown,
+  schema: z.ZodType,
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<ConnectorSnapshot> {
+  return connectorSnapshotSchema.parse(
+    await invokeFunction(command, { request: schema.parse(request) }),
+  );
+}
+export async function loadConnectorGovernance(
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<ConnectorSnapshot> {
+  return connectorSnapshotSchema.parse(
+    await invokeFunction(CONNECTOR_GOVERNANCE_CATALOG_COMMAND),
+  );
+}
+export const prepareConnectorGovernance = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+) =>
+  connectorInvoke(
+    CONNECTOR_GOVERNANCE_PREPARE_COMMAND,
+    request,
+    connectorPrepareRequestSchema,
+    invokeFunction,
+  );
+export const confirmConnectorGovernance = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+) =>
+  connectorInvoke(
+    CONNECTOR_GOVERNANCE_CONFIRM_COMMAND,
+    request,
+    connectorConfirmRequestSchema,
+    invokeFunction,
+  );
+export const cancelConnectorGovernance = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+) =>
+  connectorInvoke(
+    CONNECTOR_GOVERNANCE_CANCEL_COMMAND,
+    request,
+    connectorCancelRequestSchema,
+    invokeFunction,
+  );
+export const revokeConnectorGovernance = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+) =>
+  connectorInvoke(
+    CONNECTOR_GOVERNANCE_REVOKE_COMMAND,
+    request,
+    connectorOperationRequestSchema,
     invokeFunction,
   );
 

@@ -1,10 +1,16 @@
 # Changelog
 
-## Unreleased
+## 0.1.0-beta.60 — Fictional connector governance candidate
 
-- Ratify the M57 Connector Governance Contract and executable,
-  fictional/local-only beta.60 implementation plan without adding connector
-  runtime authority.
+- Implement the M57 fictional/local-only connector-governance vertical slice:
+  static descriptor/capability declaration, project/task validation, separate
+  local read and fictional mutation paths, digest-bound one-use confirmation,
+  cancellation, replay rejection, ambiguous outcome/no-retry handling, and
+  content-free durable binding/operation/audit records.
+- Add no network, real connector, credential, OAuth, browser/M58, MCP dispatch,
+  provider transmission, retrieval, automation, external mutation, shell, Git,
+  cloud, or deployment authority. Beta.60 is a candidate only; installation,
+  publication, and deployment remain unapproved.
 
 ## 0.1.0-beta.59 — Durable Source Admission fail-safe correction
 

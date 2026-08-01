@@ -49,7 +49,7 @@ use super::{
     identity::DirectoryIdentity,
     types::{DirectoryAccessibilityState, ExpectedAccess},
     AdvisorConversationMetadata, ChatConversationMetadata, ConversationReference,
-    ConversationSelectionMetadata,
+    ConversationSelectionMetadata, FictionalConnectorOperationRecord,
 };
 
 const INITIAL_MIGRATION: &str = r#"
@@ -821,6 +821,52 @@ CREATE TRIGGER durable_sources_identity_immutable BEFORE UPDATE OF id, schema_ve
 CREATE TRIGGER durable_sources_lifecycle_transition BEFORE UPDATE OF state ON durable_sources WHEN NOT ((OLD.state = 'active' AND NEW.state = 'deleted') OR OLD.state = NEW.state) BEGIN SELECT RAISE(ABORT, 'durable source lifecycle transition is invalid'); END;
 "#;
 
+// M57 persists only fictional/local governance evidence. No connector payload,
+// credential, URL, path, provider identifier, or external result can enter
+// these tables.
+const FICTIONAL_CONNECTOR_GOVERNANCE_MIGRATION: &str = r#"
+CREATE TABLE fictional_connector_bindings (
+ id TEXT PRIMARY KEY NOT NULL CHECK(length(id) = 36),
+ schema_version INTEGER NOT NULL CHECK(schema_version = 1),
+ project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE RESTRICT,
+ task_id TEXT REFERENCES task_records(id) ON DELETE RESTRICT,
+ descriptor_id TEXT NOT NULL CHECK(length(descriptor_id) BETWEEN 1 AND 80),
+ descriptor_version INTEGER NOT NULL CHECK(descriptor_version > 0),
+ descriptor_sha256 TEXT NOT NULL CHECK(length(descriptor_sha256) = 64),
+ scope_digest TEXT NOT NULL CHECK(length(scope_digest) = 64),
+ state TEXT NOT NULL CHECK(state IN ('ready','revoked','quarantined','incompatible','expired')),
+ created_at_ms INTEGER NOT NULL CHECK(created_at_ms >= 0),
+ updated_at_ms INTEGER NOT NULL CHECK(updated_at_ms >= created_at_ms)
+);
+CREATE TABLE fictional_connector_operations (
+ id TEXT PRIMARY KEY NOT NULL CHECK(length(id) = 36),
+ schema_version INTEGER NOT NULL CHECK(schema_version = 1),
+ binding_id TEXT NOT NULL REFERENCES fictional_connector_bindings(id) ON DELETE RESTRICT,
+ project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE RESTRICT,
+ task_id TEXT REFERENCES task_records(id) ON DELETE RESTRICT,
+ operation_class TEXT NOT NULL CHECK(operation_class IN ('read','mutation')),
+ request_digest TEXT NOT NULL CHECK(length(request_digest) = 64),
+ authorization_id TEXT UNIQUE CHECK(authorization_id IS NULL OR length(authorization_id) = 36),
+ state TEXT NOT NULL CHECK(state IN ('prepared','cancelled','expired','revoked','rejected','completed','outcome-unknown')),
+ created_at_ms INTEGER NOT NULL CHECK(created_at_ms >= 0),
+ expires_at_ms INTEGER NOT NULL CHECK(expires_at_ms >= created_at_ms),
+ completed_at_ms INTEGER CHECK(completed_at_ms >= created_at_ms)
+);
+CREATE TABLE fictional_connector_audit (
+ id TEXT PRIMARY KEY NOT NULL CHECK(length(id) = 36),
+ operation_id TEXT NOT NULL REFERENCES fictional_connector_operations(id) ON DELETE RESTRICT,
+ binding_id TEXT NOT NULL REFERENCES fictional_connector_bindings(id) ON DELETE RESTRICT,
+ event_kind TEXT NOT NULL CHECK(length(event_kind) BETWEEN 1 AND 64),
+ outcome TEXT NOT NULL CHECK(length(outcome) BETWEEN 1 AND 64),
+ evidence_digest TEXT NOT NULL CHECK(length(evidence_digest) = 64),
+ created_at_ms INTEGER NOT NULL CHECK(created_at_ms >= 0)
+);
+CREATE TRIGGER fictional_connector_binding_identity_immutable BEFORE UPDATE OF id, schema_version, project_id, task_id, descriptor_id, descriptor_version, descriptor_sha256, scope_digest, created_at_ms ON fictional_connector_bindings BEGIN SELECT RAISE(ABORT, 'fictional connector binding identity is immutable'); END;
+CREATE TRIGGER fictional_connector_operation_identity_immutable BEFORE UPDATE OF id, schema_version, binding_id, project_id, task_id, operation_class, request_digest, authorization_id, created_at_ms, expires_at_ms ON fictional_connector_operations BEGIN SELECT RAISE(ABORT, 'fictional connector operation identity is immutable'); END;
+CREATE INDEX fictional_connector_bindings_project_active ON fictional_connector_bindings(project_id, state, updated_at_ms DESC);
+CREATE INDEX fictional_connector_operations_binding_recent ON fictional_connector_operations(binding_id, created_at_ms DESC);
+"#;
+
 const MIGRATIONS: &[(i64, &str, &str)] = &[
     (1, "projects-and-directory-associations", INITIAL_MIGRATION),
     (
@@ -913,6 +959,11 @@ const MIGRATIONS: &[(i64, &str, &str)] = &[
         TASK_TEMPLATE_APPLICATION_RESERVATIONS_MIGRATION,
     ),
     (23, "durable-sources-v1", DURABLE_SOURCES_MIGRATION),
+    (
+        24,
+        "fictional-connector-governance-v1",
+        FICTIONAL_CONNECTOR_GOVERNANCE_MIGRATION,
+    ),
 ];
 
 #[derive(Debug, Error)]
@@ -5075,6 +5126,102 @@ impl ProjectRepository {
             .ok_or(StorageError::TaskNotFound)
     }
 
+    pub(crate) fn record_fictional_connector_operation(
+        &mut self,
+        record: &FictionalConnectorOperationRecord<'_>,
+    ) -> Result<(), StorageError> {
+        let bound_project: String = self.connection.query_row(
+            "SELECT project_id FROM task_records WHERE id = ?1 AND archived_at_ms IS NULL",
+            [record.task_id],
+            |row| row.get(0),
+        )?;
+        if bound_project != record.project_id {
+            return Err(StorageError::TaskNotFound);
+        }
+        if !is_uuid_v7(record.binding_id)
+            || !is_uuid_v7(record.operation_id)
+            || record
+                .authorization_id
+                .is_some_and(|value| !is_uuid_v7(value))
+            || !matches!(record.operation_class, "read" | "mutation")
+            || !matches!(record.state, "prepared" | "completed")
+            || record.descriptor_id != "019a57c0-0000-7000-8000-000000000001"
+            || record.descriptor_version != 1
+            || !valid_review_sha256(record.descriptor_sha256)
+            || !valid_review_sha256(record.scope_digest)
+            || !valid_review_sha256(record.request_digest)
+        {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let now = now_millis();
+        if record.expires_at_ms < now {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        tx.execute("INSERT INTO fictional_connector_bindings (id, schema_version, project_id, task_id, descriptor_id, descriptor_version, descriptor_sha256, scope_digest, state, created_at_ms, updated_at_ms) VALUES (?1,1,?2,?3,?4,?5,?6,?7,'ready',?8,?8)", params![record.binding_id, record.project_id, record.task_id, record.descriptor_id, record.descriptor_version, record.descriptor_sha256, record.scope_digest, now])?;
+        tx.execute("INSERT INTO fictional_connector_operations (id, schema_version, binding_id, project_id, task_id, operation_class, request_digest, authorization_id, state, created_at_ms, expires_at_ms, completed_at_ms) VALUES (?1,1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11)", params![record.operation_id, record.binding_id, record.project_id, record.task_id, record.operation_class, record.request_digest, record.authorization_id, record.state, now, record.expires_at_ms, if record.state == "completed" { Some(now) } else { None }])?;
+        tx.execute("INSERT INTO fictional_connector_audit (id, operation_id, binding_id, event_kind, outcome, evidence_digest, created_at_ms) VALUES (?1,?2,?3,'prepared-or-read',?4,?5,?6)", params![Uuid::now_v7().to_string(), record.operation_id, record.binding_id, record.state, record.request_digest, now])?;
+        tx.commit()?;
+        Ok(())
+    }
+
+    pub(crate) fn complete_fictional_connector_operation(
+        &mut self,
+        project_id: &str,
+        task_id: &str,
+        operation_id: &str,
+        state: &str,
+        evidence_digest: &str,
+    ) -> Result<(), StorageError> {
+        let now = now_millis();
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let binding_id: String = tx.query_row(
+            "SELECT binding_id FROM fictional_connector_operations WHERE id = ?1 AND project_id = ?2 AND task_id = ?3 AND state = 'prepared'",
+            params![operation_id, project_id, task_id], |row| row.get(0),
+        )?;
+        if tx.execute("UPDATE fictional_connector_operations SET state = ?1, completed_at_ms = ?2 WHERE id = ?3 AND state = 'prepared'", params![state, now, operation_id])? != 1 { return Err(StorageError::InvalidStoredValue); }
+        tx.execute("INSERT INTO fictional_connector_audit (id, operation_id, binding_id, event_kind, outcome, evidence_digest, created_at_ms) VALUES (?1,?2,?3,'fictional-local-terminal',?4,?5,?6)", params![Uuid::now_v7().to_string(), operation_id, binding_id, state, evidence_digest, now])?;
+        tx.commit()?;
+        Ok(())
+    }
+
+    pub(crate) fn transition_fictional_connector_binding(
+        &mut self,
+        project_id: &str,
+        task_id: &str,
+        operation_id: &str,
+        binding_state: &str,
+        operation_state: &str,
+        evidence_digest: &str,
+    ) -> Result<(), StorageError> {
+        if !matches!(
+            binding_state,
+            "revoked" | "quarantined" | "incompatible" | "expired"
+        ) || !matches!(operation_state, "revoked" | "rejected" | "expired")
+            || !valid_review_sha256(evidence_digest)
+        {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let now = now_millis();
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let binding_id: String = tx.query_row(
+            "SELECT binding_id FROM fictional_connector_operations WHERE id = ?1 AND project_id = ?2 AND task_id = ?3 AND state = 'prepared'",
+            params![operation_id, project_id, task_id], |row| row.get(0),
+        )?;
+        if tx.execute("UPDATE fictional_connector_bindings SET state = ?1, updated_at_ms = ?2 WHERE id = ?3 AND state = 'ready'", params![binding_state, now, binding_id])? != 1
+            || tx.execute("UPDATE fictional_connector_operations SET state = ?1, completed_at_ms = ?2 WHERE id = ?3 AND state = 'prepared'", params![operation_state, now, operation_id])? != 1
+        { return Err(StorageError::InvalidStoredValue); }
+        tx.execute("INSERT INTO fictional_connector_audit (id, operation_id, binding_id, event_kind, outcome, evidence_digest, created_at_ms) VALUES (?1,?2,?3,'binding-invalidated',?4,?5,?6)", params![Uuid::now_v7().to_string(), operation_id, binding_id, binding_state, evidence_digest, now])?;
+        tx.commit()?;
+        Ok(())
+    }
+
     #[cfg(test)]
     pub(crate) fn task_advisor_dispatch_origin(
         &self,
@@ -5740,6 +5887,7 @@ impl ProjectRepository {
         verify_schema(&connection)?;
         recover_interrupted_conversations(&connection)?;
         recover_interrupted_terminals(&connection)?;
+        recover_interrupted_fictional_connector_operations(&connection)?;
         Ok(Self {
             connection,
             activity_session_id: Uuid::now_v7().to_string(),
@@ -8006,6 +8154,44 @@ fn recover_interrupted_terminals(connection: &Connection) -> Result<(), StorageE
     Ok(())
 }
 
+/// A prepared fictional operation is intentionally process-local. A restart
+/// cannot restore its in-memory authorization, so recovery closes it as
+/// expired and preserves only content-free audit evidence.
+fn recover_interrupted_fictional_connector_operations(
+    connection: &Connection,
+) -> Result<(), StorageError> {
+    let timestamp = now_millis();
+    let mut statement = connection.prepare(
+        "SELECT id, binding_id FROM fictional_connector_operations WHERE state = 'prepared'",
+    )?;
+    let pending = statement
+        .query_map([], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+    drop(statement);
+    if pending.is_empty() {
+        return Ok(());
+    }
+    let transaction = connection.unchecked_transaction()?;
+    for (operation_id, binding_id) in pending {
+        transaction.execute(
+            "UPDATE fictional_connector_operations SET state = 'expired', completed_at_ms = ?1 WHERE id = ?2 AND state = 'prepared'",
+            params![timestamp, operation_id],
+        )?;
+        transaction.execute(
+            "UPDATE fictional_connector_bindings SET state = 'expired', updated_at_ms = ?1 WHERE id = ?2 AND state = 'ready'",
+            params![timestamp, binding_id],
+        )?;
+        transaction.execute(
+            "INSERT INTO fictional_connector_audit (id, operation_id, binding_id, event_kind, outcome, evidence_digest, created_at_ms) VALUES (?1, ?2, ?3, 'process-recovery', 'expired', ?4, ?5)",
+            params![Uuid::now_v7().to_string(), operation_id, binding_id, review_digest(b"fictional-process-recovery-v1"), timestamp],
+        )?;
+    }
+    transaction.commit()?;
+    Ok(())
+}
+
 fn stored_conversation_reference(
     row: &rusqlite::Row<'_>,
 ) -> rusqlite::Result<StoredConversationReference> {
@@ -8208,6 +8394,7 @@ mod tests {
         LocalReviewItemState, LocalReviewLineKind, LocalReviewSourceKind, LocalReviewTextFormat,
         TaskStatus,
     };
+    use crate::project::FictionalConnectorOperationRecord;
     use crate::project::{
         ChatConversationMetadata, ConversationPendingSelection, ConversationReference,
         ConversationSelectionMetadata,
@@ -8743,7 +8930,7 @@ mod tests {
                     0
                 ))
                 .expect("version"),
-            23
+            24
         );
     }
 
@@ -8905,6 +9092,9 @@ mod tests {
                 "conversation_references".to_owned(),
                 "directory_associations".to_owned(),
                 "durable_sources".to_owned(),
+                "fictional_connector_audit".to_owned(),
+                "fictional_connector_bindings".to_owned(),
+                "fictional_connector_operations".to_owned(),
                 "local_review_activity_ledger".to_owned(),
                 "local_review_annotations".to_owned(),
                 "local_review_collections".to_owned(),
@@ -9331,7 +9521,7 @@ mod tests {
                     0
                 ),)
                 .expect("version"),
-            23
+            24
         );
         assert_eq!(
             repository.connection.query_row(
@@ -9431,6 +9621,120 @@ mod tests {
                 .expect("failed create must not persist"),
             count_before
         );
+    }
+
+    #[test]
+    fn fictional_connector_records_are_project_task_bound_and_content_free() {
+        let mut repository = ProjectRepository::in_memory().expect("schema");
+        let (project_id, _) = insert_live_task_context(&repository);
+        let task_id = repository
+            .create_task_for_project(&project_id, "Connector fixture")
+            .expect("task");
+        let operation_id = Uuid::now_v7().to_string();
+        let authorization_id = Uuid::now_v7().to_string();
+        let binding_id = Uuid::now_v7().to_string();
+        let digest = review_digest(b"fictional-local-only-request");
+        repository
+            .record_fictional_connector_operation(&FictionalConnectorOperationRecord {
+                project_id: &project_id,
+                task_id: &task_id,
+                binding_id: &binding_id,
+                operation_id: &operation_id,
+                authorization_id: Some(&authorization_id),
+                operation_class: "mutation",
+                state: "prepared",
+                descriptor_id: "019a57c0-0000-7000-8000-000000000001",
+                descriptor_version: 1,
+                descriptor_sha256: &digest,
+                scope_digest: &digest,
+                request_digest: &digest,
+                expires_at_ms: super::now_millis() + 5 * 60 * 1000,
+            })
+            .expect("prepared operation");
+        repository
+            .complete_fictional_connector_operation(
+                &project_id,
+                &task_id,
+                &operation_id,
+                "outcome-unknown",
+                &digest,
+            )
+            .expect("ambiguous terminal result");
+        let row: (String, String, String) = repository.connection.query_row(
+            "SELECT operation_class, state, request_digest FROM fictional_connector_operations WHERE id = ?1",
+            [&operation_id], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+        ).expect("persisted operation");
+        assert_eq!(row, ("mutation".into(), "outcome-unknown".into(), digest));
+        let audit_count: i64 = repository
+            .connection
+            .query_row(
+                "SELECT count(*) FROM fictional_connector_audit WHERE operation_id = ?1",
+                [&operation_id],
+                |row| row.get(0),
+            )
+            .expect("audit");
+        assert_eq!(audit_count, 2);
+        assert!(repository
+            .record_fictional_connector_operation(&FictionalConnectorOperationRecord {
+                project_id: &Uuid::now_v7().to_string(),
+                task_id: &task_id,
+                binding_id: &Uuid::now_v7().to_string(),
+                operation_id: &Uuid::now_v7().to_string(),
+                authorization_id: None,
+                operation_class: "read",
+                state: "completed",
+                descriptor_id: "019a57c0-0000-7000-8000-000000000001",
+                descriptor_version: 1,
+                descriptor_sha256: &review_digest(b"wrong-descriptor"),
+                scope_digest: &review_digest(b"wrong-scope"),
+                request_digest: &review_digest(b"wrong-project"),
+                expires_at_ms: super::now_millis() + 5 * 60 * 1000,
+            })
+            .is_err());
+    }
+
+    #[test]
+    fn fictional_connector_process_recovery_expires_pending_authorization() {
+        let mut repository = ProjectRepository::in_memory().expect("schema");
+        let (project_id, _) = insert_live_task_context(&repository);
+        let task_id = repository
+            .create_task_for_project(&project_id, "Connector recovery fixture")
+            .expect("task");
+        let binding_id = Uuid::now_v7().to_string();
+        let operation_id = Uuid::now_v7().to_string();
+        let authorization_id = Uuid::now_v7().to_string();
+        let digest = review_digest(b"fictional-recovery-request");
+        repository
+            .record_fictional_connector_operation(&FictionalConnectorOperationRecord {
+                project_id: &project_id,
+                task_id: &task_id,
+                binding_id: &binding_id,
+                operation_id: &operation_id,
+                authorization_id: Some(&authorization_id),
+                operation_class: "mutation",
+                state: "prepared",
+                descriptor_id: "019a57c0-0000-7000-8000-000000000001",
+                descriptor_version: 1,
+                descriptor_sha256: &digest,
+                scope_digest: &digest,
+                request_digest: &digest,
+                expires_at_ms: super::now_millis() + 5 * 60 * 1000,
+            })
+            .expect("prepared operation");
+        super::recover_interrupted_fictional_connector_operations(&repository.connection)
+            .expect("process recovery");
+        let states: (String, String) = repository.connection.query_row(
+            "SELECT operation.state, binding.state FROM fictional_connector_operations operation JOIN fictional_connector_bindings binding ON binding.id = operation.binding_id WHERE operation.id = ?1",
+            [&operation_id],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        ).expect("expired state");
+        assert_eq!(states, ("expired".into(), "expired".into()));
+        let recovery_events: i64 = repository.connection.query_row(
+            "SELECT count(*) FROM fictional_connector_audit WHERE operation_id = ?1 AND event_kind = 'process-recovery' AND outcome = 'expired'",
+            [&operation_id],
+            |row| row.get(0),
+        ).expect("recovery audit");
+        assert_eq!(recovery_events, 1);
     }
 
     #[test]
@@ -9685,7 +9989,7 @@ mod tests {
                     0
                 ))
                 .expect("migration version"),
-            23
+            24
         );
     }
 
@@ -9857,7 +10161,7 @@ mod tests {
                     0
                 ))
                 .expect("version"),
-            23
+            24
         );
 
         let mut failed = Connection::open_in_memory().expect("database opens");
@@ -10239,7 +10543,7 @@ mod tests {
                 1
             );
         }
-        assert_eq!(MIGRATIONS.len(), 23);
+        assert_eq!(MIGRATIONS.len(), 24);
 
         let connection = Connection::open_in_memory().expect("database");
         connection
@@ -10287,7 +10591,7 @@ mod tests {
                     0
                 ))
                 .expect("version"),
-            23
+            24
         );
         assert_eq!(
             repository
@@ -10344,7 +10648,7 @@ mod tests {
                     0
                 ))
                 .expect("version"),
-            23
+            24
         );
     }
 

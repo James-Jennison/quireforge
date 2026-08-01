@@ -161,10 +161,14 @@ superseded by the completed beta.59 contract and published release. The ratified
 [M57 Connector Governance Contract](MILESTONE_57_CONNECTOR_GOVERNANCE_CONTRACT.md)
 supersedes the earlier M57 implementation deferral only: it defines the next
 separately approvable beta.60 fictional/local-only connector-governance vertical
-slice. It grants no source implementation, real connector, credential, network,
-MCP dispatch, browser/M58, automation, retrieval, context, provider
-transmission, or external mutation. The all-in-one workspace direction remains
-non-authorizing guidance.
+slice. The beta.60 candidate implements that fictional local-only slice through
+migration 24: bounded project/task-bound connector binding, operation, and
+content-free audit records; declared read/mutation capabilities; deterministic
+read; and one-use fictional mutation review/confirmation/cancellation/ambiguous
+outcome handling. It grants no real connector, credential, network, MCP
+dispatch, browser/M58, automation, retrieval, context, provider transmission,
+or external mutation. Installation, publication, and deployment remain
+unapproved.
 
 The **External Capability Taxonomy and Sequencing** decision checkpoint is
 complete. It grants no implementation authority, separates inference,
