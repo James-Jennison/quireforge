@@ -1865,6 +1865,20 @@ impl ProjectService {
             )
     }
 
+    pub fn durable_source_cancel(
+        &self,
+        request: types::DurableSourceCancelRequest,
+    ) -> Result<(), DurableSourceDiagnosticCode> {
+        let mut controller = self
+            .durable_sources
+            .lock()
+            .map_err(|_| DurableSourceDiagnosticCode::PrivateStorageFailure)?;
+        controller
+            .as_mut()
+            .ok_or(DurableSourceDiagnosticCode::PrivateStorageFailure)?
+            .cancel(&request.preparation_id, &request.nonce)
+    }
+
     pub fn durable_sources(&self, request: DurableSourceProjectRequest) -> DurableSourceSnapshot {
         let repository = match self.repository.lock() {
             Ok(value) => value,
@@ -3629,9 +3643,10 @@ mod tests {
 
     use super::{
         types::{
-            DirectoryAccessibilityState, DurableSourceConfirmRequest, DurableSourceDiagnosticCode,
-            DurableSourceManualPrepareRequest, DurableSourceProjectRequest,
-            LocalReviewEvidenceSource, LocalReviewM48ArtifactCopyRequest,
+            DirectoryAccessibilityState, DurableSourceCancelRequest, DurableSourceConfirmRequest,
+            DurableSourceDiagnosticCode, DurableSourceManualPrepareRequest,
+            DurableSourceProjectRequest, LocalReviewEvidenceSource,
+            LocalReviewM48ArtifactCopyRequest,
             LocalReviewM48GeneratedArtifactMetadataEvidenceRequest,
             LocalReviewManualEvidenceCreateRequest, LocalReviewManualEvidenceCreateResult,
             LocalReviewPromotionPrepareRequest, LocalReviewPromotionReservationRequest,
@@ -4199,6 +4214,59 @@ mod tests {
             Err(DurableSourceDiagnosticCode::PreparationMissing)
         );
         fs::remove_dir_all(directory).expect("temporary project must be removed");
+    }
+
+    #[test]
+    fn durable_source_cancel_and_service_exit_remove_staged_bytes_without_a_record() {
+        let root = temporary_directory("m55-cancel");
+        let project = root.join("project");
+        let database = root.join("app-data/metadata.sqlite3");
+        fs::create_dir(&project).expect("project directory");
+        let service = ProjectService::open(&database);
+        service.prepare_attachment(project);
+        let project_id = service.confirm_pending().projects[0].id.clone();
+        let first = service.durable_source_prepare_manual(DurableSourceManualPrepareRequest {
+            project_id: project_id.clone(),
+            task_id: None,
+            title: "cancelled".to_owned(),
+            text: "private staged text".to_owned(),
+        });
+        let source_root = root.join("app-data/durable-sources");
+        assert!(source_root
+            .join(format!(".{}.stage", first.preparation_id))
+            .is_file());
+        service
+            .durable_source_cancel(DurableSourceCancelRequest {
+                preparation_id: first.preparation_id,
+                nonce: first.nonce,
+            })
+            .expect("cancellation must remove staged bytes");
+        assert!(fs::read_dir(&source_root)
+            .expect("source root")
+            .next()
+            .is_none());
+        assert!(service
+            .durable_sources(DurableSourceProjectRequest {
+                project_id: project_id.clone()
+            })
+            .sources
+            .is_empty());
+
+        let second = service.durable_source_prepare_manual(DurableSourceManualPrepareRequest {
+            project_id,
+            task_id: None,
+            title: "exit".to_owned(),
+            text: "private staged text".to_owned(),
+        });
+        assert!(source_root
+            .join(format!(".{}.stage", second.preparation_id))
+            .is_file());
+        drop(service);
+        assert!(fs::read_dir(&source_root)
+            .expect("source root")
+            .next()
+            .is_none());
+        fs::remove_dir_all(root).expect("temporary root removal");
     }
 
     #[test]

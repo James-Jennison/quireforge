@@ -59,6 +59,9 @@ export const durableSourceArtifactPrepareRequestSchema = z
 export const durableSourceConfirmRequestSchema = z
   .object({ preparationId: id, nonce: id, sha256 })
   .strict();
+export const durableSourceCancelRequestSchema = z
+  .object({ preparationId: id, nonce: id })
+  .strict();
 export const durableSourceProjectRequestSchema = z
   .object({ projectId: id })
   .strict();
@@ -129,6 +132,9 @@ export type DurableSourceArtifactPrepareRequest = z.infer<
 >;
 export type DurableSourceConfirmRequest = z.infer<
   typeof durableSourceConfirmRequestSchema
+>;
+export type DurableSourceCancelRequest = z.infer<
+  typeof durableSourceCancelRequestSchema
 >;
 export type DurableSourceProjectRequest = z.infer<
   typeof durableSourceProjectRequestSchema

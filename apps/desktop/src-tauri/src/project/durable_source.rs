@@ -330,6 +330,24 @@ impl DurableSourceController {
         }
     }
 
+    pub(crate) fn cancel(
+        &mut self,
+        preparation_id: &str,
+        nonce: &str,
+    ) -> Result<(), DurableSourceDiagnosticCode> {
+        self.expire();
+        let pending = self
+            .pending
+            .remove(preparation_id)
+            .ok_or(DurableSourceDiagnosticCode::PreparationMissing)?;
+        if pending.nonce != nonce {
+            let _ = fs::remove_file(&pending.staged);
+            return Err(DurableSourceDiagnosticCode::ConfirmationMismatch);
+        }
+        fs::remove_file(&pending.staged)
+            .map_err(|_| DurableSourceDiagnosticCode::PrivateStorageFailure)
+    }
+
     pub(crate) fn delete(
         &mut self,
         repository: &mut ProjectRepository,
@@ -445,6 +463,14 @@ impl DurableSourceController {
             }
         }
         Ok(())
+    }
+}
+
+impl Drop for DurableSourceController {
+    fn drop(&mut self) {
+        for pending in self.pending.values() {
+            let _ = fs::remove_file(&pending.staged);
+        }
     }
 }
 

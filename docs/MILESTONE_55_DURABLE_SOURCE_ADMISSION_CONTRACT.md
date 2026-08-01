@@ -1,6 +1,7 @@
 # M55 Durable Source Admission Implementation Contract
 
-Status: implementation contract ratified for `0.1.0-beta.58`. This document
+Status: implementation contract ratified for `0.1.0-beta.58`; the beta.59
+replacement candidate corrects only the installed-host chooser fail-safe. This document
 supersedes the earlier M55 implementation deferral; it does not authorize
 retrieval, provider transmission, context inclusion, connectors, browser
 authority, generic MCP, or automation.
@@ -26,6 +27,12 @@ Confirmation repeats the digest and validates current project/task ownership,
 expiry, use state, and staged bytes. Ambiguous mutation is never retried.
 Identical content may be deliberately admitted again only through a fresh
 preparation and confirmation, creating a fresh source ID.
+
+The native chooser must not block the application command loop indefinitely.
+Unavailable, cancelled, timed-out, or otherwise ambiguous selection returns a
+bounded non-secret diagnostic without staging bytes, creating a record, or
+retrying. Cancelling a prepared review and ordinary application exit remove its
+staged bytes immediately.
 
 Canonical bytes are SHA-256 hashed natively and stored under native-controlled
 source identities in application-private storage, never in the attached

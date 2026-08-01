@@ -1352,6 +1352,13 @@ pub struct DurableSourceConfirmRequest {
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct DurableSourceCancelRequest {
+    pub preparation_id: String,
+    pub nonce: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct DurableSourceProjectRequest {
     pub project_id: String,
 }

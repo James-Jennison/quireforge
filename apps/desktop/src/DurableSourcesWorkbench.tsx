@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import {
+  cancelDurableSource,
   confirmDurableSource,
   confirmDurableSourceDeletion,
   loadDurableSources,
@@ -205,7 +206,23 @@ export function DurableSourcesWorkbench({
               <button
                 type="button"
                 disabled={busy}
-                onClick={() => setPreparation(null)}
+                onClick={() =>
+                  void (async () => {
+                    setBusy(true);
+                    try {
+                      await cancelDurableSource({
+                        preparationId: preparation.preparationId,
+                        nonce: preparation.nonce,
+                      });
+                      setPreparation(null);
+                    } catch {
+                      setError("Admission cancellation is unavailable.");
+                      setPreparation(null);
+                    } finally {
+                      setBusy(false);
+                    }
+                  })()
+                }
               >
                 Cancel
               </button>

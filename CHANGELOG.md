@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.1.0-beta.59 — Durable Source Admission fail-safe correction
+
+- Replaces beta.58 after installed-host acceptance found that its synchronous
+  local-file chooser could block the main-thread command path and a cancelled
+  prepared review could retain staged private bytes until a later controller
+  call or restart. File selection is now callback-based and bounded; cancelled
+  reviews and normal application exit remove staged bytes without creating a
+  durable-source record or final private copy.
+- Beta.58 artifacts, installed receipt, evidence, and release state remain
+  preserved. No retrieval, provider/context transmission, credentials,
+  connectors, browser authority, MCP, or automation is added.
+
 ## 0.1.0-beta.58 — Durable Source Admission
 
 - Adds governed project-owned local textual source admission with explicit

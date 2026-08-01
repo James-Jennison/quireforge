@@ -1433,18 +1433,21 @@ fn durable_source_prepare_manual(
 }
 
 #[tauri::command]
-fn durable_source_prepare_local_text_file(
+async fn durable_source_prepare_local_text_file(
     request: DurableSourceFilePrepareRequest,
     app: tauri::AppHandle,
     service: tauri::State<'_, ProjectService>,
-) -> DurableSourcePreparation {
-    let selection = app
-        .dialog()
+) -> Result<DurableSourcePreparation, String> {
+    let (sender, receiver) = tokio::sync::oneshot::channel();
+    app.dialog()
         .file()
         .set_title("Select one UTF-8 text source to copy into QuireForge")
         .add_filter("Text", &["txt", "md", "csv", "json", "log", "py"])
-        .blocking_pick_file();
-    match selection.and_then(|file| file.into_path().ok()) {
+        .pick_file(move |selection| {
+            let _ = sender.send(selection.and_then(|file| file.into_path().ok()));
+        });
+    let selection = tokio::time::timeout(std::time::Duration::from_secs(60), receiver).await;
+    Ok(match selection.ok().and_then(Result::ok).flatten() {
         Some(path) => service.durable_source_prepare_file(request, path),
         None => project::types::DurableSourcePreparation {
             schema_version: 1,
@@ -1462,7 +1465,15 @@ fn durable_source_prepare_local_text_file(
             preview: String::new(),
             diagnostic_code: Some(project::types::DurableSourceDiagnosticCode::SourceUnavailable),
         },
-    }
+    })
+}
+
+#[tauri::command]
+fn durable_source_cancel_admission(
+    request: project::types::DurableSourceCancelRequest,
+    service: tauri::State<'_, ProjectService>,
+) -> Result<(), project::types::DurableSourceDiagnosticCode> {
+    service.durable_source_cancel(request)
 }
 
 #[tauri::command]
@@ -2940,6 +2951,7 @@ pub fn run() {
             durable_source_prepare_local_text_file,
             durable_source_prepare_reviewed_artifact_text,
             durable_source_confirm_admission,
+            durable_source_cancel_admission,
             durable_source_list_active,
             durable_source_read_details,
             durable_source_prepare_deletion,

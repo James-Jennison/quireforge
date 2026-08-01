@@ -213,6 +213,7 @@ import {
 } from "./taskTemplates";
 import {
   durableSourceArtifactPrepareRequestSchema,
+  durableSourceCancelRequestSchema,
   durableSourceConfirmRequestSchema,
   durableSourceDeleteConfirmRequestSchema,
   durableSourceFilePrepareRequestSchema,
@@ -391,6 +392,7 @@ export const DURABLE_SOURCE_PREPARE_ARTIFACT_COMMAND =
   "durable_source_prepare_reviewed_artifact_text";
 export const DURABLE_SOURCE_CONFIRM_COMMAND =
   "durable_source_confirm_admission";
+export const DURABLE_SOURCE_CANCEL_COMMAND = "durable_source_cancel_admission";
 export const DURABLE_SOURCE_LIST_COMMAND = "durable_source_list_active";
 export const DURABLE_SOURCE_READ_COMMAND = "durable_source_read_details";
 export const DURABLE_SOURCE_PREPARE_DELETE_COMMAND =
@@ -1412,6 +1414,17 @@ export const confirmDurableSource = (
     request,
     durableSourceConfirmRequestSchema,
     durableSourceSummarySchema,
+    invokeFunction,
+  );
+export const cancelDurableSource = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+): Promise<void> =>
+  durableSourceInvoke(
+    DURABLE_SOURCE_CANCEL_COMMAND,
+    request,
+    durableSourceCancelRequestSchema,
+    z.void(),
     invokeFunction,
   );
 export const loadDurableSources = (

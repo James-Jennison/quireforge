@@ -150,7 +150,9 @@ bound, credential references are inert opaque metadata, confirmations are
 one-use/expiring/cancellable, and audit records are content-free/mock-only.
 Real connector authority, credentials, providers, network access, and M58
 browser verification remain deferred. M55's earlier implementation deferral
-is superseded by the bounded beta.58 Durable Source Admission contract; it
+is superseded by the bounded beta.58 Durable Source Admission contract. The
+beta.59 replacement candidate corrects the beta.58 installed-host chooser
+fail-safe without adding authority; it
 does not authorize retrieval, provider transmission, or context inclusion. No M57 package or
 version exists: beta.54 remains the latest packaged generation and its draft
 prerelease is unchanged. The all-in-one workspace direction is non-authorizing
