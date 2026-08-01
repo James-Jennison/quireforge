@@ -41,6 +41,15 @@ struct Pending {
     staged: PathBuf,
 }
 
+struct Intake {
+    project_id: String,
+    task_id: Option<String>,
+    class: DurableSourceClass,
+    title: String,
+    origin_display: Option<String>,
+    bytes: Vec<u8>,
+}
+
 pub(crate) struct DurableSourceController {
     root: PathBuf,
     pending: HashMap<String, Pending>,
@@ -89,12 +98,14 @@ impl DurableSourceController {
     ) -> DurableSourcePreparation {
         self.prepare_bytes(
             repository,
-            project_id,
-            task_id,
-            DurableSourceClass::ManualText,
-            title,
-            None,
-            text.into_bytes(),
+            Intake {
+                project_id,
+                task_id,
+                class: DurableSourceClass::ManualText,
+                title,
+                origin_display: None,
+                bytes: text.into_bytes(),
+            },
         )
     }
 
@@ -162,12 +173,14 @@ impl DurableSourceController {
             .map(str::to_owned);
         self.prepare_bytes(
             repository,
-            project_id,
-            task_id,
-            DurableSourceClass::LocalTextFile,
-            title,
-            origin,
-            bytes,
+            Intake {
+                project_id,
+                task_id,
+                class: DurableSourceClass::LocalTextFile,
+                title,
+                origin_display: origin,
+                bytes,
+            },
         )
     }
 
@@ -182,42 +195,39 @@ impl DurableSourceController {
     ) -> DurableSourcePreparation {
         self.prepare_bytes(
             repository,
-            project_id,
-            task_id,
-            DurableSourceClass::ReviewedArtifactText,
-            title,
-            Some(artifact_id),
-            bytes,
+            Intake {
+                project_id,
+                task_id,
+                class: DurableSourceClass::ReviewedArtifactText,
+                title,
+                origin_display: Some(artifact_id),
+                bytes,
+            },
         )
     }
 
     fn prepare_bytes(
         &mut self,
         repository: &ProjectRepository,
-        project_id: String,
-        task_id: Option<String>,
-        class: DurableSourceClass,
-        title: String,
-        origin_display: Option<String>,
-        bytes: Vec<u8>,
+        intake: Intake,
     ) -> DurableSourcePreparation {
-        if let Err(code) = binding(repository, &project_id, task_id.as_deref()) {
+        if let Err(code) = binding(repository, &intake.project_id, intake.task_id.as_deref()) {
             return unavailable(code);
         }
-        if title.trim().is_empty()
-            || title.chars().count() > 240
-            || title.chars().any(char::is_control)
+        if intake.title.trim().is_empty()
+            || intake.title.chars().count() > 240
+            || intake.title.chars().any(char::is_control)
         {
             return unavailable(DurableSourceDiagnosticCode::SourceUnavailable);
         }
-        if bytes.len() > MAX_BYTES {
+        if intake.bytes.len() > MAX_BYTES {
             return unavailable(DurableSourceDiagnosticCode::SourceOversized);
         }
-        let text = match std::str::from_utf8(&bytes) {
+        let text = match std::str::from_utf8(&intake.bytes) {
             Ok(value) => value,
             Err(_) => return unavailable(DurableSourceDiagnosticCode::InvalidUtf8),
         };
-        if class == DurableSourceClass::ManualText && text.chars().count() > MAX_CODEPOINTS {
+        if intake.class == DurableSourceClass::ManualText && text.chars().count() > MAX_CODEPOINTS {
             return unavailable(DurableSourceDiagnosticCode::SourceOversized);
         }
         let lines = line_count(text);
@@ -228,22 +238,22 @@ impl DurableSourceController {
         let id = Uuid::now_v7().to_string();
         let nonce = Uuid::now_v7().to_string();
         let staged = self.root.join(format!(".{id}.stage"));
-        if write_private(&staged, &bytes).is_err() {
+        if write_private(&staged, &intake.bytes).is_err() {
             return unavailable(DurableSourceDiagnosticCode::PrivateStorageFailure);
         }
-        let sha256 = digest(&bytes);
+        let sha256 = digest(&intake.bytes);
         let preparation = DurableSourcePreparation {
             schema_version: 1,
             preparation_id: id.clone(),
             nonce: nonce.clone(),
             expires_at_ms: now_ms() + PREPARATION_TTL.as_millis() as i64,
-            project_id: project_id.clone(),
-            task_id: task_id.clone(),
-            source_class: class,
-            title: title.clone(),
-            origin_display: origin_display.clone(),
+            project_id: intake.project_id.clone(),
+            task_id: intake.task_id.clone(),
+            source_class: intake.class,
+            title: intake.title.clone(),
+            origin_display: intake.origin_display.clone(),
             sha256: sha256.clone(),
-            byte_size: bytes.len() as u64,
+            byte_size: intake.bytes.len() as u64,
             line_count: lines,
             preview: preview(text),
             diagnostic_code: None,
@@ -253,13 +263,13 @@ impl DurableSourceController {
             Pending {
                 nonce,
                 expires: Instant::now() + PREPARATION_TTL,
-                project_id,
-                task_id,
-                class,
-                title,
-                origin_display,
+                project_id: intake.project_id,
+                task_id: intake.task_id,
+                class: intake.class,
+                title: intake.title,
+                origin_display: intake.origin_display,
                 sha256,
-                bytes: bytes.len(),
+                bytes: intake.bytes.len(),
                 lines,
                 staged,
             },
