@@ -185,7 +185,9 @@ export function MockInferenceWorkbench({
           event.preventDefault();
           if (!taskId || !profileId) return;
           if (!activeOperations) return;
-          void apply(() => activeOperations.prepare({ taskId, profileId, input }));
+          void apply(() =>
+            activeOperations.prepare({ taskId, profileId, input }),
+          );
         }}
       >
         <label>
@@ -278,9 +280,13 @@ export function MockInferenceWorkbench({
               onClick={() =>
                 attemptId &&
                 authorizationId &&
-                void apply(() =>
-                  activeOperations?.authorize({ taskId, attemptId, authorizationId }) ??
-                    Promise.reject(new Error("missing project")),
+                void apply(
+                  () =>
+                    activeOperations?.authorize({
+                      taskId,
+                      attemptId,
+                      authorizationId,
+                    }) ?? Promise.reject(new Error("missing project")),
                 )
               }
             >
@@ -292,7 +298,9 @@ export function MockInferenceWorkbench({
                 disabled={busy || !attemptId}
                 onClick={() => {
                   if (attemptId && activeOperations) {
-                    void apply(() => activeOperations.poll({ taskId, attemptId }));
+                    void apply(() =>
+                      activeOperations.poll({ taskId, attemptId }),
+                    );
                   }
                 }}
               >
@@ -305,9 +313,13 @@ export function MockInferenceWorkbench({
               onClick={() =>
                 attemptId &&
                 authorizationId &&
-                void apply(() =>
-                  activeOperations?.submit({ taskId, attemptId, authorizationId }) ??
-                    Promise.reject(new Error("missing project")),
+                void apply(
+                  () =>
+                    activeOperations?.submit({
+                      taskId,
+                      attemptId,
+                      authorizationId,
+                    }) ?? Promise.reject(new Error("missing project")),
                 )
               }
             >
@@ -319,7 +331,9 @@ export function MockInferenceWorkbench({
                 disabled={busy || !attemptId}
                 onClick={() => {
                   if (attemptId && activeOperations) {
-                    void apply(() => activeOperations.cancel({ taskId, attemptId }));
+                    void apply(() =>
+                      activeOperations.cancel({ taskId, attemptId }),
+                    );
                   }
                 }}
               >
