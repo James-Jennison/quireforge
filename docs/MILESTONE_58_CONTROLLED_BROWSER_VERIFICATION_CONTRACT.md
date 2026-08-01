@@ -1,6 +1,10 @@
 # M58 — Controlled Browser Verification Contract and Implementation Plan
 
-Status: ratified decision-only contract. M58 planning is complete; runtime implementation remains unstarted and requires one separate, comprehensive implementation approval. This contract creates no browser process, browser session, dependency, command, migration, UI, package, version, release, or network activity.
+Status: ratified contract. The approved fictional/local-only/read-only beta.61
+implementation candidate is in validation; package and installed-host
+acceptance remain required before M58 is complete. The contract continues to
+exclude real browser targets, sessions, credentials, automation, and network
+activity.
 
 M58 defines a narrow future ability to verify one explicitly reviewed browser-visible assertion. It is not general browsing, research retrieval, OAuth, browser automation, a web agent, a connector, generic MCP, a native tool, provider transport, or an external-action route. Projects and durable tasks remain authoritative; a browser target, page, session, result, and evidence record are subordinate references.
 

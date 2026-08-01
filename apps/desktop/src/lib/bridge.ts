@@ -46,6 +46,13 @@ import {
   type ConnectorSnapshot,
 } from "./connectorGovernance";
 import {
+  browserVerificationAttemptRequestSchema,
+  browserVerificationConfirmRequestSchema,
+  browserVerificationPrepareRequestSchema,
+  browserVerificationSnapshotSchema,
+  type BrowserVerificationSnapshot,
+} from "./controlledBrowserVerification";
+import {
   filePreviewHandoffRequestSchema,
   filePreviewSchema,
   type FilePreviewHandoffRequest,
@@ -423,6 +430,16 @@ export const CONNECTOR_GOVERNANCE_CANCEL_COMMAND =
   "connector_governance_cancel";
 export const CONNECTOR_GOVERNANCE_REVOKE_COMMAND =
   "connector_governance_revoke";
+export const CONTROLLED_BROWSER_VERIFICATION_STATUS_COMMAND =
+  "controlled_browser_verification_status";
+export const CONTROLLED_BROWSER_VERIFICATION_PREPARE_COMMAND =
+  "controlled_browser_verification_prepare";
+export const CONTROLLED_BROWSER_VERIFICATION_CONFIRM_COMMAND =
+  "controlled_browser_verification_confirm";
+export const CONTROLLED_BROWSER_VERIFICATION_CANCEL_COMMAND =
+  "controlled_browser_verification_cancel";
+export const CONTROLLED_BROWSER_VERIFICATION_REVOKE_COMMAND =
+  "controlled_browser_verification_revoke";
 export const LOCAL_REVIEW_STATUS_COMMAND = "local_review_status";
 export const LOCAL_REVIEW_COLLECTION_CREATE_COMMAND =
   "local_review_collection_create";
@@ -1613,6 +1630,63 @@ export const revokeConnectorGovernance = (
     CONNECTOR_GOVERNANCE_REVOKE_COMMAND,
     request,
     connectorOperationRequestSchema,
+    invokeFunction,
+  );
+
+async function browserVerificationInvoke(
+  command: string,
+  request: unknown,
+  schema: z.ZodType,
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<BrowserVerificationSnapshot> {
+  return browserVerificationSnapshotSchema.parse(
+    await invokeFunction(command, { request: schema.parse(request) }),
+  );
+}
+export const loadControlledBrowserVerification = async (
+  invokeFunction: InvokeFunction = invokeTauri,
+) =>
+  browserVerificationSnapshotSchema.parse(
+    await invokeFunction(CONTROLLED_BROWSER_VERIFICATION_STATUS_COMMAND),
+  );
+export const prepareControlledBrowserVerification = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+) =>
+  browserVerificationInvoke(
+    CONTROLLED_BROWSER_VERIFICATION_PREPARE_COMMAND,
+    request,
+    browserVerificationPrepareRequestSchema,
+    invokeFunction,
+  );
+export const confirmControlledBrowserVerification = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+) =>
+  browserVerificationInvoke(
+    CONTROLLED_BROWSER_VERIFICATION_CONFIRM_COMMAND,
+    request,
+    browserVerificationConfirmRequestSchema,
+    invokeFunction,
+  );
+export const cancelControlledBrowserVerification = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+) =>
+  browserVerificationInvoke(
+    CONTROLLED_BROWSER_VERIFICATION_CANCEL_COMMAND,
+    request,
+    browserVerificationAttemptRequestSchema,
+    invokeFunction,
+  );
+export const revokeControlledBrowserVerification = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+) =>
+  browserVerificationInvoke(
+    CONTROLLED_BROWSER_VERIFICATION_REVOKE_COMMAND,
+    request,
+    browserVerificationAttemptRequestSchema,
     invokeFunction,
   );
 

@@ -48,8 +48,8 @@ use super::types::{
 use super::{
     identity::DirectoryIdentity,
     types::{DirectoryAccessibilityState, ExpectedAccess},
-    AdvisorConversationMetadata, ChatConversationMetadata, ConversationReference,
-    ConversationSelectionMetadata, FictionalConnectorOperationRecord,
+    AdvisorConversationMetadata, ChatConversationMetadata, ControlledBrowserVerificationRecord,
+    ConversationReference, ConversationSelectionMetadata, FictionalConnectorOperationRecord,
 };
 
 const INITIAL_MIGRATION: &str = r#"
@@ -867,6 +867,34 @@ CREATE INDEX fictional_connector_bindings_project_active ON fictional_connector_
 CREATE INDEX fictional_connector_operations_binding_recent ON fictional_connector_operations(binding_id, created_at_ms DESC);
 "#;
 
+const CONTROLLED_BROWSER_VERIFICATION_MIGRATION: &str = r#"
+CREATE TABLE controlled_browser_verification_attempts (
+ id TEXT PRIMARY KEY NOT NULL CHECK(length(id) = 36),
+ schema_version INTEGER NOT NULL CHECK(schema_version = 1),
+ project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE RESTRICT,
+ task_id TEXT REFERENCES task_records(id) ON DELETE RESTRICT,
+ fixture_id TEXT NOT NULL CHECK(fixture_id = 'fictional-webkitgtk-local-v1'),
+ target_digest TEXT NOT NULL CHECK(length(target_digest) = 64),
+ request_digest TEXT NOT NULL CHECK(length(request_digest) = 64),
+ authorization_id TEXT NOT NULL CHECK(length(authorization_id) = 36),
+ state TEXT NOT NULL CHECK(state IN ('prepared','confirmed','verified','verification_failed','cancelled','denied','expired','revoked','redirect_blocked','origin_drift','timed_out','ambiguous','quarantined','incompatible','closed')),
+ expires_at_ms INTEGER NOT NULL CHECK(expires_at_ms >= created_at_ms),
+ created_at_ms INTEGER NOT NULL CHECK(created_at_ms >= 0),
+ completed_at_ms INTEGER CHECK(completed_at_ms >= created_at_ms),
+ evidence_digest TEXT CHECK(evidence_digest IS NULL OR length(evidence_digest) = 64)
+);
+CREATE TABLE controlled_browser_verification_audit (
+ id TEXT PRIMARY KEY NOT NULL CHECK(length(id) = 36),
+ attempt_id TEXT NOT NULL REFERENCES controlled_browser_verification_attempts(id) ON DELETE RESTRICT,
+ event_kind TEXT NOT NULL CHECK(length(event_kind) BETWEEN 1 AND 64),
+ outcome TEXT NOT NULL CHECK(length(outcome) BETWEEN 1 AND 64),
+ evidence_digest TEXT NOT NULL CHECK(length(evidence_digest) = 64),
+ created_at_ms INTEGER NOT NULL CHECK(created_at_ms >= 0)
+);
+CREATE TRIGGER controlled_browser_verification_identity_immutable BEFORE UPDATE OF id, schema_version, project_id, task_id, fixture_id, target_digest, request_digest, authorization_id, created_at_ms ON controlled_browser_verification_attempts BEGIN SELECT RAISE(ABORT, 'controlled browser verification identity is immutable'); END;
+CREATE INDEX controlled_browser_verification_attempts_project_recent ON controlled_browser_verification_attempts(project_id, created_at_ms DESC);
+"#;
+
 const MIGRATIONS: &[(i64, &str, &str)] = &[
     (1, "projects-and-directory-associations", INITIAL_MIGRATION),
     (
@@ -963,6 +991,11 @@ const MIGRATIONS: &[(i64, &str, &str)] = &[
         24,
         "fictional-connector-governance-v1",
         FICTIONAL_CONNECTOR_GOVERNANCE_MIGRATION,
+    ),
+    (
+        25,
+        "controlled-browser-verification-v1",
+        CONTROLLED_BROWSER_VERIFICATION_MIGRATION,
     ),
 ];
 
@@ -5167,6 +5200,65 @@ impl ProjectRepository {
         Ok(())
     }
 
+    pub(crate) fn record_controlled_browser_verification(
+        &mut self,
+        record: &ControlledBrowserVerificationRecord<'_>,
+    ) -> Result<(), StorageError> {
+        let exists: bool = self.connection.query_row(
+            "SELECT EXISTS(SELECT 1 FROM projects WHERE id = ?1 AND archived_at_ms IS NULL)",
+            [record.project_id],
+            |row| row.get(0),
+        )?;
+        if !exists
+            || !is_uuid_v7(record.attempt_id)
+            || !is_uuid_v7(record.authorization_id)
+            || !valid_review_sha256(record.target_digest)
+            || !valid_review_sha256(record.request_digest)
+        {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let now = now_millis();
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        tx.execute(
+            "INSERT INTO controlled_browser_verification_attempts (id,schema_version,project_id,task_id,fixture_id,target_digest,request_digest,authorization_id,state,expires_at_ms,created_at_ms,completed_at_ms,evidence_digest) VALUES (?1,1,?2,?3,'fictional-webkitgtk-local-v1',?4,?5,?6,'prepared',?7,?8,NULL,NULL)",
+            params![record.attempt_id, record.project_id, record.task_id, record.target_digest, record.request_digest, record.authorization_id, record.expires_at_ms, now],
+        )?;
+        tx.execute(
+            "INSERT INTO controlled_browser_verification_audit (id,attempt_id,event_kind,outcome,evidence_digest,created_at_ms) VALUES (?1,?2,'prepared','prepared',?3,?4)",
+            params![Uuid::now_v7().to_string(), record.attempt_id, record.request_digest, now],
+        )?;
+        tx.commit()?;
+        Ok(())
+    }
+
+    pub(crate) fn complete_controlled_browser_verification(
+        &mut self,
+        attempt_id: &str,
+        state: &str,
+        evidence_digest: Option<&str>,
+    ) -> Result<(), StorageError> {
+        let now = now_millis();
+        let digest = evidence_digest
+            .unwrap_or_else(|| "0000000000000000000000000000000000000000000000000000000000000000");
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        if tx.execute(
+            "UPDATE controlled_browser_verification_attempts SET state = ?1, completed_at_ms = ?2, evidence_digest = ?3 WHERE id = ?4 AND state = 'prepared'",
+            params![state, now, evidence_digest, attempt_id],
+        )? != 1 {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        tx.execute(
+            "INSERT INTO controlled_browser_verification_audit (id,attempt_id,event_kind,outcome,evidence_digest,created_at_ms) VALUES (?1,?2,'terminal',?3,?4,?5)",
+            params![Uuid::now_v7().to_string(), attempt_id, state, digest, now],
+        )?;
+        tx.commit()?;
+        Ok(())
+    }
+
     pub(crate) fn complete_fictional_connector_operation(
         &mut self,
         project_id: &str,
@@ -5888,6 +5980,7 @@ impl ProjectRepository {
         recover_interrupted_conversations(&connection)?;
         recover_interrupted_terminals(&connection)?;
         recover_interrupted_fictional_connector_operations(&connection)?;
+        recover_interrupted_controlled_browser_verifications(&connection)?;
         Ok(Self {
             connection,
             activity_session_id: Uuid::now_v7().to_string(),
@@ -8117,6 +8210,8 @@ fn verify_schema(connection: &Connection) -> Result<(), StorageError> {
         "terminal_sessions",
         "task_records",
         "task_plans",
+        "controlled_browser_verification_attempts",
+        "controlled_browser_verification_audit",
     ] {
         let exists = connection
             .query_row(
@@ -8186,6 +8281,39 @@ fn recover_interrupted_fictional_connector_operations(
         transaction.execute(
             "INSERT INTO fictional_connector_audit (id, operation_id, binding_id, event_kind, outcome, evidence_digest, created_at_ms) VALUES (?1, ?2, ?3, 'process-recovery', 'expired', ?4, ?5)",
             params![Uuid::now_v7().to_string(), operation_id, binding_id, review_digest(b"fictional-process-recovery-v1"), timestamp],
+        )?;
+    }
+    transaction.commit()?;
+    Ok(())
+}
+
+fn recover_interrupted_controlled_browser_verifications(
+    connection: &Connection,
+) -> Result<(), StorageError> {
+    let timestamp = now_millis();
+    let pending = {
+        let mut statement = connection.prepare(
+            "SELECT id, request_digest FROM controlled_browser_verification_attempts WHERE state = 'prepared'",
+        )?;
+        let rows = statement
+            .query_map([], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+            })?
+            .collect::<Result<Vec<_>, _>>()?;
+        rows
+    };
+    if pending.is_empty() {
+        return Ok(());
+    }
+    let transaction = connection.unchecked_transaction()?;
+    for (attempt_id, digest) in pending {
+        transaction.execute(
+            "UPDATE controlled_browser_verification_attempts SET state = 'expired', completed_at_ms = ?1 WHERE id = ?2 AND state = 'prepared'",
+            params![timestamp, attempt_id],
+        )?;
+        transaction.execute(
+            "INSERT INTO controlled_browser_verification_audit (id,attempt_id,event_kind,outcome,evidence_digest,created_at_ms) VALUES (?1,?2,'process-recovery','expired',?3,?4)",
+            params![Uuid::now_v7().to_string(), attempt_id, digest, timestamp],
         )?;
     }
     transaction.commit()?;
@@ -8378,9 +8506,10 @@ mod tests {
 
     use super::{
         apply_migrations, installed_host_attempt_identity, parse_manual_evidence_envelope,
-        review_digest, review_payload_bytes, valid_task_id, PackageValidationInstalledHostFacts,
-        PackageValidationPhase, PackageValidationRecordInput, PackageValidationRecordOutcome,
-        PackageValidationSummary, ProjectRepository, StorageError, INITIAL_MIGRATION, MIGRATIONS,
+        recover_interrupted_controlled_browser_verifications, review_digest, review_payload_bytes,
+        valid_task_id, PackageValidationInstalledHostFacts, PackageValidationPhase,
+        PackageValidationRecordInput, PackageValidationRecordOutcome, PackageValidationSummary,
+        ProjectRepository, StorageError, INITIAL_MIGRATION, MIGRATIONS,
         PACKAGE_VALIDATION_PROTECTION_MS, TASK_CLEANUP_AGE_MS, TASK_COUNT_LIMIT,
         TASK_PAYLOAD_LIMIT,
     };
@@ -8394,11 +8523,11 @@ mod tests {
         LocalReviewItemState, LocalReviewLineKind, LocalReviewSourceKind, LocalReviewTextFormat,
         TaskStatus,
     };
-    use crate::project::FictionalConnectorOperationRecord;
     use crate::project::{
         ChatConversationMetadata, ConversationPendingSelection, ConversationReference,
         ConversationSelectionMetadata,
     };
+    use crate::project::{ControlledBrowserVerificationRecord, FictionalConnectorOperationRecord};
 
     fn local_template(id: String, title: &str) -> TaskTemplate {
         let mut template = TaskTemplate {
@@ -10518,6 +10647,58 @@ mod tests {
     }
 
     #[test]
+    fn controlled_browser_verification_schema_persists_bound_digests_and_recovers_prepared_work() {
+        let mut repository = ProjectRepository::in_memory().expect("fresh schema");
+        let project_id = Uuid::now_v7().to_string();
+        insert_active_project(&repository, &project_id, &Uuid::now_v7().to_string());
+        let attempt_id = Uuid::now_v7().to_string();
+        repository
+            .record_controlled_browser_verification(&ControlledBrowserVerificationRecord {
+                attempt_id: &attempt_id,
+                project_id: &project_id,
+                task_id: None,
+                target_digest: &"a".repeat(64),
+                request_digest: &"b".repeat(64),
+                authorization_id: &Uuid::now_v7().to_string(),
+                expires_at_ms: i64::MAX,
+            })
+            .expect("prepared browser verification");
+        let stored: (String, String, String) = repository
+            .connection
+            .query_row(
+                "SELECT target_digest, request_digest, state FROM controlled_browser_verification_attempts WHERE id = ?1",
+                [&attempt_id],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            )
+            .expect("stored attempt");
+        assert_eq!(stored, ("a".repeat(64), "b".repeat(64), "prepared".into()));
+        recover_interrupted_controlled_browser_verifications(&repository.connection)
+            .expect("recovery is transactional");
+        assert_eq!(
+            repository
+                .connection
+                .query_row(
+                    "SELECT state FROM controlled_browser_verification_attempts WHERE id = ?1",
+                    [&attempt_id],
+                    |row| row.get::<_, String>(0),
+                )
+                .expect("recovered state"),
+            "expired"
+        );
+        assert_eq!(
+            repository
+                .connection
+                .query_row(
+                    "SELECT count(*) FROM controlled_browser_verification_audit WHERE attempt_id = ?1",
+                    [&attempt_id],
+                    |row| row.get::<_, i64>(0),
+                )
+                .expect("audit linkage"),
+            2
+        );
+    }
+
+    #[test]
     fn package_validation_identity_schema_and_v15_upgrade_are_closed() {
         let repository = ProjectRepository::in_memory().expect("fresh schema");
         for (kind, name) in [
@@ -10543,7 +10724,7 @@ mod tests {
                 1
             );
         }
-        assert_eq!(MIGRATIONS.len(), 24);
+        assert_eq!(MIGRATIONS.len(), 25);
 
         let connection = Connection::open_in_memory().expect("database");
         connection

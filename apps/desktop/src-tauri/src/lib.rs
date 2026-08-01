@@ -10,6 +10,7 @@ mod codex;
 #[allow(dead_code)]
 mod connector_foundation;
 mod contract;
+mod controlled_browser_verification;
 mod desktop;
 mod dynamic_analysis;
 mod git;
@@ -133,6 +134,9 @@ fn complete_installed_host_validation_at(
 /// Handles the single supported headless invocation before any Tauri state is
 /// constructed. `true` means main must exit without initializing the GUI.
 pub fn run_complete_installed_host_validation_from_env() -> bool {
+    if controlled_browser_verification::run_fixture_helper_from_env() {
+        return true;
+    }
     match headless_dispatch(std::env::args_os()) {
         HeadlessDispatch::Gui => false,
         HeadlessDispatch::Rejected => {
@@ -1761,6 +1765,119 @@ fn connector_governance_revoke(
 }
 
 #[tauri::command]
+fn controlled_browser_verification_status(
+    service: tauri::State<
+        '_,
+        controlled_browser_verification::ControlledBrowserVerificationService,
+    >,
+) -> controlled_browser_verification::BrowserVerificationSnapshot {
+    service.status()
+}
+
+#[tauri::command]
+fn controlled_browser_verification_prepare(
+    request: controlled_browser_verification::BrowserVerificationPrepareRequest,
+    service: tauri::State<
+        '_,
+        controlled_browser_verification::ControlledBrowserVerificationService,
+    >,
+    projects: tauri::State<'_, ProjectService>,
+) -> controlled_browser_verification::BrowserVerificationSnapshot {
+    let project_id = request.project_id.clone();
+    if let Some(task_id) = request.task_id.as_deref() {
+        let Some(binding) = projects.task_mock_inference_binding(task_id) else {
+            return service.status();
+        };
+        if binding.project_id != project_id {
+            return service.status();
+        }
+    }
+    let snapshot = service.prepare(request, project_id);
+    if let (
+        Some(attempt_id),
+        Some(project_id),
+        Some(authorization_id),
+        Some(request_digest),
+        Some(expires_at_ms),
+    ) = (
+        snapshot.attempt_id.as_deref(),
+        snapshot.project_id.as_deref(),
+        snapshot.authorization_id.as_deref(),
+        snapshot.request_digest.as_deref(),
+        snapshot.expires_at_ms,
+    ) {
+        if !projects.record_controlled_browser_verification(
+            project::ControlledBrowserVerificationRecord {
+                attempt_id,
+                project_id,
+                task_id: snapshot.task_id.as_deref(),
+                target_digest: &sha256(snapshot.target.as_deref().unwrap_or_default()),
+                request_digest,
+                authorization_id,
+                expires_at_ms: expires_at_ms as i64,
+            },
+        ) {
+            return service.status();
+        }
+    }
+    snapshot
+}
+
+#[tauri::command]
+fn controlled_browser_verification_confirm(
+    request: controlled_browser_verification::BrowserVerificationConfirmRequest,
+    service: tauri::State<
+        '_,
+        controlled_browser_verification::ControlledBrowserVerificationService,
+    >,
+    projects: tauri::State<'_, ProjectService>,
+) -> controlled_browser_verification::BrowserVerificationSnapshot {
+    let snapshot = service.confirm(request);
+    if let Some(attempt_id) = snapshot.attempt_id.as_deref() {
+        let evidence = snapshot.evidence_digest.as_deref();
+        if !projects.complete_controlled_browser_verification(attempt_id, &snapshot.state, evidence)
+        {
+            return service.status();
+        }
+    }
+    snapshot
+}
+
+#[tauri::command]
+fn controlled_browser_verification_cancel(
+    request: controlled_browser_verification::BrowserVerificationAttemptRequest,
+    service: tauri::State<
+        '_,
+        controlled_browser_verification::ControlledBrowserVerificationService,
+    >,
+    projects: tauri::State<'_, ProjectService>,
+) -> controlled_browser_verification::BrowserVerificationSnapshot {
+    let snapshot = service.cancel(request);
+    if let Some(attempt_id) = snapshot.attempt_id.as_deref() {
+        let _ =
+            projects.complete_controlled_browser_verification(attempt_id, &snapshot.state, None);
+    }
+    snapshot
+}
+
+#[tauri::command]
+fn controlled_browser_verification_revoke(
+    request: controlled_browser_verification::BrowserVerificationAttemptRequest,
+    service: tauri::State<
+        '_,
+        controlled_browser_verification::ControlledBrowserVerificationService,
+    >,
+    projects: tauri::State<'_, ProjectService>,
+) -> controlled_browser_verification::BrowserVerificationSnapshot {
+    let snapshot = service.revoke(request);
+    if let Some(attempt_id) = snapshot.attempt_id.as_deref() {
+        let _ =
+            projects.complete_controlled_browser_verification(attempt_id, &snapshot.state, None);
+    }
+    snapshot
+}
+
+#[tauri::command]
 fn mock_inference_prepare(
     request: mock_inference::MockInferencePrepareRequest,
     service: tauri::State<'_, mock_inference::MockInferenceService>,
@@ -2991,6 +3108,7 @@ pub fn run() {
         .manage(TerminalService::default())
         .manage(mock_inference::MockInferenceService::default())
         .manage(connector_foundation::ConnectorGovernanceService::default())
+        .manage(controlled_browser_verification::ControlledBrowserVerificationService::default())
         .setup(|app| {
             match app.path().app_data_dir() {
                 Ok(directory) => {
@@ -3125,6 +3243,11 @@ pub fn run() {
             connector_governance_confirm,
             connector_governance_cancel,
             connector_governance_revoke,
+            controlled_browser_verification_status,
+            controlled_browser_verification_prepare,
+            controlled_browser_verification_confirm,
+            controlled_browser_verification_cancel,
+            controlled_browser_verification_revoke,
             mock_inference_prepare,
             mock_inference_authorize,
             mock_inference_submit,

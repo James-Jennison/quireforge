@@ -297,6 +297,13 @@ const ConnectorGovernanceWorkbench = lazy(() =>
     ({ ConnectorGovernanceWorkbench: workspace }) => ({ default: workspace }),
   ),
 );
+const ControlledBrowserVerificationWorkbench = lazy(() =>
+  import("./ControlledBrowserVerificationWorkbench").then(
+    ({ ControlledBrowserVerificationWorkbench: workspace }) => ({
+      default: workspace,
+    }),
+  ),
+);
 const DurableSourcesWorkbench = lazy(() =>
   import("./DurableSourcesWorkbench").then(
     ({ DurableSourcesWorkbench: workspace }) => ({
@@ -1180,6 +1187,10 @@ export default function App({
   const [
     connectorGovernanceWorkbenchOpen,
     setConnectorGovernanceWorkbenchOpen,
+  ] = useState(false);
+  const [
+    controlledBrowserVerificationOpen,
+    setControlledBrowserVerificationOpen,
   ] = useState(false);
   const [durableSourcesWorkbenchOpen, setDurableSourcesWorkbenchOpen] =
     useState(false);
@@ -4532,6 +4543,25 @@ export default function App({
                         />
                       </Suspense>
                     )}
+                    {controlledBrowserVerificationOpen && (
+                      <Suspense
+                        fallback={
+                          <section
+                            className="mock-inference-workbench"
+                            aria-label="Fictional controlled browser verification"
+                          >
+                            <p role="status">Loading local verification…</p>
+                          </section>
+                        }
+                      >
+                        <ControlledBrowserVerificationWorkbench
+                          projectId={currentProject?.id ?? null}
+                          onClose={() =>
+                            setControlledBrowserVerificationOpen(false)
+                          }
+                        />
+                      </Suspense>
+                    )}
                     {durableSourcesWorkbenchOpen && (
                       <Suspense
                         fallback={
@@ -4590,6 +4620,14 @@ export default function App({
                         }
                       >
                         Fictional connector governance
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setControlledBrowserVerificationOpen(true)
+                        }
+                      >
+                        Fictional browser verification
                       </button>
                     </section>
                   </>

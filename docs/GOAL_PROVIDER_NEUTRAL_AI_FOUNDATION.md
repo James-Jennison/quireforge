@@ -2,10 +2,11 @@
 
 Type: active long-term product goal.
 Status: active; decision gates and bounded local-only implementation slices are
-complete through M58 planning.
+complete through M58 planning; the fictional/local-only M58 implementation is
+the current beta.61 candidate.
 Packaging status: beta.55 and beta.56 remain preserved failed candidates;
 beta.59 (M55) and beta.60 (M57) are published prereleases.
-Latest release version: `0.1.0-beta.60` / `0.1.0~beta.60`.
+Latest published release version: `0.1.0-beta.60` / `0.1.0~beta.60`.
 Implementation authority: none granted by establishing this goal.
 Parent vision: native, project-centered, all-in-one Linux AI workspace.
 
@@ -282,19 +283,18 @@ When a gate completes, record it as progress under this goal.
 
 ## Immediate next gate
 
-The goal is active. The next separately approvable work is one comprehensive
-**M58 Controlled Browser Verification Implementation** milestone, limited to
-the fictional/local-only, read-only slice in its ratified contract. It remains
-unstarted and does not begin without explicit approval.
+The active work is completion of the approved **M58 Controlled Browser
+Verification Implementation** milestone, limited to the fictional/local-only,
+read-only slice in its ratified contract. No later milestone is started.
 
 ## Package and release policy
 
 Establishing or advancing this goal through decision-only gates requires no
 package or version. Implementation milestones receive versions only when they
 alter source or user-visible/operational behavior and a release policy is
-separately approved. Beta.60 is the latest published generation. No beta number
-is reserved for M58; goal completion will require future package and
-installed-host evidence.
+separately approved. Beta.60 is the latest published generation. Beta.61 is
+the prospective M58 candidate; package and installed-host evidence remains
+required before its release or M58 completion can be claimed.
 
 ## Explicit exclusions
 

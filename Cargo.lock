@@ -2908,12 +2908,13 @@ dependencies = [
 
 [[package]]
 name = "quireforge"
-version = "0.1.0-beta.60"
+version = "0.1.0-beta.61"
 dependencies = [
  "base64 0.22.1",
  "dirs",
  "elf",
  "gtk",
+ "javascriptcore-rs",
  "libc",
  "lopdf",
  "portable-pty",
@@ -2931,12 +2932,13 @@ dependencies = [
  "unicode-casefold",
  "url",
  "uuid",
+ "webkit2gtk",
  "zip",
 ]
 
 [[package]]
 name = "quireforge-sandboxd"
-version = "0.1.0-beta.60"
+version = "0.1.0-beta.61"
 dependencies = [
  "libc",
  "serde",

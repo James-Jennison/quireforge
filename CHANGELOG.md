@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.1.0-beta.61 — Controlled browser verification
+
+- Adds the M58 fictional, deterministic, local-only, read-only controlled
+  browser-verification slice: project-scoped digest-bound preparation and
+  one-use confirmation, an ephemeral WebKitGTK custom-scheme fixture helper,
+  bounded evidence, terminal failure handling, replay prevention, recovery,
+  and immutable audit linkage.
+- The fixture can neither navigate externally nor reuse a browser profile or
+  credential. It adds no real browser target, connector, provider, MCP,
+  automation, file chooser, download, upload, form, shell, Git, deployment, or
+  external mutation authority. This remains a candidate until packaging and
+  installed-host acceptance are complete.
+
 ## 0.1.0-beta.60 — Fictional connector governance
 
 - Implement the M57 fictional/local-only connector-governance vertical slice:

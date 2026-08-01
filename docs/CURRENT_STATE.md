@@ -116,9 +116,11 @@ MCP, automation, provider transmission, or external mutation authority.
 M58 Controlled Browser Verification is now complete as a decision-only
 contract at
 [MILESTONE_58_CONTROLLED_BROWSER_VERIFICATION_CONTRACT.md](MILESTONE_58_CONTROLLED_BROWSER_VERIFICATION_CONTRACT.md).
-Its fictional/local-only, read-only implementation remains unstarted and needs
-a separate comprehensive approval. No browser was opened, controlled, attached,
-or inspected while this contract was planned.
+Its approved fictional/local-only, read-only beta.61 implementation candidate
+uses only a native-owned ephemeral WebKitGTK custom-scheme fixture. It remains
+pending package and installed-host acceptance; it adds no real browser target,
+profile/session reuse, credential, connector, provider, MCP, automation, or
+external mutation authority.
 
 M54 Local Review is complete at package/source commit
 `c4c2752466f36f791fde47edbc5c6b02b0e21320`, tagged

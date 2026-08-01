@@ -1,6 +1,6 @@
 [package]
 name = "quireforge"
-version = "0.1.0-beta.60"
+version = "0.1.0-beta.61"
 description = "An unofficial native Linux workspace for Codex"
 authors = ["QuireForge contributors"]
 edition = "2021"
@@ -44,3 +44,5 @@ zip = { version = "=8.6.0", default-features = false }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 gtk = "0.18.2"
+javascriptcore-rs = "1.1.2"
+webkit2gtk = "2.0.2"

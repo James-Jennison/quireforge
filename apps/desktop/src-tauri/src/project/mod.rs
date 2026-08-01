@@ -127,6 +127,16 @@ pub(crate) struct FictionalConnectorOperationRecord<'a> {
     pub expires_at_ms: i64,
 }
 
+pub(crate) struct ControlledBrowserVerificationRecord<'a> {
+    pub attempt_id: &'a str,
+    pub project_id: &'a str,
+    pub task_id: Option<&'a str>,
+    pub target_digest: &'a str,
+    pub request_digest: &'a str,
+    pub authorization_id: &'a str,
+    pub expires_at_ms: i64,
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum InstalledHostHeadlessStatus {
     Created,
@@ -273,6 +283,70 @@ pub(crate) struct ConversationPendingSelection<'a> {
 }
 
 impl ProjectService {
+    pub(crate) fn record_controlled_browser_verification(
+        &self,
+        record: ControlledBrowserVerificationRecord<'_>,
+    ) -> bool {
+        if !valid_id(record.attempt_id)
+            || !valid_id(record.project_id)
+            || record.task_id.is_some_and(|value| !valid_id(value))
+            || !valid_id(record.authorization_id)
+            || record.target_digest.len() != 64
+            || record.request_digest.len() != 64
+            || record.expires_at_ms < 0
+        {
+            return false;
+        }
+        self.repository
+            .lock()
+            .ok()
+            .and_then(|mut repository| {
+                repository
+                    .as_mut()
+                    .map(|repo| repo.record_controlled_browser_verification(&record))
+            })
+            .is_some_and(|result| result.is_ok())
+    }
+
+    pub(crate) fn complete_controlled_browser_verification(
+        &self,
+        attempt_id: &str,
+        state: &str,
+        evidence_digest: Option<&str>,
+    ) -> bool {
+        if !valid_id(attempt_id)
+            || !matches!(
+                state,
+                "verified"
+                    | "verification_failed"
+                    | "cancelled"
+                    | "expired"
+                    | "revoked"
+                    | "redirect_blocked"
+                    | "origin_drift"
+                    | "timed_out"
+                    | "ambiguous"
+                    | "quarantined"
+                    | "incompatible"
+            )
+            || evidence_digest.is_some_and(|value| value.len() != 64)
+        {
+            return false;
+        }
+        self.repository
+            .lock()
+            .ok()
+            .and_then(|mut repository| {
+                repository.as_mut().map(|repo| {
+                    repo.complete_controlled_browser_verification(
+                        attempt_id,
+                        state,
+                        evidence_digest,
+                    )
+                })
+            })
+            .is_some_and(|result| result.is_ok())
+    }
     /// Resolves the native project binding for the local fictional inference
     /// slice without exposing task content to that slice.
     pub(crate) fn task_mock_inference_binding(
