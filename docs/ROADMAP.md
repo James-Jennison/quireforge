@@ -1427,19 +1427,25 @@ not start automatically.
 Executable Implementation Plan](MILESTONE_57_CONNECTOR_GOVERNANCE_CONTRACT.md)
 ratifies the provider-neutral connector identity, capability/grant, lifecycle,
 one-use authorization, ambiguous-outcome, audit, M55/context/transmission, and
-generic-MCP exclusion boundary. It explicitly supersedes the earlier
-implementation deferral and defines the next separately approvable beta.60
-fictional/local-only vertical slice. It does not authorize source work, a real
+generic-MCP exclusion boundary. It superseded the earlier implementation
+deferral and governed the completed beta.60 fictional/local-only vertical
+slice. It does not authorize a real
 connector, credentials, network, retrieval, external mutation, M58 browser
 behavior, MCP dispatch, or automation.
 
-**Beta.60 candidate implementation:** migration 24 and the closed Tauri/React
+**Beta.60 implementation:** migration 24 and the closed Tauri/React
 fixture implement the approved fictional/local-only read and mutation exercise.
 They persist only bounded project/task, descriptor-digest, operation,
 authorization, lifecycle, terminal-outcome, and audit linkage; no connector
 content or secret is retained. The fixture has no network or external side
-effect. Packaging is candidate validation only; installation, release mutation,
-publication, and deployment remain separate approvals.
+effect. Its packaging, installation, release staging, and publication all
+completed without broadening its authority.
+
+**Published completion:** beta.60 is published at
+`v0.1.0-beta.60`, source
+`b8b807f256170e6a35ada22893b410cb4b0057b7`. Its fictional connector remains
+strictly local-only; the historical candidate wording above records its
+pre-publication evidence and does not defer M57 implementation.
 
 **Decision complete:** [M57 connector governance](MILESTONE_57_CONNECTOR_GOVERNANCE.md)
 defines the least-authority connector classification, authority ladder,
@@ -1475,8 +1481,8 @@ authority. Packaging and release work remain separate future goals.
 policy](MILESTONE_57_SOURCE_ACCEPTANCE_AND_RELEASE_POLICY.md) accepts
 `a1d407469626e34cd5d4921abdb6c8d305895d7e` as source-complete and closes M57
 without a package or version. Its beta.54 release statements are historical;
-beta.59 is now the latest published generation. The new M57 contract retains
-M58 as a separate, unstarted lane.
+beta.60 is now the latest published generation. The M57 contract retains M58
+as a separate runtime lane; M58 planning is now complete.
 
 ### Goal — Provider-Neutral AI Foundation
 
@@ -1571,11 +1577,18 @@ only when user-visible or operational behavior is implemented.
 
 ### 58 — Controlled Browser Verification Proposal
 
-Determine whether a narrow, user-controlled verification-only browser surface
-can be made safe without credential or cookie reuse, hidden context, automatic
-action, generic browser automation, or Advisor execution authority. This is a
-high-risk security and transport decision gate with no implementation or
-package change.
+**Decision complete:** the
+[M58 Controlled Browser Verification Contract](MILESTONE_58_CONTROLLED_BROWSER_VERIFICATION_CONTRACT.md)
+ratifies a narrow, project/task-scoped, fictional/local-only, read-only
+verification proposal. It separates browser session, target, navigation,
+observation, evidence, M55 admission, context, provider transmission,
+interaction, mutation, automation, generic MCP, credentials, and native tools.
+It requires digest-bound one-use confirmation, bounded navigation and cleanup,
+failure-closed ambiguity handling, and no automatic retry.
+
+Runtime remains unstarted and needs one separate comprehensive implementation
+approval. The contract adds no browser activity, runtime dependency, package,
+version, or release.
 
 ### Deferred capability gates
 

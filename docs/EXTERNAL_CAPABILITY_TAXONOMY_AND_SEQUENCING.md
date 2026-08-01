@@ -7,12 +7,12 @@ credential, or network behavior.
 
 ## Authority and purpose
 
-M57 is closed as a source-only architectural foundation at
-`a1d407469626e34cd5d4921abdb6c8d305895d7e`; it has no package or user-visible
-capability. Beta.54 remains the latest packaged product generation. M58
-Controlled Browser Verification remains unstarted. The all-in-one workspace
-direction is non-authorizing north-star guidance, not approval for any external
-capability.
+M57 is complete and published as beta.60 at
+`b8b807f256170e6a35ada22893b410cb4b0057b7`; its deterministic fictional
+connector is local-only and grants no real external authority. M58 Controlled
+Browser Verification planning is complete through its ratified contract;
+runtime remains unstarted. The all-in-one workspace direction is
+non-authorizing north-star guidance, not approval for any external capability.
 
 This checkpoint orders future decisions without selecting a provider or an
 implementation. “External capability” is too broad to govern as one category:
@@ -85,7 +85,8 @@ host sessions are not QuireForge credential authority.
 ### G. Browser verification
 
 Browser verification is a separately governed, verification-only browser
-surface. It remains the unstarted M58 decision lane and is distinct from
+surface. Its M58 decision contract is complete; runtime remains unstarted and
+is distinct from
 general browsing, research retrieval, OAuth, connected-service sessions,
 browser automation, web agents, external mutation, and inference transport.
 
@@ -165,7 +166,7 @@ decisions.
 
 ### Browser verification
 
-M58 remains an independent security decision. It is not required before
+M58 runtime remains an independent security implementation decision. It is not required before
 text-only provider inference, and becomes a prerequisite only for a capability
 that concretely depends on verification-only browser evidence.
 
@@ -199,38 +200,18 @@ implemented by substituting a network adapter for `LocalMock`.
 
 ### M58 controlled browser verification
 
-M58 remains separately named and unstarted. It is neither automatically next
-nor cancelled, is independent of the first provider-neutral decision family,
-and is not a prerequisite for text-only limited inference. It may be scheduled
-later when a concrete product dependency or browser-security question exists.
-Nothing in this taxonomy expands its scope.
+M58 is separately named and its decision contract is complete. Its
+fictional/local-only, read-only runtime is neither automatically started nor
+cancelled, is independent of the first provider-neutral decision family, and is
+not a prerequisite for text-only limited inference. Nothing in this taxonomy
+expands its scope.
 
-## Recommended next decision gate
+## Current next authority boundary
 
-The smallest recommended next provider-neutral decision is **Provider-Neutral
-Capability Registry and Descriptor Governance**. It remains non-authorizing
-until separately approved.
-
-Its future decision scope is limited to capability identifiers and semantics;
-provider/model/runtime descriptor identity; descriptor versioning and digest
-binding; static versus discovered metadata; capability confidence and
-provenance; provider-specific extension namespaces; availability, deprecation,
-and compatibility states; separation between advertised intelligence capability
-and native authority; and conformance-fixture expectations.
-
-It must exclude network calls, provider authentication, credentials, model
-invocation, conversation protocols, tool execution, retrieval, browser
-behavior, UI implementation, persistence implementation, automatic discovery,
-provider selection, and vendor commitments. This checkpoint does not create or
-implement that subsequent decision.
-
-## Roadmap-order decision
-
-This taxonomy checkpoint receives no package or version. It does not start M58
-and does not permanently reorder it. It selects capability-registry and
-descriptor-governance as the recommended next decision gate; beginning that
-gate still requires explicit approval after this checkpoint. M58 remains an
-available independent future lane and must not run implicitly.
+The earlier capability-registry decision is complete. M58 planning now ratifies
+the next separately approvable work: a comprehensive M58 implementation goal
+for its fictional/local-only, read-only verification slice. It receives no
+package or version merely by being ratified and must not start implicitly.
 
 ## Provisional dependency sequence
 

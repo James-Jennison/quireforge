@@ -94,6 +94,32 @@ portability work has started.
 
 ## Reuse and boundary
 
+### Current provider-neutral completion record
+
+This record supersedes the older historical candidate and draft-release
+statements retained below. M55 Durable Source Admission is complete and
+published as beta.59 at
+`d6967e8bfd82acbef7dfa0dc74f085720f8b0384`. Its governed manual-text,
+local-text-file, and reviewed-artifact-text paths remain private-copy,
+project/task-bound admission only; they grant no retrieval, connector, context,
+or provider authority.
+
+M57 Fictional Connector Governance is complete and published as beta.60 at
+`b8b807f256170e6a35ada22893b410cb4b0057b7`, tag
+`v0.1.0-beta.60`. Migration 24 implements only the deterministic local-only
+fictional connector lifecycle: separately declared/granted read and mutation
+operations, digest-bound one-use review/confirmation, revocation, drift,
+incompatibility, quarantine, ambiguity-without-retry, and content-free audit
+linkage. It adds no real connector, credential, network, retrieval, browser,
+MCP, automation, provider transmission, or external mutation authority.
+
+M58 Controlled Browser Verification is now complete as a decision-only
+contract at
+[MILESTONE_58_CONTROLLED_BROWSER_VERIFICATION_CONTRACT.md](MILESTONE_58_CONTROLLED_BROWSER_VERIFICATION_CONTRACT.md).
+Its fictional/local-only, read-only implementation remains unstarted and needs
+a separate comprehensive approval. No browser was opened, controlled, attached,
+or inspected while this contract was planned.
+
 M54 Local Review is complete at package/source commit
 `c4c2752466f36f791fde47edbc5c6b02b0e21320`, tagged
 `v0.1.0-beta.53`. Its beta.53 Debian pair passed pinned-container package,
@@ -148,43 +174,32 @@ authority, external mutation, background activity, generic MCP execution, and
 M55 source-manifest authority remain deferred. It does not change the existing
 Codex-owned Integration Center boundary or beta.54 release state.
 
-The M57 local mock-only connector foundation is source-complete and accepted at
-`a1d407469626e34cd5d4921abdb6c8d305895d7e` as a source-only closure. It provides a
-private native in-memory descriptor/lifecycle/binding/proposal/confirmation/
-audit contract and deterministic mock outcomes only; it has no persistence,
-Tauri command, bridge, or UI. Static fictional descriptors are digest/version
-bound, credential references are inert opaque metadata, confirmations are
-one-use/expiring/cancellable, and audit records are content-free/mock-only.
-Real connector authority, credentials, providers, network access, and M58
-browser verification remain deferred. M55's earlier implementation deferral is
-superseded by the completed beta.59 contract and published release. The ratified
+The M57 local mock-only connector foundation remains preserved source-only
+evidence at `a1d407469626e34cd5d4921abdb6c8d305895d7e`. Its later ratified
 [M57 Connector Governance Contract](MILESTONE_57_CONNECTOR_GOVERNANCE_CONTRACT.md)
-supersedes the earlier M57 implementation deferral only: it defines the next
-separately approvable beta.60 fictional/local-only connector-governance vertical
-slice. The beta.60 candidate implements that fictional local-only slice through
-migration 24: bounded project/task-bound connector binding, operation, and
-content-free audit records; declared read/mutation capabilities; deterministic
-read; and one-use fictional mutation review/confirmation/cancellation/ambiguous
-outcome handling. It grants no real connector, credential, network, MCP
-dispatch, browser/M58, automation, retrieval, context, provider transmission,
-or external mutation. Installation, publication, and deployment remain
-unapproved.
+was implemented and published as beta.60 through migration 24: bounded
+project/task connector binding, declared-versus-granted read/mutation
+capabilities, deterministic local outcomes, one-use review/confirmation,
+revocation, drift, incompatibility, quarantine, ambiguity without retry, and
+content-free audit linkage. It grants no real connector, credential, network,
+MCP dispatch, browser/M58 runtime, automation, retrieval, context, provider
+transmission, or external mutation.
 
 The **External Capability Taxonomy and Sequencing** decision checkpoint is
 complete. It grants no implementation authority, separates inference,
 retrieval, connected services, local runtimes, execution, credential, browser,
-and automation lanes, and records their dependency ordering. It recommends
-Provider-Neutral Capability Registry and Descriptor Governance as the next
-separately approved decision gate. M58 remains unstarted and independent;
-beta.54 remains the latest packaged generation.
+and automation lanes, and records their dependency ordering. Its earlier
+capability-registry recommendation is complete; M58 planning is now complete
+and its runtime remains independent and unstarted. Beta.60 is the latest
+published generation.
 
 The **Provider-Neutral Capability Registry and Descriptor Governance** decision
 is complete as a non-authorizing architecture artifact. It defines descriptor
 entities, opaque identity, provenance, capability claims, lifecycle, extensions,
 and authority separation; it grants no provider implementation or authority.
-Canonical Provider-Neutral Interaction and Event Protocol is the next
-separately approved decision recommendation. M58 remains unstarted and
-independent, and beta.54 remains the latest packaged generation.
+Canonical Provider-Neutral Interaction and Event Protocol is complete. M58
+planning is complete; its runtime remains independent and unstarted, and
+beta.60 is the latest published generation.
 
 The **Provider-Neutral AI Foundation** is an active long-term product goal. Its
 taxonomy, capability-registry, interaction-protocol, adapter-governance,
@@ -412,17 +427,12 @@ gates passed.
 
 ## Next action
 
-M56 — **Inspectable Local Task Templates** is complete at
-`e2b084ed0bdf17fb6f4b0b47663cdf6952ec8e73`, tagged `v0.1.0-beta.54`, with a
-draft prerelease containing the four canonical beta.54 assets. G9 source
-acceptance, G10 canonical packaging, and G11 installed-host validation passed;
-both beta.54 packages remain installed and headless completion returned
-`created`, then `existing`, without rollback. The next action is a separate
-decision/planning goal. M57 and its connector-foundation prerequisite decisions
-are complete; they approve only a proposed, unstarted local mock-only
-foundation and defer all real connector authority. M58 remains unstarted. The
-draft has not been published or deployed, and all M56 deferred-capability
-exclusions remain intact.
+M58 planning is complete. The next genuine authority boundary is a single
+start-to-finish **M58 Controlled Browser Verification Implementation** goal,
+limited to the ratified fictional/local-only, read-only slice. It must not
+start without explicit approval. No beta version, package, installation, tag,
+release, browser session, credential, connector, MCP, automation, external
+mutation, deployment, or later milestone is implied by this decision record.
 
 Milestone 46 — **Bounded Multi-Attachment** is complete at
 `1bc2e787ab785016041d70845c97ca9c2c4f84db` with its verified

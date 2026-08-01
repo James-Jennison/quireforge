@@ -1,16 +1,17 @@
 # M57 — Connector Governance Contract and Executable Implementation Plan
 
-Status: ratified architecture and implementation contract; beta.60 fictional
-local-only candidate implementation. This is the authoritative current M57
+Status: ratified architecture and implementation contract; beta.60 published
+fictional/local-only implementation. This is the authoritative current M57
 contract. It supersedes the *implementation deferral* in the earlier [M57
 governance record](MILESTONE_57_CONNECTOR_GOVERNANCE.md) and
 prerequisite/source-only closure records, while preserving their historical
 private local-mock foundation unchanged. The separately approved beta.60 slice
-implements this contract without broadening it; installation, release mutation,
-publication, and deployment remain unapproved.
+implements this contract without broadening it; installed-host validation and
+publication completed, while deployment remains unapproved.
 
 M55 Durable Source Admission is complete and published as `0.1.0-beta.59`.
-M58 Controlled Browser Verification remains unstarted and out of scope.
+M58 planning is complete and its runtime remains separately unstarted and out
+of scope.
 
 ## Ratified boundary
 
@@ -151,7 +152,7 @@ merely because it is callable elsewhere.
 Connector state cannot open a browser, reuse browser state, start OAuth, access
 filesystem paths, execute terminal/Git/cloud/deployment actions, select or
 transmit provider context, invoke inference, schedule work, or automate action.
-M58 remains wholly unstarted.
+M58 planning is complete; its runtime remains wholly unstarted.
 
 ## Required fictional/local-only beta.60 vertical slice
 
@@ -182,8 +183,8 @@ M55 admission, context inclusion, provider transmission, or automatic retry.
 
 ## Separate approval remains required
 
-The exact beta.60 fictional/local-only slice above has been separately approved
-and implemented as a candidate. Real network read still requires named
+The exact beta.60 fictional/local-only slice above was separately approved,
+implemented, and published. Real network read still requires named
 provider/class/route, credential custody, retention/provenance, and retrieval
 decisions. Real mutation additionally requires provider-specific
 finality/postcondition approval. M58, generic MCP dispatch, browser behavior,

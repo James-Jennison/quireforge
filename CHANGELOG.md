@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0-beta.60 — Fictional connector governance candidate
+## 0.1.0-beta.60 — Fictional connector governance
 
 - Implement the M57 fictional/local-only connector-governance vertical slice:
   static descriptor/capability declaration, project/task validation, separate
@@ -9,8 +9,8 @@
   content-free durable binding/operation/audit records.
 - Add no network, real connector, credential, OAuth, browser/M58, MCP dispatch,
   provider transmission, retrieval, automation, external mutation, shell, Git,
-  cloud, or deployment authority. Beta.60 is a candidate only; installation,
-  publication, and deployment remain unapproved.
+  cloud, or deployment authority. Beta.60 completed installed-host validation
+  and is published as a prerelease; deployment remains unapproved.
 
 ## 0.1.0-beta.59 — Durable Source Admission fail-safe correction
 

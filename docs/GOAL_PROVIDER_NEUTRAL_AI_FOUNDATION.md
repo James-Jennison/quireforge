@@ -1,10 +1,11 @@
 # Goal — Provider-Neutral AI Foundation
 
 Type: active long-term product goal.
-Status: active; architecture gates complete, implementation in progress.
-Packaging status: beta.55 and beta.56 are preserved but release-ineligible;
-beta.57 is the authorized replacement candidate.
-Release version: `0.1.0-beta.57` / `0.1.0~beta.57`.
+Status: active; decision gates and bounded local-only implementation slices are
+complete through M58 planning.
+Packaging status: beta.55 and beta.56 remain preserved failed candidates;
+beta.59 (M55) and beta.60 (M57) are published prereleases.
+Latest release version: `0.1.0-beta.60` / `0.1.0~beta.60`.
 Implementation authority: none granted by establishing this goal.
 Parent vision: native, project-centered, all-in-one Linux AI workspace.
 
@@ -213,19 +214,18 @@ any later context inclusion remain separate decisions.
 
 ### M57 connector governance
 
-The earlier local mock foundation remains reusable least-authority evidence.
-The ratified [M57 Connector Governance Contract and Executable Implementation
-Plan](MILESTONE_57_CONNECTOR_GOVERNANCE_CONTRACT.md) defines the next separately
-approvable fictional/local-only beta.60 vertical slice. It grants no runtime
-work, real connector, provider, credential, network, browser, MCP, automation,
-or external authority.
+M57 is complete and published as beta.60. The
+[M57 Connector Governance Contract and Executable Implementation
+Plan](MILESTONE_57_CONNECTOR_GOVERNANCE_CONTRACT.md) remains authoritative for
+the implemented fictional/local-only slice. It grants no real connector,
+provider, credential, network, browser, MCP, automation, or external authority.
 
 ### M58 browser verification
 
-M58 remains a separately named, unstarted, verification-only decision lane. It
-is not a gate within the core text-only provider-neutral foundation and must not
-become general browser automation, OAuth, web research, provider transport, or
-external action.
+M58 planning is complete through the ratified
+[Controlled Browser Verification Contract](MILESTONE_58_CONTROLLED_BROWSER_VERIFICATION_CONTRACT.md).
+Runtime implementation remains separately unstarted. It must not become general
+browser automation, OAuth, web research, provider transport, or external action.
 
 ### Connected services
 
@@ -282,18 +282,18 @@ When a gate completes, record it as progress under this goal.
 
 ## Immediate next gate
 
-The goal is active. The next separately approvable implementation milestone is
-**M57 Fictional Connector Governance Vertical Slice** for beta.60. It remains
-local-only and does not begin without explicit approval. M58 remains unstarted.
+The goal is active. The next separately approvable work is one comprehensive
+**M58 Controlled Browser Verification Implementation** milestone, limited to
+the fictional/local-only, read-only slice in its ratified contract. It remains
+unstarted and does not begin without explicit approval.
 
 ## Package and release policy
 
 Establishing or advancing this goal through decision-only gates requires no
 package or version. Implementation milestones receive versions only when they
 alter source or user-visible/operational behavior and a release policy is
-separately approved. Beta.59 is the latest published generation; beta.60 is
-reserved only as the next M57 fictional/local-only candidate if that
-implementation is approved. Goal completion will require future package and
+separately approved. Beta.60 is the latest published generation. No beta number
+is reserved for M58; goal completion will require future package and
 installed-host evidence.
 
 ## Explicit exclusions
