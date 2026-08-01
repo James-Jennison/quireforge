@@ -1694,7 +1694,7 @@ test("mock inference exposes an ambiguous result without automatic retry", async
   await page.getByRole("button", { name: "Fictional mock inference" }).click();
   await expect(
     page.getByRole("combobox", { name: "Durable task" }),
-  ).toHaveValue(taskCatalogFixture.selectedTask!.id);
+  ).toHaveValue(taskCatalogFixture.selectedTask.id);
   await expect(page.getByLabel("Fictional destination")).toBeEnabled();
   const input = page.getByLabel("Bounded authored input");
   await input.scrollIntoViewIfNeeded();
