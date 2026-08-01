@@ -1427,11 +1427,15 @@ test("mock inference clears a prepared review when its bound input changes", asy
     page.getByRole("button", { name: "Authorize one local mock submission" }),
   ).toHaveCount(0);
   await input.fill("Fresh visible input");
-  await page.getByRole("button", { name: "Prepare local mock review" }).click();
+  await page
+    .getByRole("button", { name: "Prepare local mock review" })
+    .press("Enter");
   await page
     .getByRole("button", { name: "Authorize one local mock submission" })
-    .click();
-  await page.getByRole("button", { name: "Submit deterministic mock" }).click();
+    .press("Enter");
+  await page
+    .getByRole("button", { name: "Submit deterministic mock" })
+    .press("Enter");
   await expect(
     page.getByRole("button", {
       name: "Continue bounded local fixture stream",
@@ -1439,13 +1443,13 @@ test("mock inference clears a prepared review when its bound input changes", asy
   ).toBeEnabled();
   await page
     .getByRole("button", { name: "Continue bounded local fixture stream" })
-    .click();
+    .press("Enter");
   await expect(page.getByText("incremental fixture output")).toBeVisible();
-  await page.getByRole("button", { name: "Cancel" }).click();
+  await page.getByRole("button", { name: "Cancel" }).press("Enter");
   await expect(page.getByText("cancellation-requested")).toBeVisible();
   await page
     .getByRole("button", { name: "Continue bounded local fixture stream" })
-    .click();
+    .press("Enter");
   await expect(page.getByText(/Mock attempt is cancelled/i)).toBeVisible();
 });
 
