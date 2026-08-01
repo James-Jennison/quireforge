@@ -1535,11 +1535,13 @@ provider-selection decision does not begin automatically.
 **Replacement release checkpoint:** beta.55 passed source, package,
 installation, and native-receipt gates but is release-ineligible because the
 installed New task route omitted the Task Catalog/New task UI. Its artifacts
-and receipt remain immutable failed-candidate evidence. The strictly increasing
-`0.1.0-beta.56` replacement restores only the governed durable-task-to-mock
-workbench path and must pass the existing pinned Ubuntu 22.04 and restricted
-installed-host gates; beta.54 remains the rollback generation unless it passes
-every gate.
+and receipt remain immutable failed-candidate evidence. Beta.56 then proved
+release-ineligible at installed-host acceptance because its Task Catalog created
+an unbound default task. The strictly increasing `0.1.0-beta.57` replacement
+restores only explicit named, project-bound task creation for the governed
+durable-task-to-mock-workbench path and must pass the existing pinned Ubuntu
+22.04 and restricted installed-host gates; beta.54 remains the rollback
+generation unless it passes every gate.
 
 **Later implementation milestones:** Credential broker, context assembly,
 limited inference, and the first separately approved provider or local-runtime

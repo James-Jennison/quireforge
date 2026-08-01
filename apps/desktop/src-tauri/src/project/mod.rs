@@ -1494,10 +1494,11 @@ impl ProjectService {
             .map_err(|_| ())
     }
     pub fn task_catalog(&self, request: TaskCatalogListRequest) -> TaskCatalogSnapshot {
-        if request
-            .selected_task_id
-            .as_deref()
-            .is_some_and(|id| !valid_id(id))
+        if !valid_id(&request.project_id)
+            || request
+                .selected_task_id
+                .as_deref()
+                .is_some_and(|id| !valid_id(id))
         {
             return TaskCatalogSnapshot {
                 diagnostic_code: Some(TaskDiagnosticCode::InvalidRequest),
@@ -1515,8 +1516,12 @@ impl ProjectService {
             .selected_task_id
             .as_deref()
             .filter(|id| valid_id(id));
-        match repository.task_catalog(selected, request.include_archived, request.query.as_deref())
-        {
+        match repository.task_catalog_for_project(
+            &request.project_id,
+            selected,
+            request.include_archived,
+            request.query.as_deref(),
+        ) {
             Ok((tasks, selected_task, plans, task_count, payload_bytes, corrupt_rows)) => {
                 TaskCatalogSnapshot {
                     schema_version: TASK_RECORD_SCHEMA_VERSION,
@@ -1541,7 +1546,13 @@ impl ProjectService {
         }
     }
 
-    pub fn create_task_record(&self) -> TaskCatalogSnapshot {
+    pub fn create_task_record(&self, project_id: String, title: String) -> TaskCatalogSnapshot {
+        if !valid_id(&project_id) {
+            return TaskCatalogSnapshot {
+                diagnostic_code: Some(TaskDiagnosticCode::InvalidRequest),
+                ..task_catalog_unavailable()
+            };
+        }
         let result = {
             let mut repository = match self.repository.lock() {
                 Ok(value) => value,
@@ -1550,10 +1561,11 @@ impl ProjectService {
             let Some(repository) = repository.as_mut() else {
                 return task_catalog_unavailable();
             };
-            repository.create_task()
+            repository.create_task_for_project(&project_id, &title)
         };
         match result {
             Ok(id) => self.task_catalog(TaskCatalogListRequest {
+                project_id,
                 query: None,
                 include_archived: false,
                 selected_task_id: Some(id),
@@ -1582,14 +1594,22 @@ impl ProjectService {
             let Some(repository) = repository.as_mut() else {
                 return task_catalog_unavailable();
             };
-            repository.create_task_from_conversation_context(&conversation_id)
+            repository
+                .create_task_from_conversation_context(&conversation_id)
+                .and_then(|id| {
+                    repository
+                        .task_project_binding(&id)
+                        .map(|project_id| (id, project_id))
+                })
         };
         match result {
-            Ok(id) => self.task_catalog(TaskCatalogListRequest {
+            Ok((id, Some(project_id))) => self.task_catalog(TaskCatalogListRequest {
+                project_id,
                 query: None,
                 include_archived: false,
                 selected_task_id: Some(id),
             }),
+            Ok((_, None)) => task_catalog_unavailable(),
             Err(error) => self.task_snapshot_with_diagnostic(None, error),
         }
     }
@@ -1615,11 +1635,7 @@ impl ProjectService {
             action(repository, &task_id)
         };
         match result {
-            Ok(()) => self.task_catalog(TaskCatalogListRequest {
-                query: None,
-                include_archived: false,
-                selected_task_id: Some(task_id),
-            }),
+            Ok(()) => self.task_catalog_for_bound_task(&task_id),
             Err(error) => self.task_snapshot_with_diagnostic(Some(task_id), error),
         }
     }
@@ -1645,11 +1661,7 @@ impl ProjectService {
             repo.create_plan(&task_id, copy_primary_body)
         };
         match result {
-            Ok(_) => self.task_catalog(TaskCatalogListRequest {
-                query: None,
-                include_archived: false,
-                selected_task_id: Some(task_id),
-            }),
+            Ok(_) => self.task_catalog_for_bound_task(&task_id),
             Err(error) => self.task_snapshot_with_diagnostic(Some(task_id), error),
         }
     }
@@ -1660,13 +1672,34 @@ impl ProjectService {
         error: StorageError,
     ) -> TaskCatalogSnapshot {
         let diagnostic = map_task_storage_error(&error);
-        let mut snapshot = self.task_catalog(TaskCatalogListRequest {
-            query: None,
-            include_archived: false,
-            selected_task_id,
-        });
+        let mut snapshot = selected_task_id
+            .as_deref()
+            .map(|task_id| self.task_catalog_for_bound_task(task_id))
+            .unwrap_or_else(task_catalog_unavailable);
         snapshot.diagnostic_code = Some(diagnostic);
         snapshot
+    }
+
+    fn task_catalog_for_bound_task(&self, task_id: &str) -> TaskCatalogSnapshot {
+        let project_id = {
+            let repository = match self.repository.lock() {
+                Ok(value) => value,
+                Err(_) => return task_catalog_unavailable(),
+            };
+            let Some(repository) = repository.as_ref() else {
+                return task_catalog_unavailable();
+            };
+            match repository.task_project_binding(task_id) {
+                Ok(Some(project_id)) => project_id,
+                Ok(None) | Err(_) => return task_catalog_unavailable(),
+            }
+        };
+        self.task_catalog(TaskCatalogListRequest {
+            project_id,
+            query: None,
+            include_archived: false,
+            selected_task_id: Some(task_id.to_owned()),
+        })
     }
     pub fn unavailable() -> Self {
         Self {

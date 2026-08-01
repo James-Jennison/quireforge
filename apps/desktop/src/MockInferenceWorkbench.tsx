@@ -43,10 +43,11 @@ type Operations = {
   }) => Promise<MockInferenceSnapshot>;
 };
 
-const nativeOperations: Operations = {
+const nativeOperations = (projectId: string): Operations => ({
   catalog: loadMockInferenceCatalog,
   tasks: () =>
     loadTaskCatalog({
+      projectId,
       query: null,
       includeArchived: false,
       selectedTaskId: null,
@@ -56,7 +57,7 @@ const nativeOperations: Operations = {
   submit: submitMockInference,
   cancel: cancelMockInference,
   poll: pollMockInference,
-};
+});
 
 function diagnostic(snapshot: MockInferenceSnapshot | null) {
   if (!snapshot?.diagnostic) return null;
@@ -65,11 +66,15 @@ function diagnostic(snapshot: MockInferenceSnapshot | null) {
 
 export function MockInferenceWorkbench({
   onClose,
-  operations = nativeOperations,
+  projectId,
+  operations: suppliedOperations,
 }: {
   onClose: () => void;
+  projectId: string | null;
   operations?: Operations;
 }) {
+  const activeOperations =
+    suppliedOperations ?? (projectId ? nativeOperations(projectId) : null);
   const titleId = useId();
   const closeRef = useRef<HTMLButtonElement>(null);
   const [catalog, setCatalog] = useState<MockInferenceCatalog | null>(null);
@@ -91,7 +96,11 @@ export function MockInferenceWorkbench({
 
   useEffect(() => {
     let active = true;
-    void Promise.all([operations.catalog(), operations.tasks()])
+    if (!activeOperations) {
+      setNotice("Select an attached project before using local mock inference.");
+      return;
+    }
+    void Promise.all([activeOperations.catalog(), activeOperations.tasks()])
       .then(([nextCatalog, nextTasks]) => {
         if (!active) return;
         setCatalog(nextCatalog);
@@ -108,7 +117,7 @@ export function MockInferenceWorkbench({
     return () => {
       active = false;
     };
-  }, [operations]);
+  }, [activeOperations]);
 
   const apply = async (action: () => Promise<MockInferenceSnapshot>) => {
     setBusy(true);
@@ -172,7 +181,8 @@ export function MockInferenceWorkbench({
         onSubmit={(event) => {
           event.preventDefault();
           if (!taskId || !profileId) return;
-          void apply(() => operations.prepare({ taskId, profileId, input }));
+          if (!activeOperations) return;
+          void apply(() => activeOperations.prepare({ taskId, profileId, input }));
         }}
       >
         <label>
@@ -266,7 +276,8 @@ export function MockInferenceWorkbench({
                 attemptId &&
                 authorizationId &&
                 void apply(() =>
-                  operations.authorize({ taskId, attemptId, authorizationId }),
+                  activeOperations?.authorize({ taskId, attemptId, authorizationId }) ??
+                    Promise.reject(new Error("missing project")),
                 )
               }
             >
@@ -276,10 +287,11 @@ export function MockInferenceWorkbench({
               <button
                 type="button"
                 disabled={busy || !attemptId}
-                onClick={() =>
-                  attemptId &&
-                  void apply(() => operations.poll({ taskId, attemptId }))
-                }
+                onClick={() => {
+                  if (attemptId && activeOperations) {
+                    void apply(() => activeOperations.poll({ taskId, attemptId }));
+                  }
+                }}
               >
                 Continue bounded local fixture stream
               </button>
@@ -291,7 +303,8 @@ export function MockInferenceWorkbench({
                 attemptId &&
                 authorizationId &&
                 void apply(() =>
-                  operations.submit({ taskId, attemptId, authorizationId }),
+                  activeOperations?.submit({ taskId, attemptId, authorizationId }) ??
+                    Promise.reject(new Error("missing project")),
                 )
               }
             >
@@ -301,10 +314,11 @@ export function MockInferenceWorkbench({
               <button
                 type="button"
                 disabled={busy || !attemptId}
-                onClick={() =>
-                  attemptId &&
-                  void apply(() => operations.cancel({ taskId, attemptId }))
-                }
+                onClick={() => {
+                  if (attemptId && activeOperations) {
+                    void apply(() => activeOperations.cancel({ taskId, attemptId }));
+                  }
+                }}
               >
                 Cancel
               </button>

@@ -224,8 +224,8 @@ use project::{
         LocalReviewSnapshot, LocalReviewTextItemCreateRequest, LocalReviewTextPreview,
         LocalReviewTextPreviewRequest, PlanCreateRequest, PlanEditRequest, PlanIdRequest,
         ProjectPreflightSnapshot, ProjectWorkspaceSnapshot, TaskCatalogContextCreateRequest,
-        TaskCatalogListRequest, TaskCatalogSnapshot, TaskIdRequest, TaskStatusRequest,
-        TaskTitleRequest,
+        TaskCatalogCreateRequest, TaskCatalogListRequest, TaskCatalogSnapshot, TaskIdRequest,
+        TaskStatusRequest, TaskTitleRequest,
     },
     ProjectService,
 };
@@ -1366,8 +1366,11 @@ fn task_catalog_status(
 }
 
 #[tauri::command]
-fn task_catalog_create(service: tauri::State<'_, ProjectService>) -> TaskCatalogSnapshot {
-    service.create_task_record()
+fn task_catalog_create(
+    request: TaskCatalogCreateRequest,
+    service: tauri::State<'_, ProjectService>,
+) -> TaskCatalogSnapshot {
+    service.create_task_record(request.project_id, request.title)
 }
 
 #[tauri::command]

@@ -2,9 +2,9 @@
 
 Type: active long-term product goal.
 Status: active; architecture gates complete, implementation in progress.
-Packaging status: beta.55 is preserved but release-ineligible; beta.56 is the
-authorized replacement candidate.
-Release version: `0.1.0-beta.56` / `0.1.0~beta.56`.
+Packaging status: beta.55 and beta.56 are preserved but release-ineligible;
+beta.57 is the authorized replacement candidate.
+Release version: `0.1.0-beta.57` / `0.1.0~beta.57`.
 Implementation authority: none granted by establishing this goal.
 Parent vision: native, project-centered, all-in-one Linux AI workspace.
 

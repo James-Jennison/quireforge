@@ -12,6 +12,7 @@ import {
 const taskId = "018f0000-0000-7000-8000-000000000001";
 const primaryPlanId = "018f0000-0000-7000-8000-000000000002";
 const alternatePlanId = "018f0000-0000-7000-8000-000000000003";
+const projectId = "018f0000-0000-7000-8000-000000000004";
 
 const readyCatalog = taskCatalogSchema.parse({
   schemaVersion: 1,
@@ -62,6 +63,7 @@ function props(snapshot: TaskCatalogSnapshot = readyCatalog) {
   return {
     snapshot,
     busy: false,
+    projectId,
     onLoad: vi.fn().mockResolvedValue(undefined),
     onCreate: vi.fn().mockResolvedValue(snapshot),
     onRename: vi.fn(() => vi.fn().mockResolvedValue(snapshot)),
@@ -263,12 +265,55 @@ describe("durable task catalogue", () => {
     render(<Harness />);
 
     fireEvent.click(screen.getByRole("button", { name: "New task" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Task title" }), {
+      target: { value: "Named task" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Create task" }));
 
     await waitFor(() =>
       expect(screen.getByRole("textbox", { name: "Task title" })).toHaveFocus(),
     );
     expect(screen.getByRole("textbox", { name: "Plan text" })).toHaveValue(
       "Implement the bounded local store.",
+    );
+  });
+
+  it("requires an explicit title confirmation and ignores a repeated submit", async () => {
+    let resolveCreate: ((snapshot: TaskCatalogSnapshot) => void) | undefined;
+    const create = vi.fn(
+      () =>
+        new Promise<TaskCatalogSnapshot>((resolve) => {
+          resolveCreate = resolve;
+        }),
+    );
+    render(
+      <TaskCatalog
+        {...props(
+          taskCatalogSchema.parse({
+            ...scaffoldTaskCatalog,
+            state: "empty",
+            diagnosticCode: null,
+          }),
+        )}
+        onCreate={create}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "New task" }));
+    expect(
+      screen.getByRole("heading", { name: "Create local task" }),
+    ).toBeVisible();
+    fireEvent.change(screen.getByRole("textbox", { name: "Task title" }), {
+      target: { value: "  Bound\t task " },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Create task" }));
+    fireEvent.click(screen.getByRole("button", { name: "Create task" }));
+
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(create).toHaveBeenCalledWith("  Bound\t task ");
+    resolveCreate?.(readyCatalog);
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
     );
   });
 });

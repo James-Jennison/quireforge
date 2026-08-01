@@ -188,6 +188,7 @@ import {
   planCreateRequestSchema,
   planEditRequestSchema,
   planIdRequestSchema,
+  taskCreateRequestSchema,
   taskCatalogRequestSchema,
   taskCatalogSchema,
   taskIdRequestSchema,
@@ -1088,10 +1089,13 @@ export async function loadTaskCatalog(
 }
 
 export async function createTaskRecord(
+  request: unknown,
   invokeFunction: InvokeFunction = invokeTauri,
 ): Promise<TaskCatalogSnapshot> {
   return taskCatalogSchema.parse(
-    await invokeFunction(TASK_CATALOG_CREATE_COMMAND),
+    await invokeFunction(TASK_CATALOG_CREATE_COMMAND, {
+      request: taskCreateRequestSchema.parse(request),
+    }),
   );
 }
 

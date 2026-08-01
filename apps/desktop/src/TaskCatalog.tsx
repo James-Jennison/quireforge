@@ -12,6 +12,71 @@ import type { TaskCatalogSnapshot } from "./lib/taskRecords";
 type SnapshotAction = () => Promise<TaskCatalogSnapshot>;
 type TaskStatus = "active" | "paused" | "completed";
 
+function CreateTaskDialog({
+  busy,
+  onCreate,
+  onCancel,
+}: {
+  busy: boolean;
+  onCreate: (title: string) => void;
+  onCancel: () => void;
+}) {
+  const [title, setTitle] = useState("");
+  const titleRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    titleRef.current?.focus();
+  }, []);
+
+  return (
+    <dialog
+      open
+      className="task-catalog-dialog"
+      aria-modal="true"
+      aria-labelledby="create-task-dialog-title"
+    >
+      <button
+        className="task-catalog-dialog__backdrop"
+        type="button"
+        aria-label="Cancel task creation"
+        onClick={onCancel}
+      />
+      <form
+        className="task-catalog-dialog__panel"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (!busy && title.trim()) onCreate(title);
+        }}
+      >
+        <h3 id="create-task-dialog-title">Create local task</h3>
+        <p>
+          This creates one named, project-bound local task and its initial empty
+          primary plan. It does not start a conversation, provider request,
+          approval, execution, or external action.
+        </p>
+        <label>
+          Task title
+          <input
+            ref={titleRef}
+            value={title}
+            maxLength={120}
+            disabled={busy}
+            onChange={(event) => setTitle(event.target.value)}
+          />
+        </label>
+        <div className="task-catalog__actions">
+          <button type="button" disabled={busy} onClick={onCancel}>
+            Cancel
+          </button>
+          <button type="submit" disabled={busy || !title.trim()}>
+            Create task
+          </button>
+        </div>
+      </form>
+    </dialog>
+  );
+}
+
 const diagnosticMessages: Record<
   NonNullable<TaskCatalogSnapshot["diagnosticCode"]>,
   string
@@ -200,6 +265,7 @@ function PlanEditor({
 export function TaskCatalog({
   snapshot,
   busy,
+  projectId,
   onLoad,
   onCreate,
   onRename,
@@ -217,12 +283,13 @@ export function TaskCatalog({
 }: {
   snapshot: TaskCatalogSnapshot;
   busy: boolean;
+  projectId: string | null;
   onLoad: (request: {
     query: string | null;
     includeArchived: boolean;
     selectedTaskId: string | null;
   }) => Promise<void>;
-  onCreate: SnapshotAction;
+  onCreate: (title: string) => Promise<TaskCatalogSnapshot>;
   onRename: (taskId: string, title: string) => SnapshotAction;
   onStatus: (taskId: string, status: TaskStatus) => SnapshotAction;
   onArchive: (taskId: string) => SnapshotAction;
@@ -250,9 +317,12 @@ export function TaskCatalog({
     | { kind: "plan"; taskId: string; planId: string; label: string }
     | null
   >(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createSubmitting, setCreateSubmitting] = useState(false);
   const titleRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLElement>(null);
   const confirmationTrigger = useRef<HTMLElement | null>(null);
+  const createTriggerRef = useRef<HTMLButtonElement>(null);
 
   const report = (result: TaskCatalogSnapshot, success: string) => {
     setNotice(
@@ -321,18 +391,13 @@ export function TaskCatalog({
             type="button"
             disabled={
               busy ||
+              projectId === null ||
               snapshot.state === "unavailable" ||
               snapshot.taskCount >= 200 ||
               snapshot.payloadBytes >= 8 * 1024 * 1024
             }
-            onClick={() => {
-              void apply(onCreate, "Task created.").then((result) => {
-                if (result?.selectedTask) {
-                  setSelectedTaskId(result.selectedTask.id);
-                  window.requestAnimationFrame(() => titleRef.current?.focus());
-                }
-              });
-            }}
+            ref={createTriggerRef}
+            onClick={() => setCreateOpen(true)}
           >
             New task
           </button>
@@ -669,6 +734,31 @@ export function TaskCatalog({
           ? diagnosticMessages[snapshot.diagnosticCode]
           : notice}
       </p>
+      {createOpen && (
+        <CreateTaskDialog
+          busy={busy || createSubmitting}
+          onCancel={() => {
+            setCreateOpen(false);
+            window.requestAnimationFrame(() =>
+              createTriggerRef.current?.focus(),
+            );
+          }}
+          onCreate={(title) => {
+            if (!projectId || createSubmitting) return;
+            setCreateSubmitting(true);
+            void apply(() => onCreate(title), "Task created.").then(
+              (result) => {
+                if (result?.selectedTask) {
+                  setSelectedTaskId(result.selectedTask.id);
+                  setCreateOpen(false);
+                  window.requestAnimationFrame(() => titleRef.current?.focus());
+                }
+                setCreateSubmitting(false);
+              },
+            );
+          }}
+        />
+      )}
       {confirmation?.kind === "task" && (
         <ConfirmationDialog
           title={`Delete “${confirmation.title}”?`}

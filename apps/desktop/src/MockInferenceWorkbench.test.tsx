@@ -151,6 +151,7 @@ describe("MockInferenceWorkbench", () => {
     render(
       <MockInferenceWorkbench
         onClose={vi.fn()}
+        projectId="018f0000-0000-7000-8000-000000000001"
         operations={{
           catalog: () => Promise.resolve(catalog),
           tasks: () => Promise.resolve(taskCatalog),
@@ -198,6 +199,7 @@ describe("MockInferenceWorkbench", () => {
       render(
         <MockInferenceWorkbench
           onClose={vi.fn()}
+          projectId="018f0000-0000-7000-8000-000000000001"
           operations={{
             catalog: () => Promise.resolve(catalog),
             tasks: () => Promise.resolve(taskCatalog),
@@ -269,6 +271,7 @@ describe("MockInferenceWorkbench", () => {
     render(
       <MockInferenceWorkbench
         onClose={vi.fn()}
+        projectId="018f0000-0000-7000-8000-000000000001"
         operations={{
           catalog: () => Promise.resolve(catalog),
           tasks: () => Promise.resolve(taskCatalog),
@@ -319,6 +322,7 @@ describe("MockInferenceWorkbench", () => {
     render(
       <MockInferenceWorkbench
         onClose={vi.fn()}
+        projectId="018f0000-0000-7000-8000-000000000001"
         operations={{
           catalog: () => Promise.resolve(catalog),
           tasks: () => Promise.resolve(taskCatalog),

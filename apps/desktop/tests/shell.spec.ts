@@ -1514,7 +1514,7 @@ test("production New task creates one durable task for the fictional mock select
     tasks: [
       {
         id: taskId,
-        title: "Untitled task",
+        title: "Mock task",
         status: "active",
         archived: false,
         selectedPlanId: planId,
@@ -1525,7 +1525,7 @@ test("production New task creates one durable task for the fictional mock select
     ],
     selectedTask: {
       id: taskId,
-      title: "Untitled task",
+      title: "Mock task",
       status: "active",
       archived: false,
       selectedPlanId: planId,
@@ -1576,7 +1576,9 @@ test("production New task creates one durable task for the fictional mock select
   await openWorkspace(page, "New task");
   await page.getByRole("button", { name: "Task Catalog" }).click();
   await page.getByRole("button", { name: "New task" }).click();
-  await expect(page.getByText("Untitled task")).toBeVisible();
+  await page.getByRole("textbox", { name: "Task title" }).fill("Mock task");
+  await page.getByRole("button", { name: "Create task" }).click();
+  await expect(page.getByText("Mock task")).toBeVisible();
   await page
     .getByRole("region", { name: "Fictional local mock workflow" })
     .getByRole("button", { name: "Fictional mock inference" })

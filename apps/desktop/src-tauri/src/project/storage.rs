@@ -4773,11 +4773,45 @@ impl ProjectRepository {
         Ok(())
     }
 
+    #[cfg(test)]
     pub(crate) fn create_task(&mut self) -> Result<String, StorageError> {
         let now = now_millis();
         self.create_task_with(now, || Uuid::now_v7().to_string())
     }
 
+    /// Creates a normal Task Catalog record for one currently attached,
+    /// non-archived project. Project binding is resolved and validated inside
+    /// the same immediate transaction as the durable insert.
+    pub(crate) fn create_task_for_project(
+        &mut self,
+        project_id: &str,
+        title: &str,
+    ) -> Result<String, StorageError> {
+        if !is_uuid_v7(project_id) {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let title = normalize_task_text(title, 120, 480)?;
+        let now = now_millis();
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let project_id = task_catalog_project_id(&tx, project_id)?;
+        let task_id = Self::create_task_in_transaction(
+            &tx,
+            now,
+            Some(project_id.as_str()),
+            None,
+            &mut || Uuid::now_v7().to_string(),
+        )?;
+        tx.execute(
+            "UPDATE task_records SET title = ?1 WHERE id = ?2",
+            params![title, task_id],
+        )?;
+        tx.commit()?;
+        Ok(task_id)
+    }
+
+    #[cfg(test)]
     fn create_task_with(
         &mut self,
         now: i64,
@@ -4817,7 +4851,6 @@ impl ProjectRepository {
         Ok(task_id)
     }
 
-    #[cfg(test)]
     pub(crate) fn task_project_binding(
         &self,
         task_id: &str,
@@ -4923,13 +4956,47 @@ impl ProjectRepository {
         Ok(task_id)
     }
 
+    #[cfg(test)]
     pub(crate) fn task_catalog(
         &mut self,
         selected: Option<&str>,
         include_archived: bool,
         query: Option<&str>,
     ) -> Result<TaskCatalogProjection, StorageError> {
-        self.task_catalog_at(selected, include_archived, query, now_millis())
+        self.task_catalog_at(selected, include_archived, query, None, now_millis())
+    }
+
+    pub(crate) fn task_catalog_for_project(
+        &mut self,
+        project_id: &str,
+        selected: Option<&str>,
+        include_archived: bool,
+        query: Option<&str>,
+    ) -> Result<TaskCatalogProjection, StorageError> {
+        let project_exists: Option<String> = self
+            .connection
+            .query_row(
+                "SELECT project.id
+                 FROM projects AS project
+                 JOIN directory_associations AS association
+                   ON association.id = project.active_directory_association_id
+                 WHERE project.id = ?1
+                   AND project.archived_at_ms IS NULL
+                   AND association.detached_at_ms IS NULL",
+                [project_id],
+                |row| row.get(0),
+            )
+            .optional()?;
+        if !project_exists.is_some_and(|id| is_uuid_v7(&id)) {
+            return Err(StorageError::ProjectNotFound);
+        }
+        self.task_catalog_at(
+            selected,
+            include_archived,
+            query,
+            Some(project_id),
+            now_millis(),
+        )
     }
 
     fn task_catalog_at(
@@ -4937,6 +5004,7 @@ impl ProjectRepository {
         selected: Option<&str>,
         include_archived: bool,
         query: Option<&str>,
+        project_id: Option<&str>,
         now: i64,
     ) -> Result<TaskCatalogProjection, StorageError> {
         let search = simple_case_fold(&match query {
@@ -4952,9 +5020,10 @@ impl ProjectRepository {
                     (SELECT count(*) FROM task_plans p WHERE p.task_id = t.id)
              FROM task_records t
              WHERE (?1 OR t.archived_at_ms IS NULL)
+               AND (?2 IS NULL OR t.project_id = ?2)
              ORDER BY t.archived_at_ms IS NOT NULL, t.updated_at_ms DESC, t.id",
         )?;
-        let rows = stmt.query_map([include_archived], |row| {
+        let rows = stmt.query_map(params![include_archived, project_id], |row| {
             Ok((
                 row.get::<_, String>(0)?,
                 row.get::<_, i64>(1)?,
@@ -5090,9 +5159,11 @@ impl ProjectRepository {
                 tasks.retain(|task| task.id != selected.id);
             }
         }
-        let count: u16 =
-            self.connection
-                .query_row("SELECT count(*) FROM task_records", [], |r| r.get(0))?;
+        let count: u16 = self.connection.query_row(
+            "SELECT count(*) FROM task_records WHERE (?1 IS NULL OR project_id = ?1)",
+            [project_id],
+            |r| r.get(0),
+        )?;
         let bytes = task_payload_bytes(&self.connection, None)?;
         Ok((
             tasks,
@@ -7063,6 +7134,30 @@ fn task_context_project_id(
         )
         .optional()?
         .filter(|project_id: &String| is_uuid_v7(project_id))
+        .ok_or(StorageError::ProjectNotFound)
+}
+
+/// Validates the UI-selected project at the native persistence boundary. A
+/// task may bind only to a live, non-archived project with an attached active
+/// directory association; callers cannot create a dangling task binding.
+fn task_catalog_project_id(
+    transaction: &Transaction<'_>,
+    project_id: &str,
+) -> Result<String, StorageError> {
+    transaction
+        .query_row(
+            "SELECT project.id
+             FROM projects AS project
+             JOIN directory_associations AS association
+               ON association.id = project.active_directory_association_id
+             WHERE project.id = ?1
+               AND project.archived_at_ms IS NULL
+               AND association.detached_at_ms IS NULL",
+            [project_id],
+            |row| row.get(0),
+        )
+        .optional()?
+        .filter(|id: &String| is_uuid_v7(id))
         .ok_or(StorageError::ProjectNotFound)
 }
 
@@ -9083,6 +9178,68 @@ mod tests {
     }
 
     #[test]
+    fn task_catalog_creation_requires_a_live_project_and_binds_named_task_atomically() {
+        let mut repository = ProjectRepository::in_memory().expect("schema must migrate");
+        let (project_id, _) = insert_live_task_context(&repository);
+
+        let task_id = repository
+            .create_task_for_project(&project_id, "  Project\t task ")
+            .expect("bound task must create");
+
+        assert_eq!(
+            repository.task_project_binding(&task_id).expect("binding"),
+            Some(project_id.clone())
+        );
+        let title: String = repository
+            .connection
+            .query_row(
+                "SELECT title FROM task_records WHERE id = ?1",
+                [&task_id],
+                |row| row.get(0),
+            )
+            .expect("title");
+        assert_eq!(title, "Project task");
+        assert_eq!(
+            repository
+                .connection
+                .query_row(
+                    "SELECT count(*) FROM task_plans WHERE task_id = ?1",
+                    [&task_id],
+                    |row| row.get::<_, i64>(0)
+                )
+                .expect("one explicit primary plan"),
+            1
+        );
+
+        let legacy_unbound = repository.create_task().expect("legacy fixture");
+        let (tasks, selected, _, task_count, _, _) = repository
+            .task_catalog_for_project(&project_id, Some(&task_id), false, None)
+            .expect("project catalog");
+        assert_eq!(task_count, 1);
+        assert_eq!(tasks.len(), 1);
+        assert_eq!(tasks[0].id, task_id);
+        assert_eq!(selected.expect("selected task").id, task_id);
+        assert_ne!(tasks[0].id, legacy_unbound);
+
+        let count_before: i64 = repository
+            .connection
+            .query_row("SELECT count(*) FROM task_records", [], |row| row.get(0))
+            .expect("count");
+        assert!(matches!(
+            repository.create_task_for_project("018f0000-0000-7000-8000-000000000199", "Refused"),
+            Err(StorageError::ProjectNotFound)
+        ));
+        assert_eq!(
+            repository
+                .connection
+                .query_row("SELECT count(*) FROM task_records", [], |row| row
+                    .get::<_, i64>(0))
+                .expect("failed create must not persist"),
+            count_before
+        );
+    }
+
+    #[test]
     fn task_project_binding_is_native_context_bound_immutable_and_isolated() {
         let mut repository = ProjectRepository::in_memory().expect("schema");
         let (project_id, conversation_id) = insert_live_task_context(&repository);
@@ -10667,7 +10824,7 @@ mod tests {
 
         assert_eq!(
             repository
-                .task_catalog_at(Some(&task), false, Some("RÉSUMÉ"), 100)
+                .task_catalog_at(Some(&task), false, Some("RÉSUMÉ"), None, 100)
                 .expect("unicode title search")
                 .0
                 .len(),
@@ -10675,7 +10832,7 @@ mod tests {
         );
         assert_eq!(
             repository
-                .task_catalog_at(Some(&task), false, Some("ÜBER"), 100)
+                .task_catalog_at(Some(&task), false, Some("ÜBER"), None, 100)
                 .expect("unicode label search")
                 .0
                 .len(),
@@ -10683,14 +10840,14 @@ mod tests {
         );
         assert_eq!(
             repository
-                .task_catalog_at(Some(&task), false, Some("οσ"), 100)
+                .task_catalog_at(Some(&task), false, Some("οσ"), None, 100)
                 .expect("Unicode simple-fold search")
                 .0
                 .len(),
             1
         );
         assert!(repository
-            .task_catalog_at(Some(&task), false, Some("secret body-only"), 100)
+            .task_catalog_at(Some(&task), false, Some("secret body-only"), None, 100)
             .expect("body must not be indexed")
             .0
             .is_empty());
@@ -10708,14 +10865,26 @@ mod tests {
             .expect("updated time");
         assert!(
             !repository
-                .task_catalog_at(Some(&task), false, None, updated + TASK_CLEANUP_AGE_MS - 1,)
+                .task_catalog_at(
+                    Some(&task),
+                    false,
+                    None,
+                    None,
+                    updated + TASK_CLEANUP_AGE_MS - 1,
+                )
                 .expect("catalog")
                 .0[0]
                 .cleanup_eligible
         );
         assert!(
             repository
-                .task_catalog_at(Some(&task), false, None, updated + TASK_CLEANUP_AGE_MS,)
+                .task_catalog_at(
+                    Some(&task),
+                    false,
+                    None,
+                    None,
+                    updated + TASK_CLEANUP_AGE_MS,
+                )
                 .expect("catalog")
                 .0[0]
                 .cleanup_eligible

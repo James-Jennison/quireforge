@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.1.0-beta.57 — Project-bound durable Task Catalog creation
+
+- Replace beta.56 after installed-host acceptance proved that its Task Catalog
+  created an unbound `Untitled task`. New task creation now requires an explicit
+  normalized title and selected opaque project identity, which native validates
+  atomically against a live attached association before persistence. The
+  creation dialog discloses the existing empty primary-plan contract and blocks
+  repeated submission. No conversation, provider, credential, network,
+  retrieval, tool, browser, connector, or external authority is added.
+- Beta.56 remains release-ineligible. Its source commits, package artifacts,
+  receipt, logs, and installed-host failure evidence remain preserved.
+
 ## 0.1.0-beta.56 — Installed durable-task workflow correction
 
 - Restore the governed Task Catalog and its explicit New task control to the

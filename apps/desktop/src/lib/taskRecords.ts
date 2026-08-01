@@ -57,6 +57,12 @@ const planBody = z
   );
 
 export const taskIdRequestSchema = z.object({ taskId: id }).strict();
+export const taskCreateRequestSchema = z
+  .object({
+    projectId: id,
+    title: normalizedTaskText(120, 480),
+  })
+  .strict();
 export const taskTitleRequestSchema = z
   .object({ taskId: id, title: normalizedTaskText(120, 480) })
   .strict();
@@ -79,6 +85,7 @@ export const planEditRequestSchema = z
   .strict();
 export const taskCatalogRequestSchema = z
   .object({
+    projectId: id,
     query: normalizedTaskText(120, 480).or(z.literal("")).nullable(),
     includeArchived: z.boolean(),
     selectedTaskId: id.nullable(),

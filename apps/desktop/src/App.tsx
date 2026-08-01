@@ -337,6 +337,7 @@ interface AppProps {
   refreshUsage?: () => Promise<CodexUsageSnapshot>;
   loadProjects?: () => Promise<ProjectWorkspaceSnapshot>;
   loadTaskCatalogTask?: (request: {
+    projectId: string;
     query: string | null;
     includeArchived: boolean;
     selectedTaskId: string | null;
@@ -1252,7 +1253,7 @@ export default function App({
   }, [loadAuth]);
 
   useEffect(() => {
-    if (!accessGranted) return;
+    if (!accessGranted || !currentProject) return;
     let active = true;
     void loadAdvisorConversationTask()
       .then((result) => {
@@ -1306,9 +1307,11 @@ export default function App({
   }, [accessGranted, loadProjects]);
 
   useEffect(() => {
-    if (!accessGranted) return;
+    if (!accessGranted || !currentProject) return;
+    const projectId = currentProject.id;
     let active = true;
     void loadTaskCatalogTask({
+      projectId,
       query: null,
       includeArchived: false,
       selectedTaskId: null,
@@ -1322,7 +1325,7 @@ export default function App({
     return () => {
       active = false;
     };
-  }, [accessGranted, loadTaskCatalogTask]);
+  }, [accessGranted, currentProject?.id, loadTaskCatalogTask]);
 
   useEffect(() => {
     if (!accessGranted) return;
@@ -2041,8 +2044,15 @@ export default function App({
     selectedTaskId: string | null;
   }) {
     setTaskCatalogBusy(true);
+    if (!currentProject) {
+      setTaskCatalog(scaffoldTaskCatalog);
+      return;
+    }
     try {
-      const snapshot = await loadTaskCatalogTask(request);
+      const snapshot = await loadTaskCatalogTask({
+        ...request,
+        projectId: currentProject.id,
+      });
       setTaskCatalog(snapshot);
     } finally {
       setTaskCatalogBusy(false);
@@ -4377,9 +4387,15 @@ export default function App({
                       <TaskCatalog
                         snapshot={taskCatalog}
                         busy={taskCatalogBusy}
+                        projectId={currentProject?.id ?? null}
                         onLoad={refreshTaskCatalog}
-                        onCreate={() =>
-                          applyTaskCatalogMutation(createTaskRecord)
+                        onCreate={(title) =>
+                          applyTaskCatalogMutation(() =>
+                            createTaskRecord({
+                              projectId: currentProject?.id ?? "",
+                              title,
+                            }),
+                          )
                         }
                         onRename={(taskId, title) => () =>
                           applyTaskCatalogMutation(() =>
@@ -4460,6 +4476,7 @@ export default function App({
                         }
                       >
                         <MockInferenceWorkbench
+                          projectId={currentProject?.id ?? null}
                           onClose={() => {
                             setMockInferenceWorkbenchOpen(false);
                             window.requestAnimationFrame(() =>

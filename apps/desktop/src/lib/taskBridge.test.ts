@@ -12,6 +12,7 @@ import {
 
 const taskId = "018f0000-0000-7000-8000-000000000001";
 const planId = "018f0000-0000-7000-8000-000000000002";
+const projectId = "018f0000-0000-7000-8000-000000000003";
 const emptyCatalog = {
   schemaVersion: 1,
   state: "empty",
@@ -30,13 +31,14 @@ describe("task record bridge", () => {
 
     await loadTaskCatalog(
       {
+        projectId,
         query: "  local\u00a0 task ",
         includeArchived: false,
         selectedTaskId: null,
       },
       invoke,
     );
-    await createTaskRecord(invoke);
+    await createTaskRecord({ projectId, title: "  New\t task " }, invoke);
     await renameTaskRecord({ taskId, title: "  New\t title " }, invoke);
     await selectTaskPlan({ taskId, planId }, invoke);
 
@@ -45,13 +47,17 @@ describe("task record bridge", () => {
         TASK_CATALOG_STATUS_COMMAND,
         {
           request: {
+            projectId,
             query: "local task",
             includeArchived: false,
             selectedTaskId: null,
           },
         },
       ],
-      [TASK_CATALOG_CREATE_COMMAND],
+      [
+        TASK_CATALOG_CREATE_COMMAND,
+        { request: { projectId, title: "New task" } },
+      ],
       [
         TASK_CATALOG_RENAME_COMMAND,
         { request: { taskId, title: "New title" } },
@@ -66,6 +72,7 @@ describe("task record bridge", () => {
     await expect(
       loadTaskCatalog(
         {
+          projectId,
           query: null,
           includeArchived: false,
           selectedTaskId: null,
@@ -76,6 +83,9 @@ describe("task record bridge", () => {
     ).rejects.toThrow();
     await expect(
       renameTaskRecord({ taskId, title: "Safe", execute: true }, invoke),
+    ).rejects.toThrow();
+    await expect(
+      createTaskRecord({ projectId, title: "Safe", execute: true }, invoke),
     ).rejects.toThrow();
     expect(invoke).not.toHaveBeenCalled();
   });
@@ -88,6 +98,8 @@ describe("task record bridge", () => {
       transcript: "must not cross the bridge",
     });
 
-    await expect(createTaskRecord(invoke)).rejects.toThrow();
+    await expect(
+      createTaskRecord({ projectId, title: "Safe" }, invoke),
+    ).rejects.toThrow();
   });
 });

@@ -1019,9 +1019,20 @@ pub enum TaskDiagnosticCode {
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct TaskCatalogListRequest {
+    pub project_id: String,
     pub query: Option<String>,
     pub include_archived: bool,
     pub selected_task_id: Option<String>,
+}
+
+/// Creates one explicitly named task for the selected live QuireForge project.
+/// The request carries only opaque project identity and local task title; it
+/// cannot attach a conversation, provider, or execution context.
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct TaskCatalogCreateRequest {
+    pub project_id: String,
+    pub title: String,
 }
 
 /// Creates a task from a conversation context already owned by native project
