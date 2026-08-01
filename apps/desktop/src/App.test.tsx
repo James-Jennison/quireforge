@@ -490,6 +490,38 @@ describe("QuireForge desktop shell", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("renders the durable Task Catalog in the primary New task workspace", async () => {
+    render(
+      <App
+        loadBootstrap={() => Promise.resolve(scaffoldBootstrap)}
+        loadRuntime={() => Promise.resolve(scaffoldCodexRuntime)}
+        loadAuth={() => Promise.resolve(authenticatedAuth)}
+        loadProjects={() => Promise.resolve(attachedProject)}
+        loadTaskCatalogTask={() => Promise.resolve(durableTaskCatalogFixture)}
+      />,
+    );
+
+    await navigateTo("New task");
+    const workspace = document.querySelector<HTMLElement>(
+      '[data-workspace-view="conversation"]',
+    );
+    expect(workspace).not.toBeNull();
+    expect(
+      within(workspace as HTMLElement).getByRole("heading", { name: "Tasks" }),
+    ).toBeVisible();
+    expect(
+      within(workspace as HTMLElement).getByRole("button", {
+        name: "New task",
+      }),
+    ).toBeVisible();
+    expect(
+      within(workspace as HTMLElement).getByText("Local durable task"),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole("heading", { name: "Workbench context" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("keeps the managed terminal collapsed until the workbench user opens its dock", async () => {
     render(
       <App

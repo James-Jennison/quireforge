@@ -1423,6 +1423,18 @@ test("mock inference clears a prepared review when its bound input changes", asy
   });
   await page.goto("/");
   await openWorkspace(page, "New task");
+  const primaryWorkspace = page.locator(
+    '[data-workspace-view="conversation"] .conversation-mode-workspace',
+  );
+  await expect(
+    primaryWorkspace.getByRole("heading", { name: "Tasks" }),
+  ).toBeVisible();
+  await expect(
+    primaryWorkspace.getByRole("button", { name: "New task" }),
+  ).toBeVisible();
+  await expect(
+    primaryWorkspace.getByText("Review local task records"),
+  ).toBeVisible();
   await page.getByRole("button", { name: "Fictional mock inference" }).click();
   await page.setViewportSize({ width: 640, height: 450 });
   await page.evaluate(() => {
@@ -1480,6 +1492,85 @@ test("mock inference clears a prepared review when its bound input changes", asy
   await expect(
     page.getByRole("button", { name: "Fictional mock inference" }),
   ).toBeFocused();
+});
+
+test("production New task creates one durable task for the fictional mock selector", async ({
+  page,
+}) => {
+  const taskId = "018f0000-0000-7000-8000-000000000055";
+  const planId = "018f0000-0000-7000-8000-000000000056";
+  const createdCatalog = {
+    ...taskCatalogFixture,
+    tasks: [
+      {
+        id: taskId,
+        title: "Untitled task",
+        status: "active",
+        archived: false,
+        selectedPlanId: planId,
+        planCount: 1,
+        updatedAtMs: 1,
+        cleanupEligible: false,
+      },
+    ],
+    selectedTask: {
+      id: taskId,
+      title: "Untitled task",
+      status: "active",
+      archived: false,
+      selectedPlanId: planId,
+      planCount: 1,
+      updatedAtMs: 1,
+      cleanupEligible: false,
+    },
+    plans: [
+      {
+        id: planId,
+        label: "Primary plan",
+        position: 0,
+        body: "A governed local durable task.",
+      },
+    ],
+    taskCount: 1,
+  } as const;
+  const emptyCatalog = {
+    ...taskCatalogFixture,
+    state: "empty",
+    tasks: [],
+    selectedTask: null,
+    plans: [],
+    taskCount: 0,
+  } as const;
+
+  await installNativeFixture(page, {
+    ...nativeResponses,
+    task_catalog_status: { sequence: [emptyCatalog, createdCatalog] },
+    task_catalog_create: createdCatalog,
+    mock_inference_catalog: {
+      schemaVersion: 1,
+      profiles: [
+        {
+          id: "lantern-stream",
+          providerLabel: "Fictional Lantern",
+          endpointLabel: "Local fixture endpoint",
+          modelLabel: "Lantern Text Fixture",
+          adapterLabel: "registry fixture adapter",
+          scenario: "streamed-text",
+          descriptorSha256: "a".repeat(64),
+          capabilityProfileSha256: "a".repeat(64),
+        },
+      ],
+    },
+  });
+  await page.goto("/");
+  await openWorkspace(page, "New task");
+  await page.getByRole("button", { name: "New task" }).click();
+  await expect(page.getByText("Untitled task")).toBeVisible();
+  await page.getByRole("button", { name: "Fictional mock inference" }).click();
+  const selector = page.getByRole("combobox", { name: "Durable task" });
+  await expect(selector).toBeEnabled();
+  await expect(selector).toHaveValue(taskId);
+  await expect(selector.locator("option")).toHaveText(["Untitled task"]);
 });
 
 test("mock inference exposes an ambiguous result without automatic retry", async ({

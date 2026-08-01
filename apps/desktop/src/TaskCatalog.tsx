@@ -3,6 +3,7 @@ import {
   useRef,
   useState,
   type KeyboardEvent,
+  type RefObject,
   type ReactNode,
 } from "react";
 
@@ -212,6 +213,7 @@ export function TaskCatalog({
   onPlanDelete,
   onOpenTemplates,
   onOpenMockInference,
+  mockInferenceTriggerRef,
 }: {
   snapshot: TaskCatalogSnapshot;
   busy: boolean;
@@ -237,6 +239,7 @@ export function TaskCatalog({
   onPlanDelete: (taskId: string, planId: string) => SnapshotAction;
   onOpenTemplates?: () => void;
   onOpenMockInference?: () => void;
+  mockInferenceTriggerRef?: RefObject<HTMLButtonElement | null>;
 }) {
   const [query, setQuery] = useState("");
   const [includeArchived, setIncludeArchived] = useState(false);
@@ -336,7 +339,11 @@ export function TaskCatalog({
           <button type="button" onClick={onOpenTemplates}>
             Task Templates
           </button>
-          <button type="button" onClick={onOpenMockInference}>
+          <button
+            ref={mockInferenceTriggerRef}
+            type="button"
+            onClick={onOpenMockInference}
+          >
             Fictional mock inference
           </button>
         </div>

@@ -3358,83 +3358,6 @@ export default function App({
       case "conversation":
         return (
           <>
-            <TaskCatalog
-              snapshot={taskCatalog}
-              busy={taskCatalogBusy}
-              onLoad={refreshTaskCatalog}
-              onCreate={() => applyTaskCatalogMutation(createTaskRecord)}
-              onRename={(taskId, title) => () =>
-                applyTaskCatalogMutation(() =>
-                  renameTaskRecord({ taskId, title }),
-                )
-              }
-              onStatus={(taskId, status) => () =>
-                applyTaskCatalogMutation(() =>
-                  setTaskRecordStatus({ taskId, status }),
-                )
-              }
-              onArchive={(taskId) => () =>
-                applyTaskCatalogMutation(() => archiveTaskRecord({ taskId }))
-              }
-              onRestore={(taskId) => () =>
-                applyTaskCatalogMutation(() => restoreTaskRecord({ taskId }))
-              }
-              onDelete={(taskId) => () =>
-                applyTaskCatalogMutation(() => deleteTaskRecord({ taskId }))
-              }
-              onPlanCreate={(taskId, copyPrimaryBody) => () =>
-                applyTaskCatalogMutation(() =>
-                  createTaskPlan({ taskId, copyPrimaryBody }),
-                )
-              }
-              onPlanSelect={(taskId, planId) => () =>
-                selectDurableTaskPlan(taskId, planId)
-              }
-              onPlanEdit={(taskId, planId, label, body) => () =>
-                applyTaskCatalogMutation(() =>
-                  editTaskPlan({ taskId, planId, label, body }),
-                )
-              }
-              onPlanDelete={(taskId, planId) => () =>
-                applyTaskCatalogMutation(() =>
-                  deleteTaskPlan({ taskId, planId }),
-                )
-              }
-              onOpenTemplates={() => setTaskTemplateWorkbenchOpen(true)}
-              onOpenMockInference={() => setMockInferenceWorkbenchOpen(true)}
-            />
-            {taskTemplateWorkbenchOpen && (
-              <Suspense
-                fallback={
-                  <section
-                    className="task-template-workbench"
-                    aria-label="Task Templates"
-                  >
-                    <p role="status">Loading task templates…</p>
-                  </section>
-                }
-              >
-                <TaskTemplateWorkbench
-                  onClose={() => setTaskTemplateWorkbenchOpen(false)}
-                />
-              </Suspense>
-            )}
-            {mockInferenceWorkbenchOpen && (
-              <Suspense
-                fallback={
-                  <section
-                    className="mock-inference-workbench"
-                    aria-label="Fictional mock inference"
-                  >
-                    <p role="status">Loading local mock inference…</p>
-                  </section>
-                }
-              >
-                <MockInferenceWorkbench
-                  onClose={() => setMockInferenceWorkbenchOpen(false)}
-                />
-              </Suspense>
-            )}
             <div
               className="workbench-context-tabs"
               role="tablist"
@@ -4434,42 +4357,79 @@ export default function App({
                     learn, and explore without execution authority.
                   </p>
                 ) : (
-                  <ConversationWorkspace
-                    key={acceptedTaskHandoff?.taskId ?? "ordinary-task"}
-                    availability={conversationState}
-                    snapshot={conversation}
-                    events={conversationEvents}
-                    runtime={runtime}
-                    project={currentProject}
-                    integrations={integrationCatalog}
-                    attachments={conversationAttachments}
-                    busy={conversationBusy}
-                    attachmentBusy={conversationAttachmentBusy}
-                    actionError={conversationActionError}
-                    attachmentActionError={conversationAttachmentActionError}
-                    onStart={beginConversation}
-                    onInterrupt={stopConversation}
-                    onDecideApproval={applyConversationApproval}
-                    onUpdateModelSelection={applyModelSelection}
-                    onAttachmentPick={chooseConversationAttachments}
-                    onAttachmentDrop={stageConversationAttachmentDrop}
-                    onAttachmentCancel={removeConversationAttachment}
-                    handoffBrief={acceptedTaskHandoff?.brief ?? null}
-                    onReturnTaskReceipt={returnTaskHandoffToAdvisor}
-                  />
-                )}
-                {conversationMode === "codex" && (
-                  <section
-                    className="mock-inference-launcher"
-                    aria-label="Fictional local mock workflow"
-                  >
-                    <button
-                      ref={mockInferenceLauncherRef}
-                      type="button"
-                      onClick={() => setMockInferenceWorkbenchOpen(true)}
-                    >
-                      Fictional mock inference
-                    </button>
+                  <>
+                    <TaskCatalog
+                      snapshot={taskCatalog}
+                      busy={taskCatalogBusy}
+                      onLoad={refreshTaskCatalog}
+                      onCreate={() =>
+                        applyTaskCatalogMutation(createTaskRecord)
+                      }
+                      onRename={(taskId, title) => () =>
+                        applyTaskCatalogMutation(() =>
+                          renameTaskRecord({ taskId, title }),
+                        )
+                      }
+                      onStatus={(taskId, status) => () =>
+                        applyTaskCatalogMutation(() =>
+                          setTaskRecordStatus({ taskId, status }),
+                        )
+                      }
+                      onArchive={(taskId) => () =>
+                        applyTaskCatalogMutation(() =>
+                          archiveTaskRecord({ taskId }),
+                        )
+                      }
+                      onRestore={(taskId) => () =>
+                        applyTaskCatalogMutation(() =>
+                          restoreTaskRecord({ taskId }),
+                        )
+                      }
+                      onDelete={(taskId) => () =>
+                        applyTaskCatalogMutation(() =>
+                          deleteTaskRecord({ taskId }),
+                        )
+                      }
+                      onPlanCreate={(taskId, copyPrimaryBody) => () =>
+                        applyTaskCatalogMutation(() =>
+                          createTaskPlan({ taskId, copyPrimaryBody }),
+                        )
+                      }
+                      onPlanSelect={(taskId, planId) => () =>
+                        selectDurableTaskPlan(taskId, planId)
+                      }
+                      onPlanEdit={(taskId, planId, label, body) => () =>
+                        applyTaskCatalogMutation(() =>
+                          editTaskPlan({ taskId, planId, label, body }),
+                        )
+                      }
+                      onPlanDelete={(taskId, planId) => () =>
+                        applyTaskCatalogMutation(() =>
+                          deleteTaskPlan({ taskId, planId }),
+                        )
+                      }
+                      onOpenTemplates={() => setTaskTemplateWorkbenchOpen(true)}
+                      onOpenMockInference={() =>
+                        setMockInferenceWorkbenchOpen(true)
+                      }
+                      mockInferenceTriggerRef={mockInferenceLauncherRef}
+                    />
+                    {taskTemplateWorkbenchOpen && (
+                      <Suspense
+                        fallback={
+                          <section
+                            className="task-template-workbench"
+                            aria-label="Task Templates"
+                          >
+                            <p role="status">Loading task templates…</p>
+                          </section>
+                        }
+                      >
+                        <TaskTemplateWorkbench
+                          onClose={() => setTaskTemplateWorkbenchOpen(false)}
+                        />
+                      </Suspense>
+                    )}
                     {mockInferenceWorkbenchOpen && (
                       <Suspense
                         fallback={
@@ -4491,7 +4451,30 @@ export default function App({
                         />
                       </Suspense>
                     )}
-                  </section>
+                    <ConversationWorkspace
+                      key={acceptedTaskHandoff?.taskId ?? "ordinary-task"}
+                      availability={conversationState}
+                      snapshot={conversation}
+                      events={conversationEvents}
+                      runtime={runtime}
+                      project={currentProject}
+                      integrations={integrationCatalog}
+                      attachments={conversationAttachments}
+                      busy={conversationBusy}
+                      attachmentBusy={conversationAttachmentBusy}
+                      actionError={conversationActionError}
+                      attachmentActionError={conversationAttachmentActionError}
+                      onStart={beginConversation}
+                      onInterrupt={stopConversation}
+                      onDecideApproval={applyConversationApproval}
+                      onUpdateModelSelection={applyModelSelection}
+                      onAttachmentPick={chooseConversationAttachments}
+                      onAttachmentDrop={stageConversationAttachmentDrop}
+                      onAttachmentCancel={removeConversationAttachment}
+                      handoffBrief={acceptedTaskHandoff?.brief ?? null}
+                      onReturnTaskReceipt={returnTaskHandoffToAdvisor}
+                    />
+                  </>
                 )}
                 {conversationMode === "codex" && (
                   <section
