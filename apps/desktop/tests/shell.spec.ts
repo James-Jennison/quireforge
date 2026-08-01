@@ -1356,6 +1356,36 @@ test("mock inference clears a prepared review when its bound input changes", asy
       },
     ],
   } as const;
+  const cancelling = {
+    ...streaming,
+    state: "cancelling",
+    events: [
+      ...streaming.events,
+      {
+        id: attemptId,
+        sequence: 2,
+        kind: "cancellation-requested",
+        text: null,
+        structuredState: null,
+        sha256: digest,
+      },
+    ],
+  } as const;
+  const cancelled = {
+    ...cancelling,
+    state: "cancelled",
+    events: [
+      ...cancelling.events,
+      {
+        id: authorizationId,
+        sequence: 3,
+        kind: "terminal",
+        text: "cancelled",
+        structuredState: null,
+        sha256: digest,
+      },
+    ],
+  } as const;
   await installNativeFixture(page, {
     ...nativeResponses,
     mock_inference_catalog: {
@@ -1376,7 +1406,8 @@ test("mock inference clears a prepared review when its bound input changes", asy
     mock_inference_prepare: { sequence: [ready, ready] },
     mock_inference_authorize: authorized,
     mock_inference_submit: submitted,
-    mock_inference_poll: { sequence: [streaming] },
+    mock_inference_poll: { sequence: [streaming, cancelled] },
+    mock_inference_cancel: cancelling,
   });
   await page.goto("/");
   await openWorkspace(page, "New task");
@@ -1406,6 +1437,12 @@ test("mock inference clears a prepared review when its bound input changes", asy
     .getByRole("button", { name: "Continue bounded local fixture stream" })
     .click();
   await expect(page.getByText("incremental fixture output")).toBeVisible();
+  await page.getByRole("button", { name: "Cancel" }).click();
+  await expect(page.getByText("cancellation-requested")).toBeVisible();
+  await page
+    .getByRole("button", { name: "Continue bounded local fixture stream" })
+    .click();
+  await expect(page.getByText(/Mock attempt is cancelled/i)).toBeVisible();
 });
 
 test("desktop preview renders the honest semantic shell", async ({ page }) => {
