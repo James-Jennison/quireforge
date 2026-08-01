@@ -86,6 +86,10 @@ export function MockInferenceWorkbench({
   );
 
   useEffect(() => {
+    closeRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
     let active = true;
     void Promise.all([operations.catalog(), operations.tasks()])
       .then(([nextCatalog, nextTasks]) => {

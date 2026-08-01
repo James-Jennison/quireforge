@@ -163,6 +163,7 @@ describe("MockInferenceWorkbench", () => {
       />,
     );
     await screen.findByText(/Fictional local mock inference is ready/i);
+    expect(screen.getByRole("button", { name: "Close" })).toHaveFocus();
     fireEvent.change(screen.getByLabelText("Bounded authored input"), {
       target: { value: "Visible input" },
     });
