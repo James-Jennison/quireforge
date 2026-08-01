@@ -201,11 +201,15 @@ rollback generation until restricted installed-host validation succeeds.
 
 ## Separate goals and lanes
 
-### M55 durable source admission and research
+### M55 durable source admission
 
-Retrieval, cited research, durable external sources, indexing, and source
-manifests remain separate. Limited inference may precede durable retrieval only
-with explicitly selected transient or already-approved context.
+M55 is the bounded local Durable Source Admission slice defined in
+[its implementation contract](MILESTONE_55_DURABLE_SOURCE_ADMISSION_CONTRACT.md).
+It owns explicit project-bound copies of manual text, one selected local UTF-8
+file, and eligible reviewed text artifacts. Admission is not retrieval,
+provider transmission, context-manifest inclusion, or filesystem authority
+beyond the one approved native intake. Retrieval, cited research, indexing, and
+any later context inclusion remain separate decisions.
 
 ### M57 connector governance
 

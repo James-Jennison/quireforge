@@ -1377,11 +1377,11 @@ provider integration. It excludes opaque personalization, hidden retrieval,
 automatic browsing, and automatic actions. This is a decision-only gate with
 no package change.
 
-**Approved:** [M55 research reports and inspectable task templates
-proposal](MILESTONE_55_RESEARCH_REPORTS_AND_INSPECTABLE_TASK_TEMPLATES_PROPOSAL.md)
-defers research-report implementation because no approved durable source-manifest
-authority exists. It defines a closed local-template-only M56 contract without
-adding retrieval, providers, connectors, browser authority, or product behavior.
+**Superseded implementation decision:** the earlier proposal's M55 deferral is
+replaced by the ratified [M55 Durable Source Admission Implementation
+Contract](MILESTONE_55_DURABLE_SOURCE_ADMISSION_CONTRACT.md). Beta.58 may add
+only explicit, local, private textual admission; retrieval, provider traffic,
+context inclusion, connectors, browser authority, and MCP remain excluded.
 
 ### 56 — Inspectable Local Task Templates
 
