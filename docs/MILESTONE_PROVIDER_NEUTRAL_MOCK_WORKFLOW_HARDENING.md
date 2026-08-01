@@ -2,6 +2,10 @@
 
 Status: source-complete local hardening; release decision remains separate.
 
+Release checkpoint: `0.1.0-beta.55` candidate validation is separately
+authorized. Packaging must preserve the fictional, local-only boundary and is
+not release evidence until the pinned-container and installed-host gates pass.
+
 ## Outcome
 
 The fictional, in-memory mock workflow now derives its selectable Lantern and

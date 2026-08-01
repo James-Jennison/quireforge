@@ -1,12 +1,13 @@
 # Changelog
 
-## Unreleased
+## 0.1.0-beta.55 — Provider-Neutral Mock Workflow
 
 - Harden the local fictional mock-inference workflow with registry-backed
   Lantern/Ember destinations, bounded polling, separately observable
   cancellation confirmation, fail-closed authority fixtures, and representative
-  desktop/mobile browser acceptance. No provider, network, credential,
-  package, or release capability is added.
+  desktop/mobile browser acceptance. This beta packages only a fictional,
+  deterministic, local workflow: it adds no provider, network, credential,
+  retrieval, connector, browser, tool, or external authority.
 
 ## Unreleased — Provider-Neutral AI Foundation local mock slice
 

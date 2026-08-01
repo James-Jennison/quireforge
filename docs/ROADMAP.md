@@ -1532,6 +1532,12 @@ bounded lifecycle polling, cancellation confirmation, authority failure,
 recovery, and representative browser acceptance. A real-provider readiness or
 provider-selection decision does not begin automatically.
 
+**Approved release checkpoint:** Mock Vertical Slice Release Decision and
+Packaging evaluates the strictly increasing `0.1.0-beta.55` candidate through
+the existing pinned Ubuntu 22.04 and restricted installed-host gates. It
+packages the fictional local fixture only; beta.54 remains the rollback
+generation unless the new candidate passes every gate.
+
 **Later implementation milestones:** Credential broker, context assembly,
 limited inference, and the first separately approved provider or local-runtime
 adapter remain provisional—not approved work. Release checkpoints are assigned

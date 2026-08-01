@@ -2,8 +2,8 @@
 
 Type: active long-term product goal.
 Status: active; architecture gates complete, implementation in progress.
-Packaging status: none.
-Release version: none.
+Packaging status: `0.1.0-beta.55` candidate authorized; validation pending.
+Release version: `0.1.0-beta.55` / `0.1.0~beta.55`.
 Implementation authority: none granted by establishing this goal.
 Parent vision: native, project-centered, all-in-one Linux AI workspace.
 
@@ -192,6 +192,11 @@ extends this local fixture with registry-backed destination selection, bounded
 polling, explicit cancellation confirmation, authority-failure fixtures, and
 focused browser acceptance. It remains local, ephemeral, and non-operational;
 no real-provider readiness decision begins automatically.
+
+The separately approved **Mock Vertical Slice Release Decision and Packaging**
+checkpoint evaluates the `0.1.0-beta.55` candidate. It packages only the
+fictional local fixture after release gates pass; beta.54 remains the installed
+rollback generation until restricted installed-host validation succeeds.
 
 ## Separate goals and lanes
 

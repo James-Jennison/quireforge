@@ -219,6 +219,11 @@ confirmation separately observable, and requires a fresh review after local
 authority failure or state loss. Its report distinguishes exhaustive native and
 component evidence from representative browser acceptance.
 
+The separately approved `0.1.0-beta.55` Mock Vertical Slice Release Decision
+and Packaging checkpoint is in release-candidate validation. It does not change
+the beta.54 rollback baseline or imply a real provider, credential, network,
+retrieval, browser, connector, tool, or external authority.
+
 The Rust Codex, project/SQLite, Git, worktree, terminal, preview, attachment,
 settings, and integration services are candidates for reuse. The current Tauri
 boundary is the command façade, app/plugin wiring, native dialogs/openers/
