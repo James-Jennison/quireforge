@@ -211,6 +211,12 @@ tool authority, persistence, or external action. Existing release policy leaves
 it source-only: beta.54 and its draft prerelease remain unchanged. M55, M57,
 and M58 remain separate.
 
+The current hardening follow-up keeps that boundary intact while exposing the
+workbench on the live QuireForge conversation surface. It projects distinct
+fictional Lantern and Ember destinations from the private registry, makes
+cancellation request and confirmation separately observable, and requires a
+fresh review after local authority failure or state loss.
+
 The Rust Codex, project/SQLite, Git, worktree, terminal, preview, attachment,
 settings, and integration services are candidates for reuse. The current Tauri
 boundary is the command façade, app/plugin wiring, native dialogs/openers/

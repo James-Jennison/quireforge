@@ -1525,9 +1525,12 @@ closed, bounded, and local only; it has no real provider, network, credential,
 context-transmission, retrieval, native-operation, persistence, package, or
 release authority.
 
-**Recommended next implementation milestone:** Additional Mock Hardening
-requires separate explicit approval. A real-provider readiness or
-provider-selection decision does not begin automatically.
+**Approved local hardening milestone:** Provider-Neutral Mock Workflow
+Hardening and Release Readiness retains the local fixture boundary while
+covering registry-backed destinations, bounded lifecycle polling, cancellation
+confirmation, authority failure, recovery, and browser acceptance. A
+real-provider readiness or provider-selection decision does not begin
+automatically.
 
 **Later implementation milestones:** Credential broker, context assembly,
 limited inference, and the first separately approved provider or local-runtime

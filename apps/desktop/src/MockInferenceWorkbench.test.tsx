@@ -24,6 +24,7 @@ const catalog = mockInferenceCatalogSchema.parse({
       adapterLabel: "Lantern fixture adapter",
       scenario: "streamed-text",
       descriptorSha256: digest,
+      capabilityProfileSha256: digest,
     },
     {
       id: "ember-failure",
@@ -33,6 +34,7 @@ const catalog = mockInferenceCatalogSchema.parse({
       adapterLabel: "registry fixture adapter",
       scenario: "failure",
       descriptorSha256: digest,
+      capabilityProfileSha256: digest,
     },
   ],
 });
@@ -227,4 +229,73 @@ describe("MockInferenceWorkbench", () => {
       ).not.toBeInTheDocument();
     },
   );
+
+  it("renders bounded streaming progress and keeps cancellation confirmation separate", async () => {
+    const authorize = vi.fn().mockResolvedValue(snapshot("authorized"));
+    const submit = vi.fn().mockResolvedValue(snapshot("submitted"));
+    const cancel = vi.fn().mockResolvedValue(
+      snapshot("cancelling", [
+        { id, sequence: 1, kind: "cancellation-requested", text: null, structuredState: null, sha256: digest },
+      ]),
+    );
+    const poll = vi.fn().mockResolvedValue(
+      snapshot("cancelled", [
+        { id, sequence: 1, kind: "cancellation-requested", text: null, structuredState: null, sha256: digest },
+        { id: attemptId, sequence: 2, kind: "terminal", text: "cancelled", structuredState: null, sha256: digest },
+      ]),
+    );
+    render(
+      <MockInferenceWorkbench
+        onClose={vi.fn()}
+        operations={{
+          catalog: () => Promise.resolve(catalog),
+          tasks: () => Promise.resolve(taskCatalog),
+          prepare: vi.fn().mockResolvedValue(snapshot("ready")),
+          authorize,
+          submit,
+          cancel,
+          poll,
+        }}
+      />,
+    );
+    await screen.findByText(/ready for an explicit review/i);
+    fireEvent.change(screen.getByLabelText("Bounded authored input"), { target: { value: "Visible input" } });
+    fireEvent.click(screen.getByRole("button", { name: "Prepare local mock review" }));
+    await screen.findByText("Exact local review");
+    fireEvent.click(screen.getByRole("button", { name: "Authorize one local mock submission" }));
+    await waitFor(() => expect(authorize).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByRole("button", { name: "Submit deterministic mock" }));
+    await waitFor(() => expect(submit).toHaveBeenCalledTimes(1));
+    expect(screen.getByRole("button", { name: "Continue bounded local fixture stream" })).toBeEnabled();
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(cancel).toHaveBeenCalledTimes(1));
+    expect(screen.getByText(/cancellation-requested/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Continue bounded local fixture stream" }));
+    await waitFor(() => expect(poll).toHaveBeenCalledTimes(1));
+    expect(screen.getAllByText(/cancelled/i).length).toBeGreaterThan(0);
+  });
+
+  it("retains only prior evidence before a fresh retry review", async () => {
+    render(
+      <MockInferenceWorkbench
+        onClose={vi.fn()}
+        operations={{
+          catalog: () => Promise.resolve(catalog),
+          tasks: () => Promise.resolve(taskCatalog),
+          prepare: vi.fn().mockResolvedValue(snapshot("ready")),
+          authorize: vi.fn(),
+          submit: vi.fn(),
+          cancel: vi.fn(),
+          poll: vi.fn(),
+        }}
+      />,
+    );
+    await screen.findByText(/ready for an explicit review/i);
+    fireEvent.change(screen.getByLabelText("Bounded authored input"), { target: { value: "Visible input" } });
+    fireEvent.click(screen.getByRole("button", { name: "Prepare local mock review" }));
+    await screen.findByText("Exact local review");
+    fireEvent.click(screen.getByRole("button", { name: "Prepare fresh retry or regeneration" }));
+    expect(screen.getByText("Prior local attempt")).toBeInTheDocument();
+    expect(screen.getByText(/no lease, authorization, event sequence, or result is reused/i)).toBeInTheDocument();
+  });
 });

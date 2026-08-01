@@ -4458,6 +4458,32 @@ export default function App({
                   />
                 )}
                 {conversationMode === "codex" && (
+                  <section className="mock-inference-launcher" aria-label="Fictional local mock workflow">
+                    <button
+                      type="button"
+                      onClick={() => setMockInferenceWorkbenchOpen(true)}
+                    >
+                      Fictional mock inference
+                    </button>
+                    {mockInferenceWorkbenchOpen && (
+                      <Suspense
+                        fallback={
+                          <section
+                            className="mock-inference-workbench"
+                            aria-label="Fictional mock inference"
+                          >
+                            <p role="status">Loading local mock inference…</p>
+                          </section>
+                        }
+                      >
+                        <MockInferenceWorkbench
+                          onClose={() => setMockInferenceWorkbenchOpen(false)}
+                        />
+                      </Suspense>
+                    )}
+                  </section>
+                )}
+                {conversationMode === "codex" && (
                   <section
                     className="workbench-terminal-dock"
                     aria-label="Terminal dock"

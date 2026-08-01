@@ -186,8 +186,12 @@ in-memory, fictional, non-networked, and non-operational; it adds no real
 provider, credential, retrieval, context transmission, native operation, or
 external authority.
 
-The recommended next separately approved milestone is **Additional Mock
-Hardening**. No real-provider readiness decision begins automatically.
+The approved **Provider-Neutral Mock Workflow Hardening and Release
+Readiness** milestone extends this local fixture with registry-backed
+destination selection, bounded polling, explicit cancellation confirmation,
+authority-failure fixtures, and focused browser acceptance. It remains local,
+ephemeral, and non-operational; no real-provider readiness decision begins
+automatically.
 
 ## Separate goals and lanes
 

@@ -209,6 +209,7 @@ struct RegistryFixture {
 /// Every field originates from a validated static registry descriptor.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct LocalMockDestinationProjection {
+    pub(crate) id: String,
     pub(crate) provider_id: String,
     pub(crate) endpoint_id: String,
     pub(crate) model_id: String,
@@ -218,6 +219,7 @@ pub(crate) struct LocalMockDestinationProjection {
     pub(crate) model_label: String,
     pub(crate) adapter_label: String,
     pub(crate) descriptor_sha256: String,
+    pub(crate) capability_profile_sha256: String,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -345,12 +347,18 @@ fn fictional_fixture() -> RegistryFixture {
 /// provider route or descriptor mutation surface. Invalid or stale registry
 /// state cannot produce a mock destination.
 pub(crate) fn local_mock_destination_projection(
+    id: &str,
 ) -> Result<LocalMockDestinationProjection, RegistryError> {
-    let fixture = fictional_fixture();
-    local_mock_destination_projection_for(&fixture)
+    let fixture = match id {
+        "lantern" => fictional_fixture(),
+        "ember" => fictional_ember_fixture(),
+        _ => return Err(RegistryError::InvalidDescriptor),
+    };
+    local_mock_destination_projection_for(id, &fixture)
 }
 
 fn local_mock_destination_projection_for(
+    id: &str,
     fixture: &RegistryFixture,
 ) -> Result<LocalMockDestinationProjection, RegistryError> {
     validate_fixture(fixture)?;
@@ -379,6 +387,7 @@ fn local_mock_destination_projection_for(
         fixture.adapter.sha256.clone(),
     ]);
     Ok(LocalMockDestinationProjection {
+        id: id.into(),
         provider_id: fixture.provider.id.clone(),
         endpoint_id: endpoint.id.clone(),
         model_id: model.id.clone(),
@@ -388,7 +397,47 @@ fn local_mock_destination_projection_for(
         model_label: model.model_label.clone(),
         adapter_label: "registry fixture adapter".into(),
         descriptor_sha256,
+        capability_profile_sha256: digest(
+            &fixture
+                .claims
+                .iter()
+                .map(|claim| claim.sha256.clone())
+                .collect::<Vec<_>>(),
+        ),
     })
+}
+
+fn fictional_ember_fixture() -> RegistryFixture {
+    let mut fixture = fictional_fixture();
+    fixture.provider.id = id(21);
+    fixture.provider.display_name = "Fictional Ember Platform".into();
+    fixture.provider.sha256 = provider_digest(&fixture.provider);
+    fixture.endpoints[0].id = id(22);
+    fixture.endpoints[0].provider_id = fixture.provider.id.clone();
+    fixture.endpoints[0].deployment_label = "ember-static-deployment".into();
+    fixture.endpoints[0].sha256 = endpoint_digest(&fixture.endpoints[0]);
+    fixture.endpoints[1].id = id(28);
+    fixture.endpoints[1].provider_id = fixture.provider.id.clone();
+    fixture.endpoints[1].deployment_label = "ember-static-alternate".into();
+    fixture.endpoints[1].sha256 = endpoint_digest(&fixture.endpoints[1]);
+    fixture.models[0].id = id(23);
+    fixture.models[0].provider_id = fixture.provider.id.clone();
+    fixture.models[0].endpoint_id = fixture.endpoints[1].id.clone();
+    fixture.models[0].model_label = "ember-text".into();
+    fixture.models[0].sha256 = model_digest(&fixture.models[0]);
+    fixture.models[1].id = id(24);
+    fixture.models[1].provider_id = fixture.provider.id.clone();
+    fixture.models[1].endpoint_id = fixture.endpoints[0].id.clone();
+    fixture.models[1].model_label = "ember-text".into();
+    fixture.models[1].sha256 = model_digest(&fixture.models[1]);
+    fixture.adapter.id = id(26);
+    fixture.adapter.provider_id = fixture.provider.id.clone();
+    fixture.adapter.sha256 = adapter_digest(&fixture.adapter);
+    fixture.claims[0].id = id(27);
+    fixture.claims[0].model_id = fixture.models[0].id.clone();
+    fixture.claims[0].model_sha256 = fixture.models[0].sha256.clone();
+    fixture.claims[0].sha256 = claim_digest(&fixture.claims[0]);
+    fixture
 }
 
 fn parse_fixture(input: &str) -> Result<RegistryFixture, RegistryError> {
@@ -780,12 +829,21 @@ mod tests {
     #[test]
     fn local_mock_projection_is_deterministic_and_registry_derived() {
         let fixture = fictional_fixture();
-        let projection = local_mock_destination_projection_for(&fixture).unwrap();
-        assert_eq!(projection, local_mock_destination_projection().unwrap());
+        let projection = local_mock_destination_projection_for("lantern", &fixture).unwrap();
+        assert_eq!(
+            projection,
+            local_mock_destination_projection("lantern").unwrap()
+        );
         assert_eq!(projection.provider_id, fixture.provider.id);
         assert_eq!(projection.model_id, fixture.models[0].id);
         assert_eq!(projection.endpoint_id, fixture.models[0].endpoint_id);
         assert_eq!(projection.adapter_id, fixture.adapter.id);
+        let ember = local_mock_destination_projection("ember").unwrap();
+        assert_ne!(projection.provider_id, ember.provider_id);
+        assert_ne!(projection.endpoint_id, ember.endpoint_id);
+        assert_ne!(projection.model_id, ember.model_id);
+        assert_ne!(projection.adapter_id, ember.adapter_id);
+        assert_ne!(projection.descriptor_sha256, ember.descriptor_sha256);
     }
     #[test]
     fn stale_or_mismatched_registry_state_cannot_project_a_mock_destination() {
@@ -793,7 +851,7 @@ mod tests {
         stale.models[0].endpoint_id = stale.endpoints[0].id.clone();
         stale.models[0].sha256 = model_digest(&stale.models[0]);
         assert_eq!(
-            local_mock_destination_projection_for(&stale),
+            local_mock_destination_projection_for("lantern", &stale),
             Err(RegistryError::InvalidClaim)
         );
 
@@ -801,7 +859,7 @@ mod tests {
         mismatched.adapter.provider_id = mismatched.endpoints[0].id.clone();
         mismatched.adapter.sha256 = adapter_digest(&mismatched.adapter);
         assert_eq!(
-            local_mock_destination_projection_for(&mismatched),
+            local_mock_destination_projection_for("lantern", &mismatched),
             Err(RegistryError::InvalidDescriptor)
         );
     }

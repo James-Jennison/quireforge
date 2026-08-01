@@ -29,6 +29,13 @@ const scenario = z.enum([
   "timeout",
   "interrupted",
   "ambiguous",
+  "manifest-expired",
+  "lease-expired",
+  "lease-revoked",
+  "lease-quarantined",
+  "explicit-invalidation",
+  "descriptor-drift",
+  "adapter-incompatible",
 ]);
 const attemptState = z.enum([
   "draft",
@@ -57,6 +64,7 @@ const diagnostic = z.enum([
   "manifest-invalidated",
   "terminal-attempt",
   "cross-task-rejected",
+  "recovery-required",
 ]);
 
 export const mockInferenceCatalogSchema = z
@@ -73,11 +81,12 @@ export const mockInferenceCatalogSchema = z
             adapterLabel: z.string().min(1).max(120),
             scenario,
             descriptorSha256: digest,
+            capabilityProfileSha256: digest,
           })
           .strict(),
       )
       .min(1)
-      .max(8),
+      .max(16),
   })
   .strict();
 

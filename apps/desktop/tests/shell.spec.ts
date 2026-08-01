@@ -1333,6 +1333,7 @@ test("mock inference clears a prepared review when its bound input changes", asy
           adapterLabel: "registry fixture adapter",
           scenario: "streamed-text",
           descriptorSha256: digest,
+          capabilityProfileSha256: digest,
         },
       ],
     },

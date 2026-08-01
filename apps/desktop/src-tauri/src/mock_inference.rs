@@ -62,6 +62,7 @@ pub(crate) struct MockInferenceProfile {
     pub adapter_label: String,
     pub scenario: MockScenario,
     pub descriptor_sha256: String,
+    pub capability_profile_sha256: String,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
@@ -74,6 +75,13 @@ pub(crate) enum MockScenario {
     Timeout,
     Interrupted,
     Ambiguous,
+    ManifestExpired,
+    LeaseExpired,
+    LeaseRevoked,
+    LeaseQuarantined,
+    ExplicitInvalidation,
+    DescriptorDrift,
+    AdapterIncompatible,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
@@ -138,6 +146,7 @@ pub(crate) enum MockDiagnostic {
     ManifestInvalidated,
     TerminalAttempt,
     CrossTaskRejected,
+    RecoveryRequired,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -253,49 +262,97 @@ struct AttemptRecord {
 #[derive(Clone)]
 struct ProfileDefinition {
     id: &'static str,
+    destination_id: &'static str,
     scenario: MockScenario,
 }
 
-const PROFILES: [ProfileDefinition; 7] = [
+const PROFILES: [ProfileDefinition; 14] = [
     ProfileDefinition {
         id: "lantern-stream",
+        destination_id: "lantern",
         scenario: MockScenario::StreamedText,
     },
     ProfileDefinition {
         id: "lantern-structured",
+        destination_id: "lantern",
         scenario: MockScenario::Structured,
     },
     ProfileDefinition {
         id: "ember-refusal",
+        destination_id: "ember",
         scenario: MockScenario::Refusal,
     },
     ProfileDefinition {
         id: "ember-failure",
+        destination_id: "ember",
         scenario: MockScenario::Failure,
     },
     ProfileDefinition {
         id: "ember-timeout",
+        destination_id: "ember",
         scenario: MockScenario::Timeout,
     },
     ProfileDefinition {
         id: "ember-interrupted",
+        destination_id: "ember",
         scenario: MockScenario::Interrupted,
     },
     ProfileDefinition {
         id: "ember-ambiguous",
+        destination_id: "ember",
         scenario: MockScenario::Ambiguous,
+    },
+    ProfileDefinition {
+        id: "lantern-manifest-expired",
+        destination_id: "lantern",
+        scenario: MockScenario::ManifestExpired,
+    },
+    ProfileDefinition {
+        id: "ember-lease-expired",
+        destination_id: "ember",
+        scenario: MockScenario::LeaseExpired,
+    },
+    ProfileDefinition {
+        id: "ember-lease-revoked",
+        destination_id: "ember",
+        scenario: MockScenario::LeaseRevoked,
+    },
+    ProfileDefinition {
+        id: "ember-lease-quarantined",
+        destination_id: "ember",
+        scenario: MockScenario::LeaseQuarantined,
+    },
+    ProfileDefinition {
+        id: "ember-explicit-invalidation",
+        destination_id: "ember",
+        scenario: MockScenario::ExplicitInvalidation,
+    },
+    ProfileDefinition {
+        id: "lantern-descriptor-drift",
+        destination_id: "lantern",
+        scenario: MockScenario::DescriptorDrift,
+    },
+    ProfileDefinition {
+        id: "ember-adapter-incompatible",
+        destination_id: "ember",
+        scenario: MockScenario::AdapterIncompatible,
     },
 ];
 
 impl MockInferenceService {
     pub(crate) fn catalog(&self) -> MockInferenceCatalog {
-        let destination = crate::provider_capability_registry::local_mock_destination_projection()
-            .expect("built-in local mock registry fixture must remain valid");
         MockInferenceCatalog {
             schema_version: SCHEMA_VERSION,
             profiles: PROFILES
                 .iter()
-                .map(|profile| profile_snapshot(profile, &destination))
+                .map(|profile| {
+                    let destination =
+                        crate::provider_capability_registry::local_mock_destination_projection(
+                            profile.destination_id,
+                        )
+                        .expect("built-in local mock registry fixture must remain valid");
+                    profile_snapshot(profile, &destination)
+                })
                 .collect(),
         }
     }
@@ -317,7 +374,9 @@ impl MockInferenceService {
             );
         };
         let destination =
-            match crate::provider_capability_registry::local_mock_destination_projection() {
+            match crate::provider_capability_registry::local_mock_destination_projection(
+                profile.destination_id,
+            ) {
                 Ok(destination) => destination,
                 Err(_) => {
                     return diagnostic(
@@ -363,6 +422,7 @@ impl MockInferenceService {
             "{}:{}:{}:{}:{}",
             attempt_id, manifest_sha256, lease_id, destination_digest, POLICY_VERSION
         ));
+        let lease_state = lease_state_for(profile.scenario);
         let record = AttemptRecord {
             id: attempt_id.clone(),
             binding,
@@ -378,7 +438,7 @@ impl MockInferenceService {
             authorization_sha256,
             created_tick: store.tick,
             state: MockAttemptState::Ready,
-            lease_state: MockLeaseState::Issued,
+            lease_state,
             authorized: false,
             consumed: false,
             events: Vec::new(),
@@ -425,6 +485,10 @@ impl MockInferenceService {
         if record.lease_state != MockLeaseState::Issued {
             record.state = MockAttemptState::Invalidated;
             return snapshot(record, tick, Some(MockDiagnostic::LeaseUnavailable));
+        }
+        if let Some(code) = authority_diagnostic(record) {
+            record.state = MockAttemptState::Invalidated;
+            return snapshot(record, tick, Some(code));
         }
         if !valid_for_submit(record, tick) {
             record.state = MockAttemptState::Invalidated;
@@ -473,6 +537,10 @@ impl MockInferenceService {
             record.state = MockAttemptState::Invalidated;
             return snapshot(record, tick, Some(MockDiagnostic::LeaseUnavailable));
         }
+        if let Some(code) = authority_diagnostic(record) {
+            record.state = MockAttemptState::Invalidated;
+            return snapshot(record, tick, Some(code));
+        }
         if !valid_for_submit(record, tick) {
             record.state = MockAttemptState::Invalidated;
             return snapshot(record, tick, Some(MockDiagnostic::ManifestInvalidated));
@@ -512,6 +580,16 @@ impl MockInferenceService {
         }
         if is_terminal(record.state) {
             return diagnostic(record.state, MockDiagnostic::TerminalAttempt);
+        }
+        if record.state == MockAttemptState::Cancelling {
+            record.events.push(event(
+                record.events.len() as u16 + 1,
+                "terminal",
+                Some("cancelled"),
+                None,
+            ));
+            record.state = MockAttemptState::Cancelled;
+            return snapshot(record, tick, None);
         }
         if !matches!(
             record.state,
@@ -563,7 +641,7 @@ impl MockInferenceService {
                 MockDiagnostic::CrossTaskRejected,
             );
         }
-        if is_terminal(record.state) {
+        if is_terminal(record.state) || record.state == MockAttemptState::Cancelling {
             return diagnostic(record.state, MockDiagnostic::TerminalAttempt);
         }
         record.state = MockAttemptState::Cancelling;
@@ -573,13 +651,7 @@ impl MockInferenceService {
             None,
             None,
         ));
-        record.events.push(event(
-            record.events.len() as u16 + 1,
-            "terminal",
-            Some("cancelled"),
-            None,
-        ));
-        record.state = MockAttemptState::Cancelled;
+        // Confirmation is deliberately emitted only by the next bounded poll.
         snapshot(record, tick, None)
     }
 }
@@ -595,7 +667,7 @@ fn snapshot(
         model_id: record.destination.model_id.clone(),
         adapter_id: record.destination.adapter_id.clone(),
         descriptor_sha256: record.destination.descriptor_sha256.clone(),
-        capability_profile_sha256: digest("fictional-text-only-v1"),
+        capability_profile_sha256: record.destination.capability_profile_sha256.clone(),
     };
     MockInferenceSnapshot {
         schema_version: SCHEMA_VERSION,
@@ -681,8 +753,10 @@ pub(crate) fn diagnostic(state: MockAttemptState, code: MockDiagnostic) -> MockI
 fn valid_for_submit(record: &AttemptRecord, tick: u64) -> bool {
     record.lease_state == MockLeaseState::Issued
         && tick <= record.created_tick + EXPIRY_TICKS
-        && crate::provider_capability_registry::local_mock_destination_projection()
-            .is_ok_and(|current| current == record.destination)
+        && crate::provider_capability_registry::local_mock_destination_projection(
+            &record.destination.id,
+        )
+        .is_ok_and(|current| current == record.destination)
         && record.manifest_sha256
             == digest(&format!(
                 "{}:{}:{}:{}",
@@ -692,6 +766,23 @@ fn valid_for_submit(record: &AttemptRecord, tick: u64) -> bool {
                 record.destination.descriptor_sha256
             ))
 }
+fn lease_state_for(scenario: MockScenario) -> MockLeaseState {
+    match scenario {
+        MockScenario::LeaseExpired => MockLeaseState::Expired,
+        MockScenario::LeaseRevoked => MockLeaseState::Revoked,
+        MockScenario::LeaseQuarantined => MockLeaseState::Quarantined,
+        _ => MockLeaseState::Issued,
+    }
+}
+fn authority_diagnostic(record: &AttemptRecord) -> Option<MockDiagnostic> {
+    match record.profile.scenario {
+        MockScenario::ManifestExpired
+        | MockScenario::DescriptorDrift
+        | MockScenario::AdapterIncompatible => Some(MockDiagnostic::ManifestInvalidated),
+        MockScenario::ExplicitInvalidation => Some(MockDiagnostic::RecoveryRequired),
+        _ => None,
+    }
+}
 fn terminal_for(scenario: MockScenario) -> MockAttemptState {
     match scenario {
         MockScenario::StreamedText | MockScenario::Structured => MockAttemptState::Completed,
@@ -700,6 +791,13 @@ fn terminal_for(scenario: MockScenario) -> MockAttemptState {
         MockScenario::Timeout => MockAttemptState::TimedOut,
         MockScenario::Interrupted => MockAttemptState::Interrupted,
         MockScenario::Ambiguous => MockAttemptState::Ambiguous,
+        MockScenario::ManifestExpired
+        | MockScenario::LeaseExpired
+        | MockScenario::LeaseRevoked
+        | MockScenario::LeaseQuarantined
+        | MockScenario::ExplicitInvalidation
+        | MockScenario::DescriptorDrift
+        | MockScenario::AdapterIncompatible => MockAttemptState::Invalidated,
     }
 }
 fn is_terminal(state: MockAttemptState) -> bool {
@@ -814,6 +912,20 @@ fn fixture_events(record: &AttemptRecord) -> Vec<MockInteractionEvent> {
             ));
             events.push(event(4, "terminal", Some("ambiguous"), None));
         }
+        MockScenario::ManifestExpired
+        | MockScenario::LeaseExpired
+        | MockScenario::LeaseRevoked
+        | MockScenario::LeaseQuarantined
+        | MockScenario::ExplicitInvalidation
+        | MockScenario::DescriptorDrift
+        | MockScenario::AdapterIncompatible => {
+            events.push(event(
+                3,
+                "authority-invalidated",
+                Some("fresh preparation required"),
+                None,
+            ));
+        }
     };
     events
 }
@@ -852,6 +964,7 @@ fn profile_snapshot(
         adapter_label: destination.adapter_label.clone(),
         scenario: profile.scenario,
         descriptor_sha256: destination.descriptor_sha256.clone(),
+        capability_profile_sha256: destination.capability_profile_sha256.clone(),
     }
 }
 fn digest(value: &str) -> String {
@@ -884,11 +997,19 @@ mod tests {
     #[test]
     fn catalog_is_fictional_static_and_digest_bound() {
         let catalog = MockInferenceService::default().catalog();
-        assert_eq!(catalog.profiles.len(), 7);
+        assert_eq!(catalog.profiles.len(), 14);
         assert!(catalog
             .profiles
             .iter()
             .all(|profile| profile.provider_label.starts_with("Fictional")));
+        assert!(catalog
+            .profiles
+            .iter()
+            .any(|profile| profile.provider_label.contains("Lantern")));
+        assert!(catalog
+            .profiles
+            .iter()
+            .any(|profile| profile.provider_label.contains("Ember")));
         assert_eq!(catalog.profiles[0].descriptor_sha256.len(), 64);
     }
     #[test]
@@ -1001,14 +1122,26 @@ mod tests {
             },
             &binding(),
         );
-        assert_eq!(cancelled.state, MockAttemptState::Cancelled);
+        assert_eq!(cancelled.state, MockAttemptState::Cancelling);
         assert_eq!(
             cancelled
                 .events
                 .iter()
                 .map(|event| event.kind.as_str())
                 .collect::<Vec<_>>(),
-            vec!["cancellation-requested", "terminal"]
+            vec!["cancellation-requested"]
+        );
+        let confirmed = service.poll(
+            MockInferenceAttemptRequest {
+                task_id: binding().task_id,
+                attempt_id: attempt_id.clone(),
+            },
+            &binding(),
+        );
+        assert_eq!(confirmed.state, MockAttemptState::Cancelled);
+        assert_eq!(
+            confirmed.events.last().map(|event| event.text.as_deref()),
+            Some(Some("cancelled"))
         );
         assert_eq!(
             service
@@ -1153,6 +1286,74 @@ mod tests {
         assert_ne!(
             first.authorization.unwrap().id,
             retry.authorization.unwrap().id
+        );
+    }
+
+    #[test]
+    fn authority_fixture_paths_fail_closed_with_distinct_explanations() {
+        for (profile_id, diagnostic) in [
+            (
+                "lantern-manifest-expired",
+                MockDiagnostic::ManifestInvalidated,
+            ),
+            ("ember-lease-expired", MockDiagnostic::LeaseUnavailable),
+            ("ember-lease-revoked", MockDiagnostic::LeaseUnavailable),
+            ("ember-lease-quarantined", MockDiagnostic::LeaseUnavailable),
+            (
+                "ember-explicit-invalidation",
+                MockDiagnostic::RecoveryRequired,
+            ),
+            (
+                "lantern-descriptor-drift",
+                MockDiagnostic::ManifestInvalidated,
+            ),
+            (
+                "ember-adapter-incompatible",
+                MockDiagnostic::ManifestInvalidated,
+            ),
+        ] {
+            let service = MockInferenceService::default();
+            let ready = service.prepare(
+                MockInferencePrepareRequest {
+                    task_id: binding().task_id,
+                    profile_id: profile_id.into(),
+                    input: "visible".into(),
+                },
+                binding(),
+            );
+            let rejected = service.authorize(
+                MockInferenceAuthorizationRequest {
+                    task_id: binding().task_id,
+                    attempt_id: ready.attempt_id.unwrap(),
+                    authorization_id: ready.authorization.unwrap().id,
+                },
+                &binding(),
+            );
+            assert_eq!(
+                rejected.state,
+                MockAttemptState::Invalidated,
+                "{profile_id}"
+            );
+            assert_eq!(rejected.diagnostic, Some(diagnostic), "{profile_id}");
+        }
+    }
+
+    #[test]
+    fn ephemeral_state_loss_requires_a_fresh_attempt() {
+        let first = MockInferenceService::default();
+        let ready = prepared(&first);
+        let after_restart = MockInferenceService::default().authorize(
+            MockInferenceAuthorizationRequest {
+                task_id: binding().task_id,
+                attempt_id: ready.attempt_id.unwrap(),
+                authorization_id: ready.authorization.unwrap().id,
+            },
+            &binding(),
+        );
+        assert_eq!(after_restart.state, MockAttemptState::Invalidated);
+        assert_eq!(
+            after_restart.diagnostic,
+            Some(MockDiagnostic::AttemptUnavailable)
         );
     }
 }

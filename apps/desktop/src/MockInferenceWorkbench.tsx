@@ -78,6 +78,7 @@ export function MockInferenceWorkbench({
   const [profileId, setProfileId] = useState("");
   const [input, setInput] = useState("");
   const [snapshot, setSnapshot] = useState<MockInferenceSnapshot | null>(null);
+  const [priorAttempt, setPriorAttempt] = useState<MockInferenceSnapshot | null>(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState(
     "Loading fictional local mock fixtures…",
@@ -126,12 +127,16 @@ export function MockInferenceWorkbench({
   const canAuthorize =
     snapshot?.state === "ready" && attemptId && authorizationId;
   const canCancel =
-    snapshot?.state === "ready" ||
-    snapshot?.state === "authorized" ||
     snapshot?.state === "submitted" ||
     snapshot?.state === "streaming";
   const canPoll =
-    snapshot?.state === "submitted" || snapshot?.state === "streaming";
+    snapshot?.state === "submitted" ||
+    snapshot?.state === "streaming" ||
+    snapshot?.state === "cancelling";
+  const activeAttempt =
+    snapshot?.state === "submitted" ||
+    snapshot?.state === "streaming" ||
+    snapshot?.state === "cancelling";
   const invalidateVisibleReview = () => {
     if (snapshot)
       setNotice(
@@ -174,7 +179,7 @@ export function MockInferenceWorkbench({
               setTaskId(event.target.value);
               invalidateVisibleReview();
             }}
-            disabled={busy || !tasks?.tasks.length}
+            disabled={busy || activeAttempt || !tasks?.tasks.length}
           >
             {tasks?.tasks.map((task) => (
               <option key={task.id} value={task.id}>
@@ -191,7 +196,7 @@ export function MockInferenceWorkbench({
               setProfileId(event.target.value);
               invalidateVisibleReview();
             }}
-            disabled={busy || !catalog}
+            disabled={busy || activeAttempt || !catalog}
           >
             {catalog?.profiles.map((profile) => (
               <option key={profile.id} value={profile.id}>
@@ -211,7 +216,7 @@ export function MockInferenceWorkbench({
             }}
             maxLength={2000}
             rows={5}
-            disabled={busy}
+            disabled={busy || activeAttempt}
             aria-describedby="mock-inference-input-note"
           />
         </label>
@@ -271,7 +276,7 @@ export function MockInferenceWorkbench({
                 void apply(() => operations.poll({ taskId, attemptId }))
               }
             >
-              Advance local stream
+              Continue bounded local fixture stream
             </button>
             <button
               type="button"
@@ -300,13 +305,14 @@ export function MockInferenceWorkbench({
               type="button"
               disabled={busy || !attemptId}
               onClick={() => {
+                setPriorAttempt(snapshot);
                 setSnapshot(null);
                 setNotice(
                   "Retry requires a newly authored input and a fresh mock review.",
                 );
               }}
             >
-              Start a new retry attempt
+              Prepare fresh retry or regeneration
             </button>
           </div>
         </section>
@@ -339,6 +345,14 @@ export function MockInferenceWorkbench({
           <p className="context-note">
             Evidence is content-free, local mock metadata. Provider session
             references are subordinate to this durable task.
+          </p>
+        </section>
+      )}
+      {priorAttempt && !snapshot && (
+        <section className="mock-inference-workbench__details" aria-label="Prior mock attempt evidence">
+          <h3>Prior local attempt</h3>
+          <p>
+            {priorAttempt.attemptId} ended as {priorAttempt.state}. A fresh review is required; no lease, authorization, event sequence, or result is reused.
           </p>
         </section>
       )}
