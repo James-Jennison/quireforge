@@ -1002,10 +1002,13 @@ mod tests {
 
     #[tokio::test]
     async fn managed_advisor_starts_without_project_or_tool_capabilities() {
-        let script = r#"
+        let script = concat!(
+            r#"
 read -r initialize
 case "$initialize" in
-  *'"method":"initialize"'*'"clientInfo":{"name":"quireforge","title":"QuireForge","version":"0.1.0-beta.57"}'*) ;;
+  *'"method":"initialize"'*'"clientInfo":{"name":"quireforge","title":"QuireForge","version":""#,
+            env!("CARGO_PKG_VERSION"),
+            r#""}'*) ;;
   *) exit 70 ;;
 esac
 printf '%s\n' '{"id":1,"result":{}}'
@@ -1014,7 +1017,8 @@ printf '%s\n' '{"id":2,"result":{"thread":{"id":"018f0000-0000-7000-8000-0000000
 read -r turn
 printf '%s\n' '{"id":3,"result":{"turn":{"id":"018f0000-0000-7000-8000-000000000030","status":"inProgress"}}}'
 printf '%s\n' '{"method":"turn/completed","params":{"threadId":"018f0000-0000-7000-8000-000000000020","turn":{"id":"018f0000-0000-7000-8000-000000000030","status":"completed"}}}'
-"#;
+"#
+        );
         let service =
             AdvisorConversationService::with_command(AppServerCommand::test("sh", &["-c", script]));
         let started = service
@@ -1064,10 +1068,13 @@ printf '%s\n' '{"method":"turn/completed","params":{"threadId":"018f0000-0000-70
 
     #[tokio::test]
     async fn advisor_retries_thread_start_once_with_the_same_empty_capability_boundary() {
-        let script = r#"
+        let script = concat!(
+            r#"
 read -r initialize
 case "$initialize" in
-  *'"method":"initialize"'*'"clientInfo":{"name":"quireforge","title":"QuireForge","version":"0.1.0-beta.57"}'*) ;;
+  *'"method":"initialize"'*'"clientInfo":{"name":"quireforge","title":"QuireForge","version":""#,
+            env!("CARGO_PKG_VERSION"),
+            r#""}'*) ;;
   *) exit 70 ;;
 esac
 printf '%s\n' '{"id":1,"result":{}}'
@@ -1078,7 +1085,8 @@ printf '%s\n' '{"id":3,"result":{"thread":{"id":"018f0000-0000-7000-8000-0000000
 read -r turn
 printf '%s\n' '{"id":4,"result":{"turn":{"id":"018f0000-0000-7000-8000-000000000030","status":"inProgress"}}}'
 printf '%s\n' '{"method":"turn/completed","params":{"threadId":"018f0000-0000-7000-8000-000000000020","turn":{"id":"018f0000-0000-7000-8000-000000000030","status":"completed"}}}'
-"#;
+"#
+        );
         let service =
             AdvisorConversationService::with_command(AppServerCommand::test("sh", &["-c", script]));
         let started = service
