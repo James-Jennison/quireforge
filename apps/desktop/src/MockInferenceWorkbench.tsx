@@ -78,7 +78,8 @@ export function MockInferenceWorkbench({
   const [profileId, setProfileId] = useState("");
   const [input, setInput] = useState("");
   const [snapshot, setSnapshot] = useState<MockInferenceSnapshot | null>(null);
-  const [priorAttempt, setPriorAttempt] = useState<MockInferenceSnapshot | null>(null);
+  const [priorAttempt, setPriorAttempt] =
+    useState<MockInferenceSnapshot | null>(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState(
     "Loading fictional local mock fixtures…",
@@ -127,8 +128,7 @@ export function MockInferenceWorkbench({
   const canAuthorize =
     snapshot?.state === "ready" && attemptId && authorizationId;
   const canCancel =
-    snapshot?.state === "submitted" ||
-    snapshot?.state === "streaming";
+    snapshot?.state === "submitted" || snapshot?.state === "streaming";
   const canPoll =
     snapshot?.state === "submitted" ||
     snapshot?.state === "streaming" ||
@@ -349,10 +349,15 @@ export function MockInferenceWorkbench({
         </section>
       )}
       {priorAttempt && !snapshot && (
-        <section className="mock-inference-workbench__details" aria-label="Prior mock attempt evidence">
+        <section
+          className="mock-inference-workbench__details"
+          aria-label="Prior mock attempt evidence"
+        >
           <h3>Prior local attempt</h3>
           <p>
-            {priorAttempt.attemptId} ended as {priorAttempt.state}. A fresh review is required; no lease, authorization, event sequence, or result is reused.
+            {priorAttempt.attemptId} ended as {priorAttempt.state}. A fresh
+            review is required; no lease, authorization, event sequence, or
+            result is reused.
           </p>
         </section>
       )}

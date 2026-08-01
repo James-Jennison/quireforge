@@ -4458,7 +4458,10 @@ export default function App({
                   />
                 )}
                 {conversationMode === "codex" && (
-                  <section className="mock-inference-launcher" aria-label="Fictional local mock workflow">
+                  <section
+                    className="mock-inference-launcher"
+                    aria-label="Fictional local mock workflow"
+                  >
                     <button
                       type="button"
                       onClick={() => setMockInferenceWorkbenchOpen(true)}
