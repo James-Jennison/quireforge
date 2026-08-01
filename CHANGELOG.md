@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.0-beta.56 — Installed durable-task workflow correction
+
+- Restore the governed Task Catalog and its explicit New task control to the
+  primary New task workspace. A normal durable task can now be created for the
+  selected project and selected by the local-only fictional mock workbench.
+  Production-preview acceptance covers this exact path; no provider, network,
+  credential, or external authority is added.
+
 ## 0.1.0-beta.55 — Provider-Neutral Mock Workflow
 
 - Harden the local fictional mock-inference workflow with registry-backed
@@ -8,6 +16,10 @@
   desktop/mobile browser acceptance. This beta packages only a fictional,
   deterministic, local workflow: it adds no provider, network, credential,
   retrieval, connector, browser, tool, or external authority.
+- Beta.55 passed source, package, installation, and native-receipt gates but is
+  release-ineligible: its installed New task workspace did not expose the
+  required Task Catalog/New task path. Its artifacts and receipt remain
+  preserved as failed-candidate evidence and are not reinterpreted.
 
 ## Unreleased — Provider-Neutral AI Foundation local mock slice
 

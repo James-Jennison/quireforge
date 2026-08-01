@@ -219,10 +219,14 @@ confirmation separately observable, and requires a fresh review after local
 authority failure or state loss. Its report distinguishes exhaustive native and
 component evidence from representative browser acceptance.
 
-The separately approved `0.1.0-beta.55` Mock Vertical Slice Release Decision
-and Packaging checkpoint is in release-candidate validation. It does not change
-the beta.54 rollback baseline or imply a real provider, credential, network,
-retrieval, browser, connector, tool, or external authority.
+Beta.55 passed source, packaging, installation, and native-receipt gates, but
+is release-ineligible because the installed New task workspace omitted the
+required Task Catalog/New task UI. Its packages, checksums, manifest, receipt,
+and logs remain immutable failed-candidate evidence. The authorized
+`0.1.0-beta.56` replacement candidate restores only the supported
+durable-task-to-local-mock-workbench path. It does not change the beta.54
+rollback baseline or imply a real provider, credential, network, retrieval,
+browser, connector, tool, or external authority.
 
 The Rust Codex, project/SQLite, Git, worktree, terminal, preview, attachment,
 settings, and integration services are candidates for reuse. The current Tauri

@@ -1532,11 +1532,14 @@ bounded lifecycle polling, cancellation confirmation, authority failure,
 recovery, and representative browser acceptance. A real-provider readiness or
 provider-selection decision does not begin automatically.
 
-**Approved release checkpoint:** Mock Vertical Slice Release Decision and
-Packaging evaluates the strictly increasing `0.1.0-beta.55` candidate through
-the existing pinned Ubuntu 22.04 and restricted installed-host gates. It
-packages the fictional local fixture only; beta.54 remains the rollback
-generation unless the new candidate passes every gate.
+**Replacement release checkpoint:** beta.55 passed source, package,
+installation, and native-receipt gates but is release-ineligible because the
+installed New task route omitted the Task Catalog/New task UI. Its artifacts
+and receipt remain immutable failed-candidate evidence. The strictly increasing
+`0.1.0-beta.56` replacement restores only the governed durable-task-to-mock
+workbench path and must pass the existing pinned Ubuntu 22.04 and restricted
+installed-host gates; beta.54 remains the rollback generation unless it passes
+every gate.
 
 **Later implementation milestones:** Credential broker, context assembly,
 limited inference, and the first separately approved provider or local-runtime

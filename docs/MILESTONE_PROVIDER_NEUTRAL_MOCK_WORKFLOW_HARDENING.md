@@ -1,10 +1,14 @@
 # Milestone — Provider-Neutral Mock Workflow Hardening and Release Readiness
 
-Status: source-complete local hardening; release decision remains separate.
+Status: source-complete local hardening; beta.56 replacement-candidate
+correction authorized.
 
-Release checkpoint: `0.1.0-beta.55` candidate validation is separately
-authorized. Packaging must preserve the fictional, local-only boundary and is
-not release evidence until the pinned-container and installed-host gates pass.
+Beta.55 passed its source, package, installation, and native-receipt gates but
+is release-ineligible because the installed New task route omitted the required
+Task Catalog/New task UI. Its immutable artifacts and receipt remain preserved.
+Beta.56 restores only that governed durable-task-to-mock-workbench path;
+packaging remains non-release evidence until the pinned-container and
+installed-host gates pass.
 
 ## Outcome
 
