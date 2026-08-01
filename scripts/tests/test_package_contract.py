@@ -167,6 +167,11 @@ class PackageContractTests(unittest.TestCase):
     def test_all_source_versions_match_the_beta_candidate(self) -> None:
         self.assertEqual(source_version(), "0.1.0-beta.55")
 
+    def test_sandbox_worker_uses_the_aligned_release_version_contract(self) -> None:
+        source = (ROOT / "scripts/package_sandboxd.py").read_text(encoding="utf-8")
+        self.assertIn("version = source_version()", source)
+        self.assertNotIn("requires beta", source)
+
     def test_temporary_desktop_bundle_envelope_is_closed_and_bounded(self) -> None:
         budget = json.loads(
             (ROOT / "apps/desktop/scripts/bundle-budget.json").read_text(
