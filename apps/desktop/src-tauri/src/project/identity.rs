@@ -160,6 +160,9 @@ fn inspect_git_identity(root: &Path) -> Result<Option<GitIdentity>, ()> {
         };
 
         if marker_metadata.is_dir() || marker.is_dir() {
+            if !has_git_head(&marker) {
+                continue;
+            }
             return Ok(Some(GitIdentity {
                 worktree_root: fs::canonicalize(ancestor).map_err(|_| ())?,
                 git_dir: fs::canonicalize(&marker).map_err(|_| ())?,
@@ -183,7 +186,7 @@ fn inspect_git_identity(root: &Path) -> Result<Option<GitIdentity>, ()> {
             ancestor.join(git_dir)
         };
         let git_dir = fs::canonicalize(git_dir).map_err(|_| ())?;
-        if !git_dir.is_dir() {
+        if !git_dir.is_dir() || !has_git_head(&git_dir) {
             return Err(());
         }
 
@@ -213,6 +216,12 @@ fn inspect_git_identity(root: &Path) -> Result<Option<GitIdentity>, ()> {
         }));
     }
     Ok(None)
+}
+
+fn has_git_head(git_dir: &Path) -> bool {
+    fs::symlink_metadata(git_dir.join("HEAD"))
+        .map(|metadata| metadata.is_file())
+        .unwrap_or(false)
 }
 
 fn read_small_text_file(path: &Path) -> Result<String, ()> {
@@ -358,6 +367,8 @@ mod tests {
         let git_dir = common.join("worktrees/worktree");
         fs::create_dir(&worktree).expect("worktree must be created");
         fs::create_dir_all(&git_dir).expect("linked git directory must be created");
+        fs::write(git_dir.join("HEAD"), "ref: refs/heads/main\n")
+            .expect("linked git directory must contain HEAD");
         fs::write(
             worktree.join(".git"),
             format!("gitdir: {}\n", git_dir.display()),
@@ -385,5 +396,18 @@ mod tests {
 
         assert_eq!(error.state, DirectoryAccessibilityState::GitInvalid);
         fs::remove_dir_all(directory).expect("temporary directory must be removed");
+    }
+
+    #[test]
+    fn ignores_an_empty_git_directory_in_an_ancestor() {
+        let root = temporary_directory("empty-git-ancestor");
+        let child = root.join("child");
+        fs::create_dir(&child).expect("child directory must be created");
+        fs::create_dir(root.join(".git")).expect("empty marker must be created");
+
+        let identity = inspect_directory(&child).expect("child must be inspectable");
+
+        assert!(identity.git.is_none());
+        fs::remove_dir_all(root).expect("temporary directory must be removed");
     }
 }
