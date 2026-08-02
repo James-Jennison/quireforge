@@ -113,12 +113,12 @@ incompatibility, quarantine, ambiguity-without-retry, and content-free audit
 linkage. It adds no real connector, credential, network, retrieval, browser,
 MCP, automation, provider transmission, or external mutation authority.
 
-M58 Controlled Browser Verification is now complete as a decision-only
-contract at
+M58 Controlled Browser Verification is complete and published as beta.62; its
+contract is at
 [MILESTONE_58_CONTROLLED_BROWSER_VERIFICATION_CONTRACT.md](MILESTONE_58_CONTROLLED_BROWSER_VERIFICATION_CONTRACT.md).
-Its approved fictional/local-only, read-only beta.62 implementation candidate
-uses only a native-owned ephemeral WebKitGTK custom-scheme fixture. It remains
-pending package and installed-host acceptance; it adds no real browser target,
+Its fictional/local-only, read-only implementation uses only a native-owned
+ephemeral WebKitGTK custom-scheme fixture and passed installed-host acceptance;
+it adds no real browser target,
 profile/session reuse, credential, connector, provider, MCP, automation, or
 external mutation authority.
 

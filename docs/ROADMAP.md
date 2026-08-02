@@ -1586,10 +1586,9 @@ interaction, mutation, automation, generic MCP, credentials, and native tools.
 It requires digest-bound one-use confirmation, bounded navigation and cleanup,
 failure-closed ambiguity handling, and no automatic retry.
 
-The approved beta.62 candidate implements only the contract's fictional,
+Published beta.62 implements only the contract's fictional,
 deterministic, local-only, read-only slice using an ephemeral native-owned
-WebKitGTK custom-scheme fixture. Packaging and installed-host acceptance remain
-required before M58 can be marked complete; no real browser target, profile,
+WebKitGTK custom-scheme fixture. M58 is complete; no real browser target, profile,
 credential, connector, provider, MCP, automation, or mutation authority is
 introduced.
 
