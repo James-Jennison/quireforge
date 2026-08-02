@@ -1,13 +1,12 @@
 # Goal — Provider-Neutral AI Foundation
 
 Type: active long-term product goal.
-Status: active; decision gates and bounded local-only implementation slices are
-complete through M58 planning; the fictional/local-only M58 implementation is
-the current beta.62 candidate after beta.61 exposed a worker-package
-reproducibility defect.
+Status: active; M55, M57, and M58 implementation slices are complete and
+published through beta.62. M59 Context Assembly and Transmission Contract is
+complete decision-only work; M60 is next and unstarted.
 Packaging status: beta.55 and beta.56 remain preserved failed candidates;
-beta.59 (M55) and beta.60 (M57) are published prereleases.
-Latest published release version: `0.1.0-beta.60` / `0.1.0~beta.60`.
+beta.59 (M55), beta.60 (M57), and beta.62 (M58) are published prereleases.
+Latest published release version: `0.1.0-beta.62` / `0.1.0~beta.62`.
 Implementation authority: none granted by establishing this goal.
 Parent vision: native, project-centered, all-in-one Linux AI workspace.
 
@@ -135,27 +134,13 @@ disclosures, emergency stop, and a separate local-runtime variant. It grants no
 provider selection, implementation, transmission, invocation, retrieval, tool,
 browser, connector, or native authority.
 
-## Pending decision gates
+## Current completion sequence
 
-All currently planned core architecture gates are complete. Completing a gate
+The authoritative ordered completion record is
+[Provider-Neutral Foundation Completion Sequence](PROVIDER_NEUTRAL_FOUNDATION_COMPLETION_SEQUENCE.md).
+M59's [Context Assembly and Transmission Contract](MILESTONE_59_CONTEXT_ASSEMBLY_AND_TRANSMISSION_CONTRACT.md)
+now resolves the policy that M60 must implement. Completing a decision gate
 never starts an implementation milestone automatically.
-
-## Future implementation milestones
-
-The likely implementation sequence is provisional and non-authorizing. Formal
-scopes, versions, and release candidates arise only when an item is separately
-selected:
-
-1. native capability-registry contracts;
-2. canonical interaction/event contracts;
-3. mock adapter lifecycle and conformance;
-4. credential broker foundation;
-5. context assembly and transmission authority;
-6. limited inference runtime;
-7. first approved provider or local-runtime adapter;
-8. end-to-end project/task/inference acceptance;
-9. packaging and installed-host validation; and
-10. first user-visible provider-neutral release.
 
 ### Capability Registry Contracts Only
 
@@ -224,10 +209,16 @@ provider, credential, network, browser, MCP, automation, or external authority.
 
 ### M58 browser verification
 
-M58 planning is complete through the ratified
-[Controlled Browser Verification Contract](MILESTONE_58_CONTROLLED_BROWSER_VERIFICATION_CONTRACT.md).
-Runtime implementation remains separately unstarted. It must not become general
-browser automation, OAuth, web research, provider transport, or external action.
+M58 is complete and published as beta.62. Its fictional/local-only read-only
+WebKitGTK fixture is not general browser automation, OAuth, web research,
+provider transport, or external action.
+
+### M59 context assembly and transmission
+
+M59 is complete decision-only work. Its ratified contract defines the explicit
+selection, deterministic assembly, redaction, bounded review, one-use
+confirmation, fictional-sink, retention, drift, ambiguity, and audit decisions
+needed by M60. It added no runtime context assembly or provider transmission.
 
 ### Connected services
 
@@ -284,18 +275,17 @@ When a gate completes, record it as progress under this goal.
 
 ## Immediate next gate
 
-The active work is completion of the approved **M58 Controlled Browser
-Verification Implementation** milestone, limited to the fictional/local-only,
-read-only slice in its ratified contract. No later milestone is started.
+The next genuine authority boundary is **M60 Governed Context Assembly Vertical
+Slice**, limited to M59's fictional/local-only sink. No provider, credential,
+network transmission, inference, or later milestone has started.
 
 ## Package and release policy
 
 Establishing or advancing this goal through decision-only gates requires no
 package or version. Implementation milestones receive versions only when they
 alter source or user-visible/operational behavior and a release policy is
-separately approved. Beta.60 is the latest published generation. Beta.62 is
-the prospective M58 candidate; package and installed-host evidence remains
-required before its release or M58 completion can be claimed.
+separately approved. Beta.62 is the latest published generation; M60 has no
+candidate version yet.
 
 ## Explicit exclusions
 

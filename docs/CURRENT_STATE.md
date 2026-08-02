@@ -122,6 +122,14 @@ it adds no real browser target,
 profile/session reuse, credential, connector, provider, MCP, automation, or
 external mutation authority.
 
+M59 Context Assembly and Transmission Contract is complete decision-only work
+at [MILESTONE_59_CONTEXT_ASSEMBLY_AND_TRANSMISSION_CONTRACT.md](MILESTONE_59_CONTEXT_ASSEMBLY_AND_TRANSMISSION_CONTRACT.md).
+It ratifies explicit selection, deterministic assembly, redaction, bounded
+review, digest-bound one-use confirmation, fictional-sink handling, retention,
+drift, ambiguity, and audit policy. It implements no context assembly, provider
+transmission, credential, inference, network, connector, browser, MCP,
+automation, or mutation behavior. M60 is the next unstarted milestone.
+
 M54 Local Review is complete at package/source commit
 `c4c2752466f36f791fde47edbc5c6b02b0e21320`, tagged
 `v0.1.0-beta.53`. Its beta.53 Debian pair passed pinned-container package,
@@ -165,8 +173,9 @@ authority, credentials, import/export, hidden instructions, automatic actions,
 approval, dispatch, and execution remain excluded. M57 connector governance is
 now complete as a decision-only record: it preserves the existing
 Codex-owned Integration Center boundary, grants no new external authority, and
-requires further bounded decisions before any connector implementation. M58
-browser verification remains a separate unstarted decision gate.
+requires further bounded decisions before any real connector implementation.
+This beta.54-era account is historical: M58 later completed its separate
+fictional/local-only implementation and published beta.62.
 
 The post-M57 prerequisite decision checkpoint is complete. It approves only a
 future, unstarted local mock-only connector foundation: static non-executable
@@ -191,23 +200,23 @@ The **External Capability Taxonomy and Sequencing** decision checkpoint is
 complete. It grants no implementation authority, separates inference,
 retrieval, connected services, local runtimes, execution, credential, browser,
 and automation lanes, and records their dependency ordering. Its earlier
-capability-registry recommendation is complete; M58 planning is now complete
-and its runtime remains independent and unstarted. Beta.60 is the latest
-published generation.
+capability-registry recommendation is complete. M58 later completed its
+independent fictional/local-only runtime as published beta.62.
 
 The **Provider-Neutral Capability Registry and Descriptor Governance** decision
 is complete as a non-authorizing architecture artifact. It defines descriptor
 entities, opaque identity, provenance, capability claims, lifecycle, extensions,
 and authority separation; it grants no provider implementation or authority.
 Canonical Provider-Neutral Interaction and Event Protocol is complete. M58
-planning is complete; its runtime remains independent and unstarted, and
-beta.60 is the latest published generation.
+later completed its independent fictional/local-only runtime as published
+beta.62.
 
 The **Provider-Neutral AI Foundation** is an active long-term product goal. Its
 taxonomy, capability-registry, interaction-protocol, adapter-governance,
 credential-custody, context-manifest, and Limited Provider Inference Boundary
-decisions are completed gates. M55, M57, and M58 remain separate, and beta.54
-remains the latest packaged generation.
+decisions are completed gates. M55, M57, and M58 remain separate; beta.62 is
+the latest published generation, and M59 is the completed context/transmission
+decision contract.
 
 The first Provider-Neutral AI Foundation implementation milestone is
 source-complete: private native capability-registry contracts provide static
@@ -215,8 +224,9 @@ fictional descriptors, closed claims, deterministic digest/version validation,
 Serde unknown-field denial, endpoint-aware model identity, focused tests, and a
 narrow repository safeguard. It has no persistence, Tauri/bridge/UI exposure,
 provider route, or package. Canonical Interaction/Event Contracts and
-Deterministic Mock Adapter Conformance is the recommended next separately
-approved implementation milestone; M55, M57, and M58 remain separate.
+Deterministic Mock Adapter Conformance remains historical source-complete
+evidence; M60 is the next roadmap boundary, while M55, M57, and M58 remain
+separate.
 
 The second Provider-Neutral AI Foundation implementation milestone is
 source-complete: private native interaction/event contracts bind fictional
@@ -225,8 +235,8 @@ adapter/protocol identities. Strict sequencing, lifecycle, reference, extension,
 tool-result, citation, structured-output, usage, and deterministic mock-adapter
 checks remain local and unexposed. It has no persistence, Tauri/bridge/UI
 surface, provider route, or package. Credential Broker Foundation Contracts is
-the recommended next separately approved implementation milestone; M55, M57,
-and M58 remain separate.
+historical source-complete evidence; M60 is the next roadmap boundary, and M55,
+M57, and M58 remain separate.
 
 The third Provider-Neutral AI Foundation implementation milestone is
 source-complete: the [local mock inference vertical
@@ -429,11 +439,11 @@ gates passed.
 
 ## Next action
 
-M58 planning is complete. The next genuine authority boundary is a single
-start-to-finish **M58 Controlled Browser Verification Implementation** goal,
-limited to the ratified fictional/local-only, read-only slice. It must not
-start without explicit approval. No beta version, package, installation, tag,
-release, browser session, credential, connector, MCP, automation, external
+M59 is complete. The next genuine authority boundary is a single
+start-to-finish **M60 Governed Context Assembly Vertical Slice** goal, limited
+to the ratified fictional/local-only sink. It must not start without explicit
+approval. No beta version, package, installation, tag, release, credential,
+provider transmission, inference, connector, browser, MCP, automation, external
 mutation, deployment, or later milestone is implied by this decision record.
 
 Milestone 46 — **Bounded Multi-Attachment** is complete at

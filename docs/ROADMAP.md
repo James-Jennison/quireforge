@@ -1489,7 +1489,8 @@ as a separate runtime lane; M58 planning is now complete.
 **Active long-term product goal:** [Provider-Neutral AI Foundation](GOAL_PROVIDER_NEUTRAL_AI_FOUNDATION.md)
 organizes the related decision gates, future implementation milestones, and
 future release checkpoints. It grants no implementation authority, package, or
-version. M55, M57, and M58 remain separate authority boundaries.
+version. M55, M57, and M58 remain separate authority boundaries. M59 is the
+completed context/transmission decision contract; M60 is next and unstarted.
 
 **Completed decision gates:**
 
@@ -1520,15 +1521,20 @@ version. M55, M57, and M58 remain separate authority boundaries.
   selection, exact item/projection bindings, transformations/omissions,
   exclusions, destination-aware authorization, revalidation, continuation
   confinement, privacy/retention, and content-free audit evidence.
+- [M59 Context Assembly and Transmission
+  Contract](MILESTONE_59_CONTEXT_ASSEMBLY_AND_TRANSMISSION_CONTRACT.md)
+  supersedes the earlier record where they differ and ratifies M60's exact
+  deterministic selection, preparation, review, confirmation, fictional-sink,
+  retention, and failure boundary.
 - [Limited Provider Inference
   Boundary](LIMITED_PROVIDER_INFERENCE_BOUNDARY.md) defines exact attempt
   binding/revalidation, an initially text/local-projection-only future route,
   lifecycle and ambiguity handling, output/proposal confinement, disclosures,
   emergency stop, and a separate local-runtime variant.
 
-**Recommended next checkpoint:** Implementation Readiness and First Milestone
-Selection requires separate explicit approval. It is not an implementation
-milestone and does not select a provider.
+**Next checkpoint:** M60 Governed Context Assembly Vertical Slice requires
+separate explicit approval. It is a local-only fictional-sink implementation
+and does not select a provider.
 
 All currently planned core architecture gates are complete. No implementation
 milestone starts automatically.
@@ -1591,6 +1597,20 @@ deterministic, local-only, read-only slice using an ephemeral native-owned
 WebKitGTK custom-scheme fixture. M58 is complete; no real browser target, profile,
 credential, connector, provider, MCP, automation, or mutation authority is
 introduced.
+
+### 59 — Context Assembly and Transmission Contract
+
+**Decision complete:** the
+[M59 Context Assembly and Transmission Contract](MILESTONE_59_CONTEXT_ASSEMBLY_AND_TRANSMISSION_CONTRACT.md)
+ratifies explicit item eligibility and selection, instruction/evidence
+separation, deterministic assembly, minimization/redaction/bounds, immutable
+prepared bundles, review, digest-bound expiring one-use confirmation,
+fictional-sink ambiguity handling, retention, drift, recovery, and audit.
+It implements no assembler, provider transmission, credentials, inference,
+network, connector/browser authority, MCP, automation, or mutation.
+
+**Next:** M60 Governed Context Assembly Vertical Slice may implement only the
+contract's deterministic fictional/local-only sink after separate approval.
 
 ### Deferred capability gates
 

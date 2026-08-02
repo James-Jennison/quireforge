@@ -11,9 +11,15 @@
   credential. It adds no real browser target, connector, provider, MCP,
   automation, file chooser, download, upload, form, shell, Git, deployment, or
   external mutation authority. Beta.61 is retained as a failed reproducibility
-  candidate; beta.62 normalizes worker-package timestamps and remains a
-  candidate until packaging and
-  installed-host acceptance are complete.
+  candidate; beta.62 normalizes worker-package timestamps, passed complete
+  installed-host acceptance, and is published as a prerelease.
+
+## Unreleased — M59 Context Assembly and Transmission Contract
+
+- Ratify the decision-only contract for explicit, deterministic, bounded,
+  redacted context selection, prepared-bundle review, digest-bound one-use
+  fictional transmission authorization, ambiguity handling, retention, and
+  audit. It starts no runtime implementation and performs no transmission.
 
 ## 0.1.0-beta.60 — Fictional connector governance
 
