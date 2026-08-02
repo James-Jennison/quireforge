@@ -1,0 +1,342 @@
+import { useEffect, useId, useRef, useState } from "react";
+import {
+  cancelContextAssembly,
+  acknowledgeContextAssemblyReview,
+  confirmContextAssembly,
+  reviewContextAssembly,
+  prepareContextAssembly,
+  revokeContextAssembly,
+  loadDurableSources,
+  loadTaskCatalog,
+  loadLocalReview,
+} from "./lib/bridge";
+import type { ContextAssemblySnapshot } from "./lib/contextAssembly";
+import type { DurableSourceSummary } from "./lib/durableSources";
+import type { TaskCatalogSnapshot } from "./lib/taskRecords";
+import type { LocalReviewSnapshot } from "./lib/localReview";
+export function ContextAssemblyWorkbench({
+  projectId,
+  onClose,
+}: {
+  projectId: string | null;
+  onClose: () => void;
+}) {
+  const title = useId(),
+    close = useRef<HTMLButtonElement>(null),
+    [text, setText] = useState(""),
+    [sources, setSources] = useState<DurableSourceSummary[]>([]),
+    [tasks, setTasks] = useState<TaskCatalogSnapshot | null>(null),
+    [taskId, setTaskId] = useState<string | null>(null),
+    [includePlan, setIncludePlan] = useState(false),
+    [review, setReview] = useState<LocalReviewSnapshot | null>(null),
+    [reviewCollectionId, setReviewCollectionId] = useState<string | null>(null),
+    [reviewEvidenceIds, setReviewEvidenceIds] = useState<string[]>([]),
+    [includeScopeMetadata, setIncludeScopeMetadata] = useState(false),
+    [selectedSources, setSelectedSources] = useState<string[]>([]),
+    [snapshot, setSnapshot] = useState<ContextAssemblySnapshot | null>(null),
+    [busy, setBusy] = useState(false),
+    [notice, setNotice] = useState(
+      "Fictional local-only context review. Nothing is selected by default.",
+    );
+  useEffect(() => {
+    if (!projectId) return;
+    void loadDurableSources({ projectId })
+      .then((value) => setSources(value.sources))
+      .catch(() => setSources([]));
+    void loadTaskCatalog({
+      projectId,
+      query: null,
+      includeArchived: false,
+      selectedTaskId: null,
+    })
+      .then((value) => setTasks(value))
+      .catch(() => setTasks(null));
+  }, [projectId]);
+  useEffect(() => {
+    if (!taskId) return;
+    void loadLocalReview({ selectedCollectionId: null })
+      .then((value) => setReview(value))
+      .catch(() => setReview(null));
+  }, [taskId]);
+  useEffect(() => {
+    if (!reviewCollectionId) return;
+    void loadLocalReview({ selectedCollectionId: reviewCollectionId })
+      .then((value) => setReview(value))
+      .catch(() => setReview(null));
+  }, [reviewCollectionId]);
+  const run = async (action: () => Promise<ContextAssemblySnapshot>) => {
+    setBusy(true);
+    try {
+      const next = await action();
+      setSnapshot(next);
+      setNotice(next.diagnostic ?? next.auditState);
+    } catch {
+      setNotice("Context assembly is unavailable; no dispatch occurred.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const canConfirm =
+    snapshot?.state === "awaiting_confirmation" &&
+    snapshot.bundleId &&
+    snapshot.authorizationId &&
+    snapshot.bundleDigest;
+  return (
+    <section
+      className="mock-inference-workbench"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={title}
+    >
+      <header className="task-template-workbench__header">
+        <div>
+          <p className="eyebrow">Fictional local-only context sink</p>
+          <h2 id={title}>Governed context review</h2>
+        </div>
+        <button ref={close} type="button" onClick={onClose}>
+          Close
+        </button>
+      </header>
+      <p role="status">{notice}</p>
+      <p>
+        Project scope: {projectId ?? "unavailable"}. This is not provider
+        transmission, inference, a credential, connector, browser, MCP,
+        automation, or mutation authority.
+      </p>
+      <label>
+        Explicit user instruction
+        <textarea
+          value={text}
+          maxLength={8192}
+          rows={5}
+          disabled={busy}
+          onChange={(e) => {
+            setText(e.target.value);
+            setSnapshot(null);
+          }}
+        />
+      </label>
+      <p className="context-note">
+        Source content is resolved only by native app-private storage. No source
+        bytes can be supplied by this browser UI, and no source is selected by
+        default.
+      </p>
+      <label>
+        <input
+          type="checkbox"
+          checked={includeScopeMetadata}
+          disabled={busy}
+          onChange={(event) => setIncludeScopeMetadata(event.target.checked)}
+        />
+        Include bounded project/task metadata as untrusted evidence
+      </label>
+      <label>
+        Optional task scope
+        <select
+          value={taskId ?? ""}
+          disabled={busy}
+          onChange={(event) => {
+            setTaskId(event.target.value || null);
+            setIncludePlan(false);
+            setReview(null);
+            setReviewCollectionId(null);
+            setReviewEvidenceIds([]);
+          }}
+        >
+          <option value="">Project only</option>
+          {tasks?.tasks.map((task) => (
+            <option key={task.id} value={task.id}>
+              {task.title}
+            </option>
+          ))}
+        </select>
+      </label>
+      {taskId && (
+        <label>
+          <input
+            type="checkbox"
+            checked={includePlan}
+            disabled={busy}
+            onChange={(event) => setIncludePlan(event.target.checked)}
+          />
+          Include the selected task plan as untrusted plan evidence
+        </label>
+      )}
+      {taskId && (
+        <fieldset disabled={busy}>
+          <legend>Explicit local-review evidence selection</legend>
+          <select
+            value={reviewCollectionId ?? ""}
+            onChange={(event) => {
+              setReviewCollectionId(event.target.value || null);
+              setReviewEvidenceIds([]);
+            }}
+          >
+            <option value="">No review evidence</option>
+            {review?.collections
+              .filter((collection) => collection.taskId === taskId)
+              .map((collection) => (
+                <option
+                  key={collection.collectionId}
+                  value={collection.collectionId}
+                >
+                  {collection.title}
+                </option>
+              ))}
+          </select>
+          {review?.selectedCollection?.taskId === taskId &&
+            review.items
+              .filter((item) => item.class === "evidence")
+              .map((item) => (
+                <label key={item.itemId}>
+                  <input
+                    type="checkbox"
+                    checked={reviewEvidenceIds.includes(item.itemId)}
+                    onChange={() =>
+                      setReviewEvidenceIds((current) =>
+                        current.includes(item.itemId)
+                          ? current.filter((id) => id !== item.itemId)
+                          : [...current, item.itemId],
+                      )
+                    }
+                  />
+                  {item.title}
+                </label>
+              ))}
+        </fieldset>
+      )}
+      <fieldset disabled={busy}>
+        <legend>Explicit durable-source selection</legend>
+        {sources.length ? (
+          sources.map((source) => (
+            <label key={source.sourceId}>
+              <input
+                type="checkbox"
+                checked={selectedSources.includes(source.sourceId)}
+                onChange={() => {
+                  setSelectedSources((current) =>
+                    current.includes(source.sourceId)
+                      ? current.filter((value) => value !== source.sourceId)
+                      : [...current, source.sourceId],
+                  );
+                  setSnapshot(null);
+                }}
+              />
+              {source.title} · {source.sourceClass} · {source.byteSize} bytes
+            </label>
+          ))
+        ) : (
+          <p>No active M55 sources are available; none will be included.</p>
+        )}
+      </fieldset>
+      <div className="mock-inference-workbench__actions">
+        <button
+          disabled={snapshot?.state !== "prepared" || busy}
+          onClick={() =>
+            void run(() =>
+              reviewContextAssembly({ bundleId: snapshot!.bundleId }),
+            )
+          }
+        >
+          Review prepared bundle
+        </button>
+        <button
+          disabled={snapshot?.state !== "awaiting_review" || busy}
+          onClick={() =>
+            void run(() =>
+              acknowledgeContextAssemblyReview({
+                bundleId: snapshot!.bundleId,
+              }),
+            )
+          }
+        >
+          Acknowledge exact review
+        </button>
+        <button
+          disabled={
+            !projectId ||
+            (!text &&
+              selectedSources.length === 0 &&
+              reviewEvidenceIds.length === 0 &&
+              !includeScopeMetadata &&
+              !includePlan) ||
+            busy
+          }
+          onClick={() =>
+            void run(() =>
+              prepareContextAssembly({
+                projectId,
+                taskId,
+                userInstruction: text,
+                durableSourceIds: selectedSources,
+                selectedPlanId:
+                  includePlan && taskId
+                    ? (tasks?.tasks.find((task) => task.id === taskId)
+                        ?.selectedPlanId ?? null)
+                    : null,
+                reviewEvidenceIds,
+                includeScopeMetadata,
+              }),
+            )
+          }
+        >
+          Prepare review
+        </button>
+        <button
+          disabled={!canConfirm || busy}
+          onClick={() =>
+            void run(() =>
+              confirmContextAssembly({
+                bundleId: snapshot!.bundleId,
+                authorizationId: snapshot!.authorizationId,
+                bundleDigest: snapshot!.bundleDigest,
+              }),
+            )
+          }
+        >
+          Confirm once
+        </button>
+        <button
+          disabled={!snapshot?.bundleId || busy}
+          onClick={() =>
+            void run(() =>
+              cancelContextAssembly({ bundleId: snapshot!.bundleId }),
+            )
+          }
+        >
+          Cancel
+        </button>
+        <button
+          disabled={!snapshot?.bundleId || busy}
+          onClick={() =>
+            void run(() =>
+              revokeContextAssembly({ bundleId: snapshot!.bundleId }),
+            )
+          }
+        >
+          Revoke
+        </button>
+      </div>
+      {snapshot && (
+        <section aria-label="Prepared context summary">
+          <p>
+            Items: {snapshot.items.length}; total: {snapshot.totalBytes} bytes;
+            estimated tokens: {snapshot.estimatedTokens}.
+          </p>
+          <ul>
+            {snapshot.items.map((item, index) => (
+              <li key={`${item.digest}-${index}`}>
+                {item.ordinal + 1}. {item.sourceClass} · {item.provenance} ·{" "}
+                {item.byteSize} bytes
+                {item.redactionCount
+                  ? ` · ${item.redactionCount} redactions`
+                  : ""}
+                {item.truncated ? " · truncated" : ""}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </section>
+  );
+}

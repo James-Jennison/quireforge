@@ -137,6 +137,17 @@ pub(crate) struct ControlledBrowserVerificationRecord<'a> {
     pub expires_at_ms: i64,
 }
 
+pub(crate) struct ContextBundleRecord<'a> {
+    pub bundle_id: &'a str,
+    pub project_id: &'a str,
+    pub task_id: Option<&'a str>,
+    pub bundle_digest: &'a str,
+    pub authorization_id: &'a str,
+    pub expires_at_ms: i64,
+    pub items: &'a [crate::context_assembly::ContextItemSnapshot],
+    pub canonical_bytes: &'a [u8],
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum InstalledHostHeadlessStatus {
     Created,
@@ -2121,6 +2132,151 @@ impl ProjectService {
             .durable_source(&request.source_id)
             .ok()
             .flatten()
+    }
+
+    pub(crate) fn context_durable_materials(
+        &self,
+        project_id: &str,
+        task_id: Option<&str>,
+        source_ids: &[String],
+    ) -> Result<Vec<crate::context_assembly::Material>, DurableSourceDiagnosticCode> {
+        let repository = self
+            .repository
+            .lock()
+            .map_err(|_| DurableSourceDiagnosticCode::ProjectUnavailable)?;
+        let repository = repository
+            .as_ref()
+            .ok_or(DurableSourceDiagnosticCode::ProjectUnavailable)?;
+        if let Some(task_id) = task_id {
+            if repository
+                .task_project_binding(task_id)
+                .ok()
+                .flatten()
+                .as_deref()
+                != Some(project_id)
+            {
+                return Err(DurableSourceDiagnosticCode::ProjectTaskMismatch);
+            }
+        }
+        let controller = self
+            .durable_sources
+            .lock()
+            .map_err(|_| DurableSourceDiagnosticCode::PrivateStorageFailure)?;
+        controller
+            .as_ref()
+            .ok_or(DurableSourceDiagnosticCode::PrivateStorageFailure)?
+            .context_materials(repository, project_id, task_id, source_ids)
+    }
+
+    pub(crate) fn context_selected_plan_material(
+        &self,
+        project_id: &str,
+        task_id: Option<&str>,
+        plan_id: Option<&str>,
+    ) -> Result<Option<crate::context_assembly::Material>, DurableSourceDiagnosticCode> {
+        let (Some(task_id), Some(plan_id)) = (task_id, plan_id) else {
+            return Ok(None);
+        };
+        let catalog = self.task_catalog(TaskCatalogListRequest {
+            project_id: project_id.to_owned(),
+            query: None,
+            include_archived: false,
+            selected_task_id: Some(task_id.to_owned()),
+        });
+        let task = catalog
+            .selected_task
+            .ok_or(DurableSourceDiagnosticCode::SourceUnavailable)?;
+        if task.selected_plan_id != plan_id {
+            return Err(DurableSourceDiagnosticCode::SourceUnavailable);
+        }
+        let plan = catalog
+            .plans
+            .into_iter()
+            .find(|plan| plan.id == plan_id)
+            .ok_or(DurableSourceDiagnosticCode::SourceUnavailable)?;
+        Ok(Some(crate::context_assembly::Material {
+            id: plan.id,
+            source_class: "selected-plan".into(),
+            provenance: "M60-explicit-selected-task-plan".into(),
+            text: plan.body,
+        }))
+    }
+
+    pub(crate) fn context_review_evidence_materials(
+        &self,
+        project_id: &str,
+        task_id: Option<&str>,
+        item_ids: &[String],
+    ) -> Result<Vec<crate::context_assembly::Material>, DurableSourceDiagnosticCode> {
+        let repository = self
+            .repository
+            .lock()
+            .map_err(|_| DurableSourceDiagnosticCode::ProjectUnavailable)?;
+        repository
+            .as_ref()
+            .ok_or(DurableSourceDiagnosticCode::ProjectUnavailable)?
+            .context_review_evidence_materials(project_id, task_id, item_ids)
+            .map_err(|_| DurableSourceDiagnosticCode::SourceUnavailable)
+    }
+    pub(crate) fn context_scope_metadata_material(
+        &self,
+        project_id: &str,
+        task_id: Option<&str>,
+    ) -> Result<crate::context_assembly::Material, DurableSourceDiagnosticCode> {
+        let repository = self
+            .repository
+            .lock()
+            .map_err(|_| DurableSourceDiagnosticCode::ProjectUnavailable)?;
+        repository
+            .as_ref()
+            .ok_or(DurableSourceDiagnosticCode::ProjectUnavailable)?
+            .context_scope_metadata_material(project_id, task_id)
+            .map_err(|_| DurableSourceDiagnosticCode::SourceUnavailable)
+    }
+
+    pub(crate) fn record_context_bundle(&self, record: ContextBundleRecord<'_>) -> bool {
+        self.repository
+            .lock()
+            .ok()
+            .and_then(|mut repository| {
+                repository
+                    .as_mut()
+                    .map(|repo| repo.record_context_bundle(&record).is_ok())
+            })
+            .unwrap_or(false)
+    }
+    pub(crate) fn complete_context_bundle(&self, bundle_id: &str, state: &str) -> bool {
+        self.repository
+            .lock()
+            .ok()
+            .and_then(|mut repository| {
+                repository
+                    .as_mut()
+                    .map(|repo| repo.complete_context_bundle(bundle_id, state).is_ok())
+            })
+            .unwrap_or(false)
+    }
+    pub(crate) fn review_context_bundle(&self, bundle_id: &str) -> bool {
+        self.repository
+            .lock()
+            .ok()
+            .and_then(|mut repository| {
+                repository
+                    .as_mut()
+                    .map(|repo| repo.review_context_bundle(bundle_id).is_ok())
+            })
+            .unwrap_or(false)
+    }
+    pub(crate) fn acknowledge_context_bundle_review(&self, bundle_id: &str) -> bool {
+        self.repository
+            .lock()
+            .ok()
+            .and_then(|mut repository| {
+                repository
+                    .as_mut()
+                    .map(|repo| repo.acknowledge_context_bundle_review(bundle_id).is_ok())
+            })
+            .unwrap_or(false)
     }
 
     pub fn durable_source_prepare_delete(
@@ -4413,6 +4569,102 @@ mod tests {
             Err(DurableSourceDiagnosticCode::PreparationMissing)
         );
         fs::remove_dir_all(directory).expect("temporary project must be removed");
+    }
+
+    #[test]
+    fn context_selected_plan_requires_exact_task_project_and_selected_plan() {
+        let service = ProjectService::in_memory();
+        let directory = temporary_directory("m60-selected-plan");
+        service.prepare_attachment(directory);
+        let project_id = service.confirm_pending().projects[0].id.clone();
+        let (task_id, plan_id) = {
+            let mut repository = service.repository.lock().expect("repository");
+            let repository = repository.as_mut().expect("repository");
+            let task_id = repository
+                .create_task_for_project(&project_id, "Task")
+                .expect("task");
+            let plan_id = repository
+                .task_catalog_for_project(&project_id, Some(&task_id), false, None)
+                .expect("catalog")
+                .1
+                .expect("task")
+                .selected_plan_id;
+            (task_id, plan_id)
+        };
+        let material = service
+            .context_selected_plan_material(&project_id, Some(&task_id), Some(&plan_id))
+            .expect("owned selected plan")
+            .expect("material");
+        assert_eq!(material.source_class, "selected-plan");
+        assert!(service
+            .context_selected_plan_material(
+                &project_id,
+                Some(&task_id),
+                Some(&Uuid::now_v7().to_string())
+            )
+            .is_err());
+    }
+
+    #[test]
+    fn context_review_evidence_requires_bound_project_task_and_ready_evidence() {
+        let service = ProjectService::in_memory();
+        let directory = temporary_directory("m60-review-evidence");
+        service.prepare_attachment(directory);
+        let project_id = service.confirm_pending().projects[0].id.clone();
+        let (task_id, collection_id, item_id) = {
+            let mut repository = service.repository.lock().expect("repository");
+            let repository = repository.as_mut().expect("repository");
+            let task_id = repository
+                .create_task_for_project(&project_id, "Task")
+                .expect("task");
+            let collection_id = repository
+                .create_local_review_collection(&task_id, None, "Evidence")
+                .expect("collection");
+            let updated = repository
+                .local_review_snapshot(Some(&collection_id))
+                .expect("snapshot")
+                .1
+                .expect("collection")
+                .updated_at_ms;
+            let item_id = repository
+                .create_local_review_manual_evidence_item(
+                    &collection_id,
+                    updated,
+                    "Validation",
+                    "passed",
+                )
+                .expect("evidence");
+            (task_id, collection_id, item_id)
+        };
+        let materials = service
+            .context_review_evidence_materials(
+                &project_id,
+                Some(&task_id),
+                std::slice::from_ref(&item_id),
+            )
+            .expect("owned evidence");
+        assert_eq!(materials.len(), 1);
+        assert_eq!(materials[0].source_class, "local-review-evidence");
+        assert!(service
+            .context_review_evidence_materials(&project_id, None, &[item_id])
+            .is_err());
+        let _ = collection_id;
+    }
+
+    #[test]
+    fn context_scope_metadata_is_project_bound_and_contains_no_source_bytes() {
+        let service = ProjectService::in_memory();
+        let directory = temporary_directory("m60-scope-metadata");
+        service.prepare_attachment(directory);
+        let project_id = service.confirm_pending().projects[0].id.clone();
+        let material = service
+            .context_scope_metadata_material(&project_id, None)
+            .expect("metadata");
+        assert_eq!(material.source_class, "scope-metadata");
+        assert!(!material.text.contains("durable-sources"));
+        assert!(service
+            .context_scope_metadata_material(&Uuid::now_v7().to_string(), None)
+            .is_err());
     }
 
     #[test]

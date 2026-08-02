@@ -39,6 +39,10 @@ static project site is [quireforge.jamesjennison.net](https://quireforge.jamesje
   status, archive/restore, explicit deletion, and up to four visible alternate
   plans. Task records retain no conversation, path, attachment history, or
   execution authority.
+- Governed context review with explicit local selection, deterministic private
+  redacted assembly, bounded review, and one-use fictional local-only delivery;
+  it is not provider transmission, inference, credential, connector, browser,
+  MCP, automation, or mutation authority.
 - A bounded transient Advisor conversation surface with independently
   scrollable replies, reader-controlled follow-latest, and an optional safe
   details drawer; it adds no Advisor authority or persistence.

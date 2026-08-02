@@ -304,6 +304,11 @@ const ControlledBrowserVerificationWorkbench = lazy(() =>
     }),
   ),
 );
+const ContextAssemblyWorkbench = lazy(() =>
+  import("./ContextAssemblyWorkbench").then(
+    ({ ContextAssemblyWorkbench: workspace }) => ({ default: workspace }),
+  ),
+);
 const DurableSourcesWorkbench = lazy(() =>
   import("./DurableSourcesWorkbench").then(
     ({ DurableSourcesWorkbench: workspace }) => ({
@@ -1193,6 +1198,8 @@ export default function App({
     setControlledBrowserVerificationOpen,
   ] = useState(false);
   const [durableSourcesWorkbenchOpen, setDurableSourcesWorkbenchOpen] =
+    useState(false);
+  const [contextAssemblyWorkbenchOpen, setContextAssemblyWorkbenchOpen] =
     useState(false);
   const mockInferenceLauncherRef = useRef<HTMLButtonElement>(null);
   const [workbenchLayout, setWorkbenchLayout] = useState(
@@ -4562,6 +4569,22 @@ export default function App({
                         />
                       </Suspense>
                     )}
+                    {contextAssemblyWorkbenchOpen && (
+                      <Suspense
+                        fallback={
+                          <section className="mock-inference-workbench">
+                            <p role="status">
+                              Loading governed context review…
+                            </p>
+                          </section>
+                        }
+                      >
+                        <ContextAssemblyWorkbench
+                          projectId={currentProject?.id ?? null}
+                          onClose={() => setContextAssemblyWorkbenchOpen(false)}
+                        />
+                      </Suspense>
+                    )}
                     {durableSourcesWorkbenchOpen && (
                       <Suspense
                         fallback={
@@ -4628,6 +4651,12 @@ export default function App({
                         }
                       >
                         Fictional browser verification
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setContextAssemblyWorkbenchOpen(true)}
+                      >
+                        Governed context review
                       </button>
                     </section>
                   </>

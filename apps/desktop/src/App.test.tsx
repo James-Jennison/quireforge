@@ -526,9 +526,11 @@ describe("QuireForge desktop shell", () => {
         name: "New task",
       }),
     ).toBeVisible();
-    expect(
-      within(workspace as HTMLElement).getByText("Local durable task"),
-    ).toBeVisible();
+    await waitFor(() =>
+      expect(
+        within(workspace as HTMLElement).getByText("Local durable task"),
+      ).toBeVisible(),
+    );
     expect(
       screen.queryByRole("heading", { name: "Workbench context" }),
     ).not.toBeInTheDocument();

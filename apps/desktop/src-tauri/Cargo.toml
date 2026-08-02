@@ -1,6 +1,6 @@
 [package]
 name = "quireforge"
-version = "0.1.0-beta.62"
+version = "0.1.0-beta.63"
 description = "An unofficial native Linux workspace for Codex"
 authors = ["QuireForge contributors"]
 edition = "2021"
@@ -39,6 +39,7 @@ thiserror = "2.0.19"
 tokio = { version = "1.53.0", features = ["io-util", "macros", "process", "sync", "time"] }
 url = "2.5.8"
 unicode-casefold = "=0.2.0"
+unicode-normalization = "=0.1.25"
 uuid = { version = "1.24.0", features = ["v7"] }
 zip = { version = "=8.6.0", default-features = false }
 

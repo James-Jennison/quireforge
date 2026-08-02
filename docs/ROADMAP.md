@@ -1490,7 +1490,8 @@ as a separate runtime lane; M58 planning is now complete.
 organizes the related decision gates, future implementation milestones, and
 future release checkpoints. It grants no implementation authority, package, or
 version. M55, M57, and M58 remain separate authority boundaries. M59 is the
-completed context/transmission decision contract; M60 is next and unstarted.
+completed context/transmission decision contract; M60 is implemented as the
+beta.63 governed fictional/local-only vertical slice.
 
 **Completed decision gates:**
 
@@ -1532,9 +1533,10 @@ completed context/transmission decision contract; M60 is next and unstarted.
   lifecycle and ambiguity handling, output/proposal confinement, disclosures,
   emergency stop, and a separate local-runtime variant.
 
-**Next checkpoint:** M60 Governed Context Assembly Vertical Slice requires
-separate explicit approval. It is a local-only fictional-sink implementation
-and does not select a provider.
+**M60 implementation:** [Governed Context Assembly Vertical
+Slice](MILESTONE_60_GOVERNED_CONTEXT_ASSEMBLY.md) adds explicit deterministic
+selection, redacted private assembly, review, one-use fictional delivery, and
+content-free audit records. It is local-only and does not select a provider.
 
 All currently planned core architecture gates are complete. No implementation
 milestone starts automatically.

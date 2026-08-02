@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.0-beta.63 — Governed Context Assembly
+
+- Implements M60's explicit, bounded, native-owned context selection,
+  canonical assembly, structural redaction, review, digest-bound one-use
+  fictional local-only delivery, expiry/revocation/replay handling, migration,
+  and content-free audit linkage.
+- Adds no provider, credential, network transmission, inference, connector,
+  browser, MCP, automation, external mutation, or deployment authority.
+
 ## 0.1.0-beta.62 — Controlled browser verification
 
 - Adds the M58 fictional, deterministic, local-only, read-only controlled
@@ -14,7 +23,7 @@
   candidate; beta.62 normalizes worker-package timestamps, passed complete
   installed-host acceptance, and is published as a prerelease.
 
-## Unreleased — M59 Context Assembly and Transmission Contract
+## M59 — Context Assembly and Transmission Contract
 
 - Ratify the decision-only contract for explicit, deterministic, bounded,
   redacted context selection, prepared-bundle review, digest-bound one-use

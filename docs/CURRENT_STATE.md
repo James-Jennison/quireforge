@@ -124,11 +124,12 @@ external mutation authority.
 
 M59 Context Assembly and Transmission Contract is complete decision-only work
 at [MILESTONE_59_CONTEXT_ASSEMBLY_AND_TRANSMISSION_CONTRACT.md](MILESTONE_59_CONTEXT_ASSEMBLY_AND_TRANSMISSION_CONTRACT.md).
-It ratifies explicit selection, deterministic assembly, redaction, bounded
-review, digest-bound one-use confirmation, fictional-sink handling, retention,
-drift, ambiguity, and audit policy. It implements no context assembly, provider
-transmission, credential, inference, network, connector, browser, MCP,
-automation, or mutation behavior. M60 is the next unstarted milestone.
+Its beta.63 M60 implementation is documented in
+[MILESTONE_60_GOVERNED_CONTEXT_ASSEMBLY.md](MILESTONE_60_GOVERNED_CONTEXT_ASSEMBLY.md):
+explicit source selection, deterministic bounded private assembly, structural
+redaction, review, digest-bound one-use fictional local-only delivery, recovery,
+and content-free audit linkage. It adds no provider, credential, network
+transmission, inference, connector, browser, MCP, automation, or mutation.
 
 M54 Local Review is complete at package/source commit
 `c4c2752466f36f791fde47edbc5c6b02b0e21320`, tagged
@@ -439,12 +440,11 @@ gates passed.
 
 ## Next action
 
-M59 is complete. The next genuine authority boundary is a single
-start-to-finish **M60 Governed Context Assembly Vertical Slice** goal, limited
-to the ratified fictional/local-only sink. It must not start without explicit
-approval. No beta version, package, installation, tag, release, credential,
-provider transmission, inference, connector, browser, MCP, automation, external
-mutation, deployment, or later milestone is implied by this decision record.
+M60's beta.63 release candidate is in its final source, package, installed-host,
+and publication acceptance sequence. It remains limited to the ratified
+fictional/local-only sink; no provider, credential, network transmission,
+inference, connector, browser, MCP, automation, external mutation, deployment,
+or later milestone is implied.
 
 Milestone 46 — **Bounded Multi-Attachment** is complete at
 `1bc2e787ab785016041d70845c97ca9c2c4f84db` with its verified

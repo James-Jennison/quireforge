@@ -1,12 +1,12 @@
 # Goal — Provider-Neutral AI Foundation
 
 Type: active long-term product goal.
-Status: active; M55, M57, and M58 implementation slices are complete and
-published through beta.62. M59 Context Assembly and Transmission Contract is
-complete decision-only work; M60 is next and unstarted.
+Status: active; M55, M57, M58, and M60 implementation slices are complete
+through the beta.63 release candidate. M59 Context Assembly and Transmission
+Contract remains the governing decision record.
 Packaging status: beta.55 and beta.56 remain preserved failed candidates;
 beta.59 (M55), beta.60 (M57), and beta.62 (M58) are published prereleases.
-Latest published release version: `0.1.0-beta.62` / `0.1.0~beta.62`.
+Latest release candidate: `0.1.0-beta.63` / `0.1.0~beta.63`.
 Implementation authority: none granted by establishing this goal.
 Parent vision: native, project-centered, all-in-one Linux AI workspace.
 
@@ -275,17 +275,17 @@ When a gate completes, record it as progress under this goal.
 
 ## Immediate next gate
 
-The next genuine authority boundary is **M60 Governed Context Assembly Vertical
-Slice**, limited to M59's fictional/local-only sink. No provider, credential,
-network transmission, inference, or later milestone has started.
+M60 is implemented as the [Governed Context Assembly Vertical
+Slice](MILESTONE_60_GOVERNED_CONTEXT_ASSEMBLY.md), limited to M59's
+fictional/local-only sink. No provider, credential, network transmission,
+inference, or later milestone has started.
 
 ## Package and release policy
 
 Establishing or advancing this goal through decision-only gates requires no
-package or version. Implementation milestones receive versions only when they
-alter source or user-visible/operational behavior and a release policy is
-separately approved. Beta.62 is the latest published generation; M60 has no
-candidate version yet.
+package or version. M60 alters user-visible and operational behavior and uses
+the separately approved beta.63 release candidate; publication evidence remains
+separate from this goal record.
 
 ## Explicit exclusions
 

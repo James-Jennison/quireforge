@@ -9,6 +9,7 @@ mod attachment;
 mod codex;
 #[allow(dead_code)]
 mod connector_foundation;
+mod context_assembly;
 mod contract;
 mod controlled_browser_verification;
 mod desktop;
@@ -1878,6 +1879,176 @@ fn controlled_browser_verification_revoke(
 }
 
 #[tauri::command]
+fn context_assembly_status(
+    service: tauri::State<'_, context_assembly::ContextAssemblyService>,
+) -> context_assembly::ContextSnapshot {
+    service.status()
+}
+
+#[tauri::command]
+fn context_assembly_prepare(
+    request: context_assembly::ContextPrepareRequest,
+    service: tauri::State<'_, context_assembly::ContextAssemblyService>,
+    projects: tauri::State<'_, ProjectService>,
+) -> context_assembly::ContextSnapshot {
+    let mut materials = match projects.context_durable_materials(
+        &request.project_id,
+        request.task_id.as_deref(),
+        &request.durable_source_ids,
+    ) {
+        Ok(value) => value,
+        Err(_) => return service.status(),
+    };
+    match projects.context_selected_plan_material(
+        &request.project_id,
+        request.task_id.as_deref(),
+        request.selected_plan_id.as_deref(),
+    ) {
+        Ok(Some(plan)) => materials.push(plan),
+        Ok(None) => {}
+        Err(_) => return service.status(),
+    }
+    match projects.context_review_evidence_materials(
+        &request.project_id,
+        request.task_id.as_deref(),
+        &request.review_evidence_ids,
+    ) {
+        Ok(items) => materials.extend(items),
+        Err(_) => return service.status(),
+    }
+    if request.include_scope_metadata {
+        match projects
+            .context_scope_metadata_material(&request.project_id, request.task_id.as_deref())
+        {
+            Ok(material) => materials.push(material),
+            Err(_) => return service.status(),
+        }
+    }
+    let snapshot = service.prepare(request, materials);
+    if let (
+        Some(bundle_id),
+        Some(project_id),
+        Some(authorization_id),
+        Some(bundle_digest),
+        Some(expires_at_ms),
+    ) = (
+        snapshot.bundle_id.as_deref(),
+        snapshot.project_id.as_deref(),
+        snapshot.authorization_id.as_deref(),
+        snapshot.bundle_digest.as_deref(),
+        snapshot.expires_at_ms,
+    ) {
+        let Some(canonical_bytes) = service.canonical_bytes(bundle_id) else {
+            return service.status();
+        };
+        if !projects.record_context_bundle(project::ContextBundleRecord {
+            bundle_id,
+            project_id,
+            task_id: snapshot.task_id.as_deref(),
+            bundle_digest,
+            authorization_id,
+            expires_at_ms: expires_at_ms as i64,
+            items: &snapshot.items,
+            canonical_bytes: &canonical_bytes,
+        }) {
+            return service.status();
+        }
+    }
+    snapshot
+}
+
+#[tauri::command]
+fn context_assembly_confirm(
+    request: context_assembly::ContextConfirmRequest,
+    service: tauri::State<'_, context_assembly::ContextAssemblyService>,
+    projects: tauri::State<'_, ProjectService>,
+) -> context_assembly::ContextSnapshot {
+    let preflight = service.preflight_confirm(&request);
+    if preflight.state == "expired" {
+        if let Some(bundle_id) = preflight.bundle_id.as_deref() {
+            if !projects.complete_context_bundle(bundle_id, "expired") {
+                return context_assembly::ContextSnapshot::storage_failure();
+            }
+        }
+        return preflight;
+    }
+    if preflight.state == "rejected" {
+        return preflight;
+    }
+    let expected_terminal = preflight.state.clone();
+    if !projects.complete_context_bundle(&request.bundle_id, &expected_terminal) {
+        return context_assembly::ContextSnapshot::storage_failure();
+    }
+    let snapshot = service.confirm(request);
+    if snapshot.bundle_id.is_some() && snapshot.state != expected_terminal {
+        return context_assembly::ContextSnapshot::storage_failure();
+    }
+    snapshot
+}
+
+#[tauri::command]
+fn context_assembly_review(
+    request: context_assembly::ContextAttemptRequest,
+    service: tauri::State<'_, context_assembly::ContextAssemblyService>,
+    projects: tauri::State<'_, ProjectService>,
+) -> context_assembly::ContextSnapshot {
+    if !projects.review_context_bundle(&request.bundle_id) {
+        return service.status();
+    }
+    service.review(request)
+}
+
+#[tauri::command]
+fn context_assembly_acknowledge_review(
+    request: context_assembly::ContextAttemptRequest,
+    service: tauri::State<'_, context_assembly::ContextAssemblyService>,
+    projects: tauri::State<'_, ProjectService>,
+) -> context_assembly::ContextSnapshot {
+    if !projects.acknowledge_context_bundle_review(&request.bundle_id) {
+        return context_assembly::ContextSnapshot::storage_failure();
+    }
+    service.acknowledge_review(request)
+}
+
+#[tauri::command]
+fn context_assembly_cancel(
+    request: context_assembly::ContextAttemptRequest,
+    service: tauri::State<'_, context_assembly::ContextAssemblyService>,
+    projects: tauri::State<'_, ProjectService>,
+) -> context_assembly::ContextSnapshot {
+    let prospective = service.terminal_state(&request.bundle_id, "cancelled");
+    if prospective == "rejected"
+        || !projects.complete_context_bundle(&request.bundle_id, prospective)
+    {
+        return context_assembly::ContextSnapshot::storage_failure();
+    }
+    let snapshot = service.cancel(request);
+    if snapshot.bundle_id.is_some() && snapshot.state != prospective {
+        return context_assembly::ContextSnapshot::storage_failure();
+    }
+    snapshot
+}
+
+#[tauri::command]
+fn context_assembly_revoke(
+    request: context_assembly::ContextAttemptRequest,
+    service: tauri::State<'_, context_assembly::ContextAssemblyService>,
+    projects: tauri::State<'_, ProjectService>,
+) -> context_assembly::ContextSnapshot {
+    let prospective = service.terminal_state(&request.bundle_id, "revoked");
+    if prospective == "rejected"
+        || !projects.complete_context_bundle(&request.bundle_id, prospective)
+    {
+        return context_assembly::ContextSnapshot::storage_failure();
+    }
+    let snapshot = service.revoke(request);
+    if snapshot.bundle_id.is_some() && snapshot.state != prospective {
+        return context_assembly::ContextSnapshot::storage_failure();
+    }
+    snapshot
+}
+
+#[tauri::command]
 fn mock_inference_prepare(
     request: mock_inference::MockInferencePrepareRequest,
     service: tauri::State<'_, mock_inference::MockInferenceService>,
@@ -3109,6 +3280,7 @@ pub fn run() {
         .manage(mock_inference::MockInferenceService::default())
         .manage(connector_foundation::ConnectorGovernanceService::default())
         .manage(controlled_browser_verification::ControlledBrowserVerificationService::default())
+        .manage(context_assembly::ContextAssemblyService::default())
         .setup(|app| {
             match app.path().app_data_dir() {
                 Ok(directory) => {
@@ -3248,6 +3420,13 @@ pub fn run() {
             controlled_browser_verification_confirm,
             controlled_browser_verification_cancel,
             controlled_browser_verification_revoke,
+            context_assembly_status,
+            context_assembly_prepare,
+            context_assembly_confirm,
+            context_assembly_review,
+            context_assembly_acknowledge_review,
+            context_assembly_cancel,
+            context_assembly_revoke,
             mock_inference_prepare,
             mock_inference_authorize,
             mock_inference_submit,
@@ -3407,7 +3586,7 @@ mod phase_a_tests {
         let command_section = source
             .split("fn task_template_catalog")
             .nth(1)
-            .and_then(|value| value.split("fn local_review_status").next())
+            .and_then(|value| value.split("fn context_assembly_status").next())
             .expect("task-template command declarations");
         for forbidden in [
             "git",
@@ -3442,7 +3621,7 @@ mod phase_a_tests {
         let command_section = source
             .split("fn mock_inference_catalog")
             .nth(1)
-            .and_then(|value| value.split("fn local_review_status").next())
+            .and_then(|value| value.split("fn context_assembly_status").next())
             .expect("mock inference command declarations");
         for forbidden in ["terminal", "git", "attachment", "dispatch", "execute"] {
             assert!(!command_section.contains(forbidden), "{forbidden}");

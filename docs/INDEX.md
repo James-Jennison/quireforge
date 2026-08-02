@@ -66,6 +66,9 @@ implementation position and [Roadmap](ROADMAP.md) for approved sequencing.
 - [Milestone 52 — Durable Task Records and Alternate Plans](MILESTONE_52_DURABLE_TASK_RECORDS.md)
   — bounded native-owned local organizational records and non-authoritative
   alternate plans.
+- [Milestone 60 — Governed Context Assembly](MILESTONE_60_GOVERNED_CONTEXT_ASSEMBLY.md)
+  — explicit bounded selection, private deterministic assembly, review, and a
+  fictional local-only one-use sink.
 - [Post-M41 packaging-efficiency checkpoint](PACKAGING_EFFICIENCY_CHECKPOINT.md)
   — checksum-verified immutable guest-input caching within the authoritative
   Ubuntu 22.04 release workflow.

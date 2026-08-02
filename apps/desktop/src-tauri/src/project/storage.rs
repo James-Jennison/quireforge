@@ -895,6 +895,47 @@ CREATE TRIGGER controlled_browser_verification_identity_immutable BEFORE UPDATE 
 CREATE INDEX controlled_browser_verification_attempts_project_recent ON controlled_browser_verification_attempts(project_id, created_at_ms DESC);
 "#;
 
+const CONTEXT_ASSEMBLY_MIGRATION: &str = r#"
+CREATE TABLE context_bundles (
+ id TEXT PRIMARY KEY NOT NULL CHECK(length(id) = 36),
+ schema_version INTEGER NOT NULL CHECK(schema_version = 1),
+ project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE RESTRICT,
+ task_id TEXT REFERENCES task_records(id) ON DELETE RESTRICT,
+ bundle_digest TEXT NOT NULL CHECK(length(bundle_digest) = 64),
+ canonical_bytes BLOB CHECK(canonical_bytes IS NULL OR length(canonical_bytes) <= 98304),
+ policy_version INTEGER NOT NULL CHECK(policy_version = 1),
+ assembly_version INTEGER NOT NULL CHECK(assembly_version = 1),
+ state TEXT NOT NULL CHECK(state IN ('prepared','awaiting_review','awaiting_confirmation','authorized','dispatching','accepted_delivery','rejected_delivery','cancelled','denied','expired','revoked','drifted','timed_out','ambiguous','failed','closed')),
+ expires_at_ms INTEGER NOT NULL, created_at_ms INTEGER NOT NULL,
+ completed_at_ms INTEGER,
+ authorization_id TEXT NOT NULL CHECK(length(authorization_id) = 36),
+ CHECK(expires_at_ms >= created_at_ms)
+);
+CREATE TABLE context_bundle_items (
+ id TEXT PRIMARY KEY NOT NULL CHECK(length(id) = 36),
+ bundle_id TEXT NOT NULL REFERENCES context_bundles(id) ON DELETE RESTRICT,
+ ordinal INTEGER NOT NULL CHECK(ordinal >= 0 AND ordinal < 16),
+ source_ref TEXT NOT NULL CHECK(length(source_ref) BETWEEN 1 AND 160),
+ source_class TEXT NOT NULL CHECK(length(source_class) BETWEEN 1 AND 80),
+ provenance TEXT NOT NULL CHECK(length(provenance) BETWEEN 1 AND 120),
+ content_digest TEXT NOT NULL CHECK(length(content_digest) = 64),
+ byte_size INTEGER NOT NULL CHECK(byte_size >= 0 AND byte_size <= 24576),
+ redaction_count INTEGER NOT NULL CHECK(redaction_count >= 0),
+ truncated INTEGER NOT NULL CHECK(truncated IN (0,1)),
+ UNIQUE(bundle_id, ordinal)
+);
+CREATE TABLE context_bundle_audit (
+ id TEXT PRIMARY KEY NOT NULL CHECK(length(id) = 36),
+ bundle_id TEXT NOT NULL REFERENCES context_bundles(id) ON DELETE RESTRICT,
+ event_kind TEXT NOT NULL CHECK(length(event_kind) BETWEEN 1 AND 64),
+ outcome TEXT NOT NULL CHECK(length(outcome) BETWEEN 1 AND 64),
+ evidence_digest TEXT NOT NULL CHECK(length(evidence_digest) = 64),
+ created_at_ms INTEGER NOT NULL
+);
+CREATE TRIGGER context_bundle_identity_immutable BEFORE UPDATE OF id, schema_version, project_id, task_id, bundle_digest, policy_version, assembly_version, created_at_ms, authorization_id ON context_bundles BEGIN SELECT RAISE(ABORT, 'context bundle identity is immutable'); END;
+CREATE INDEX context_bundles_project_recent ON context_bundles(project_id, created_at_ms DESC);
+"#;
+
 const MIGRATIONS: &[(i64, &str, &str)] = &[
     (1, "projects-and-directory-associations", INITIAL_MIGRATION),
     (
@@ -997,6 +1038,7 @@ const MIGRATIONS: &[(i64, &str, &str)] = &[
         "controlled-browser-verification-v1",
         CONTROLLED_BROWSER_VERIFICATION_MIGRATION,
     ),
+    (26, "context-assembly-v1", CONTEXT_ASSEMBLY_MIGRATION),
 ];
 
 #[derive(Debug, Error)]
@@ -2905,6 +2947,74 @@ impl ProjectRepository {
         };
         tx.commit()?;
         Ok(source)
+    }
+
+    pub(crate) fn context_review_evidence_materials(
+        &self,
+        project_id: &str,
+        task_id: Option<&str>,
+        item_ids: &[String],
+    ) -> Result<Vec<crate::context_assembly::Material>, StorageError> {
+        let Some(task_id) = task_id else {
+            return Err(StorageError::TaskNotFound);
+        };
+        let task_project: String = self.connection.query_row(
+            "SELECT project_id FROM task_records WHERE id=?1 AND archived_at_ms IS NULL",
+            [task_id],
+            |row| row.get(0),
+        )?;
+        if task_project != project_id {
+            return Err(StorageError::TaskNotFound);
+        }
+        let mut materials = Vec::with_capacity(item_ids.len());
+        for item_id in item_ids {
+            let (content, digest, byte_size): (Vec<u8>, String, i64) = self.connection.query_row(
+                "SELECT i.content, i.sha256, i.byte_size FROM local_review_items i JOIN local_review_collections c ON c.id=i.collection_id WHERE i.id=?1 AND i.class='evidence' AND i.state='ready' AND i.discarded_at_ms IS NULL AND c.task_id=?2 AND c.state='active' AND c.discarded_at_ms IS NULL",
+                params![item_id, task_id], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            )?;
+            if byte_size < 1
+                || byte_size as usize != content.len()
+                || content.len() > 8 * 1024
+                || digest != review_digest(&content)
+            {
+                return Err(StorageError::InvalidStoredValue);
+            }
+            let text = String::from_utf8(content).map_err(|_| StorageError::InvalidStoredValue)?;
+            materials.push(crate::context_assembly::Material {
+                id: item_id.clone(),
+                source_class: "local-review-evidence".into(),
+                provenance: "M54-approved-local-review-evidence".into(),
+                text,
+            });
+        }
+        Ok(materials)
+    }
+
+    pub(crate) fn context_scope_metadata_material(
+        &self,
+        project_id: &str,
+        task_id: Option<&str>,
+    ) -> Result<crate::context_assembly::Material, StorageError> {
+        let project_name: String = self.connection.query_row(
+            "SELECT display_name FROM projects WHERE id=?1 AND archived_at_ms IS NULL",
+            [project_id],
+            |row| row.get(0),
+        )?;
+        let task = if let Some(task_id) = task_id {
+            let (title, status, task_project): (String, String, String) = self.connection.query_row("SELECT title,status,project_id FROM task_records WHERE id=?1 AND archived_at_ms IS NULL", [task_id], |row| Ok((row.get(0)?,row.get(1)?,row.get(2)?)))?;
+            if task_project != project_id {
+                return Err(StorageError::TaskNotFound);
+            }
+            format!("task-title={title}\ntask-status={status}\n")
+        } else {
+            String::new()
+        };
+        Ok(crate::context_assembly::Material {
+            id: format!("scope:{project_id}:{}", task_id.unwrap_or("project")),
+            source_class: "scope-metadata".into(),
+            provenance: "M60-bounded-project-task-metadata".into(),
+            text: format!("project-name={project_name}\n{task}"),
+        })
     }
     #[expect(
         clippy::type_complexity,
@@ -5241,7 +5351,7 @@ impl ProjectRepository {
     ) -> Result<(), StorageError> {
         let now = now_millis();
         let digest = evidence_digest
-            .unwrap_or_else(|| "0000000000000000000000000000000000000000000000000000000000000000");
+            .unwrap_or("0000000000000000000000000000000000000000000000000000000000000000");
         let tx = self
             .connection
             .transaction_with_behavior(TransactionBehavior::Immediate)?;
@@ -5256,6 +5366,131 @@ impl ProjectRepository {
             params![Uuid::now_v7().to_string(), attempt_id, state, digest, now],
         )?;
         tx.commit()?;
+        Ok(())
+    }
+
+    pub(crate) fn record_context_bundle(
+        &mut self,
+        record: &crate::project::ContextBundleRecord<'_>,
+    ) -> Result<(), StorageError> {
+        if !is_uuid_v7(record.bundle_id)
+            || !is_uuid_v7(record.authorization_id)
+            || !valid_review_sha256(record.bundle_digest)
+            || record.items.len() > 16
+        {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let now = now_millis();
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let exists: bool = tx.query_row(
+            "SELECT EXISTS(SELECT 1 FROM projects WHERE id=?1 AND archived_at_ms IS NULL)",
+            [record.project_id],
+            |row| row.get(0),
+        )?;
+        if !exists {
+            return Err(StorageError::ProjectNotFound);
+        }
+        if let Some(task_id) = record.task_id {
+            let project: Option<String> = tx
+                .query_row(
+                    "SELECT project_id FROM task_records WHERE id=?1 AND archived_at_ms IS NULL",
+                    [task_id],
+                    |row| row.get(0),
+                )
+                .optional()?;
+            if project.as_deref() != Some(record.project_id) {
+                return Err(StorageError::TaskNotFound);
+            }
+        }
+        if record.canonical_bytes.len() > 96 * 1024
+            || crate::context_assembly::digest(record.canonical_bytes) != record.bundle_digest
+        {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        tx.execute("INSERT INTO context_bundles (id,schema_version,project_id,task_id,bundle_digest,canonical_bytes,policy_version,assembly_version,state,expires_at_ms,created_at_ms,completed_at_ms,authorization_id) VALUES (?1,1,?2,?3,?4,?5,1,1,'prepared',?6,?7,NULL,?8)",params![record.bundle_id,record.project_id,record.task_id,record.bundle_digest,record.canonical_bytes,record.expires_at_ms,now,record.authorization_id])?;
+        for (ordinal, item) in record.items.iter().enumerate() {
+            tx.execute("INSERT INTO context_bundle_items (id,bundle_id,ordinal,source_ref,source_class,provenance,content_digest,byte_size,redaction_count,truncated) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10)",params![Uuid::now_v7().to_string(),record.bundle_id,ordinal as i64,item.source_ref,item.source_class,item.provenance,item.digest,item.byte_size as i64,item.redaction_count as i64,item.truncated as i64])?;
+        }
+        tx.execute("INSERT INTO context_bundle_audit (id,bundle_id,event_kind,outcome,evidence_digest,created_at_ms) VALUES (?1,?2,'prepared','prepared',?3,?4)",params![Uuid::now_v7().to_string(),record.bundle_id,record.bundle_digest,now])?;
+        tx.commit()?;
+        Ok(())
+    }
+    pub(crate) fn complete_context_bundle(
+        &mut self,
+        bundle_id: &str,
+        state: &str,
+    ) -> Result<(), StorageError> {
+        if !matches!(
+            state,
+            "accepted_delivery"
+                | "cancelled"
+                | "revoked"
+                | "expired"
+                | "ambiguous"
+                | "timed_out"
+                | "failed"
+                | "rejected_delivery"
+        ) {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let now = now_millis();
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let changed=tx.execute("UPDATE context_bundles SET state=?1, canonical_bytes=NULL, completed_at_ms=?2 WHERE id=?3 AND state IN ('prepared','awaiting_review','awaiting_confirmation')",params![state,now,bundle_id])?;
+        if changed != 1 {
+            return Err(StorageError::InvalidStoredValue);
+        };
+        let digest: String = tx.query_row(
+            "SELECT bundle_digest FROM context_bundles WHERE id=?1",
+            [bundle_id],
+            |row| row.get(0),
+        )?;
+        if matches!(
+            state,
+            "accepted_delivery" | "rejected_delivery" | "timed_out" | "ambiguous"
+        ) {
+            tx.execute("INSERT INTO context_bundle_audit (id,bundle_id,event_kind,outcome,evidence_digest,created_at_ms) VALUES (?1,?2,'authorized','authorized',?3,?4)",params![Uuid::now_v7().to_string(),bundle_id,digest,now])?;
+            tx.execute("INSERT INTO context_bundle_audit (id,bundle_id,event_kind,outcome,evidence_digest,created_at_ms) VALUES (?1,?2,'dispatching','dispatching',?3,?4)",params![Uuid::now_v7().to_string(),bundle_id,digest,now])?;
+        }
+        tx.execute("INSERT INTO context_bundle_audit (id,bundle_id,event_kind,outcome,evidence_digest,created_at_ms) VALUES (?1,?2,'terminal',?3,?4,?5)",params![Uuid::now_v7().to_string(),bundle_id,state,digest,now])?;
+        tx.commit()?;
+        Ok(())
+    }
+    pub(crate) fn review_context_bundle(&mut self, bundle_id: &str) -> Result<(), StorageError> {
+        let now = now_millis();
+        let changed = self.connection.execute(
+            "UPDATE context_bundles SET state='awaiting_review' WHERE id=?1 AND state='prepared'",
+            [bundle_id],
+        )?;
+        if changed != 1 {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let digest: String = self.connection.query_row(
+            "SELECT bundle_digest FROM context_bundles WHERE id=?1",
+            [bundle_id],
+            |row| row.get(0),
+        )?;
+        self.connection.execute("INSERT INTO context_bundle_audit (id,bundle_id,event_kind,outcome,evidence_digest,created_at_ms) VALUES (?1,?2,'review','awaiting_review',?3,?4)", params![Uuid::now_v7().to_string(),bundle_id,digest,now])?;
+        Ok(())
+    }
+    pub(crate) fn acknowledge_context_bundle_review(
+        &mut self,
+        bundle_id: &str,
+    ) -> Result<(), StorageError> {
+        let now = now_millis();
+        let changed = self.connection.execute("UPDATE context_bundles SET state='awaiting_confirmation' WHERE id=?1 AND state='awaiting_review'", [bundle_id])?;
+        if changed != 1 {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let digest: String = self.connection.query_row(
+            "SELECT bundle_digest FROM context_bundles WHERE id=?1",
+            [bundle_id],
+            |row| row.get(0),
+        )?;
+        self.connection.execute("INSERT INTO context_bundle_audit (id,bundle_id,event_kind,outcome,evidence_digest,created_at_ms) VALUES (?1,?2,'review-acknowledged','awaiting_confirmation',?3,?4)", params![Uuid::now_v7().to_string(),bundle_id,digest,now])?;
         Ok(())
     }
 
@@ -5981,6 +6216,7 @@ impl ProjectRepository {
         recover_interrupted_terminals(&connection)?;
         recover_interrupted_fictional_connector_operations(&connection)?;
         recover_interrupted_controlled_browser_verifications(&connection)?;
+        recover_interrupted_context_bundles(&connection)?;
         Ok(Self {
             connection,
             activity_session_id: Uuid::now_v7().to_string(),
@@ -8320,6 +8556,39 @@ fn recover_interrupted_controlled_browser_verifications(
     Ok(())
 }
 
+/// Context transmission authorizations are process-owned. On restart no
+/// in-memory confirmation handle may be reconstructed, so every prepared
+/// bundle is closed as expired while retaining only its existing audit digest.
+fn recover_interrupted_context_bundles(connection: &Connection) -> Result<(), StorageError> {
+    let timestamp = now_millis();
+    let pending = {
+        let mut statement = connection
+            .prepare("SELECT id, bundle_digest FROM context_bundles WHERE state IN ('prepared','awaiting_review','awaiting_confirmation')")?;
+        let rows = statement
+            .query_map([], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+            })?
+            .collect::<Result<Vec<_>, _>>()?;
+        rows
+    };
+    if pending.is_empty() {
+        return Ok(());
+    }
+    let transaction = connection.unchecked_transaction()?;
+    for (bundle_id, digest) in pending {
+        transaction.execute(
+            "UPDATE context_bundles SET state = 'expired', canonical_bytes = NULL, completed_at_ms = ?1 WHERE id = ?2 AND state IN ('prepared','awaiting_review','awaiting_confirmation')",
+            params![timestamp, bundle_id],
+        )?;
+        transaction.execute(
+            "INSERT INTO context_bundle_audit (id,bundle_id,event_kind,outcome,evidence_digest,created_at_ms) VALUES (?1,?2,'process-recovery','expired',?3,?4)",
+            params![Uuid::now_v7().to_string(), bundle_id, digest, timestamp],
+        )?;
+    }
+    transaction.commit()?;
+    Ok(())
+}
+
 fn stored_conversation_reference(
     row: &rusqlite::Row<'_>,
 ) -> rusqlite::Result<StoredConversationReference> {
@@ -8506,10 +8775,10 @@ mod tests {
 
     use super::{
         apply_migrations, installed_host_attempt_identity, parse_manual_evidence_envelope,
-        recover_interrupted_controlled_browser_verifications, review_digest, review_payload_bytes,
-        valid_task_id, PackageValidationInstalledHostFacts, PackageValidationPhase,
-        PackageValidationRecordInput, PackageValidationRecordOutcome, PackageValidationSummary,
-        ProjectRepository, StorageError, INITIAL_MIGRATION, MIGRATIONS,
+        recover_interrupted_context_bundles, recover_interrupted_controlled_browser_verifications,
+        review_digest, review_payload_bytes, valid_task_id, PackageValidationInstalledHostFacts,
+        PackageValidationPhase, PackageValidationRecordInput, PackageValidationRecordOutcome,
+        PackageValidationSummary, ProjectRepository, StorageError, INITIAL_MIGRATION, MIGRATIONS,
         PACKAGE_VALIDATION_PROTECTION_MS, TASK_CLEANUP_AGE_MS, TASK_COUNT_LIMIT,
         TASK_PAYLOAD_LIMIT,
     };
@@ -9059,7 +9328,7 @@ mod tests {
                     0
                 ))
                 .expect("version"),
-            24
+            26
         );
     }
 
@@ -9218,6 +9487,11 @@ mod tests {
                 "advisor_context_references".to_owned(),
                 "advisor_conversations".to_owned(),
                 "advisor_dispatch_records".to_owned(),
+                "context_bundle_audit".to_owned(),
+                "context_bundle_items".to_owned(),
+                "context_bundles".to_owned(),
+                "controlled_browser_verification_attempts".to_owned(),
+                "controlled_browser_verification_audit".to_owned(),
                 "conversation_references".to_owned(),
                 "directory_associations".to_owned(),
                 "durable_sources".to_owned(),
@@ -9650,7 +9924,7 @@ mod tests {
                     0
                 ),)
                 .expect("version"),
-            24
+            26
         );
         assert_eq!(
             repository.connection.query_row(
@@ -10118,7 +10392,7 @@ mod tests {
                     0
                 ))
                 .expect("migration version"),
-            24
+            26
         );
     }
 
@@ -10290,7 +10564,7 @@ mod tests {
                     0
                 ))
                 .expect("version"),
-            24
+            26
         );
 
         let mut failed = Connection::open_in_memory().expect("database opens");
@@ -10696,6 +10970,72 @@ mod tests {
                 .expect("audit linkage"),
             2
         );
+        let reviewed_id = Uuid::now_v7().to_string();
+        repository.connection.execute(
+            "INSERT INTO context_bundles (id,schema_version,project_id,task_id,bundle_digest,canonical_bytes,policy_version,assembly_version,state,expires_at_ms,created_at_ms,completed_at_ms,authorization_id) VALUES (?1,1,?2,NULL,?3,?4,1,1,'awaiting_review',9999999999999,1,NULL,?5)",
+            params![reviewed_id, project_id, "d".repeat(64), b"reviewed bytes".as_slice(), Uuid::now_v7().to_string()],
+        ).expect("reviewed bundle");
+        repository.connection.execute(
+            "INSERT INTO context_bundle_audit (id,bundle_id,event_kind,outcome,evidence_digest,created_at_ms) VALUES (?1,?2,'review','awaiting_review',?3,1)",
+            params![Uuid::now_v7().to_string(), reviewed_id, "d".repeat(64)],
+        ).expect("review audit");
+        recover_interrupted_context_bundles(&repository.connection).expect("review recovery");
+        assert_eq!(
+            repository
+                .connection
+                .query_row(
+                    "SELECT state FROM context_bundles WHERE id=?1",
+                    [&reviewed_id],
+                    |row| row.get::<_, String>(0)
+                )
+                .expect("reviewed state"),
+            "expired"
+        );
+    }
+
+    #[test]
+    fn context_bundle_recovery_expires_prepared_authorization_without_retaining_execution() {
+        let repository = ProjectRepository::in_memory().expect("fresh schema");
+        assert_eq!(repository.connection.query_row("SELECT count(*) FROM pragma_table_info('context_bundles') WHERE name='canonical_bytes'", [], |row| row.get::<_, i64>(0)).expect("canonical-byte column"), 1);
+        let project_id = Uuid::now_v7().to_string();
+        insert_active_project(&repository, &project_id, &Uuid::now_v7().to_string());
+        let bundle_id = Uuid::now_v7().to_string();
+        let digest = "c".repeat(64);
+        repository.connection.execute(
+            "INSERT INTO context_bundles (id,schema_version,project_id,task_id,bundle_digest,canonical_bytes,policy_version,assembly_version,state,expires_at_ms,created_at_ms,completed_at_ms,authorization_id) VALUES (?1,1,?2,NULL,?3,?4,1,1,'prepared',9999999999999,1,NULL,?5)",
+            params![bundle_id, project_id, digest, b"private canonical bytes".as_slice(), Uuid::now_v7().to_string()],
+        ).expect("prepared context bundle");
+        repository.connection.execute(
+            "INSERT INTO context_bundle_audit (id,bundle_id,event_kind,outcome,evidence_digest,created_at_ms) VALUES (?1,?2,'prepared','prepared',?3,1)",
+            params![Uuid::now_v7().to_string(), bundle_id, digest],
+        ).expect("prepared audit");
+        recover_interrupted_context_bundles(&repository.connection).expect("recovery");
+        let stored: String = repository
+            .connection
+            .query_row(
+                "SELECT state FROM context_bundles WHERE id=?1",
+                [&bundle_id],
+                |row| row.get(0),
+            )
+            .expect("state");
+        assert_eq!(stored, "expired");
+        assert!(repository
+            .connection
+            .query_row(
+                "SELECT canonical_bytes IS NULL FROM context_bundles WHERE id=?1",
+                [&bundle_id],
+                |row| row.get::<_, bool>(0)
+            )
+            .expect("bytes cleared"));
+        let audit_count: i64 = repository
+            .connection
+            .query_row(
+                "SELECT count(*) FROM context_bundle_audit WHERE bundle_id=?1",
+                [&bundle_id],
+                |row| row.get(0),
+            )
+            .expect("audit");
+        assert_eq!(audit_count, 2);
     }
 
     #[test]
@@ -10724,7 +11064,7 @@ mod tests {
                 1
             );
         }
-        assert_eq!(MIGRATIONS.len(), 25);
+        assert_eq!(MIGRATIONS.len(), 26);
 
         let connection = Connection::open_in_memory().expect("database");
         connection
@@ -10772,7 +11112,7 @@ mod tests {
                     0
                 ))
                 .expect("version"),
-            24
+            26
         );
         assert_eq!(
             repository
@@ -10829,7 +11169,7 @@ mod tests {
                     0
                 ))
                 .expect("version"),
-            24
+            26
         );
     }
 

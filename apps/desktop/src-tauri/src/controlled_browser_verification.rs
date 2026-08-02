@@ -373,13 +373,13 @@ fn sha(value: &str) -> String {
 fn run_fixture_adapter() -> FixtureHelperResult {
     #[cfg(test)]
     {
-        return FixtureHelperResult {
+        FixtureHelperResult {
             state: "verified".into(),
             evidence_digest: Some(sha("fixture-marker:QuireForge fictional fixture marker")),
             visible_text: Some("fixture marker verified".into()),
             diagnostic: "deterministic fixture-adapter test seam completed; no process launched"
                 .into(),
-        };
+        }
     }
     #[cfg(not(test))]
     run_fixture_adapter_process()

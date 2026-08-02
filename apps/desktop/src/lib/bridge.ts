@@ -53,6 +53,13 @@ import {
   type BrowserVerificationSnapshot,
 } from "./controlledBrowserVerification";
 import {
+  contextAssemblyAttemptRequestSchema,
+  contextAssemblyConfirmRequestSchema,
+  contextAssemblyPrepareRequestSchema,
+  contextAssemblySnapshotSchema,
+  type ContextAssemblySnapshot,
+} from "./contextAssembly";
+import {
   filePreviewHandoffRequestSchema,
   filePreviewSchema,
   type FilePreviewHandoffRequest,
@@ -440,6 +447,14 @@ export const CONTROLLED_BROWSER_VERIFICATION_CANCEL_COMMAND =
   "controlled_browser_verification_cancel";
 export const CONTROLLED_BROWSER_VERIFICATION_REVOKE_COMMAND =
   "controlled_browser_verification_revoke";
+export const CONTEXT_ASSEMBLY_STATUS_COMMAND = "context_assembly_status";
+export const CONTEXT_ASSEMBLY_PREPARE_COMMAND = "context_assembly_prepare";
+export const CONTEXT_ASSEMBLY_CONFIRM_COMMAND = "context_assembly_confirm";
+export const CONTEXT_ASSEMBLY_REVIEW_COMMAND = "context_assembly_review";
+export const CONTEXT_ASSEMBLY_ACKNOWLEDGE_REVIEW_COMMAND =
+  "context_assembly_acknowledge_review";
+export const CONTEXT_ASSEMBLY_CANCEL_COMMAND = "context_assembly_cancel";
+export const CONTEXT_ASSEMBLY_REVOKE_COMMAND = "context_assembly_revoke";
 export const LOCAL_REVIEW_STATUS_COMMAND = "local_review_status";
 export const LOCAL_REVIEW_COLLECTION_CREATE_COMMAND =
   "local_review_collection_create";
@@ -1687,6 +1702,83 @@ export const revokeControlledBrowserVerification = (
     CONTROLLED_BROWSER_VERIFICATION_REVOKE_COMMAND,
     request,
     browserVerificationAttemptRequestSchema,
+    invokeFunction,
+  );
+
+async function contextAssemblyInvoke(
+  command: string,
+  request: unknown,
+  schema: z.ZodType,
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<ContextAssemblySnapshot> {
+  return contextAssemblySnapshotSchema.parse(
+    await invokeFunction(command, { request: schema.parse(request) }),
+  );
+}
+export const loadContextAssembly = async (
+  invokeFunction: InvokeFunction = invokeTauri,
+) =>
+  contextAssemblySnapshotSchema.parse(
+    await invokeFunction(CONTEXT_ASSEMBLY_STATUS_COMMAND),
+  );
+export const prepareContextAssembly = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+) =>
+  contextAssemblyInvoke(
+    CONTEXT_ASSEMBLY_PREPARE_COMMAND,
+    request,
+    contextAssemblyPrepareRequestSchema,
+    invokeFunction,
+  );
+export const confirmContextAssembly = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+) =>
+  contextAssemblyInvoke(
+    CONTEXT_ASSEMBLY_CONFIRM_COMMAND,
+    request,
+    contextAssemblyConfirmRequestSchema,
+    invokeFunction,
+  );
+export const reviewContextAssembly = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+) =>
+  contextAssemblyInvoke(
+    CONTEXT_ASSEMBLY_REVIEW_COMMAND,
+    request,
+    contextAssemblyAttemptRequestSchema,
+    invokeFunction,
+  );
+export const acknowledgeContextAssemblyReview = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+) =>
+  contextAssemblyInvoke(
+    CONTEXT_ASSEMBLY_ACKNOWLEDGE_REVIEW_COMMAND,
+    request,
+    contextAssemblyAttemptRequestSchema,
+    invokeFunction,
+  );
+export const cancelContextAssembly = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+) =>
+  contextAssemblyInvoke(
+    CONTEXT_ASSEMBLY_CANCEL_COMMAND,
+    request,
+    contextAssemblyAttemptRequestSchema,
+    invokeFunction,
+  );
+export const revokeContextAssembly = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+) =>
+  contextAssemblyInvoke(
+    CONTEXT_ASSEMBLY_REVOKE_COMMAND,
+    request,
+    contextAssemblyAttemptRequestSchema,
     invokeFunction,
   );
 

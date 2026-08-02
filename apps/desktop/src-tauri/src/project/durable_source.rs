@@ -16,8 +16,8 @@ use uuid::Uuid;
 use super::{
     storage::{DurableSourceInsert, ProjectRepository},
     types::{
-        DurableSourceClass, DurableSourceDiagnosticCode, DurableSourcePreparation,
-        DurableSourceSummary,
+        DurableSourceClass, DurableSourceDiagnosticCode, DurableSourceLifecycleState,
+        DurableSourcePreparation, DurableSourceSummary,
     },
 };
 
@@ -57,6 +57,46 @@ pub(crate) struct DurableSourceController {
 }
 
 impl DurableSourceController {
+    pub(crate) fn context_materials(
+        &self,
+        repository: &ProjectRepository,
+        project_id: &str,
+        task_id: Option<&str>,
+        source_ids: &[String],
+    ) -> Result<Vec<crate::context_assembly::Material>, DurableSourceDiagnosticCode> {
+        let mut items = Vec::with_capacity(source_ids.len());
+        for source_id in source_ids {
+            let source = repository
+                .durable_source(source_id)
+                .map_err(|_| DurableSourceDiagnosticCode::SourceUnavailable)?
+                .ok_or(DurableSourceDiagnosticCode::SourceUnavailable)?;
+            if source.project_id != project_id
+                || source.task_id.as_deref() != task_id
+                || source.state != DurableSourceLifecycleState::Active
+            {
+                return Err(DurableSourceDiagnosticCode::SourceUnavailable);
+            }
+            let bytes = fs::read(self.root.join(source_id))
+                .map_err(|_| DurableSourceDiagnosticCode::SourceUnavailable)?;
+            if digest(&bytes) != source.sha256 {
+                return Err(DurableSourceDiagnosticCode::SourceUnavailable);
+            }
+            let text =
+                String::from_utf8(bytes).map_err(|_| DurableSourceDiagnosticCode::InvalidUtf8)?;
+            items.push(crate::context_assembly::Material {
+                id: source.source_id,
+                source_class: match source.source_class {
+                    DurableSourceClass::ManualText => "durable-manual-text",
+                    DurableSourceClass::LocalTextFile => "durable-local-text-file",
+                    DurableSourceClass::ReviewedArtifactText => "durable-reviewed-artifact-text",
+                }
+                .into(),
+                provenance: "M55-active-private-copy".into(),
+                text,
+            });
+        }
+        Ok(items)
+    }
     pub(crate) fn open(database_path: &Path) -> Result<Self, DurableSourceDiagnosticCode> {
         let parent = database_path
             .parent()
