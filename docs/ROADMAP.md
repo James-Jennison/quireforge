@@ -1541,6 +1541,13 @@ content-free audit records. It is local-only and does not select a provider.
 All currently planned core architecture gates are complete. No implementation
 milestone starts automatically.
 
+**M61 decision-only completion:** [Credential Broker and Account Reference
+Contract](MILESTONE_61_CREDENTIAL_BROKER_AND_ACCOUNT_REFERENCE_CONTRACT.md)
+ratifies only future custody/runtime selection criteria, scoped opaque account
+references, lifecycle, content-free audit, and adapter compatibility gates. It
+does not select or implement a custodian, provider, local runtime, account,
+credential, or successor milestone.
+
 **First implementation milestone source-complete:** [Provider Capability
 Registry Contracts](MILESTONE_PROVIDER_CAPABILITY_REGISTRY_CONTRACTS.md)
 implements private static fictional registry contracts and focused safeguards
@@ -1578,10 +1585,11 @@ durable-task-to-mock-workbench path and must pass the existing pinned Ubuntu
 22.04 and restricted installed-host gates; beta.54 remains the rollback
 generation unless it passes every gate.
 
-**Later implementation milestones:** Credential broker, context assembly,
-limited inference, and the first separately approved provider or local-runtime
-adapter remain provisional—not approved work. Release checkpoints are assigned
-only when user-visible or operational behavior is implemented.
+**Later implementation milestones:** Limited inference, a first separately
+approved provider or local-runtime adapter, and any credential-broker
+implementation remain provisional—not approved work. No post-M61 milestone
+starts automatically. Release checkpoints are assigned only when user-visible
+or operational behavior is implemented.
 
 ### 58 — Controlled Browser Verification Proposal
 
@@ -1611,8 +1619,19 @@ fictional-sink ambiguity handling, retention, drift, recovery, and audit.
 It implements no assembler, provider transmission, credentials, inference,
 network, connector/browser authority, MCP, automation, or mutation.
 
-**Next:** M60 Governed Context Assembly Vertical Slice may implement only the
-contract's deterministic fictional/local-only sink after separate approval.
+M60 is complete and published as beta.63. The separately approved M61 contract
+is decision-only; it authorizes no successor implementation.
+
+### 61 — Credential Broker and Account Reference Contract
+
+**Decision complete:** the
+[M61 Credential Broker and Account Reference Contract](MILESTONE_61_CREDENTIAL_BROKER_AND_ACCOUNT_REFERENCE_CONTRACT.md)
+ratifies the future selection, opaque reference, lifecycle, audit, and adapter
+compatibility gates for any later custody route. It implements and selects
+nothing: credential collection/storage, accounts, OAuth, provider/local-runtime
+connections, networking, inference, tools, retrieval, browser/connectors/MCP,
+automation, external mutation, migrations, runtime/UI work, packages, and
+releases remain excluded. No successor implementation starts automatically.
 
 ### Deferred capability gates
 

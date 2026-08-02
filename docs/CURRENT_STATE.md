@@ -131,6 +131,14 @@ redaction, review, digest-bound one-use fictional local-only delivery, recovery,
 and content-free audit linkage. It adds no provider, credential, network
 transmission, inference, connector, browser, MCP, automation, or mutation.
 
+M61 Credential Broker and Account Reference Contract is complete as an approved
+decision-only milestone at
+[MILESTONE_61_CREDENTIAL_BROKER_AND_ACCOUNT_REFERENCE_CONTRACT.md](MILESTONE_61_CREDENTIAL_BROKER_AND_ACCOUNT_REFERENCE_CONTRACT.md).
+It ratifies future custody/runtime selection criteria, opaque scoped references,
+lifecycle, audit, and adapter-compatibility gates only; it authorizes no
+credential handling, provider/local-runtime connection, or successor
+implementation.
+
 M54 Local Review is complete at package/source commit
 `c4c2752466f36f791fde47edbc5c6b02b0e21320`, tagged
 `v0.1.0-beta.53`. Its beta.53 Debian pair passed pinned-container package,
@@ -444,6 +452,9 @@ M60's beta.63 release is complete and published. It remains limited to the ratif
 fictional/local-only sink; no provider, credential, network transmission,
 inference, connector, browser, MCP, automation, external mutation, deployment,
 or later milestone is implied.
+
+M61 is complete as a decision-only contract. No post-M61 implementation
+milestone starts automatically.
 
 Milestone 46 — **Bounded Multi-Attachment** is complete at
 `1bc2e787ab785016041d70845c97ca9c2c4f84db` with its verified

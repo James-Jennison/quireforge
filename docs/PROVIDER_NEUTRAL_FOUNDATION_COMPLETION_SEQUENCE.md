@@ -1,9 +1,11 @@
 # Provider-Neutral AI Foundation completion sequence
 
-Status: ratified planning. M55, M57, and M58 are complete; beta.62 is
+Status: ratified planning. M55, M57, M58, and M60 are complete; beta.63 is
 published. M59 is complete as the decision-only
-[Context Assembly and Transmission Contract](MILESTONE_59_CONTEXT_ASSEMBLY_AND_TRANSMISSION_CONTRACT.md).
-No M60+ implementation is authorized by this document.
+[Context Assembly and Transmission Contract](MILESTONE_59_CONTEXT_ASSEMBLY_AND_TRANSMISSION_CONTRACT.md),
+and M61 is complete as the decision-only
+[Credential Broker and Account Reference Contract](MILESTONE_61_CREDENTIAL_BROKER_AND_ACCOUNT_REFERENCE_CONTRACT.md).
+No M62+ implementation is authorized by this document.
 
 ## Completion definition
 
@@ -21,8 +23,8 @@ connector/browser/MCP/automation availability, or overall product completion.
 | Milestone | Scope and exit criteria | Not granted |
 | --- | --- | --- |
 | M59 Context assembly and transmission contract | Complete decision-only contract: explicit selection, minimization/redaction, bounds, attribution, digest/review, destination binding, retention and failure semantics. | Provider call, credential, context transmission, inference. |
-| M60 Governed context assembly vertical slice | Local-only implementation of M59 with project/task, selected M55/review evidence and explicit browser/connector evidence selection. Exit: persisted review/one-use transmission authorization, UI, migration, package and installed-host gates. | Any provider destination or automatic inclusion/transmission. |
-| M61 Credential broker and account reference contract | Decision-only secure-storage, scoped reference, rotation/revocation/expiry/audit and adapter compatibility contract. Exit: ratified provider/local-runtime selection criteria. | Credential collection, real account, OAuth, provider call. |
+| M60 Governed context assembly vertical slice | Complete and published local-only implementation of M59 with project/task, selected M55/review evidence, deterministic fictional delivery, migration, package, and installed-host gates. | Any provider destination or automatic inclusion/transmission. |
+| M61 Credential broker and account reference contract | Complete decision-only secure-custody selection criteria, scoped opaque reference, rotation/revocation/expiry/audit, and adapter compatibility contract. Exit: ratified provider/local-runtime selection criteria. | Credential collection, real account, OAuth, provider call. |
 | M62 Limited inference runtime and response governance | Implementation: typed request/response, streaming/cancellation/timeout, unambiguous read-only retry only, subordinate sessions, normalized failures, usage/latency/cost evidence, review/adoption. Exit: fictional local adapter proves lifecycle. | Real provider, credentials, tools, retrieval, mutation. |
 | M63 First adapter selection and bounded adapter | Decision plus implementation: select a credential-free local runtime if it meets M62 conformance; otherwise select one real provider only after its credential scope is ratified. Exit: conformance, drift/quarantine, installed-host acceptance. | Additional providers, connector/browser authority, native tools. |
 | M64 Credentialed provider enablement (conditional) | Only if M63 selected a real provider: broker implementation, one provider-scoped account reference and explicit reviewed transmission. Exit: revocation/rotation, cost/usage, failure and installed-host proof. | Other providers, OAuth expansion, automation. |
@@ -46,10 +48,10 @@ own dispatch contract; browser agents require M58 plus governed inference;
 automation/multi-agent work requires explicit scheduling, budgets, delegation,
 recovery, tool grants, confirmations and loop prevention.
 
-## Immediate next milestone
+## Current sequence status
 
-**M60 Governed Context Assembly Vertical Slice** is next and unstarted. M59
-now resolves the selection, minimization, review, confirmation, retention, and
-fictional-sink authority needed for one comprehensive local-only implementation.
-M60 must stop before any credential, real provider, network transmission,
-inference, deployment, or runtime scope beyond its ratified fictional sink.
+M60 is complete and published as the local-only M59 slice. M61 is complete as
+the decision-only contract for future custody/runtime selection gates. M62 or
+any later implementation requires a new, specific owner approval and must stop
+before credential handling, real provider or runtime connection, network
+transmission, inference, deployment, or any unratified authority.
