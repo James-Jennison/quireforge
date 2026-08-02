@@ -438,10 +438,9 @@ transport, persistence, or authority. Full source validation, bundle ceilings,
 provenance/ABI, lifecycle, container and installed smoke, and visible-launch
 gates passed.
 
-## Next action
+## Release status
 
-M60's beta.63 release candidate is in its final source, package, installed-host,
-and publication acceptance sequence. It remains limited to the ratified
+M60's beta.63 release is complete and published. It remains limited to the ratified
 fictional/local-only sink; no provider, credential, network transmission,
 inference, connector, browser, MCP, automation, external mutation, deployment,
 or later milestone is implied.
