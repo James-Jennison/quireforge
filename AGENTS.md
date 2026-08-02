@@ -1,64 +1,21 @@
 # QuireForge Repository Guidance
 
-These instructions apply to the entire repository. A more deeply nested
-`AGENTS.md` may add or narrow requirements for its subtree.
+## Project state and authority
 
-## Project state
+QuireForge is an unofficial native Linux workspace for planning and supervising AI-assisted development with Codex. It is built with Tauri, Rust, React, TypeScript, and Vite. `docs/CURRENT_STATE.md`, `docs/ROADMAP.md`, relevant ADRs, and the active milestone define current scope; do not claim a feature, package, website, or release exists until evidence and acceptance prove it.
 
-QuireForge is an early-stage, unofficial native Linux workspace for Codex. The
-repository currently contains discovery, architecture, governance, and vector
-brand sources. Do not claim that an application, package, integration, website,
-or release exists until its milestone has produced and verified it.
-
-QuireForge is not made, endorsed, supported, or distributed by OpenAI. Preserve
-accurate uses of the official names OpenAI, ChatGPT, Codex, official commands,
-protocol fields, and third-party integration identifiers.
+`quireforge` remains the authoritative production website source. `quireforge-website-next` is a private redesign workspace and does not replace this authority until an explicitly approved cutover.
 
 ## Non-negotiable boundaries
 
-- Work against attached directories in place; never substitute copied content.
-- Never silently change a task's working directory or expand writable roots.
-- Keep QuireForge metadata separate from Codex authentication, configuration,
-  sessions, and connector credentials.
-- Use documented Codex interfaces. Do not scrape the TUI or ChatGPT website,
-  use private endpoints, capture browser tokens, or fabricate capabilities.
-- Treat plugins, marketplaces, hooks, connectors, and MCP servers as
-  supply-chain-sensitive.
-- Keep detach/remove/archive operations separate from filesystem deletion.
-- Never commit credentials, tokens, personal Codex data, hosting identifiers,
-  private diagnostics, `.env` files, or generated support bundles.
+- Work against selected project directories in place; do not substitute copied content or expand writable roots silently.
+- Keep metadata separate from Codex authentication, configuration, sessions, and connector credentials. Never scrape ChatGPT/Codex UIs, use private endpoints, or fabricate documented interfaces.
+- Task records, alternate plans, Advisor content, and review artifacts are local, bounded, and non-executing. Do not turn them into an executor or transmit provider context without the documented explicit, expiring, digest-bound dispatch flow.
+- Keep provider boundaries neutral. Credentials, provider configuration, and live API calls remain outside versioned files; no provider is silently authoritative.
+- Detach, archive, and remove are not filesystem deletion. Never commit credentials, private diagnostics, .env, support bundles, or personal Codex data.
 
-## Change workflow
+## Change and validation workflow
 
-1. For a fresh milestone, read `docs/CURRENT_STATE.md`, the active roadmap
-   entry, any relevant ADR, and only the subsystem files in scope. Do not
-   repeatedly load a full master specification when concise milestone context
-   is sufficient.
-2. Preserve pre-existing changes and confirm the branch before editing.
-3. Keep changes within the active milestone and use focused commits.
-4. Update tests, README status, `docs/ROADMAP.md`, and `CHANGELOG.md` when a
-   milestone changes user-visible behavior or project status.
-5. Run `python3 scripts/validate_repository.py` and applicable subsystem checks.
-6. Review staged content for secrets and unrelated changes before committing.
+Read the active milestone, current state, relevant ADR, and scoped subsystem files. Preserve existing work, keep changes milestone-scoped, and update roadmap/changelog evidence when project state or user-visible behavior changes. Run `pnpm validate`; add `pnpm test:e2e` when desktop/browser behavior is affected. Use documented package-validation gates before compatibility or installed-host claims.
 
-Do not push, merge, publish, deploy, install integrations, authorize
-connectors, mutate GitHub/Cloudflare settings, or delete user data without the
-specific approval required for that action.
-
-## Implementation direction
-
-- Desktop: Tauri 2, Rust, Tokio, React, TypeScript, and Vite are the current
-  functional prototype. The long-term UI-platform decision is pending. Do not
-  begin a Qt migration until ADR 0028 is accepted after its dedicated
-  read-only feasibility milestone, and do not develop Tauri and Qt features in
-  parallel.
-- Website: Astro static output on a Webuzo-managed Apache origin; Cloudflare is
-  DNS/proxy only, and Cloudflare Pages remains disabled.
-- Metadata: migrated SQLite owned by QuireForge; never a credential store.
-- IPC: small typed commands and normalized events; the frontend must not consume
-  raw Codex protocol messages or spawn arbitrary processes.
-- Tests: deterministic mocks and sanitized fixtures; routine tests must not
-  require billable model calls or real connector authorization.
-
-Use `rg` for repository searches and `apply_patch` for deliberate file edits.
-Avoid destructive Git recovery commands and broad cleanup operations.
+Tauri is the active product implementation. QuireForge-Qt is a separate, fixture-first feasibility project; do not develop parallel product features or start a Qt migration without explicitly approved roadmap authority.
