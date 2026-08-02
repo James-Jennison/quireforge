@@ -1548,6 +1548,13 @@ references, lifecycle, content-free audit, and adapter compatibility gates. It
 does not select or implement a custodian, provider, local runtime, account,
 credential, or successor milestone.
 
+**M62 decision-only completion:** [Limited Provider Inference
+Boundary](MILESTONE_62_LIMITED_PROVIDER_INFERENCE_BOUNDARY.md) ratifies only
+the future M60 bundle, M61 reference, destination/model allowlist, typed
+adapter, privacy, lifecycle, and fail-closed gates for a limited-inference
+proposal. It does not select or implement a provider, local runtime, model,
+credential, or successor milestone.
+
 **First implementation milestone source-complete:** [Provider Capability
 Registry Contracts](MILESTONE_PROVIDER_CAPABILITY_REGISTRY_CONTRACTS.md)
 implements private static fictional registry contracts and focused safeguards
@@ -1585,11 +1592,11 @@ durable-task-to-mock-workbench path and must pass the existing pinned Ubuntu
 22.04 and restricted installed-host gates; beta.54 remains the rollback
 generation unless it passes every gate.
 
-**Later implementation milestones:** Limited inference, a first separately
-approved provider or local-runtime adapter, and any credential-broker
-implementation remain provisional—not approved work. No post-M61 milestone
-starts automatically. Release checkpoints are assigned only when user-visible
-or operational behavior is implemented.
+**Later implementation milestones:** A first separately approved
+implementation-planning or provider/local-runtime adapter milestone and any
+credential-broker implementation remain provisional—not approved work. No
+post-M62 milestone starts automatically. Release checkpoints are assigned only
+when user-visible or operational behavior is implemented.
 
 ### 58 — Controlled Browser Verification Proposal
 
@@ -1632,6 +1639,19 @@ nothing: credential collection/storage, accounts, OAuth, provider/local-runtime
 connections, networking, inference, tools, retrieval, browser/connectors/MCP,
 automation, external mutation, migrations, runtime/UI work, packages, and
 releases remain excluded. No successor implementation starts automatically.
+
+### 62 — Limited Provider Inference Boundary
+
+**Decision complete:** the
+[M62 Limited Provider Inference Boundary](MILESTONE_62_LIMITED_PROVIDER_INFERENCE_BOUNDARY.md)
+ratifies future limited-inference gates: exact M60 bundle and M61 prerequisite
+binding, destination/model/capability allowlists, typed adapter containment,
+privacy and payload limits, lifecycle, cancellation, revocation, recovery, and
+content-free audit. It implements and selects nothing: providers/local runtimes,
+credentials/accounts/OAuth, networking, inference, model configuration, tools,
+retrieval, browser/connectors/MCP, automation, external mutation, runtime/UI
+work, packages, and releases remain excluded. No post-M62 milestone starts
+automatically.
 
 ### Deferred capability gates
 

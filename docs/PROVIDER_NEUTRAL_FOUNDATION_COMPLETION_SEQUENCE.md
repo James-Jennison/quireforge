@@ -4,8 +4,10 @@ Status: ratified planning. M55, M57, M58, and M60 are complete; beta.63 is
 published. M59 is complete as the decision-only
 [Context Assembly and Transmission Contract](MILESTONE_59_CONTEXT_ASSEMBLY_AND_TRANSMISSION_CONTRACT.md),
 and M61 is complete as the decision-only
-[Credential Broker and Account Reference Contract](MILESTONE_61_CREDENTIAL_BROKER_AND_ACCOUNT_REFERENCE_CONTRACT.md).
-No M62+ implementation is authorized by this document.
+[Credential Broker and Account Reference Contract](MILESTONE_61_CREDENTIAL_BROKER_AND_ACCOUNT_REFERENCE_CONTRACT.md),
+and M62 is complete as the decision-only
+[Limited Provider Inference Boundary](MILESTONE_62_LIMITED_PROVIDER_INFERENCE_BOUNDARY.md).
+No M63+ implementation is authorized by this document.
 
 ## Completion definition
 
@@ -25,7 +27,7 @@ connector/browser/MCP/automation availability, or overall product completion.
 | M59 Context assembly and transmission contract | Complete decision-only contract: explicit selection, minimization/redaction, bounds, attribution, digest/review, destination binding, retention and failure semantics. | Provider call, credential, context transmission, inference. |
 | M60 Governed context assembly vertical slice | Complete and published local-only implementation of M59 with project/task, selected M55/review evidence, deterministic fictional delivery, migration, package, and installed-host gates. | Any provider destination or automatic inclusion/transmission. |
 | M61 Credential broker and account reference contract | Complete decision-only secure-custody selection criteria, scoped opaque reference, rotation/revocation/expiry/audit, and adapter compatibility contract. Exit: ratified provider/local-runtime selection criteria. | Credential collection, real account, OAuth, provider call. |
-| M62 Limited inference runtime and response governance | Implementation: typed request/response, streaming/cancellation/timeout, unambiguous read-only retry only, subordinate sessions, normalized failures, usage/latency/cost evidence, review/adoption. Exit: fictional local adapter proves lifecycle. | Real provider, credentials, tools, retrieval, mutation. |
+| M62 Limited provider inference boundary | Complete decision-only M60 bundle/M61 reference binding, destination/model allowlist, typed request/response and lifecycle constraints, cancellation, privacy, audit, and local-runtime compatibility contract. Exit: ratified limited-inference gates. | Provider/local-runtime implementation, credentials, tools, retrieval, mutation. |
 | M63 First adapter selection and bounded adapter | Decision plus implementation: select a credential-free local runtime if it meets M62 conformance; otherwise select one real provider only after its credential scope is ratified. Exit: conformance, drift/quarantine, installed-host acceptance. | Additional providers, connector/browser authority, native tools. |
 | M64 Credentialed provider enablement (conditional) | Only if M63 selected a real provider: broker implementation, one provider-scoped account reference and explicit reviewed transmission. Exit: revocation/rotation, cost/usage, failure and installed-host proof. | Other providers, OAuth expansion, automation. |
 | M65 Foundation end-to-end reconciliation | Fresh/upgrade migration, context/inference/cancellation/drift/recovery, M55–M58 separation, package/ABI/provenance and installed-host acceptance. Exit: foundation-complete declaration. | Production deployment or external mutation. |
@@ -50,8 +52,9 @@ recovery, tool grants, confirmations and loop prevention.
 
 ## Current sequence status
 
-M60 is complete and published as the local-only M59 slice. M61 is complete as
-the decision-only contract for future custody/runtime selection gates. M62 or
-any later implementation requires a new, specific owner approval and must stop
-before credential handling, real provider or runtime connection, network
-transmission, inference, deployment, or any unratified authority.
+M60 is complete and published as the local-only M59 slice. M61 and M62 are
+complete decision-only contracts for future custody/runtime and
+limited-inference gates. M63 or any later implementation requires a new,
+specific owner approval and must stop before credential handling, real provider
+or runtime connection, network transmission, inference, deployment, or any
+unratified authority.

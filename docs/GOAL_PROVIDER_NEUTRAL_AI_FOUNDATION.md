@@ -4,12 +4,13 @@ Type: active long-term product goal.
 Status: active; M55, M57, M58, and M60 implementation slices are complete
 through the published beta.63 release. M59 Context Assembly and Transmission
 Contract and M61 Credential Broker and Account Reference Contract are completed
-decision records.
+decision records. M62 Limited Provider Inference Boundary is also a completed
+decision record.
 Packaging status: beta.55 and beta.56 remain preserved failed candidates;
 beta.59 (M55), beta.60 (M57), beta.62 (M58), and beta.63 (M60) are published
 prereleases. Latest published release: `0.1.0-beta.63` / `0.1.0~beta.63`.
 Implementation authority: none granted by establishing this goal or completing
-M61.
+M61 or M62.
 Parent vision: native, project-centered, all-in-one Linux AI workspace.
 
 > The goal organizes related decisions and future implementation work. It does
@@ -143,8 +144,10 @@ The authoritative ordered completion record is
 M59's [Context Assembly and Transmission Contract](MILESTONE_59_CONTEXT_ASSEMBLY_AND_TRANSMISSION_CONTRACT.md)
 governed the completed M60 slice. M61's
 [Credential Broker and Account Reference Contract](MILESTONE_61_CREDENTIAL_BROKER_AND_ACCOUNT_REFERENCE_CONTRACT.md)
-now defines only future custody/runtime selection gates. Completing either
-decision gate never starts an implementation milestone automatically.
+defines future custody/runtime selection gates, and M62's
+[Limited Provider Inference Boundary](MILESTONE_62_LIMITED_PROVIDER_INFERENCE_BOUNDARY.md)
+defines future limited-inference gates. Completing a decision gate never starts
+an implementation milestone automatically.
 
 ### Capability Registry Contracts Only
 
@@ -283,14 +286,16 @@ M60 is complete and published as the [Governed Context Assembly Vertical
 Slice](MILESTONE_60_GOVERNED_CONTEXT_ASSEMBLY.md), limited to M59's
 fictional/local-only sink. M61 is complete as the decision-only
 [Credential Broker and Account Reference Contract](MILESTONE_61_CREDENTIAL_BROKER_AND_ACCOUNT_REFERENCE_CONTRACT.md).
-No provider, credential, network transmission, inference, or post-M61
+M62 is complete as the decision-only
+[Limited Provider Inference Boundary](MILESTONE_62_LIMITED_PROVIDER_INFERENCE_BOUNDARY.md).
+No provider, credential, network transmission, inference, or post-M62
 implementation milestone has started.
 
 ## Package and release policy
 
 Establishing or advancing this goal through decision-only gates requires no
 package or version. M60 altered user-visible and operational behavior and its
-beta.63 release is published; M61 adds no package or release behavior.
+beta.63 release is published; M61 and M62 add no package or release behavior.
 
 ## Explicit exclusions
 

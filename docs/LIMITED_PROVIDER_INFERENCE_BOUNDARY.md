@@ -1,12 +1,13 @@
 # Limited Provider Inference Boundary
 
-Status: complete decision-only architecture gate within the active
-[Provider-Neutral AI Foundation](GOAL_PROVIDER_NEUTRAL_AI_FOUNDATION.md). This
-record selects no provider, model, endpoint, adapter, credential custodian, or
-local runtime and approves no implementation, network access, credential
-resolution, context transmission, model invocation, persistence, bridge, or UI.
-M55, M57, and M58 remain separate; beta.54 remains the latest packaged
-generation.
+Status: historical decision-only architecture evidence within the active
+[Provider-Neutral AI Foundation](GOAL_PROVIDER_NEUTRAL_AI_FOUNDATION.md). The
+[M62 Limited Provider Inference Boundary](MILESTONE_62_LIMITED_PROVIDER_INFERENCE_BOUNDARY.md)
+supersedes this record where they differ. This record selects no provider,
+model, endpoint, adapter, credential custodian, or local runtime and approves
+no implementation, network access, credential resolution, context transmission,
+model invocation, persistence, bridge, or UI. M55, M57, and M58 remain
+separate; M60/beta.63 is the latest published slice.
 
 ## Purpose and minimum future authority
 
@@ -227,7 +228,7 @@ projections and authorization, not transmission or provider request creation.
 M57 remains reusable evidence for least-authority binding, lifecycle, revocation,
 digest checks, replay resistance, one-time confirmation, and content-free audit;
 it does not create a real connector or connected-service route. M55 remains
-separate for durable source admission/research. M58 remains unstarted and
+separate for durable source admission/research. M58 is complete and remains
 separate; this decision grants no browser session, cookie, DOM, screenshot,
 download, form-submission, OAuth, automation, or web research authority.
 

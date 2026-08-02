@@ -139,6 +139,13 @@ lifecycle, audit, and adapter-compatibility gates only; it authorizes no
 credential handling, provider/local-runtime connection, or successor
 implementation.
 
+M62 Limited Provider Inference Boundary is complete as an approved decision-only
+milestone at
+[MILESTONE_62_LIMITED_PROVIDER_INFERENCE_BOUNDARY.md](MILESTONE_62_LIMITED_PROVIDER_INFERENCE_BOUNDARY.md).
+It ratifies only the future M60 bundle, M61 reference, destination/model
+allowlist, typed-adapter, privacy, lifecycle, and fail-closed gates for a later
+limited-inference proposal; it authorizes no provider or local-runtime activity.
+
 M54 Local Review is complete at package/source commit
 `c4c2752466f36f791fde47edbc5c6b02b0e21320`, tagged
 `v0.1.0-beta.53`. Its beta.53 Debian pair passed pinned-container package,
@@ -453,7 +460,7 @@ fictional/local-only sink; no provider, credential, network transmission,
 inference, connector, browser, MCP, automation, external mutation, deployment,
 or later milestone is implied.
 
-M61 is complete as a decision-only contract. No post-M61 implementation
+M61 and M62 are complete as decision-only contracts. No post-M62 implementation
 milestone starts automatically.
 
 Milestone 46 — **Bounded Multi-Attachment** is complete at
