@@ -1,6 +1,6 @@
 # M60 — Governed Context Assembly Vertical Slice
 
-Status: implementation and beta.63 release candidate. This milestone implements
+Status: released as `v0.1.0-beta.63`. This milestone implements
 only the fictional, local-only sink ratified by
 [M59](MILESTONE_59_CONTEXT_ASSEMBLY_AND_TRANSMISSION_CONTRACT.md). It does not
 select or contact a provider, use a credential, perform inference or network
@@ -41,6 +41,24 @@ timeout/ambiguity without retry, migration and restart recovery. Regression
 and release acceptance additionally require the repository, desktop browser,
 pinned Ubuntu 22.04 packaging, artifact, installed-host, and public-release
 gates recorded for beta.63.
+
+## Final release evidence
+
+`v0.1.0-beta.63` is an annotated tag for source commit
+`8ee92d58052c209d76233c40a3be12a58e501e0c`. Two independent clean pinned
+Ubuntu 22.04 container builds produced byte-identical canonical assets:
+
+- `quireforge_0.1.0.beta.63_amd64.deb` — SHA-256
+  `84f059ac08912f36f8d5c38d0c1145f3b11a248317cc08875e73fab8bbe4316c`.
+- `quireforge-sandboxd_0.1.0.beta.63_amd64.deb` — SHA-256
+  `1e94a2ab466edcd030f05bee167f039f90ae88c2069396fa4bba07fced519291`.
+
+The canonical four-file set (the two Debian packages, `SHA256SUMS`, and
+`release-manifest.json`) passed provenance, checksum, lifecycle, smoke,
+visible-launch, AppStream, and GLIBC validation. Installed-host acceptance
+passed with a digest-bound receipt, package integrity verification, and the
+sandbox worker disabled and inactive. The GitHub prerelease was published only
+after independent download and byte comparison of all four assets.
 
 ## Explicit exclusions
 
