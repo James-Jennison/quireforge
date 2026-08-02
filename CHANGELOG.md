@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0-beta.61 — Controlled browser verification
+## 0.1.0-beta.62 — Controlled browser verification
 
 - Adds the M58 fictional, deterministic, local-only, read-only controlled
   browser-verification slice: project-scoped digest-bound preparation and
@@ -10,7 +10,9 @@
 - The fixture can neither navigate externally nor reuse a browser profile or
   credential. It adds no real browser target, connector, provider, MCP,
   automation, file chooser, download, upload, form, shell, Git, deployment, or
-  external mutation authority. This remains a candidate until packaging and
+  external mutation authority. Beta.61 is retained as a failed reproducibility
+  candidate; beta.62 normalizes worker-package timestamps and remains a
+  candidate until packaging and
   installed-host acceptance are complete.
 
 ## 0.1.0-beta.60 — Fictional connector governance

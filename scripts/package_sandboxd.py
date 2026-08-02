@@ -19,6 +19,8 @@ from release_contract import (
     assert_authoritative_release_builder,
     debian_version,
     sandboxd_artifact_filename,
+    set_tree_timestamp,
+    source_date_epoch,
     source_record,
     source_version,
 )
@@ -70,7 +72,23 @@ def build(output: Path) -> tuple[Path, dict[str, object]]:
         (root / "DEBIAN/postinst").chmod(0o755)
         output.mkdir(parents=True, exist_ok=True)
         artifact = output / sandboxd_artifact_filename(version)
-        run(["dpkg-deb", "--root-owner-group", "--build", str(root), str(artifact)])
+        timestamp = source_date_epoch()
+        set_tree_timestamp(root, timestamp)
+        environment = os.environ.copy()
+        environment["SOURCE_DATE_EPOCH"] = str(timestamp)
+        run(
+            [
+                "dpkg-deb",
+                "--root-owner-group",
+                "--uniform-compression",
+                "-Zxz",
+                "-z9",
+                "--build",
+                str(root),
+                str(artifact),
+            ],
+            env=environment,
+        )
         commit, tree_state, diff_digest = source_record()
         if tree_state != "clean" or diff_digest:
             raise RuntimeError("sandbox worker release artifacts require a clean source tree")

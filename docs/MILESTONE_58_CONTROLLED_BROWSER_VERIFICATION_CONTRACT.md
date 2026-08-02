@@ -1,6 +1,6 @@
 # M58 — Controlled Browser Verification Contract and Implementation Plan
 
-Status: ratified contract. The approved fictional/local-only/read-only beta.61
+Status: ratified contract. The approved fictional/local-only/read-only beta.62
 implementation candidate is in validation; package and installed-host
 acceptance remain required before M58 is complete. The contract continues to
 exclude real browser targets, sessions, credentials, automation, and network

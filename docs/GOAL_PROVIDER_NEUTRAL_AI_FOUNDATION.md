@@ -3,7 +3,8 @@
 Type: active long-term product goal.
 Status: active; decision gates and bounded local-only implementation slices are
 complete through M58 planning; the fictional/local-only M58 implementation is
-the current beta.61 candidate.
+the current beta.62 candidate after beta.61 exposed a worker-package
+reproducibility defect.
 Packaging status: beta.55 and beta.56 remain preserved failed candidates;
 beta.59 (M55) and beta.60 (M57) are published prereleases.
 Latest published release version: `0.1.0-beta.60` / `0.1.0~beta.60`.
@@ -292,7 +293,7 @@ read-only slice in its ratified contract. No later milestone is started.
 Establishing or advancing this goal through decision-only gates requires no
 package or version. Implementation milestones receive versions only when they
 alter source or user-visible/operational behavior and a release policy is
-separately approved. Beta.60 is the latest published generation. Beta.61 is
+separately approved. Beta.60 is the latest published generation. Beta.62 is
 the prospective M58 candidate; package and installed-host evidence remains
 required before its release or M58 completion can be claimed.
 
