@@ -4581,6 +4581,7 @@ export default function App({
                       >
                         <ContextAssemblyWorkbench
                           projectId={currentProject?.id ?? null}
+                          projectLabel={currentProject?.displayName ?? null}
                           onClose={() => setContextAssemblyWorkbenchOpen(false)}
                         />
                       </Suspense>

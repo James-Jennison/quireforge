@@ -16,9 +16,11 @@ import type { TaskCatalogSnapshot } from "./lib/taskRecords";
 import type { LocalReviewSnapshot } from "./lib/localReview";
 export function ContextAssemblyWorkbench({
   projectId,
+  projectLabel,
   onClose,
 }: {
   projectId: string | null;
+  projectLabel?: string | null;
   onClose: () => void;
 }) {
   const title = useId(),
@@ -99,8 +101,8 @@ export function ContextAssemblyWorkbench({
       </header>
       <p role="status">{notice}</p>
       <p>
-        Project scope: {projectId ?? "unavailable"}. This is not provider
-        transmission, inference, a credential, connector, browser, MCP,
+        Project scope: {projectLabel ?? "Current attached project"}. This is not
+        provider transmission, inference, a credential, connector, browser, MCP,
         automation, or mutation authority.
       </p>
       <label>
