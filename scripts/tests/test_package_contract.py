@@ -302,6 +302,11 @@ class PackageContractTests(unittest.TestCase):
         self.assertIn('"$cache_root/sandbox-sources"', builder)
         self.assertIn("authoritative sandbox source cache required", guest_assets)
         self.assertIn("cache_verified_source.sh", guest_assets)
+        self.assertIn("KBUILD_BUILD_TIMESTAMP", guest_assets)
+        self.assertIn("KBUILD_BUILD_USER=quireforge", guest_assets)
+        self.assertIn("KBUILD_BUILD_HOST=ubuntu-22.04", guest_assets)
+        self.assertIn("--reproducible", guest_assets)
+        self.assertIn("gzip -n -9", guest_assets)
 
     def test_release_manifest_contract_requires_pinned_provenance_and_abi(self) -> None:
         schema = json.loads(

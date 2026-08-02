@@ -6,6 +6,16 @@ source "$root/packaging/sandbox/sources.lock"
 output="${1:?output directory required}"
 work="${2:?work directory required}"
 cache_root="${QUIRE_FORGE_SANDBOX_SOURCE_CACHE:?authoritative sandbox source cache required}"
+source_date_epoch="${SOURCE_DATE_EPOCH:?SOURCE_DATE_EPOCH is required}"
+if [[ ! "$source_date_epoch" =~ ^[0-9]+$ ]]; then
+  echo "SOURCE_DATE_EPOCH must be a non-negative integer" >&2
+  exit 1
+fi
+export KBUILD_BUILD_TIMESTAMP
+KBUILD_BUILD_TIMESTAMP="$(date --utc --date="@${source_date_epoch}" '+%a %b %e %T %Y')"
+export KBUILD_BUILD_USER=quireforge
+export KBUILD_BUILD_HOST=ubuntu-22.04
+export KBUILD_BUILD_VERSION=1
 mkdir -p "$output" "$work"
 
 kernel_tar="$work/linux-${LINUX_VERSION}.tar.xz"
@@ -26,7 +36,11 @@ agent="$work/quireforge-guest-agent"
 gcc -static -Os -s -Wall -Wextra -Werror "$root/packaging/sandbox/guest-agent.c" -o "$agent"
 init="$work/initramfs"; mkdir -p "$init/proc" "$init/dev"
 install -m 0755 "$agent" "$init/init"
-(cd "$init" && find . -print0 | cpio --null --create --format=newc | gzip -9) > "$output/initramfs.cpio.gz"
+find "$init" -exec touch --no-dereference --date="@${source_date_epoch}" {} +
+(
+  cd "$init"
+  find . -print0 | LC_ALL=C sort --zero-terminated | cpio --null --create --format=newc --owner=0:0 --reproducible | gzip -n -9
+) > "$output/initramfs.cpio.gz"
 bash "$root/packaging/sandbox/cache_verified_source.sh" \
   "$cache_root" \
   "firecracker-v${FIRECRACKER_VERSION}-${FIRECRACKER_X86_64_SHA256}.tgz" \

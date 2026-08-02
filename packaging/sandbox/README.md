@@ -17,12 +17,10 @@ discarded and re-fetched. Guest kernel, initramfs, and worker assets are always
 rebuilt in a disposable work directory, so cached archives are never release
 outputs or provenance evidence.
 
-The pinned container alone may reuse immutable upstream kernel and Firecracker
-archives in its mounted `sandbox-sources` cache. Every cache hit is checked
-against the lock-file SHA-256 before extraction; an invalid cache entry is
-discarded and re-fetched. Guest kernel, initramfs, and worker assets are always
-rebuilt in a disposable work directory, so cached archives are never release
-outputs or provenance evidence.
+The worker build binds kernel identity, initramfs timestamps, archive ownership,
+ordering, and compression metadata to `SOURCE_DATE_EPOCH`; repeated clean
+pinned-container builds of the same commit must therefore produce identical
+worker assets and Debian package bytes.
 
 The service is root-owned solely to create jailer/cgroup state. It starts each
 Firecracker process as the dedicated unprivileged sandbox identity, accepts no
