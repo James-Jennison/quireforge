@@ -1,0 +1,19 @@
+[Unit]
+Description=QuireForge autonomous local Codex supervisor
+After=default.target
+
+[Service]
+Type=simple
+WorkingDirectory=/mnt/faststorage/quireforge
+Environment=QUIRE_FORGE_SUPERVISOR_STATE_DIR=%h/.local/state/quireforge-codex-supervisor
+Environment=QUIRE_FORGE_SUPERVISOR_INTERVAL_SECONDS=300
+ExecStart=/mnt/faststorage/quireforge/scripts/quireforge-codex-supervisor.sh
+Restart=no
+KillSignal=SIGINT
+TimeoutStopSec=30s
+UMask=0077
+StandardOutput=null
+StandardError=null
+
+[Install]
+WantedBy=default.target
