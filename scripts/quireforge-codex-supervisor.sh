@@ -102,7 +102,7 @@ run_in_tmux() {
   else
     log "starting persistent tmux worker session"
     if ! tmux new-session -d -s "$tmux_session" \
-      "exec $(printf '%q' "$repository_root/scripts/quireforge-codex-supervisor.sh") --worker"; then
+      "env QUIRE_FORGE_SUPERVISOR_STATE_DIR=$(printf '%q' "$state_root") QUIRE_FORGE_SUPERVISOR_INTERVAL_SECONDS=$(printf '%q' "$interval_seconds") $(printf '%q' "$repository_root/scripts/quireforge-codex-supervisor.sh") --worker"; then
       if ! tmux has-session -t "$tmux_session" 2>/dev/null; then
         write_status "Supervisor session startup" "failed" "not run" "Inspect the safe local log, then restart if appropriate" "Unable to create the tmux worker session"
         return 1
@@ -113,6 +113,9 @@ run_in_tmux() {
   while tmux has-session -t "$tmux_session" 2>/dev/null; do
     sleep 2
   done
+  if [[ ! -f "$status_path" ]]; then
+    write_status "Supervisor session startup" "failed" "not run" "Inspect the safe local log, then restart if appropriate" "The tmux worker exited before publishing status"
+  fi
   return 0
 }
 
