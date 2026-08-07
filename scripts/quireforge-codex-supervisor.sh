@@ -162,7 +162,7 @@ run_task() {
   write_status "Inspecting and implementing the highest-value authorized QuireForge task" "running" "$validation" "Complete the current safe task and validate it" "none"
   log "starting Codex task at $before_head"
 
-  if codex exec --ephemeral --sandbox workspace-write --approve-for-me \
+  if codex exec --ephemeral --sandbox workspace-write \
     --cd "$repository_root" --output-last-message "$result_path" \
     'Read and obey AGENTS.md first. Inspect docs/CURRENT_STATE.md, docs/ROADMAP.md, relevant ADRs, and git status. Continue only the highest-value safe QuireForge implementation task already authorized by the active milestone. Do not deploy, publish, access credentials, use browser sessions, begin a new milestone, or expand beyond the Linux Tauri desktop scope. Do not pause for ordinary status, tests, documentation, commits, or pushes: for routine validated work, run the required checks, commit only your task files, and push only the authoritative branch. Never put credentials, source payloads, signing material, release artifacts, secret-bearing URLs, headers, or secrets in your final report. If no implementation task is authorized or a true human-only blocker exists, state exactly "HUMAN_ONLY_BLOCKER:" followed by the concise reason and make no product change. End every run with exactly two lines: "SUPERVISOR_VALIDATION: <concise non-secret result>" and "SUPERVISOR_PROGRESS: yes" only when you completed a validated, committed, pushed routine task; otherwise "SUPERVISOR_PROGRESS: no".' \
     >/dev/null 2>&1; then
