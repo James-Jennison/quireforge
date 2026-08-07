@@ -224,6 +224,10 @@ while [[ $stop_requested -eq 0 ]]; do
   if ! run_task; then
     exit 0
   fi
+  if [[ -e "$sentinel_path" ]]; then
+    log "sentinel created during task; stopping cleanly"
+    exit 0
+  fi
   [[ "$mode" == "once" ]] && exit 0
   sleep "$interval_seconds" & wait $! || true
 done
