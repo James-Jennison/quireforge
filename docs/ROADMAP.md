@@ -5,6 +5,14 @@ maintainer must inspect currently available Codex models, recommend the newest
 suitable GPT model and reasoning level, provide the full milestone briefing,
 and wait for manual confirmation.
 
+**Post-M62 autonomous operating rule:** the preceding confirmation requirement
+does not apply to routine, reversible, local, non-production implementation
+after M62. Codex may inspect, implement, test, commit, and push the
+highest-value safe QuireForge product work. It must still stop for credentials
+or account/browser access, production deployment, public release, destructive
+actions, third-party commitments, and genuinely irreversible product-direction
+decisions.
+
 No milestone may merge, access authenticated hosting, change DNS/SSL/provider
 settings, deploy, publish a release, install an integration, or authorize a
 connector without its required approval.
@@ -1592,11 +1600,13 @@ durable-task-to-mock-workbench path and must pass the existing pinned Ubuntu
 22.04 and restricted installed-host gates; beta.54 remains the rollback
 generation unless it passes every gate.
 
-**Later implementation milestones:** A first separately approved
-implementation-planning or provider/local-runtime adapter milestone and any
-credential-broker implementation remain provisional—not approved work. No
-post-M62 milestone starts automatically. Release checkpoints are assigned only
-when user-visible or operational behavior is implemented.
+**Later implementation milestones:** Routine reversible, local,
+non-production post-M62 implementation proceeds under the autonomous operating
+rule. It does not authorize credential or account handling, browser access,
+real provider/runtime connection, network transmission, production deployment,
+public release, destructive action, third-party commitments, or irreversible
+product-direction selection. Release checkpoints are assigned only when
+user-visible or operational behavior is implemented.
 
 ### 58 — Controlled Browser Verification Proposal
 
@@ -1638,7 +1648,9 @@ compatibility gates for any later custody route. It implements and selects
 nothing: credential collection/storage, accounts, OAuth, provider/local-runtime
 connections, networking, inference, tools, retrieval, browser/connectors/MCP,
 automation, external mutation, migrations, runtime/UI work, packages, and
-releases remain excluded. No successor implementation starts automatically.
+releases remain excluded from this decision record. Routine post-M62 local
+implementation follows the autonomous operating rule above; its hard stops
+remain unchanged.
 
 ### 62 — Limited Provider Inference Boundary
 
@@ -1650,8 +1662,9 @@ privacy and payload limits, lifecycle, cancellation, revocation, recovery, and
 content-free audit. It implements and selects nothing: providers/local runtimes,
 credentials/accounts/OAuth, networking, inference, model configuration, tools,
 retrieval, browser/connectors/MCP, automation, external mutation, runtime/UI
-work, packages, and releases remain excluded. No post-M62 milestone starts
-automatically.
+work, packages, and releases remain excluded from this decision record.
+Routine post-M62 local implementation follows the autonomous operating rule
+above; its hard stops remain unchanged.
 
 ### Deferred capability gates
 

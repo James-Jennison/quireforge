@@ -7,7 +7,11 @@ and M61 is complete as the decision-only
 [Credential Broker and Account Reference Contract](MILESTONE_61_CREDENTIAL_BROKER_AND_ACCOUNT_REFERENCE_CONTRACT.md),
 and M62 is complete as the decision-only
 [Limited Provider Inference Boundary](MILESTONE_62_LIMITED_PROVIDER_INFERENCE_BOUNDARY.md).
-No M63+ implementation is authorized by this document.
+Routine reversible, local, non-production M63+ implementation is autonomous
+under the roadmap's post-M62 operating rule. That rule does not authorize
+credentials or account/browser access, real provider/runtime connection,
+network transmission, deployment, public release, destructive action,
+third-party commitments, or irreversible product-direction selection.
 
 ## Completion definition
 
@@ -54,7 +58,8 @@ recovery, tool grants, confirmations and loop prevention.
 
 M60 is complete and published as the local-only M59 slice. M61 and M62 are
 complete decision-only contracts for future custody/runtime and
-limited-inference gates. M63 or any later implementation requires a new,
-specific owner approval and must stop before credential handling, real provider
-or runtime connection, network transmission, inference, deployment, or any
-unratified authority.
+limited-inference gates. Codex may autonomously continue routine reversible,
+local, non-production M63+ implementation. It must stop before credential or
+account/browser handling, real provider/runtime connection, network
+transmission, production deployment, public release, destructive action,
+third-party commitments, or an irreversible product-direction decision.

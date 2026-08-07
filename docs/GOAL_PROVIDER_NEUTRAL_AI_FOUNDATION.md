@@ -9,8 +9,12 @@ decision record.
 Packaging status: beta.55 and beta.56 remain preserved failed candidates;
 beta.59 (M55), beta.60 (M57), beta.62 (M58), and beta.63 (M60) are published
 prereleases. Latest published release: `0.1.0-beta.63` / `0.1.0~beta.63`.
-Implementation authority: none granted by establishing this goal or completing
-M61 or M62.
+Implementation authority: routine reversible, local, non-production post-M62
+work is autonomous under `docs/ROADMAP.md`. Credentials or account/browser
+access, real provider/runtime connection, network transmission, production
+deployment, public release, destructive action, third-party commitments, and
+irreversible product-direction decisions remain excluded pending explicit
+authority.
 Parent vision: native, project-centered, all-in-one Linux AI workspace.
 
 > The goal organizes related decisions and future implementation work. It does

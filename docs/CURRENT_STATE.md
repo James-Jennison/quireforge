@@ -460,8 +460,12 @@ fictional/local-only sink; no provider, credential, network transmission,
 inference, connector, browser, MCP, automation, external mutation, deployment,
 or later milestone is implied.
 
-M61 and M62 are complete as decision-only contracts. No post-M62 implementation
-milestone starts automatically.
+M61 and M62 are complete as decision-only contracts. Routine reversible, local,
+non-production post-M62 implementation is autonomous: Codex may inspect,
+implement, test, commit, and push the highest-value safe task. Credentials or
+account/browser access, production deployment, public release, destructive
+actions, third-party commitments, and genuinely irreversible product-direction
+decisions remain human-only stops.
 
 Milestone 46 — **Bounded Multi-Attachment** is complete at
 `1bc2e787ab785016041d70845c97ca9c2c4f84db` with its verified
