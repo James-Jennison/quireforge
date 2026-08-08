@@ -520,7 +520,20 @@ class CmakeOptionsTests(unittest.TestCase):
             '    UnapprovedCommand::new("curl");\n    tauri_build::build();',
         )
 
-        with self.assertRaisesRegex(SystemExit, "must not alias Command"):
+        with self.assertRaisesRegex(SystemExit, "must not alias (the process module|Command)"):
+            VALIDATOR.require_closed_build_process_boundary(build)
+
+    def test_rejects_a_process_module_aliased_unapproved_build_subprocess(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace(
+            "use std::{",
+            "use std::process as process_alias;\n\nuse std::{",
+        ).replace(
+            '    tauri_build::build();',
+            '    process_alias::Command::new("curl");\n    tauri_build::build();',
+        )
+
+        with self.assertRaisesRegex(SystemExit, "must not alias the process module"):
             VALIDATOR.require_closed_build_process_boundary(build)
 
     def test_rejects_a_type_aliased_unapproved_build_subprocess(self) -> None:
@@ -550,7 +563,7 @@ class CmakeOptionsTests(unittest.TestCase):
             '    UnapprovedCommand::new("curl");\n    tauri_build::build();',
         )
 
-        with self.assertRaisesRegex(SystemExit, "must not alias Command"):
+        with self.assertRaisesRegex(SystemExit, "must not alias (the process module|Command)"):
             VALIDATOR.require_closed_build_process_boundary(build)
 
     def test_rejects_a_helper_that_adds_a_cmake_argument(self) -> None:
