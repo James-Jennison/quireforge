@@ -117,14 +117,12 @@ describe("ContextAssemblyWorkbench", () => {
 
     const view = render(
       <ContextAssemblyWorkbench
-        key="019fbee6-476f-71b0-853c-f067657aa69c"
         projectId="019fbee6-476f-71b0-853c-f067657aa69c"
         onClose={() => undefined}
       />,
     );
     view.rerender(
       <ContextAssemblyWorkbench
-        key="019fbee6-476f-71b0-853c-f067657aa69d"
         projectId="019fbee6-476f-71b0-853c-f067657aa69d"
         onClose={() => undefined}
       />,
@@ -167,7 +165,6 @@ describe("ContextAssemblyWorkbench", () => {
     );
     const view = render(
       <ContextAssemblyWorkbench
-        key="019fbee6-476f-71b0-853c-f067657aa69c"
         projectId="019fbee6-476f-71b0-853c-f067657aa69c"
         onClose={() => undefined}
       />,
@@ -180,7 +177,6 @@ describe("ContextAssemblyWorkbench", () => {
 
     view.rerender(
       <ContextAssemblyWorkbench
-        key="019fbee6-476f-71b0-853c-f067657aa69d"
         projectId="019fbee6-476f-71b0-853c-f067657aa69d"
         onClose={() => undefined}
       />,

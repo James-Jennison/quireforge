@@ -41,6 +41,7 @@ export function ContextAssemblyWorkbench({
       "Fictional local-only context review. Nothing is selected by default.",
     );
   const mounted = useRef(true);
+  const projectScope = useRef(projectId);
   useEffect(() => {
     mounted.current = true;
     return () => {
@@ -49,6 +50,7 @@ export function ContextAssemblyWorkbench({
   }, []);
   useEffect(() => {
     let current = true;
+    projectScope.current = projectId;
     if (!projectId)
       return () => {
         current = false;
@@ -113,15 +115,16 @@ export function ContextAssemblyWorkbench({
     };
   }, [reviewCollectionId]);
   const run = async (action: () => Promise<ContextAssemblySnapshot>) => {
+    const actionProjectId = projectId;
     setBusy(true);
     try {
       const next = await action();
-      if (mounted.current) {
+      if (mounted.current && projectScope.current === actionProjectId) {
         setSnapshot(next);
         setNotice(next.diagnostic ?? next.auditState);
       }
     } catch {
-      if (mounted.current) {
+      if (mounted.current && projectScope.current === actionProjectId) {
         setNotice("Context assembly is unavailable; no dispatch occurred.");
       }
     } finally {
