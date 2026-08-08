@@ -529,6 +529,45 @@ class CmakeOptionsTests(unittest.TestCase):
         with self.assertRaisesRegex(SystemExit, "must not alias Command"):
             VALIDATOR.require_closed_build_process_boundary(build)
 
+    def test_rejects_a_helper_that_adds_a_cmake_argument(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace(
+            "fn build_llama_cpp() {",
+            'fn add_unapproved_argument(command: &mut Command) {\n'
+            '    command.arg("-DGGML_CUDA=ON");\n'
+            "}\n\n"
+            "fn build_llama_cpp() {",
+        )
+
+        with self.assertRaisesRegex(SystemExit, "must mutate CMake commands only"):
+            VALIDATOR.require_closed_command_mutation_boundary(build)
+
+    def test_rejects_a_helper_that_adds_a_cmake_environment_assignment(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace(
+            "fn build_llama_cpp() {",
+            'fn add_unapproved_environment(command: &mut Command) {\n'
+            '    command.env("CMAKE_TOOLCHAIN_FILE", "/tmp/unapproved.cmake");\n'
+            "}\n\n"
+            "fn build_llama_cpp() {",
+        )
+
+        with self.assertRaisesRegex(SystemExit, "must mutate CMake commands only"):
+            VALIDATOR.require_closed_command_mutation_boundary(build)
+
+    def test_rejects_a_helper_that_reuses_an_approved_command_name(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace(
+            "fn build_llama_cpp() {",
+            'fn add_unapproved_argument(configure: &mut Command) {\n'
+            '    configure.arg("-DGGML_CUDA=ON");\n'
+            "}\n\n"
+            "fn build_llama_cpp() {",
+        )
+
+        with self.assertRaisesRegex(SystemExit, "must mutate CMake commands only"):
+            VALIDATOR.require_closed_command_mutation_boundary(build)
+
     def test_rejects_a_configuration_that_does_not_pass_the_verified_source(self) -> None:
         build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
         build = build.replace('.arg(&source_dir)', '.arg(&build_dir)', 1)

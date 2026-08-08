@@ -394,6 +394,35 @@ def require_closed_build_process_boundary(build: str) -> None:
     )
 
 
+def require_closed_command_mutation_boundary(build: str) -> None:
+    """Prevent helpers from mutating either closed CMake command out of band."""
+    mutation_pattern = (
+        r"\b([A-Za-z_][A-Za-z0-9_]*)\s*\.\s*"
+        r"(arg|args|env|env_clear|env_remove)\s*\("
+    )
+    command_mutations = re.findall(mutation_pattern, build)
+    approved_mutations: list[tuple[str, str]] = []
+    for command_name, description in (
+        ("configure", "closed llama.cpp static-library configuration"),
+        ("build", "closed llama.cpp static-library build"),
+    ):
+        command_match = re.search(
+            rf"let mut {command_name}\s*=\s*Command::new\(SYSTEM_CMAKE\);(?P<body>.*?)"
+            rf"run\(\s*&mut {command_name},\s*\"{re.escape(description)}\",?\s*\);",
+            build,
+            flags=re.DOTALL,
+        )
+        require(
+            command_match is not None,
+            f"{description} invocation is missing",
+        )
+        approved_mutations.extend(re.findall(mutation_pattern, command_match.group("body")))
+    require(
+        command_mutations == approved_mutations,
+        "build script must mutate CMake commands only in the approved command blocks",
+    )
+
+
 def command_arguments(body: str) -> list[str]:
     return [
         literal or variable
@@ -614,6 +643,7 @@ def main() -> None:
     require_complete_vendored_source_tracking(build)
     require_build_time_vendored_tree_verification(build)
     require_closed_build_process_boundary(build)
+    require_closed_command_mutation_boundary(build)
     require_verified_cmake_configure_arguments(build)
     require_closed_cmake_invocation(build)
     require_closed_cmake_environment(build)
