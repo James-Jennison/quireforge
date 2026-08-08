@@ -66,6 +66,22 @@ class CmakeOptionsTests(unittest.TestCase):
         self.assertIn("-DLLAMA_CURL=OFF", options)
         self.assertIn("-DGIT_EXE=", options)
 
+    def test_requires_fixed_system_compiler_and_archive_tool_paths(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+
+        options = VALIDATOR.cmake_options(build)
+
+        self.assertTrue(
+            {
+                "-DCMAKE_C_COMPILER=/usr/bin/cc",
+                "-DCMAKE_CXX_COMPILER=/usr/bin/c++",
+                "-DCMAKE_C_COMPILER_AR=/usr/bin/ar",
+                "-DCMAKE_CXX_COMPILER_AR=/usr/bin/ar",
+                "-DCMAKE_C_COMPILER_RANLIB=/usr/bin/ranlib",
+                "-DCMAKE_CXX_COMPILER_RANLIB=/usr/bin/ranlib",
+            }.issubset(options)
+        )
+
     def test_requires_the_optional_llamafile_integration_to_be_disabled(self) -> None:
         build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
 

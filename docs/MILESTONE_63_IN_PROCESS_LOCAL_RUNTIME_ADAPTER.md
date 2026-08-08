@@ -35,7 +35,8 @@ outcome-unknown, quarantine, and content-free-audit rules.
 deterministic source-tree digest, license evidence, absence of model artifacts,
 the closed CMake configuration, and that the build script starts only its two
 approved CMake subprocesses. Both subprocesses clear the inherited environment,
-then set only the fixed system build path; this excludes compiler,
+then set only the fixed system build path and pass fixed system C/C++ compiler,
+archive-tool, and ranlib paths; this excludes compiler discovery and
 CMake-injection, language compiler target/argument/toolchain/archive-tool,
 compiler-launcher/initial-flag, GNU Make flag, compiler search/override, and
 dynamic-loader injection variables. The build
