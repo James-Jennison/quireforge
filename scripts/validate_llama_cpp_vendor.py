@@ -389,8 +389,9 @@ def require_closed_cmake_invocation(build: str) -> None:
     require(configure_match is not None, "closed CMake configuration invocation is missing")
     configure_body = configure_match.group("body")
     require(
-        len(re.findall(r"configure\.args\(LLAMA_CPP_CMAKE_OPTIONS\);", configure_body)) == 1,
-        "closed CMake options are not applied exactly once",
+        re.findall(r"configure\.args\(([^)]+)\);", configure_body)
+        == ["LLAMA_CPP_CMAKE_OPTIONS"],
+        "closed CMake configuration must apply only the approved option list once",
     )
     unguarded_definitions = set(re.findall(r'\.arg\("(-D[^"\\]+)"\)', configure_body))
     require(
@@ -464,7 +465,12 @@ def require_closed_cmake_build_invocation(build: str) -> None:
         flags=re.DOTALL,
     )
     require(build_match is not None, "closed CMake build invocation is missing")
-    build_arguments = command_arguments(build_match.group("body"))
+    build_body = build_match.group("body")
+    require(
+        not re.findall(r"build\.args\([^)]+\);", build_body),
+        "closed CMake build must not use batched arguments",
+    )
+    build_arguments = command_arguments(build_body)
     require(
         build_arguments
         == ["--build", "&build_dir", "--config", "Release", "--target", "llama"],

@@ -147,6 +147,16 @@ class CmakeOptionsTests(unittest.TestCase):
         with self.assertRaisesRegex(SystemExit, "unguarded -D option"):
             VALIDATOR.require_closed_cmake_invocation(build)
 
+    def test_rejects_an_extra_batched_cmake_configuration_argument(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace(
+            "    configure.args(LLAMA_CPP_CMAKE_OPTIONS);",
+            '    configure.args(LLAMA_CPP_CMAKE_OPTIONS);\n    configure.args(["--toolchain", "/tmp/unapproved.cmake"]);',
+        )
+
+        with self.assertRaisesRegex(SystemExit, "must apply only the approved option list once"):
+            VALIDATOR.require_closed_cmake_invocation(build)
+
     def test_requires_the_closed_toolchain_environment_scrub(self) -> None:
         build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
 
@@ -442,6 +452,17 @@ class CmakeOptionsTests(unittest.TestCase):
         build = build.replace('.arg("llama");', '.arg("all");', 1)
 
         with self.assertRaisesRegex(SystemExit, "target only"):
+            VALIDATOR.require_closed_cmake_build_invocation(build)
+
+    def test_rejects_batched_cmake_build_arguments(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace(
+            '        .arg("llama");',
+            '        .arg("llama");\n    build.args(["--parallel", "8"]);',
+            1,
+        )
+
+        with self.assertRaisesRegex(SystemExit, "must not use batched arguments"):
             VALIDATOR.require_closed_cmake_build_invocation(build)
 
     def test_rejects_a_cmake_build_without_the_explicit_release_configuration(self) -> None:
