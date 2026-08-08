@@ -35,6 +35,14 @@ class CmakeOptionsTests(unittest.TestCase):
         self.assertNotEqual(VALIDATOR.cmake_options(build), VALIDATOR.EXPECTED_CMAKE_OPTIONS)
         self.assertIn("-DGGML_CUDA=ON", VALIDATOR.cmake_options(build))
 
+    def test_requires_explicit_curl_and_vendored_git_probe_disablement(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+
+        options = VALIDATOR.cmake_options(build)
+
+        self.assertIn("-DLLAMA_CURL=OFF", options)
+        self.assertIn("-DGIT_EXE=", options)
+
     def test_requires_the_closed_option_list_once_without_extra_definitions(self) -> None:
         build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
 
