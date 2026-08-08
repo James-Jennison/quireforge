@@ -40,6 +40,23 @@ class CmakeOptionsTests(unittest.TestCase):
             with self.assertRaisesRegex(SystemExit, "vendored symlink found: source-link"):
                 VALIDATOR.require_regular_vendored_source_tree(source)
 
+    def test_rejects_common_model_artifact_formats(self) -> None:
+        for suffix in (".onnx", ".pt", ".pth", ".ckpt", ".tflite", ".mlmodel"):
+            with self.subTest(suffix=suffix), tempfile.TemporaryDirectory() as temporary_directory:
+                source = Path(temporary_directory)
+                artifact = source / f"unapproved-model{suffix}"
+                artifact.write_bytes(b"not a model")
+
+                with self.assertRaisesRegex(SystemExit, "model artifact found"):
+                    VALIDATOR.require_no_model_artifacts(source)
+
+    def test_allows_non_model_source_files(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            source = Path(temporary_directory)
+            (source / "llama.cpp").write_text("// source only\n", encoding="utf-8")
+
+            VALIDATOR.require_no_model_artifacts(source)
+
     def test_reads_the_exact_closed_option_list(self) -> None:
         build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
 

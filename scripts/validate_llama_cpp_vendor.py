@@ -176,6 +176,17 @@ EXPECTED_CLOSED_CMAKE_ENVIRONMENT = {
     "MFLAGS",
     "GNUMAKEFLAGS",
 }
+MODEL_ARTIFACT_SUFFIXES = {
+    ".bin",
+    ".ckpt",
+    ".gguf",
+    ".mlmodel",
+    ".onnx",
+    ".pt",
+    ".pth",
+    ".safetensors",
+    ".tflite",
+}
 
 
 def tree_digest() -> str:
@@ -476,6 +487,14 @@ def require_no_rust_runtime_api_usage(source_directory: Path) -> None:
     )
 
 
+def require_no_model_artifacts(directory: Path) -> None:
+    for path in directory.rglob("*"):
+        require(
+            path.suffix.lower() not in MODEL_ARTIFACT_SUFFIXES,
+            f"model artifact found: {path.relative_to(directory)}",
+        )
+
+
 def main() -> None:
     require_regular_vendored_source_tree(VENDOR)
     manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
@@ -486,9 +505,7 @@ def main() -> None:
     for license_path in manifest["license_files"]:
         require((VENDOR / license_path).is_file(), f"missing license evidence: {license_path}")
     require(not (VENDOR / ".git").exists(), "Git history was vendored")
-    prohibited_suffixes = {".gguf", ".safetensors", ".bin"}
-    for path in VENDOR.rglob("*"):
-        require(path.suffix.lower() not in prohibited_suffixes, f"model artifact found: {path.relative_to(VENDOR)}")
+    require_no_model_artifacts(VENDOR)
     build = BUILD_SCRIPT.read_text(encoding="utf-8")
     require(cmake_options(build) == EXPECTED_CMAKE_OPTIONS, "closed CMake options changed")
     require_verified_cmake_source(build)
