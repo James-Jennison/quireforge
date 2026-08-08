@@ -414,9 +414,13 @@ def require_closed_command_mutation_boundary(build: str) -> None:
     """Prevent helpers from mutating either closed CMake command out of band."""
     mutation_pattern = (
         r"\b([A-Za-z_][A-Za-z0-9_]*)\s*\.\s*"
-        r"(arg|args|env|env_clear|env_remove)\s*\("
+        r"(arg|args|current_dir|env|env_clear|env_remove)\s*\("
     )
     command_mutations = re.findall(mutation_pattern, build)
+    require(
+        all(method != "current_dir" for _, method in command_mutations),
+        "build script must not override the closed CMake working directory",
+    )
     approved_mutations: list[tuple[str, str]] = []
     for command_name, description in (
         ("configure", "closed llama.cpp static-library configuration"),

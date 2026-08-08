@@ -592,6 +592,16 @@ class CmakeOptionsTests(unittest.TestCase):
         with self.assertRaisesRegex(SystemExit, "must mutate CMake commands only"):
             VALIDATOR.require_closed_command_mutation_boundary(build)
 
+    def test_rejects_a_cmake_working_directory_override(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace(
+            "    configure.args(LLAMA_CPP_CMAKE_OPTIONS);",
+            '    configure.args(LLAMA_CPP_CMAKE_OPTIONS);\n    configure.current_dir("/tmp/unapproved");',
+        )
+
+        with self.assertRaisesRegex(SystemExit, "must not override the closed CMake working directory"):
+            VALIDATOR.require_closed_command_mutation_boundary(build)
+
     def test_rejects_a_configuration_that_does_not_pass_the_verified_source(self) -> None:
         build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
         build = build.replace('.arg(&source_dir)', '.arg(&build_dir)', 1)
