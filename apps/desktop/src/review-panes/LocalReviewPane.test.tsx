@@ -602,7 +602,7 @@ describe("local review image pane", () => {
     expect(error).toHaveTextContent(
       "The generated artifact could not be copied into local review.",
     );
-    expect(error).toHaveFocus();
+    await waitFor(() => expect(error).toHaveFocus());
     expect(screen.queryByText(/tmp\/source/)).toBeNull();
     expect(
       screen.queryByRole("button", { name: /Live artifact — text/i }),
