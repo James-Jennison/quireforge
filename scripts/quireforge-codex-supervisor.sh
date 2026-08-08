@@ -181,12 +181,36 @@ post_push_completion_state() {
   fi
 }
 
+status_field() {
+  local field="$1"
+  sed -n "s/^${field}: //p" "$status_path" 2>/dev/null | head -n 1
+}
+
+tmux_session_exit_action() {
+  local state="$1" task="$2"
+  if [[ "$state" == "running" || "$task" == "Task committed and pushed" ]]; then
+    printf 'restart\n'
+  else
+    printf 'stop\n'
+  fi
+}
+
+tmux_session_exit_requires_restart() {
+  [[ ! -e "$sentinel_path" ]] || return 1
+  [[ "$(tmux_session_exit_action "$(status_field State)" "$(status_field 'Current task')")" == "restart" ]]
+}
+
 run_completion_state_self_test() {
   [[ "$(post_push_completion_state same same '')" == "aligned-and-clean" ]] || return 1
   [[ "$(post_push_completion_state local upstream '')" == "upstream-mismatch" ]] || return 1
   [[ "$(post_push_completion_state same same '?? task-file')" == "uncommitted-changes" ]] || return 1
   [[ "$worker_sandbox_mode" == "danger-full-access" ]] || return 1
-  printf 'Supervisor completion-state and worker-access checks passed.\n'
+  [[ "$(tmux_session_exit_action running 'Full-access Codex worker is implementing the highest-value safe task')" == "restart" ]] || return 1
+  [[ "$(tmux_session_exit_action idle 'Task committed and pushed')" == "restart" ]] || return 1
+  [[ "$(tmux_session_exit_action idle 'No task made committed progress')" == "stop" ]] || return 1
+  [[ "$(tmux_session_exit_action failed 'Worker test or validation failed')" == "stop" ]] || return 1
+  [[ "$(tmux_session_exit_action blocked 'Autonomous task blocked')" == "stop" ]] || return 1
+  printf 'Supervisor completion-state, worker-access, and tmux-recovery checks passed.\n'
 }
 
 finalize_commit() {
@@ -271,16 +295,25 @@ run_in_tmux() {
   if ! command -v tmux >/dev/null 2>&1; then
     return 1
   fi
-  if tmux has-session -t "$tmux_session" 2>/dev/null; then
-    log "existing tmux worker session found; waiting for it"
-  else
-    log "starting persistent tmux worker session"
-    tmux new-session -d -s "$tmux_session" \
-      "env QUIRE_FORGE_SUPERVISOR_STATE_DIR=$(printf '%q' "$state_root") QUIRE_FORGE_SUPERVISOR_INTERVAL_SECONDS=$(printf '%q' "$interval_seconds") $(printf '%q' "$repository_root/scripts/quireforge-codex-supervisor.sh") --worker"
-  fi
   trap 'tmux kill-session -t "$tmux_session" 2>/dev/null || true; exit 0' INT TERM
-  while tmux has-session -t "$tmux_session" 2>/dev/null; do sleep 2; done
-  return 0
+  while :; do
+    if tmux has-session -t "$tmux_session" 2>/dev/null; then
+      log "existing tmux worker session found; waiting for it"
+    else
+      log "starting persistent tmux worker session"
+      tmux new-session -d -s "$tmux_session" \
+        "env QUIRE_FORGE_SUPERVISOR_STATE_DIR=$(printf '%q' "$state_root") QUIRE_FORGE_SUPERVISOR_INTERVAL_SECONDS=$(printf '%q' "$interval_seconds") $(printf '%q' "$repository_root/scripts/quireforge-codex-supervisor.sh") --worker"
+    fi
+
+    while tmux has-session -t "$tmux_session" 2>/dev/null; do sleep 2; done
+    if ! tmux_session_exit_requires_restart; then
+      log "tmux worker session ended in a terminal state; stopping wrapper"
+      return 0
+    fi
+    log "tmux worker session ended unexpectedly; restarting it"
+    write_status "Restarting full-access Codex worker" "running" "not reported" "Restart the interrupted worker task" "none"
+    sleep 1
+  done
 }
 
 if [[ "$mode" != "worker" && "$mode" != "once" ]]; then

@@ -8,7 +8,8 @@ WorkingDirectory=/mnt/faststorage/quireforge
 Environment=QUIRE_FORGE_SUPERVISOR_STATE_DIR=%h/.local/state/quireforge-codex-supervisor
 Environment=QUIRE_FORGE_SUPERVISOR_INTERVAL_SECONDS=300
 ExecStart=/mnt/faststorage/quireforge/scripts/quireforge-codex-supervisor.sh
-Restart=no
+Restart=on-failure
+RestartSec=10s
 KillSignal=SIGINT
 TimeoutStopSec=30s
 UMask=0077

@@ -8,10 +8,12 @@ Its atomically replaced, non-secret status snapshot is
 `~/.local/state/quireforge/status.md`.
 
 It reads `AGENTS.md` through Codex, uses `flock` so only one supervisor task
-runs, and requires a clean worktree before starting a new task. Codex stays in
-the `workspace-write` sandbox and never commits or pushes. It runs focused
-tests, type-checking, linting, and formatting there, but never browser or
-host-listener E2E checks. When needed it requests an exact
+runs, and requires a clean worktree before starting a new task. Supervisor-
+launched Codex workers use the installed CLI's `danger-full-access` sandbox
+mode, while interactive Codex defaults and other projects remain unchanged.
+The outer supervisor alone commits or pushes. Workers run focused tests,
+type-checking, linting, and formatting, but request host-listener E2E checks
+through an exact
 `AUTOPILOT_HOST_VALIDATION: pnpm test:e2e` marker before its
 `AUTOPILOT_READY_TO_COMMIT` marker. The trusted outer supervisor accepts only
 that explicit allowlisted command, runs it on the local host, then runs the
@@ -28,9 +30,13 @@ sentinel only after the blocker has received explicit owner direction, then
 restart the service.
 
 When `tmux` is already installed, the systemd service starts one persistent
-session named `quireforge-codex-supervisor`; it never creates a duplicate. When
-`tmux` is unavailable, the same worker runs with the status/log fallback. The
-supervisor never installs packages or uses `sudo`.
+session named `quireforge-codex-supervisor`; it never creates a duplicate. If
+that session vanishes while a task was running or immediately after a validated
+commit, the wrapper starts the next worker. Blocked, failed-validation, and
+two-run no-progress states remain terminal. The user service restarts on an
+unexpected process failure. When `tmux` is unavailable, the same worker runs
+with the status/log fallback. The supervisor never installs packages or uses
+`sudo`.
 
 The source unit is `packaging/systemd-user/quireforge-codex-supervisor.service`.
 Install it for the current user with:

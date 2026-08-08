@@ -29,7 +29,7 @@ class SupervisorCompletionStateTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(
             result.stdout,
-            "Supervisor completion-state and worker-access checks passed.\n",
+            "Supervisor completion-state, worker-access, and tmux-recovery checks passed.\n",
         )
 
     def test_only_the_worker_uses_the_full_access_sandbox_setting(self) -> None:
@@ -49,6 +49,15 @@ class SupervisorCompletionStateTests(unittest.TestCase):
         self.assertIn("has_untracked_changes", script)
         self.assertIn("Task-created untracked changes remain; nothing was committed.", script)
         self.assertIn("Worker test or validation failed", script)
+
+    def test_tmux_recovery_restarts_only_continuable_states(self) -> None:
+        script = SUPERVISOR.read_text(encoding="utf-8")
+
+        self.assertIn("tmux_session_exit_action", script)
+        self.assertIn('"$state" == "running"', script)
+        self.assertIn('"$task" == "Task committed and pushed"', script)
+        self.assertIn("tmux_session_exit_requires_restart", script)
+        self.assertIn("tmux worker session ended in a terminal state", script)
 
 
 if __name__ == "__main__":
