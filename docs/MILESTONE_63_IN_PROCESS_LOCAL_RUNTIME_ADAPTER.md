@@ -35,9 +35,10 @@ outcome-unknown, quarantine, and content-free-audit rules.
 deterministic source-tree digest, license evidence, absence of model artifacts,
 the closed CMake configuration, and that the build script starts only its two
 approved CMake subprocesses. Both subprocesses strip inherited compiler,
-CMake-injection, GNU Make flag, compiler search/override, and dynamic-loader
-injection variables. The build script compiles only
-the static `llama` target and its CPU ggml dependencies, after independently
+CMake-injection, language compiler-launcher/initial-flag, GNU Make flag,
+compiler search/override, and dynamic-loader injection variables. The build
+script compiles only the static `llama` target and its CPU ggml dependencies,
+after independently
 recomputing and matching the pinned vendored source-tree SHA-256 before CMake
 is invoked. It also rejects any Rust runtime-source reference to a `llama_*` or
 `ggml_*` C API, keeping the vendor integration build-only until a later adapter
