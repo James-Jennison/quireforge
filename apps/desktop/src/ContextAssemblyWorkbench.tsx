@@ -23,6 +23,25 @@ export function ContextAssemblyWorkbench({
   projectLabel?: string | null;
   onClose: () => void;
 }) {
+  return (
+    <ContextAssemblyWorkbenchScope
+      key={projectId ?? "no-project"}
+      projectId={projectId}
+      projectLabel={projectLabel}
+      onClose={onClose}
+    />
+  );
+}
+
+function ContextAssemblyWorkbenchScope({
+  projectId,
+  projectLabel,
+  onClose,
+}: {
+  projectId: string | null;
+  projectLabel?: string | null;
+  onClose: () => void;
+}) {
   const title = useId(),
     close = useRef<HTMLButtonElement>(null),
     [text, setText] = useState(""),
@@ -128,7 +147,9 @@ export function ContextAssemblyWorkbench({
         setNotice("Context assembly is unavailable; no dispatch occurred.");
       }
     } finally {
-      if (mounted.current) setBusy(false);
+      if (mounted.current && projectScope.current === actionProjectId) {
+        setBusy(false);
+      }
     }
   };
   const canConfirm =

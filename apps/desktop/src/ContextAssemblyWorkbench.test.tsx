@@ -210,4 +210,49 @@ describe("ContextAssemblyWorkbench", () => {
       screen.queryByLabelText(/prepared context summary/i),
     ).not.toBeInTheDocument();
   });
+
+  it("resets scope-bound selections and prepared state when the project changes", async () => {
+    const view = render(
+      <ContextAssemblyWorkbench
+        projectId="019fbee6-476f-71b0-853c-f067657aa69c"
+        onClose={() => undefined}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText(/explicit user instruction/i), {
+      target: { value: "Review this selection" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /prepare review/i }));
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /review prepared bundle/i }),
+      ).toBeEnabled(),
+    );
+    expect(screen.getByLabelText(/explicit user instruction/i)).toHaveValue(
+      "Review this selection",
+    );
+
+    view.rerender(
+      <ContextAssemblyWorkbench
+        projectId="019fbee6-476f-71b0-853c-f067657aa69d"
+        onClose={() => undefined}
+      />,
+    );
+
+    await waitFor(() =>
+      expect(screen.getByLabelText(/explicit user instruction/i)).toHaveValue(
+        "",
+      ),
+    );
+    expect(
+      screen.queryByLabelText(/prepared context summary/i),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /prepare review/i }),
+    ).toBeDisabled();
+    expect(
+      screen.getByText(/nothing is selected by default/i),
+    ).toBeInTheDocument();
+  });
 });
