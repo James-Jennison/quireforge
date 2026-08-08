@@ -392,6 +392,16 @@ class CmakeOptionsTests(unittest.TestCase):
         with self.assertRaisesRegex(SystemExit, "before constructing CMake commands"):
             VALIDATOR.require_build_time_vendored_tree_verification(build)
 
+    def test_rejects_a_missing_initial_vendored_tree_verification(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace(
+            "    verify_vendored_tree_digest(&source_dir);\n    register_vendored_source_tree(&source_dir);",
+            "    register_vendored_source_tree(&source_dir);",
+        )
+
+        with self.assertRaisesRegex(SystemExit, "before constructing CMake commands"):
+            VALIDATOR.require_build_time_vendored_tree_verification(build)
+
     def test_rejects_missing_post_configuration_vendored_tree_verification(self) -> None:
         build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
         build = build.replace(
@@ -416,6 +426,20 @@ class CmakeOptionsTests(unittest.TestCase):
         with self.assertRaisesRegex(
             SystemExit,
             "re-verify the vendored source tree after configuration and before compiling",
+        ):
+            VALIDATOR.require_build_time_vendored_tree_verification(build)
+
+    def test_rejects_missing_post_build_vendored_tree_verification(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace(
+            '    verify_vendored_tree_digest(&source_dir);\n\n    println!(\n'
+            '        "cargo:rustc-link-search=native={}",',
+            '    println!(\n        "cargo:rustc-link-search=native={}",',
+        )
+
+        with self.assertRaisesRegex(
+            SystemExit,
+            "re-verify the vendored source tree after compiling and before Cargo linkage",
         ):
             VALIDATOR.require_build_time_vendored_tree_verification(build)
 

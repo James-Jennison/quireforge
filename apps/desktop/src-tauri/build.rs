@@ -317,6 +317,10 @@ fn build_llama_cpp() {
     build.env("PATH", CLOSED_BUILD_PATH);
     run(&mut build, "closed llama.cpp static-library build");
 
+    // Compilation reads the vendored sources too. Refuse to hand its output to
+    // Cargo if those sources changed at any point during the closed build.
+    verify_vendored_tree_digest(&source_dir);
+
     println!(
         "cargo:rustc-link-search=native={}",
         build_dir.join("src").display()

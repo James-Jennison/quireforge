@@ -48,7 +48,8 @@ user and system package registries
 are disabled and no package registry entry can be exported. The build
 script compiles only the static `llama` target and its CPU ggml dependencies,
 after independently recomputing and matching the pinned vendored source-tree
-SHA-256 before CMake configuration and again immediately before compilation.
+SHA-256 before CMake configuration, again immediately before compilation, and
+again after compilation before Cargo receives static-library link directives.
 Configuration starts with `--fresh`, discarding prior generated CMake cache
 state before the fixed closed configuration is evaluated.
 Both CMake invocations use the fixed system CMake executable and a
