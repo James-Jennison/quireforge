@@ -71,6 +71,13 @@ class CmakeOptionsTests(unittest.TestCase):
         with self.assertRaisesRegex(SystemExit, "source is not the verified"):
             VALIDATOR.require_verified_cmake_source(build)
 
+    def test_rejects_a_configuration_that_does_not_pass_the_verified_source(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace('.arg(&source_dir)', '.arg(&build_dir)', 1)
+
+        with self.assertRaisesRegex(SystemExit, "must use only the verified source"):
+            VALIDATOR.require_verified_cmake_configure_arguments(build)
+
     def test_rejects_a_cmake_build_with_an_extra_target(self) -> None:
         build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
         build = build.replace('.arg("llama");', '.arg("all");', 1)
