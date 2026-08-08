@@ -4,6 +4,11 @@ use std::{
     process::Command,
 };
 
+use sha2::{Digest, Sha256};
+
+const EXPECTED_VENDORED_TREE_SHA256: &str =
+    "9892c22a1a05adf0775615f1b845886f8f1be96ad7b6f71093103eaec546a511";
+
 const LLAMA_CPP_CMAKE_OPTIONS: &[&str] = &[
     "-DBUILD_SHARED_LIBS=OFF",
     "-DLLAMA_BUILD_NUMBER=10326",
@@ -125,6 +130,64 @@ fn register_vendored_source_tree(directory: &Path) {
     }
 }
 
+fn vendored_tree_digest(directory: &Path, root: &Path, digest: &mut Sha256) {
+    let mut entries = fs::read_dir(directory)
+        .unwrap_or_else(|error| panic!("could not read verified llama.cpp source: {error}"))
+        .map(|entry| {
+            entry.unwrap_or_else(|error| {
+                panic!("could not inspect verified llama.cpp source: {error}")
+            })
+        })
+        .collect::<Vec<_>>();
+    entries.sort_by_key(|entry| entry.file_name());
+
+    for entry in entries {
+        let path = entry.path();
+        let file_type = entry.file_type().unwrap_or_else(|error| {
+            panic!("could not classify verified llama.cpp source: {error}")
+        });
+        assert!(
+            !file_type.is_symlink(),
+            "verified llama.cpp source must not contain symlinks: {}",
+            path.display()
+        );
+        if file_type.is_dir() {
+            vendored_tree_digest(&path, root, digest);
+        } else if file_type.is_file() {
+            if path == root.join("PROVENANCE.json") {
+                continue;
+            }
+            let relative = path
+                .strip_prefix(root)
+                .expect("verified llama.cpp source path must remain under its root")
+                .to_str()
+                .expect("verified llama.cpp source paths must be UTF-8")
+                .replace('\\', "/");
+            digest.update(relative.as_bytes());
+            digest.update([0]);
+            digest.update(Sha256::digest(fs::read(&path).unwrap_or_else(|error| {
+                panic!("could not read verified llama.cpp source file: {error}")
+            })));
+            digest.update([0]);
+        } else {
+            panic!(
+                "verified llama.cpp source must contain only directories and regular files: {}",
+                path.display()
+            );
+        }
+    }
+}
+
+fn verify_vendored_tree_digest(directory: &Path) {
+    let mut digest = Sha256::new();
+    vendored_tree_digest(directory, directory, &mut digest);
+    let observed = format!("{:x}", digest.finalize());
+    assert_eq!(
+        observed, EXPECTED_VENDORED_TREE_SHA256,
+        "verified llama.cpp source tree digest does not match pinned provenance"
+    );
+}
+
 fn build_llama_cpp() {
     let manifest_dir =
         PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").expect("manifest directory"));
@@ -143,6 +206,7 @@ fn build_llama_cpp() {
         !source_metadata.file_type().is_symlink() && source_metadata.is_dir(),
         "verified llama.cpp source root must be a real directory"
     );
+    verify_vendored_tree_digest(&source_dir);
     register_vendored_source_tree(&source_dir);
 
     let mut configure = Command::new("cmake");

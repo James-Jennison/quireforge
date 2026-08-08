@@ -91,6 +91,8 @@ ALLOWED_CONFIGURE_DEFINITIONS = {"-DCMAKE_BUILD_TYPE=Release"}
 EXPECTED_SOURCE_DIR_EXPRESSION = 'manifest_dir.join("../../../third_party/llama.cpp")'
 EXPECTED_SOURCE_TRACKER = "register_vendored_source_tree(&source_dir);"
 EXPECTED_SOURCE_ROOT_INSPECTION = "fs::symlink_metadata(&source_dir)"
+EXPECTED_VENDORED_TREE_SHA256 = "9892c22a1a05adf0775615f1b845886f8f1be96ad7b6f71093103eaec546a511"
+EXPECTED_SOURCE_DIGEST_VERIFIER = "verify_vendored_tree_digest(&source_dir);"
 EXPECTED_LINK_SEARCH_DIRECTORIES = [
     'build_dir.join("src")',
     'build_dir.join("ggml/src")',
@@ -216,6 +218,34 @@ def require_complete_vendored_source_tracking(build: str) -> None:
     require(
         'println!("cargo:rerun-if-changed={}", path.display());' in tracker,
         "vendored source tracker must register every regular file",
+    )
+
+
+def require_build_time_vendored_tree_verification(build: str) -> None:
+    require(
+        f'const EXPECTED_VENDORED_TREE_SHA256: &str =\n    "{EXPECTED_VENDORED_TREE_SHA256}";'
+        in build,
+        "build script does not pin the vendored source tree digest",
+    )
+    require(
+        EXPECTED_SOURCE_DIGEST_VERIFIER in build,
+        "build script does not verify the vendored source tree before CMake",
+    )
+    verifier_match = re.search(
+        r"fn verify_vendored_tree_digest\s*\(directory: &Path\)\s*\{(?P<body>.*?)\n\}",
+        build,
+        flags=re.DOTALL,
+    )
+    require(verifier_match is not None, "vendored source digest verifier is missing")
+    verifier = verifier_match.group("body")
+    require(
+        "vendored_tree_digest(directory, directory, &mut digest);" in verifier
+        and "observed, EXPECTED_VENDORED_TREE_SHA256" in verifier,
+        "vendored source digest verifier must compare the complete tree to the pinned digest",
+    )
+    require(
+        "use sha2::{Digest, Sha256};" in build,
+        "build script must use SHA-256 for the vendored source digest",
     )
 
 
@@ -377,6 +407,7 @@ def main() -> None:
     require(cmake_options(build) == EXPECTED_CMAKE_OPTIONS, "closed CMake options changed")
     require_verified_cmake_source(build)
     require_complete_vendored_source_tracking(build)
+    require_build_time_vendored_tree_verification(build)
     require_closed_build_process_boundary(build)
     require_verified_cmake_configure_arguments(build)
     require_closed_cmake_invocation(build)

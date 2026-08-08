@@ -36,6 +36,8 @@ deterministic source-tree digest, license evidence, absence of model artifacts,
 the closed CMake configuration, and that the build script starts only its two
 approved CMake subprocesses. Both subprocesses strip inherited compiler,
 CMake-injection, and GNU Make flag variables. The build script compiles only
-the static `llama` target and its CPU ggml dependencies. Full repository
+the static `llama` target and its CPU ggml dependencies, after independently
+recomputing and matching the pinned vendored source-tree SHA-256 before CMake
+is invoked. Full repository
 validation remains required; no package or installed-host claim is made until
 the separately approved offline model input is available.

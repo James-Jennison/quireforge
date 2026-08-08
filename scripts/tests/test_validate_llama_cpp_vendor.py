@@ -171,6 +171,18 @@ class CmakeOptionsTests(unittest.TestCase):
 
         VALIDATOR.require_complete_vendored_source_tracking(build)
 
+    def test_requires_build_time_vendored_tree_verification(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+
+        VALIDATOR.require_build_time_vendored_tree_verification(build)
+
+    def test_rejects_missing_build_time_vendored_tree_verification(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace("    verify_vendored_tree_digest(&source_dir);\n", "")
+
+        with self.assertRaisesRegex(SystemExit, "does not verify the vendored source tree"):
+            VALIDATOR.require_build_time_vendored_tree_verification(build)
+
     def test_rejects_a_symlinked_or_non_directory_vendored_source_root(self) -> None:
         build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
         build = build.replace(
