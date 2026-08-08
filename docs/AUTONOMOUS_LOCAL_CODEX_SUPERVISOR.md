@@ -7,8 +7,15 @@ ordinary safe task output only to `~/.local/state/quireforge-codex-supervisor/`.
 Its atomically replaced, non-secret status snapshot is
 `~/.local/state/quireforge/status.md`.
 
-It reads `AGENTS.md` through Codex, requires active-milestone authority, and
-uses `flock` so only one supervisor task runs. A real human-only blocker creates
+It reads `AGENTS.md` through Codex, uses `flock` so only one supervisor task
+runs, and requires a clean worktree before starting a new task. Codex stays in
+the `workspace-write` sandbox and never commits or pushes. After Codex reports
+the tested `AUTOPILOT_READY_TO_COMMIT` marker, the trusted outer supervisor runs
+the scoped diff check, stages only changed tracked task files, commits, pushes
+`main`, and verifies clean post-push alignment. A validation, commit, or push
+failure is a blocker. Codex stdout/stderr is line-filtered for secret-like and
+payload-like material, then written to `worker.log` and the tmux pane through
+the same `tee` pipeline. A real human-only blocker creates
 `~/.local/state/quireforge-codex-supervisor/human-only-blocker` and stops the
 service; any other two consecutive no-progress runs also stop it. Remove the
 sentinel only after the blocker has received explicit owner direction, then
@@ -30,8 +37,8 @@ systemctl --user enable --now quireforge-codex-supervisor.service
 ```
 
 The supervisor never deploys, publishes, accesses credentials, or uses browser
-sessions. Its automation does not override roadmap milestones requiring a new
-specific owner approval.
+sessions. It follows the roadmap's autonomous post-M62 rule while retaining its
+hard stops.
 
 ## Local inspection and control
 
@@ -39,8 +46,9 @@ specific owner approval.
 # Attach when tmux is available; detach with Ctrl-b d.
 tmux attach -t quireforge-codex-supervisor
 
-# Inspect the bounded status snapshot and follow the safe local log.
+# Inspect the bounded status snapshot and follow live safe worker output.
 cat "$HOME/.local/state/quireforge/status.md"
+tail -F "$HOME/.local/state/quireforge-codex-supervisor/worker.log"
 tail -F "$HOME/.local/state/quireforge-codex-supervisor/supervisor.log"
 
 # Stop or restart without sudo.
