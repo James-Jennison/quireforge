@@ -85,6 +85,11 @@ EXPECTED_CMAKE_OPTIONS = {
 }
 ALLOWED_CONFIGURE_DEFINITIONS = {"-DCMAKE_BUILD_TYPE=Release"}
 EXPECTED_SOURCE_DIR_EXPRESSION = 'manifest_dir.join("../../../third_party/llama.cpp")'
+EXPECTED_LINK_SEARCH_DIRECTORIES = [
+    'build_dir.join("src")',
+    'build_dir.join("ggml/src")',
+]
+EXPECTED_STATIC_LIBRARIES = ["llama", "ggml", "ggml-base", "ggml-cpu"]
 
 
 def tree_digest() -> str:
@@ -182,6 +187,41 @@ def require_closed_cmake_build_invocation(build: str) -> None:
     )
 
 
+def require_closed_cargo_linkage(build: str) -> None:
+    link_search_directories = re.findall(
+        r'cargo:rustc-link-search=native=\{\}\",\s*\n\s*([^\n]+)\.display\(\)',
+        build,
+    )
+    require(
+        len(re.findall(r'cargo:rustc-link-search=', build)) == 2,
+        "closed Cargo linkage includes an unexpected native library search directive",
+    )
+    require(
+        link_search_directories == EXPECTED_LINK_SEARCH_DIRECTORIES,
+        "closed Cargo linkage must search only the private static-library directories",
+    )
+    library_match = re.search(r'for library in \[(?P<libraries>[^]]+)\]', build)
+    require(library_match is not None, "closed static library list is missing")
+    static_libraries = re.findall(r'"([^"]+)"', library_match.group("libraries"))
+    require(
+        static_libraries == EXPECTED_STATIC_LIBRARIES,
+        "closed Cargo linkage includes an unexpected static library",
+    )
+    require(
+        len(re.findall(r'cargo:rustc-link-lib=static=\{library\}', build)) == 1,
+        "closed Cargo linkage must emit the static library list exactly once",
+    )
+    require(
+        len(re.findall(r'cargo:rustc-link-lib=dylib=stdc\+\+', build)) == 1,
+        "closed Cargo linkage must use only the standard C++ runtime dynamically",
+    )
+    link_libraries = re.findall(r'cargo:rustc-link-lib=([^"\\]+)', build)
+    require(
+        set(link_libraries) == {"static={library}", "dylib=stdc++"},
+        "closed Cargo linkage includes an unexpected native library directive",
+    )
+
+
 def main() -> None:
     manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
     require(set(manifest) == set(EXPECTED_MANIFEST) | {"vendored_tree_sha256"}, "unexpected provenance manifest schema")
@@ -200,6 +240,7 @@ def main() -> None:
     require_verified_cmake_configure_arguments(build)
     require_closed_cmake_invocation(build)
     require_closed_cmake_build_invocation(build)
+    require_closed_cargo_linkage(build)
     print("M63 llama.cpp vendor validation passed.")
 
 

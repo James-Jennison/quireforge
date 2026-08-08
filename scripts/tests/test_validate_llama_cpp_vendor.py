@@ -85,6 +85,32 @@ class CmakeOptionsTests(unittest.TestCase):
         with self.assertRaisesRegex(SystemExit, "must target only"):
             VALIDATOR.require_closed_cmake_build_invocation(build)
 
+    def test_requires_only_the_closed_static_cpu_linkage(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+
+        VALIDATOR.require_closed_cargo_linkage(build)
+
+    def test_rejects_an_extra_native_link_library(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace(
+            'println!("cargo:rustc-link-lib=dylib=stdc++");',
+            'println!("cargo:rustc-link-lib=dylib=stdc++");\n    println!("cargo:rustc-link-lib=dylib=cuda");',
+        )
+
+        with self.assertRaisesRegex(SystemExit, "unexpected native library directive"):
+            VALIDATOR.require_closed_cargo_linkage(build)
+
+    def test_rejects_an_extra_native_library_search_directory(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace(
+            'println!("cargo:rustc-link-lib=dylib=stdc++");',
+            'println!("cargo:rustc-link-search=native=/tmp/untrusted");\n    '
+            'println!("cargo:rustc-link-lib=dylib=stdc++");',
+        )
+
+        with self.assertRaisesRegex(SystemExit, "unexpected native library search directive"):
+            VALIDATOR.require_closed_cargo_linkage(build)
+
 
 if __name__ == "__main__":
     unittest.main()
