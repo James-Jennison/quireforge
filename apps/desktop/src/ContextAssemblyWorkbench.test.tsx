@@ -96,4 +96,58 @@ describe("ContextAssemblyWorkbench", () => {
       screen.getByText(/selection changed\. prepare a new local-only review/i),
     ).toBeInTheDocument();
   });
+
+  it("discards stale project-scoped source results after the project changes", async () => {
+    let resolveFirst: ((value: { sources: unknown[] }) => void) | undefined;
+    const first = new Promise<{ sources: unknown[] }>((resolve) => {
+      resolveFirst = resolve;
+    });
+    bridge.loadDurableSources
+      .mockImplementationOnce(() => first)
+      .mockResolvedValueOnce({
+        sources: [
+          {
+            sourceId: "current-source",
+            title: "Current project source",
+            sourceClass: "durable-manual-text",
+            byteSize: 12,
+          },
+        ],
+      });
+
+    const view = render(
+      <ContextAssemblyWorkbench
+        projectId="019fbee6-476f-71b0-853c-f067657aa69c"
+        onClose={() => undefined}
+      />,
+    );
+    view.rerender(
+      <ContextAssemblyWorkbench
+        projectId="019fbee6-476f-71b0-853c-f067657aa69d"
+        onClose={() => undefined}
+      />,
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.getByLabelText(/current project source/i),
+      ).toBeInTheDocument(),
+    );
+    resolveFirst?.({
+      sources: [
+        {
+          sourceId: "stale-source",
+          title: "Stale project source",
+          sourceClass: "durable-manual-text",
+          byteSize: 12,
+        },
+      ],
+    });
+
+    await waitFor(() =>
+      expect(
+        screen.queryByLabelText(/stale project source/i),
+      ).not.toBeInTheDocument(),
+    );
+  });
 });

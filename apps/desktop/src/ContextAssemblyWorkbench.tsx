@@ -39,32 +39,80 @@ export function ContextAssemblyWorkbench({
     [busy, setBusy] = useState(false),
     [notice, setNotice] = useState(
       "Fictional local-only context review. Nothing is selected by default.",
-    );
+  );
   useEffect(() => {
-    if (!projectId) return;
+    let current = true;
+    setSources([]);
+    setTasks(null);
+    setTaskId(null);
+    setIncludePlan(false);
+    setReview(null);
+    setReviewCollectionId(null);
+    setReviewEvidenceIds([]);
+    setSelectedSources([]);
+    setSnapshot(null);
+    if (!projectId) return () => {
+      current = false;
+    };
     void loadDurableSources({ projectId })
-      .then((value) => setSources(value.sources))
-      .catch(() => setSources([]));
+      .then((value) => {
+        if (current) setSources(value.sources);
+      })
+      .catch(() => {
+        if (current) setSources([]);
+      });
     void loadTaskCatalog({
       projectId,
       query: null,
       includeArchived: false,
       selectedTaskId: null,
     })
-      .then((value) => setTasks(value))
-      .catch(() => setTasks(null));
+      .then((value) => {
+        if (current) setTasks(value);
+      })
+      .catch(() => {
+        if (current) setTasks(null);
+      });
+    return () => {
+      current = false;
+    };
   }, [projectId]);
   useEffect(() => {
-    if (!taskId) return;
+    let current = true;
+    if (!taskId) {
+      setReview(null);
+      return () => {
+        current = false;
+      };
+    }
     void loadLocalReview({ selectedCollectionId: null })
-      .then((value) => setReview(value))
-      .catch(() => setReview(null));
+      .then((value) => {
+        if (current) setReview(value);
+      })
+      .catch(() => {
+        if (current) setReview(null);
+      });
+    return () => {
+      current = false;
+    };
   }, [taskId]);
   useEffect(() => {
-    if (!reviewCollectionId) return;
+    let current = true;
+    if (!reviewCollectionId) {
+      return () => {
+        current = false;
+      };
+    }
     void loadLocalReview({ selectedCollectionId: reviewCollectionId })
-      .then((value) => setReview(value))
-      .catch(() => setReview(null));
+      .then((value) => {
+        if (current) setReview(value);
+      })
+      .catch(() => {
+        if (current) setReview(null);
+      });
+    return () => {
+      current = false;
+    };
   }, [reviewCollectionId]);
   const run = async (action: () => Promise<ContextAssemblySnapshot>) => {
     setBusy(true);
