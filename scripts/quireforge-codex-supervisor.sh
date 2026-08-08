@@ -18,7 +18,7 @@ readonly interval_seconds="${QUIRE_FORGE_SUPERVISOR_INTERVAL_SECONDS:-300}"
 readonly started_at="$(date --iso-8601=seconds)"
 
 usage() {
-  printf 'Usage: %s [--once] [--dry-run] [--worker] [--finalize-recovery SUBJECT PATH...]\n' "${0##*/}"
+  printf 'Usage: %s [--once] [--dry-run] [--self-test] [--worker] [--finalize-recovery SUBJECT PATH...]\n' "${0##*/}"
 }
 
 mode="watch"
@@ -29,6 +29,7 @@ elif [[ -n "${1:-}" ]]; then
   case "$1" in
     --once) mode="once" ;;
     --dry-run) mode="dry-run" ;;
+    --self-test) mode="self-test" ;;
     --worker) mode="worker" ;;
     -h|--help) usage; exit 0 ;;
     *) usage >&2; exit 64 ;;
@@ -153,14 +154,42 @@ run_host_validation() {
 
 require_clean_worktree() {
   if [[ -n "$(git -C "$repository_root" status --porcelain)" ]]; then
-    human_blocker "Worktree is not clean; preserve and resolve existing changes before a new task."
+    incomplete_task "Worktree is not clean; preserve existing changes before starting a task."
     return 1
   fi
 }
 
+incomplete_task() {
+  local reason="$1"
+  log "incomplete task: $reason"
+  write_status "Task incomplete" "failed" "not committed: $reason" "Preserve and resolve remaining changes, then restart the supervisor" "none"
+}
+
+has_untracked_changes() {
+  [[ -n "$(git -C "$repository_root" ls-files --others --exclude-standard)" ]]
+}
+
+post_push_completion_state() {
+  local head="$1" upstream="$2" worktree_status="$3"
+  if [[ "$head" != "$upstream" ]]; then
+    printf 'upstream-mismatch\n'
+  elif [[ -n "$worktree_status" ]]; then
+    printf 'uncommitted-changes\n'
+  else
+    printf 'aligned-and-clean\n'
+  fi
+}
+
+run_completion_state_self_test() {
+  [[ "$(post_push_completion_state same same '')" == "aligned-and-clean" ]] || return 1
+  [[ "$(post_push_completion_state local upstream '')" == "upstream-mismatch" ]] || return 1
+  [[ "$(post_push_completion_state same same '?? task-file')" == "uncommitted-changes" ]] || return 1
+  printf 'Supervisor completion-state checks passed.\n'
+}
+
 finalize_commit() {
-  local subject="$1" allow_remaining_changes="$2"
-  shift 2
+  local subject="$1"
+  shift
   local -a paths=("$@")
   if ! subject_is_safe "$subject"; then
     human_blocker "Codex emitted an unsafe or invalid commit subject."
@@ -186,11 +215,28 @@ finalize_commit() {
     human_blocker "Trusted outer Git push failed."
     return 1
   fi
-  if [[ "$(git -C "$repository_root" rev-parse HEAD)" != "$(git -C "$repository_root" rev-parse '@{u}')" ]] || { [[ "$allow_remaining_changes" != "true" ]] && [[ -n "$(git -C "$repository_root" status --porcelain)" ]]; }; then
-    human_blocker "Post-push repository alignment verification failed."
-    return 1
-  fi
-  return 0
+  local completion_state
+  completion_state="$(post_push_completion_state \
+    "$(git -C "$repository_root" rev-parse HEAD)" \
+    "$(git -C "$repository_root" rev-parse '@{u}')" \
+    "$(git -C "$repository_root" status --porcelain)")"
+  case "$completion_state" in
+    aligned-and-clean) return 0 ;;
+    upstream-mismatch)
+      write_status "Post-push upstream mismatch" "failed" "failed: local HEAD does not match its upstream" "Inspect the push result before restarting the supervisor" "none"
+      log "post-push upstream mismatch"
+      return 1
+      ;;
+    uncommitted-changes)
+      incomplete_task "Task changes remain uncommitted after a successful, aligned push."
+      return 1
+      ;;
+    *)
+      write_status "Post-push verification failed" "failed" "failed: unknown completion state" "Inspect the supervisor log before restarting" "none"
+      log "unknown post-push completion state: $completion_state"
+      return 1
+      ;;
+  esac
 }
 
 recovery_finalize() {
@@ -202,13 +248,17 @@ recovery_finalize() {
     [[ "$path" != /* && "$path" != *".."* ]] || { printf 'Unsafe recovery path.\n' >&2; exit 64; }
     git -C "$repository_root" ls-files --error-unmatch -- "$path" >/dev/null
   done
-  finalize_commit "$subject" true "$@"
+  finalize_commit "$subject" "$@"
 }
 
 if [[ "$mode" == "dry-run" ]]; then
   printf 'repository=%s\nstate=%s\nstatus=%s\nlog=%s\nworker_log=%s\nsentinel=%s\n' \
     "$repository_root" "$state_root" "$status_path" "$log_path" "$worker_log_path" "$sentinel_path"
   exit 0
+fi
+if [[ "$mode" == "self-test" ]]; then
+  run_completion_state_self_test
+  exit $?
 fi
 if [[ "$mode" == "recovery" ]]; then
   recovery_finalize "$@"
@@ -302,6 +352,11 @@ run_task() {
     rm -f -- "$result_path"
     return 0
   fi
+  if has_untracked_changes; then
+    incomplete_task "Task-created untracked changes remain; nothing was committed."
+    rm -f -- "$result_path"
+    return 1
+  fi
   mapfile -t host_requests < <(sed -n 's/^AUTOPILOT_HOST_VALIDATION:[[:space:]]*//p' "$result_path")
   local request
   for request in "${host_requests[@]}"; do
@@ -313,7 +368,7 @@ run_task() {
   done
   write_status "Trusted supervisor is validating, committing, and pushing task changes" "running" "sandbox checks and requested host validation passed" "Verify clean post-push alignment" "none"
   mapfile -t changed_paths < <(git -C "$repository_root" diff --name-only --diff-filter=ACDMRTUXB)
-  if ! finalize_commit "$subject" false "${changed_paths[@]}"; then
+  if ! finalize_commit "$subject" "${changed_paths[@]}"; then
     rm -f -- "$result_path"
     return 1
   fi

@@ -1,0 +1,40 @@
+"""Focused tests for the closed M63 llama.cpp build configuration guard."""
+
+from __future__ import annotations
+
+import importlib.util
+import unittest
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[2]
+SPEC = importlib.util.spec_from_file_location(
+    "validate_llama_cpp_vendor", ROOT / "scripts" / "validate_llama_cpp_vendor.py"
+)
+assert SPEC is not None and SPEC.loader is not None
+VALIDATOR = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(VALIDATOR)
+
+
+class CmakeOptionsTests(unittest.TestCase):
+    def test_reads_the_exact_closed_option_list(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+
+        self.assertEqual(VALIDATOR.cmake_options(build), VALIDATOR.EXPECTED_CMAKE_OPTIONS)
+
+    def test_rejects_a_missing_option_list(self) -> None:
+        with self.assertRaisesRegex(SystemExit, "option list is missing"):
+            VALIDATOR.cmake_options("fn main() {}")
+
+    def test_exposes_conflicting_or_extra_options(self) -> None:
+        build = '''const LLAMA_CPP_CMAKE_OPTIONS: &[&str] = &[
+            "-DGGML_CPU=ON",
+            "-DGGML_CUDA=ON",
+        ];'''
+
+        self.assertNotEqual(VALIDATOR.cmake_options(build), VALIDATOR.EXPECTED_CMAKE_OPTIONS)
+        self.assertIn("-DGGML_CUDA=ON", VALIDATOR.cmake_options(build))
+
+
+if __name__ == "__main__":
+    unittest.main()
