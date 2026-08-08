@@ -81,6 +81,20 @@ class CmakeOptionsTests(unittest.TestCase):
         with self.assertRaisesRegex(SystemExit, "environment list changed"):
             VALIDATOR.require_closed_cmake_environment(build)
 
+    def test_rejects_a_missing_cmake_project_include_scrub(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace('    "CMAKE_PROJECT_TOP_LEVEL_INCLUDES",\n', "")
+
+        with self.assertRaisesRegex(SystemExit, "environment list changed"):
+            VALIDATOR.require_closed_cmake_environment(build)
+
+    def test_rejects_a_missing_cmake_make_rules_override_scrub(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace('    "CMAKE_USER_MAKE_RULES_OVERRIDE_CXX",\n', "")
+
+        with self.assertRaisesRegex(SystemExit, "environment list changed"):
+            VALIDATOR.require_closed_cmake_environment(build)
+
     def test_rejects_a_missing_toolchain_environment_scrub(self) -> None:
         build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
         build = build.replace(
