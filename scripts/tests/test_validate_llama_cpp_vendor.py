@@ -157,6 +157,16 @@ class CmakeOptionsTests(unittest.TestCase):
         with self.assertRaisesRegex(SystemExit, "must apply only the approved option list once"):
             VALIDATOR.require_closed_cmake_invocation(build)
 
+    def test_rejects_an_unrecognized_cmake_configuration_argument_expression(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace(
+            '        .arg("-DCMAKE_BUILD_TYPE=Release");',
+            '        .arg("-DCMAKE_BUILD_TYPE=Release")\n        .arg(unapproved_option);',
+        )
+
+        with self.assertRaisesRegex(SystemExit, "unrecognized argument expression"):
+            VALIDATOR.require_verified_cmake_configure_arguments(build)
+
     def test_requires_the_closed_toolchain_environment_scrub(self) -> None:
         build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
 
@@ -463,6 +473,17 @@ class CmakeOptionsTests(unittest.TestCase):
         )
 
         with self.assertRaisesRegex(SystemExit, "must not use batched arguments"):
+            VALIDATOR.require_closed_cmake_build_invocation(build)
+
+    def test_rejects_an_unrecognized_cmake_build_argument_expression(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace(
+            '        .arg("llama");',
+            '        .arg("llama")\n        .arg(unapproved_target);',
+            1,
+        )
+
+        with self.assertRaisesRegex(SystemExit, "unrecognized argument expression"):
             VALIDATOR.require_closed_cmake_build_invocation(build)
 
     def test_rejects_a_cmake_build_without_the_explicit_release_configuration(self) -> None:

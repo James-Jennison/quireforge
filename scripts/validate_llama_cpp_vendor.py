@@ -357,6 +357,17 @@ def command_arguments(body: str) -> list[str]:
     ]
 
 
+def require_only_recognized_argument_calls(body: str, command_name: str) -> None:
+    recognized_arguments = command_arguments(body)
+    argument_calls = re.findall(
+        rf"^\s*(?:{command_name}\.)?\.arg\s*\(", body, flags=re.MULTILINE
+    )
+    require(
+        len(argument_calls) == len(recognized_arguments),
+        f"closed CMake {command_name} invocation includes an unrecognized argument expression",
+    )
+
+
 def require_verified_cmake_configure_arguments(build: str) -> None:
     configure_match = re.search(
         r"let mut configure\s*=\s*Command::new\(SYSTEM_CMAKE\);(?P<body>.*?)"
@@ -365,8 +376,10 @@ def require_verified_cmake_configure_arguments(build: str) -> None:
         flags=re.DOTALL,
     )
     require(configure_match is not None, "closed CMake configuration invocation is missing")
+    configure_body = configure_match.group("body")
+    require_only_recognized_argument_calls(configure_body, "configure")
     require(
-        command_arguments(configure_match.group("body"))
+        command_arguments(configure_body)
         == [
             "-S",
             "&source_dir",
@@ -389,7 +402,7 @@ def require_closed_cmake_invocation(build: str) -> None:
     require(configure_match is not None, "closed CMake configuration invocation is missing")
     configure_body = configure_match.group("body")
     require(
-        re.findall(r"configure\.args\(([^)]+)\);", configure_body)
+        re.findall(r"configure\.args\s*\(([^)]+)\);", configure_body)
         == ["LLAMA_CPP_CMAKE_OPTIONS"],
         "closed CMake configuration must apply only the approved option list once",
     )
@@ -467,9 +480,10 @@ def require_closed_cmake_build_invocation(build: str) -> None:
     require(build_match is not None, "closed CMake build invocation is missing")
     build_body = build_match.group("body")
     require(
-        not re.findall(r"build\.args\([^)]+\);", build_body),
+        not re.findall(r"\bbuild\.args\s*\(", build_body),
         "closed CMake build must not use batched arguments",
     )
+    require_only_recognized_argument_calls(build_body, "build")
     build_arguments = command_arguments(build_body)
     require(
         build_arguments
