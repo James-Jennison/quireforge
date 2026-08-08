@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -17,6 +18,28 @@ SPEC.loader.exec_module(VALIDATOR)
 
 
 class CmakeOptionsTests(unittest.TestCase):
+    def test_rejects_a_symlinked_vendored_source_root(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            temporary_root = Path(temporary_directory)
+            source = temporary_root / "source"
+            source.mkdir()
+            source_link = temporary_root / "source-link"
+            source_link.symlink_to(source, target_is_directory=True)
+
+            with self.assertRaisesRegex(SystemExit, "source root must be a real directory"):
+                VALIDATOR.require_regular_vendored_source_tree(source_link)
+
+    def test_rejects_a_symlink_inside_the_vendored_source_tree(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            source = Path(temporary_directory) / "source"
+            source.mkdir()
+            source_file = source / "source-file"
+            source_file.write_text("source", encoding="utf-8")
+            (source / "source-link").symlink_to(source_file)
+
+            with self.assertRaisesRegex(SystemExit, "vendored symlink found: source-link"):
+                VALIDATOR.require_regular_vendored_source_tree(source)
+
     def test_reads_the_exact_closed_option_list(self) -> None:
         build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
 

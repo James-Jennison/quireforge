@@ -6,6 +6,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import stat
 from pathlib import Path
 
 
@@ -123,10 +124,9 @@ EXPECTED_CLOSED_CMAKE_ENVIRONMENT = {
 
 
 def tree_digest() -> str:
+    require_regular_vendored_source_tree(VENDOR)
     digest = hashlib.sha256()
     paths = sorted(VENDOR.rglob("*"))
-    for path in paths:
-        require(not path.is_symlink(), f"vendored symlink found: {path.relative_to(VENDOR)}")
     for path in (path for path in paths if path.is_file() and path != MANIFEST):
         relative = path.relative_to(VENDOR).as_posix().encode("utf-8")
         digest.update(relative)
@@ -139,6 +139,22 @@ def tree_digest() -> str:
 def require(condition: bool, message: str) -> None:
     if not condition:
         raise SystemExit(f"M63 llama.cpp validation failed: {message}")
+
+
+def require_regular_vendored_source_tree(directory: Path) -> None:
+    root_metadata = directory.lstat()
+    require(
+        not stat.S_ISLNK(root_metadata.st_mode) and stat.S_ISDIR(root_metadata.st_mode),
+        "vendored source root must be a real directory",
+    )
+    for path in sorted(directory.rglob("*")):
+        metadata = path.lstat()
+        relative = path.relative_to(directory)
+        require(not stat.S_ISLNK(metadata.st_mode), f"vendored symlink found: {relative}")
+        require(
+            stat.S_ISDIR(metadata.st_mode) or stat.S_ISREG(metadata.st_mode),
+            f"vendored source contains a non-regular entry: {relative}",
+        )
 
 
 def cmake_options(build: str) -> set[str]:
@@ -338,6 +354,7 @@ def require_closed_cargo_linkage(build: str) -> None:
 
 
 def main() -> None:
+    require_regular_vendored_source_tree(VENDOR)
     manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
     require(set(manifest) == set(EXPECTED_MANIFEST) | {"vendored_tree_sha256"}, "unexpected provenance manifest schema")
     for field, expected in EXPECTED_MANIFEST.items():
