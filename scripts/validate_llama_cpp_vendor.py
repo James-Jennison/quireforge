@@ -124,6 +124,7 @@ EXPECTED_CLOSED_CMAKE_ENVIRONMENT = {
     "CMAKE_GENERATOR_PLATFORM",
     "CMAKE_GENERATOR_TOOLSET",
     "CMAKE_BUILD_PARALLEL_LEVEL",
+    "CMAKE_CONFIG_TYPE",
     "CMAKE_C_COMPILER",
     "CMAKE_CXX_COMPILER",
     "CMAKE_C_COMPILER_ARG1",
@@ -384,8 +385,9 @@ def require_closed_cmake_build_invocation(build: str) -> None:
     require(build_match is not None, "closed CMake build invocation is missing")
     build_arguments = command_arguments(build_match.group("body"))
     require(
-        build_arguments == ["--build", "&build_dir", "--target", "llama"],
-        "closed CMake build must target only the static llama library",
+        build_arguments
+        == ["--build", "&build_dir", "--config", "Release", "--target", "llama"],
+        "closed CMake build must use the Release configuration and target only the static llama library",
     )
 
 

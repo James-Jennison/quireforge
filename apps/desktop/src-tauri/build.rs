@@ -83,6 +83,7 @@ const CLOSED_CMAKE_ENVIRONMENT: &[&str] = &[
     "CMAKE_GENERATOR_PLATFORM",
     "CMAKE_GENERATOR_TOOLSET",
     "CMAKE_BUILD_PARALLEL_LEVEL",
+    "CMAKE_CONFIG_TYPE",
     "CMAKE_C_COMPILER",
     "CMAKE_CXX_COMPILER",
     "CMAKE_C_COMPILER_ARG1",
@@ -262,6 +263,8 @@ fn build_llama_cpp() {
     build
         .arg("--build")
         .arg(&build_dir)
+        .arg("--config")
+        .arg("Release")
         .arg("--target")
         .arg("llama");
     for variable in CLOSED_CMAKE_ENVIRONMENT {

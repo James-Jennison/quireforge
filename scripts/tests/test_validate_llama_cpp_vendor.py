@@ -125,6 +125,13 @@ class CmakeOptionsTests(unittest.TestCase):
         with self.assertRaisesRegex(SystemExit, "environment list changed"):
             VALIDATOR.require_closed_cmake_environment(build)
 
+    def test_rejects_a_missing_cmake_configuration_environment_scrub(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace('    "CMAKE_CONFIG_TYPE",\n', "")
+
+        with self.assertRaisesRegex(SystemExit, "environment list changed"):
+            VALIDATOR.require_closed_cmake_environment(build)
+
     def test_rejects_a_missing_compiler_target_environment_scrub(self) -> None:
         build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
         build = build.replace('    "CMAKE_CXX_COMPILER_TARGET",\n', "")
@@ -276,7 +283,14 @@ class CmakeOptionsTests(unittest.TestCase):
         build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
         build = build.replace('.arg("llama");', '.arg("all");', 1)
 
-        with self.assertRaisesRegex(SystemExit, "must target only"):
+        with self.assertRaisesRegex(SystemExit, "target only"):
+            VALIDATOR.require_closed_cmake_build_invocation(build)
+
+    def test_rejects_a_cmake_build_without_the_explicit_release_configuration(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace('        .arg("--config")\n        .arg("Release")\n', "")
+
+        with self.assertRaisesRegex(SystemExit, "must use the Release configuration"):
             VALIDATOR.require_closed_cmake_build_invocation(build)
 
     def test_requires_only_the_closed_static_cpu_linkage(self) -> None:
