@@ -61,6 +61,30 @@ class CmakeOptionsTests(unittest.TestCase):
         with self.assertRaisesRegex(SystemExit, "unguarded -D option"):
             VALIDATOR.require_closed_cmake_invocation(build)
 
+    def test_requires_the_closed_toolchain_environment_scrub(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+
+        VALIDATOR.require_closed_cmake_environment(build)
+
+    def test_rejects_an_incomplete_toolchain_environment_scrub(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace('    "CMAKE_TOOLCHAIN_FILE",\n', "")
+
+        with self.assertRaisesRegex(SystemExit, "environment list changed"):
+            VALIDATOR.require_closed_cmake_environment(build)
+
+    def test_rejects_a_missing_toolchain_environment_scrub(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace(
+            "    for variable in CLOSED_CMAKE_ENVIRONMENT {\n"
+            "        configure.env_remove(variable);\n"
+            "    }\n",
+            "",
+        )
+
+        with self.assertRaisesRegex(SystemExit, "must remove the inherited toolchain environment"):
+            VALIDATOR.require_closed_cmake_environment(build)
+
     def test_rejects_a_non_vendored_cmake_source(self) -> None:
         build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
         build = build.replace(

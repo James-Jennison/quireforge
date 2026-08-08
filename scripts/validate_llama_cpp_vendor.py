@@ -90,6 +90,25 @@ EXPECTED_LINK_SEARCH_DIRECTORIES = [
     'build_dir.join("ggml/src")',
 ]
 EXPECTED_STATIC_LIBRARIES = ["llama", "ggml", "ggml-base", "ggml-cpu"]
+EXPECTED_CLOSED_CMAKE_ENVIRONMENT = {
+    "CC",
+    "CXX",
+    "CPPFLAGS",
+    "CFLAGS",
+    "CXXFLAGS",
+    "LDFLAGS",
+    "CMAKE_GENERATOR",
+    "CMAKE_GENERATOR_INSTANCE",
+    "CMAKE_GENERATOR_PLATFORM",
+    "CMAKE_GENERATOR_TOOLSET",
+    "CMAKE_TOOLCHAIN_FILE",
+    "CMAKE_PREFIX_PATH",
+    "CMAKE_INCLUDE_PATH",
+    "CMAKE_LIBRARY_PATH",
+    "CMAKE_PROGRAM_PATH",
+    "CMAKE_FRAMEWORK_PATH",
+    "CMAKE_APPBUNDLE_PATH",
+}
 
 
 def tree_digest() -> str:
@@ -172,6 +191,38 @@ def require_closed_cmake_invocation(build: str) -> None:
     )
 
 
+def require_closed_cmake_environment(build: str) -> None:
+    environment_match = re.search(
+        r"const CLOSED_CMAKE_ENVIRONMENT: &\[&str\] = &\[(?P<variables>.*?)\];",
+        build,
+        flags=re.DOTALL,
+    )
+    require(environment_match is not None, "closed CMake environment list is missing")
+    environment_variables = set(re.findall(r'"([^"\\]+)"', environment_match.group("variables")))
+    require(
+        environment_variables == EXPECTED_CLOSED_CMAKE_ENVIRONMENT,
+        "closed CMake environment list changed",
+    )
+    configure_match = re.search(
+        r"let mut configure\s*=\s*Command::new\(\"cmake\"\);(?P<body>.*?)"
+        r"run\(\s*&mut configure,\s*\"closed llama\.cpp static-library configuration\",?\s*\);",
+        build,
+        flags=re.DOTALL,
+    )
+    require(configure_match is not None, "closed CMake configuration invocation is missing")
+    require(
+        len(
+            re.findall(
+                r"for variable in CLOSED_CMAKE_ENVIRONMENT \{\s*"
+                r"configure\.env_remove\(variable\);\s*\}",
+                configure_match.group("body"),
+            )
+        )
+        == 1,
+        "closed CMake configuration must remove the inherited toolchain environment exactly once",
+    )
+
+
 def require_closed_cmake_build_invocation(build: str) -> None:
     build_match = re.search(
         r"let mut build\s*=\s*Command::new\(\"cmake\"\);(?P<body>.*?)"
@@ -239,6 +290,7 @@ def main() -> None:
     require_verified_cmake_source(build)
     require_verified_cmake_configure_arguments(build)
     require_closed_cmake_invocation(build)
+    require_closed_cmake_environment(build)
     require_closed_cmake_build_invocation(build)
     require_closed_cargo_linkage(build)
     print("M63 llama.cpp vendor validation passed.")

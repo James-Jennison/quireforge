@@ -46,6 +46,26 @@ const LLAMA_CPP_CMAKE_OPTIONS: &[&str] = &[
     "-DGGML_RPC=OFF",
 ];
 
+const CLOSED_CMAKE_ENVIRONMENT: &[&str] = &[
+    "CC",
+    "CXX",
+    "CPPFLAGS",
+    "CFLAGS",
+    "CXXFLAGS",
+    "LDFLAGS",
+    "CMAKE_GENERATOR",
+    "CMAKE_GENERATOR_INSTANCE",
+    "CMAKE_GENERATOR_PLATFORM",
+    "CMAKE_GENERATOR_TOOLSET",
+    "CMAKE_TOOLCHAIN_FILE",
+    "CMAKE_PREFIX_PATH",
+    "CMAKE_INCLUDE_PATH",
+    "CMAKE_LIBRARY_PATH",
+    "CMAKE_PROGRAM_PATH",
+    "CMAKE_FRAMEWORK_PATH",
+    "CMAKE_APPBUNDLE_PATH",
+];
+
 fn run(command: &mut Command, description: &str) {
     let status = command
         .status()
@@ -74,6 +94,9 @@ fn build_llama_cpp() {
         .arg(&build_dir)
         .arg("-DCMAKE_BUILD_TYPE=Release");
     configure.args(LLAMA_CPP_CMAKE_OPTIONS);
+    for variable in CLOSED_CMAKE_ENVIRONMENT {
+        configure.env_remove(variable);
+    }
     run(
         &mut configure,
         "closed llama.cpp static-library configuration",
