@@ -208,6 +208,13 @@ class CmakeOptionsTests(unittest.TestCase):
         with self.assertRaisesRegex(SystemExit, "environment list changed"):
             VALIDATOR.require_closed_cmake_environment(build)
 
+    def test_rejects_a_missing_generic_binary_tool_environment_scrub(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace('    "CMAKE_LINKER",\n', "")
+
+        with self.assertRaisesRegex(SystemExit, "environment list changed"):
+            VALIDATOR.require_closed_cmake_environment(build)
+
     def test_rejects_a_missing_cmake_parallelism_environment_scrub(self) -> None:
         build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
         build = build.replace('    "CMAKE_BUILD_PARALLEL_LEVEL",\n', "")

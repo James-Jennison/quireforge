@@ -42,8 +42,9 @@ approved CMake subprocesses. Both subprocesses clear the inherited environment,
 then set only the fixed system build path and pass fixed system C/C++ compiler,
 archive-tool, and ranlib paths; this excludes compiler discovery and
 CMake-injection, language compiler target/argument/toolchain/archive-tool,
-compiler-launcher/initial-flag, GNU Make flag, compiler search/override, and
-dynamic-loader injection variables. CMake user and system package registries
+generic archive/linker/symbol-tool, compiler-launcher/initial-flag, GNU Make
+flag, compiler search/override, and dynamic-loader injection variables. CMake
+user and system package registries
 are disabled and no package registry entry can be exported. The build
 script compiles only the static `llama` target and its CPU ggml dependencies,
 after independently recomputing and matching the pinned vendored source-tree
