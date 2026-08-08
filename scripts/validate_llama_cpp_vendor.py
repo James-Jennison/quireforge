@@ -362,7 +362,9 @@ def require_build_time_vendored_tree_verification(build: str) -> None:
 
 
 def require_closed_build_process_boundary(build: str) -> None:
-    command_calls = re.findall(r"Command::new\s*\(", build)
+    command_calls = re.findall(
+        r"(?:std::)?(?:process::)?Command\s*::\s*new\s*\(", build
+    )
     require(
         len(command_calls) == 2
         and f'const SYSTEM_CMAKE: &str = "{EXPECTED_SYSTEM_CMAKE}";' in build
