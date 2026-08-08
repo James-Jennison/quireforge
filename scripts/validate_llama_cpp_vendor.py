@@ -84,6 +84,7 @@ EXPECTED_CMAKE_OPTIONS = {
     "-DGGML_RPC=OFF",
 }
 ALLOWED_CONFIGURE_DEFINITIONS = {"-DCMAKE_BUILD_TYPE=Release"}
+EXPECTED_SOURCE_DIR_EXPRESSION = 'manifest_dir.join("../../../third_party/llama.cpp")'
 
 
 def tree_digest() -> str:
@@ -115,6 +116,13 @@ def cmake_options(build: str) -> set[str]:
     return set(re.findall(r'"(-D[^"\\]+)"', match.group("options")))
 
 
+def require_verified_cmake_source(build: str) -> None:
+    require(
+        EXPECTED_SOURCE_DIR_EXPRESSION in build,
+        "CMake source is not the verified vendored llama.cpp tree",
+    )
+
+
 def require_closed_cmake_invocation(build: str) -> None:
     configure_match = re.search(
         r"let mut configure\s*=\s*Command::new\(\"cmake\"\);(?P<body>.*?)"
@@ -135,6 +143,26 @@ def require_closed_cmake_invocation(build: str) -> None:
     )
 
 
+def require_closed_cmake_build_invocation(build: str) -> None:
+    build_match = re.search(
+        r"let mut build\s*=\s*Command::new\(\"cmake\"\);(?P<body>.*?)"
+        r"run\(\s*&mut build,\s*\"closed llama\.cpp static-library build\",?\s*\);",
+        build,
+        flags=re.DOTALL,
+    )
+    require(build_match is not None, "closed CMake build invocation is missing")
+    build_arguments = [
+        literal or "&build_dir"
+        for literal, _build_dir in re.findall(
+            r'\.arg\((?:\"([^\"]+)\"|(&build_dir))\)', build_match.group("body")
+        )
+    ]
+    require(
+        build_arguments == ["--build", "&build_dir", "--target", "llama"],
+        "closed CMake build must target only the static llama library",
+    )
+
+
 def main() -> None:
     manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
     require(set(manifest) == set(EXPECTED_MANIFEST) | {"vendored_tree_sha256"}, "unexpected provenance manifest schema")
@@ -149,7 +177,9 @@ def main() -> None:
         require(path.suffix.lower() not in prohibited_suffixes, f"model artifact found: {path.relative_to(VENDOR)}")
     build = BUILD_SCRIPT.read_text(encoding="utf-8")
     require(cmake_options(build) == EXPECTED_CMAKE_OPTIONS, "closed CMake options changed")
+    require_verified_cmake_source(build)
     require_closed_cmake_invocation(build)
+    require_closed_cmake_build_invocation(build)
     print("M63 llama.cpp vendor validation passed.")
 
 

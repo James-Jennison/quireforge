@@ -61,6 +61,23 @@ class CmakeOptionsTests(unittest.TestCase):
         with self.assertRaisesRegex(SystemExit, "unguarded -D option"):
             VALIDATOR.require_closed_cmake_invocation(build)
 
+    def test_rejects_a_non_vendored_cmake_source(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace(
+            'manifest_dir.join("../../../third_party/llama.cpp")',
+            'manifest_dir.join("../../../third_party/not-llama.cpp")',
+        )
+
+        with self.assertRaisesRegex(SystemExit, "source is not the verified"):
+            VALIDATOR.require_verified_cmake_source(build)
+
+    def test_rejects_a_cmake_build_with_an_extra_target(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace('.arg("llama");', '.arg("all");', 1)
+
+        with self.assertRaisesRegex(SystemExit, "must target only"):
+            VALIDATOR.require_closed_cmake_build_invocation(build)
+
 
 if __name__ == "__main__":
     unittest.main()
