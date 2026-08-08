@@ -41,7 +41,7 @@ class CmakeOptionsTests(unittest.TestCase):
                 VALIDATOR.require_regular_vendored_source_tree(source)
 
     def test_rejects_common_model_artifact_formats(self) -> None:
-        for suffix in (".onnx", ".pt", ".pth", ".ckpt", ".tflite", ".mlmodel"):
+        for suffix in sorted(VALIDATOR.MODEL_ARTIFACT_SUFFIXES):
             with self.subTest(suffix=suffix), tempfile.TemporaryDirectory() as temporary_directory:
                 source = Path(temporary_directory)
                 artifact = source / f"unapproved-model{suffix}"
