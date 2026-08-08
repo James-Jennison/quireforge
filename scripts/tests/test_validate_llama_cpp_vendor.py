@@ -66,6 +66,21 @@ class CmakeOptionsTests(unittest.TestCase):
         self.assertIn("-DLLAMA_CURL=OFF", options)
         self.assertIn("-DGIT_EXE=", options)
 
+    def test_disables_cmake_user_and_system_package_registries(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+
+        options = VALIDATOR.cmake_options(build)
+
+        self.assertTrue(
+            {
+                "-DCMAKE_FIND_USE_PACKAGE_REGISTRY=OFF",
+                "-DCMAKE_FIND_USE_SYSTEM_PACKAGE_REGISTRY=OFF",
+                "-DCMAKE_FIND_PACKAGE_NO_PACKAGE_REGISTRY=ON",
+                "-DCMAKE_FIND_PACKAGE_NO_SYSTEM_PACKAGE_REGISTRY=ON",
+                "-DCMAKE_EXPORT_NO_PACKAGE_REGISTRY=ON",
+            }.issubset(options)
+        )
+
     def test_requires_fixed_system_compiler_and_archive_tool_paths(self) -> None:
         build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
 

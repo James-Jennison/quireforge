@@ -14,6 +14,8 @@ Its provenance is recorded in `third_party/llama.cpp/PROVENANCE.json`. Cargo
 configures only static `llama` and CPU `ggml` targets. All command-line,
 server, UI, examples, upstream test, benchmark, install, CURL, subprocess,
 network, dynamic-backend, and GPU/backend build options are explicitly off.
+CMake user and system package registries are disabled, and the build cannot
+export a package registry entry.
 
 No model artifact is included, acquired, hashed, packaged, or activated. The
 fixed application resource therefore remains unavailable until a separately
@@ -39,7 +41,8 @@ then set only the fixed system build path and pass fixed system C/C++ compiler,
 archive-tool, and ranlib paths; this excludes compiler discovery and
 CMake-injection, language compiler target/argument/toolchain/archive-tool,
 compiler-launcher/initial-flag, GNU Make flag, compiler search/override, and
-dynamic-loader injection variables. The build
+dynamic-loader injection variables. CMake user and system package registries
+are disabled and no package registry entry can be exported. The build
 script compiles only the static `llama` target and its CPU ggml dependencies,
 after independently
 recomputing and matching the pinned vendored source-tree SHA-256 before CMake
