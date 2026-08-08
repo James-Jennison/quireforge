@@ -123,6 +123,13 @@ fn build_llama_cpp() {
         source_dir.join("PROVENANCE.json").is_file(),
         "missing verified llama.cpp source"
     );
+    let source_metadata = fs::symlink_metadata(&source_dir).unwrap_or_else(|error| {
+        panic!("could not inspect verified llama.cpp source root: {error}")
+    });
+    assert!(
+        !source_metadata.file_type().is_symlink() && source_metadata.is_dir(),
+        "verified llama.cpp source root must be a real directory"
+    );
     register_vendored_source_tree(&source_dir);
 
     let mut configure = Command::new("cmake");

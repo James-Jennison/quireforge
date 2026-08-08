@@ -86,6 +86,7 @@ EXPECTED_CMAKE_OPTIONS = {
 ALLOWED_CONFIGURE_DEFINITIONS = {"-DCMAKE_BUILD_TYPE=Release"}
 EXPECTED_SOURCE_DIR_EXPRESSION = 'manifest_dir.join("../../../third_party/llama.cpp")'
 EXPECTED_SOURCE_TRACKER = "register_vendored_source_tree(&source_dir);"
+EXPECTED_SOURCE_ROOT_INSPECTION = "fs::symlink_metadata(&source_dir)"
 EXPECTED_LINK_SEARCH_DIRECTORIES = [
     'build_dir.join("src")',
     'build_dir.join("ggml/src")',
@@ -149,6 +150,14 @@ def require_verified_cmake_source(build: str) -> None:
 
 
 def require_complete_vendored_source_tracking(build: str) -> None:
+    require(
+        EXPECTED_SOURCE_ROOT_INSPECTION in build,
+        "build script does not inspect the vendored source root",
+    )
+    require(
+        "!source_metadata.file_type().is_symlink() && source_metadata.is_dir()" in build,
+        "build script must reject a symlinked or non-directory vendored source root",
+    )
     require(
         EXPECTED_SOURCE_TRACKER in build,
         "build script does not track every verified vendored source file",

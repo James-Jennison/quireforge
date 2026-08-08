@@ -112,6 +112,16 @@ class CmakeOptionsTests(unittest.TestCase):
 
         VALIDATOR.require_complete_vendored_source_tracking(build)
 
+    def test_rejects_a_symlinked_or_non_directory_vendored_source_root(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace(
+            "!source_metadata.file_type().is_symlink() && source_metadata.is_dir()",
+            "source_metadata.is_dir()",
+        )
+
+        with self.assertRaisesRegex(SystemExit, "must reject a symlinked or non-directory"):
+            VALIDATOR.require_complete_vendored_source_tracking(build)
+
     def test_rejects_directory_only_vendored_source_tracking(self) -> None:
         build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
         build = build.replace(
