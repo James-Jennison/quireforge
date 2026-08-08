@@ -146,6 +146,13 @@ It ratifies only the future M60 bundle, M61 reference, destination/model
 allowlist, typed-adapter, privacy, lifecycle, and fail-closed gates for a later
 limited-inference proposal; it authorizes no provider or local-runtime activity.
 
+M63's approved credential-free local-runtime direction is limited to an
+in-process, CPU-only llama.cpp static-library build for the fixed Qwen2.5-3B
+descriptor. The model is not present or active: until separately approved
+offline acquisition records its upstream revision and SHA-256, the route is
+unavailable and fails closed. The vendored source and build boundary are
+recorded in [MILESTONE_63_IN_PROCESS_LOCAL_RUNTIME_ADAPTER.md](MILESTONE_63_IN_PROCESS_LOCAL_RUNTIME_ADAPTER.md).
+
 M54 Local Review is complete at package/source commit
 `c4c2752466f36f791fde47edbc5c6b02b0e21320`, tagged
 `v0.1.0-beta.53`. Its beta.53 Debian pair passed pinned-container package,

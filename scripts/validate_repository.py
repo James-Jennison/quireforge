@@ -1220,6 +1220,20 @@ def validate() -> list[str]:
 
 def main() -> int:
     errors = validate()
+    llama_vendor_validator = ROOT / "scripts/validate_llama_cpp_vendor.py"
+    if llama_vendor_validator.is_file():
+        result = subprocess.run(
+            [sys.executable, str(llama_vendor_validator)],
+            cwd=ROOT,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if result.returncode:
+            errors.append(
+                "M63 llama.cpp vendor validation failed: "
+                + (result.stderr or result.stdout).strip()
+            )
     if errors:
         print("Repository validation failed:", file=sys.stderr)
         for error in errors:

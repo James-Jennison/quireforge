@@ -1563,6 +1563,12 @@ adapter, privacy, lifecycle, and fail-closed gates for a limited-inference
 proposal. It does not select or implement a provider, local runtime, model,
 credential, or successor milestone.
 
+**M63 approved source boundary:**
+[In-Process Credential-Free Local Runtime Adapter](MILESTONE_63_IN_PROCESS_LOCAL_RUNTIME_ADAPTER.md)
+vendors a verified, static, CPU-only llama.cpp source boundary for the one
+approved Qwen2.5-3B descriptor. It includes no model artifact, acquisition,
+activation, public runtime route, package, release, or deployment authority.
+
 **First implementation milestone source-complete:** [Provider Capability
 Registry Contracts](MILESTONE_PROVIDER_CAPABILITY_REGISTRY_CONTRACTS.md)
 implements private static fictional registry contracts and focused safeguards

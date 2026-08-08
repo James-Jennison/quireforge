@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "upstream_repository": "https://github.com/ggml-org/llama.cpp.git",
+  "release": "b10326",
+  "upstream_commit": "3653e6d6d547ec763317d9ecd0ace334a7e21359",
+  "signing_key_endpoint": "https://github.com/web-flow.gpg",
+  "required_fingerprint": "968479A1AFF927E37D1A566BB5690EEEBB952194",
+  "observed_fingerprint": "968479A1AFF927E37D1A566BB5690EEEBB952194",
+  "verification_result": "git verify-commit succeeded with a cryptographically good GitHub web-flow signature in a temporary keyring",
+  "source_archive_sha256": "fcfe5963280153da830bed0e1dd06fa9bcba1de27155dd2afc731ab05348f9de",
+  "vendored_tree_sha256": "9892c22a1a05adf0775615f1b845886f8f1be96ad7b6f71093103eaec546a511",
+  "tree_digest_scope": "all regular vendored files except this manifest; SHA-256 of sorted UTF-8 relative path, NUL, file SHA-256 bytes, NUL",
+  "license_identifier": "MIT",
+  "license_files": [
+    "LICENSE",
+    "licenses/LICENSE-jsonhpp"
+  ],
+  "acquisition_date": "2026-08-07",
+  "source_only": true,
+  "model_artifact_included": false
+}
