@@ -363,12 +363,16 @@ def require_build_time_vendored_tree_verification(build: str) -> None:
 
 def require_closed_build_process_boundary(build: str) -> None:
     command_calls = re.findall(
-        r"(?:std::)?(?:process::)?Command\s*::\s*new\s*\(", build
+        r"(?:std\s*::\s*)?(?:process\s*::\s*)?Command\s*::\s*new\s*\(",
+        build,
     )
     require(
         len(command_calls) == 2
         and f'const SYSTEM_CMAKE: &str = "{EXPECTED_SYSTEM_CMAKE}";' in build
-        and len(re.findall(r"Command::new\(SYSTEM_CMAKE\)", build)) == 2,
+        and len(
+            re.findall(r"Command\s*::\s*new\s*\(SYSTEM_CMAKE\)", build)
+        )
+        == 2,
         "build script must start only the two approved CMake subprocesses",
     )
 
