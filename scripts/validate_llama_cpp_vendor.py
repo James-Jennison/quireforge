@@ -85,6 +85,7 @@ EXPECTED_CMAKE_OPTIONS = {
 }
 ALLOWED_CONFIGURE_DEFINITIONS = {"-DCMAKE_BUILD_TYPE=Release"}
 EXPECTED_SOURCE_DIR_EXPRESSION = 'manifest_dir.join("../../../third_party/llama.cpp")'
+EXPECTED_SOURCE_TRACKER = "register_vendored_source_tree(&source_dir);"
 EXPECTED_LINK_SEARCH_DIRECTORIES = [
     'build_dir.join("src")',
     'build_dir.join("ggml/src")',
@@ -144,6 +145,36 @@ def require_verified_cmake_source(build: str) -> None:
     require(
         EXPECTED_SOURCE_DIR_EXPRESSION in build,
         "CMake source is not the verified vendored llama.cpp tree",
+    )
+
+
+def require_complete_vendored_source_tracking(build: str) -> None:
+    require(
+        EXPECTED_SOURCE_TRACKER in build,
+        "build script does not track every verified vendored source file",
+    )
+    require(
+        "println!(\"cargo:rerun-if-changed={}\", source_dir.display());" not in build,
+        "build script must not rely on directory-only vendored source tracking",
+    )
+    tracker_match = re.search(
+        r"fn register_vendored_source_tree\s*\(directory: &Path\)\s*\{(?P<body>.*?)\n\}",
+        build,
+        flags=re.DOTALL,
+    )
+    require(tracker_match is not None, "vendored source tracker is missing")
+    tracker = tracker_match.group("body")
+    require(
+        "!file_type.is_symlink()" in tracker,
+        "vendored source tracker must reject symlinks",
+    )
+    require(
+        "register_vendored_source_tree(&path);" in tracker,
+        "vendored source tracker must recurse into every directory",
+    )
+    require(
+        'println!("cargo:rerun-if-changed={}", path.display());' in tracker,
+        "vendored source tracker must register every regular file",
     )
 
 
@@ -303,6 +334,7 @@ def main() -> None:
     build = BUILD_SCRIPT.read_text(encoding="utf-8")
     require(cmake_options(build) == EXPECTED_CMAKE_OPTIONS, "closed CMake options changed")
     require_verified_cmake_source(build)
+    require_complete_vendored_source_tracking(build)
     require_closed_build_process_boundary(build)
     require_verified_cmake_configure_arguments(build)
     require_closed_cmake_invocation(build)

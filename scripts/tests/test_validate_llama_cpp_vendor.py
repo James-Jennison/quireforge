@@ -107,6 +107,28 @@ class CmakeOptionsTests(unittest.TestCase):
         with self.assertRaisesRegex(SystemExit, "source is not the verified"):
             VALIDATOR.require_verified_cmake_source(build)
 
+    def test_requires_complete_vendored_source_tracking(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+
+        VALIDATOR.require_complete_vendored_source_tracking(build)
+
+    def test_rejects_directory_only_vendored_source_tracking(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace(
+            "    register_vendored_source_tree(&source_dir);\n",
+            '    println!("cargo:rerun-if-changed={}", source_dir.display());\n',
+        )
+
+        with self.assertRaisesRegex(SystemExit, "does not track every"):
+            VALIDATOR.require_complete_vendored_source_tracking(build)
+
+    def test_rejects_a_tracker_without_symlink_rejection(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace("!file_type.is_symlink()", "file_type.is_symlink()")
+
+        with self.assertRaisesRegex(SystemExit, "must reject symlinks"):
+            VALIDATOR.require_complete_vendored_source_tracking(build)
+
     def test_rejects_an_unapproved_build_subprocess(self) -> None:
         build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
         build = build.replace(

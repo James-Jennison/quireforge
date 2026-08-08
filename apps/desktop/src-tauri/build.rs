@@ -1,4 +1,8 @@
-use std::{env, path::PathBuf, process::Command};
+use std::{
+    env, fs,
+    path::{Path, PathBuf},
+    process::Command,
+};
 
 const LLAMA_CPP_CMAKE_OPTIONS: &[&str] = &[
     "-DBUILD_SHARED_LIBS=OFF",
@@ -73,6 +77,41 @@ fn run(command: &mut Command, description: &str) {
     assert!(status.success(), "{description} failed with {status}");
 }
 
+fn register_vendored_source_tree(directory: &Path) {
+    let entries = fs::read_dir(directory)
+        .unwrap_or_else(|error| panic!("could not read verified llama.cpp source: {error}"));
+    let mut paths = entries
+        .map(|entry| {
+            entry.unwrap_or_else(|error| {
+                panic!("could not inspect verified llama.cpp source: {error}")
+            })
+        })
+        .collect::<Vec<_>>();
+    paths.sort_by_key(|entry| entry.file_name());
+
+    for entry in paths {
+        let path = entry.path();
+        let file_type = entry.file_type().unwrap_or_else(|error| {
+            panic!("could not classify verified llama.cpp source: {error}")
+        });
+        assert!(
+            !file_type.is_symlink(),
+            "verified llama.cpp source must not contain symlinks: {}",
+            path.display()
+        );
+        if file_type.is_dir() {
+            register_vendored_source_tree(&path);
+        } else if file_type.is_file() {
+            println!("cargo:rerun-if-changed={}", path.display());
+        } else {
+            panic!(
+                "verified llama.cpp source must contain only directories and regular files: {}",
+                path.display()
+            );
+        }
+    }
+}
+
 fn build_llama_cpp() {
     let manifest_dir =
         PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").expect("manifest directory"));
@@ -84,7 +123,7 @@ fn build_llama_cpp() {
         source_dir.join("PROVENANCE.json").is_file(),
         "missing verified llama.cpp source"
     );
-    println!("cargo:rerun-if-changed={}", source_dir.display());
+    register_vendored_source_tree(&source_dir);
 
     let mut configure = Command::new("cmake");
     configure
