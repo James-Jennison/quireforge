@@ -13,9 +13,10 @@ the `workspace-write` sandbox and never commits or pushes. After Codex reports
 the tested `AUTOPILOT_READY_TO_COMMIT` marker, the trusted outer supervisor runs
 the scoped diff check, stages only changed tracked task files, commits, pushes
 `main`, and verifies clean post-push alignment. A validation, commit, or push
-failure is a blocker. Codex stdout/stderr is line-filtered for secret-like and
-payload-like material, then written to `worker.log` and the tmux pane through
-the same `tee` pipeline. A real human-only blocker creates
+failure is a blocker. Codex stdout/stderr is reduced to a strict allowlist of
+operational metadata and `AUTOPILOT_PROGRESS` summaries before being written to
+`worker.log` and the tmux pane through the same `tee` pipeline; all other
+Codex output is withheld. A real human-only blocker creates
 `~/.local/state/quireforge-codex-supervisor/human-only-blocker` and stops the
 service; any other two consecutive no-progress runs also stop it. Remove the
 sentinel only after the blocker has received explicit owner direction, then
