@@ -314,6 +314,14 @@ def require_build_time_vendored_tree_verification(build: str) -> None:
         build.find(EXPECTED_SOURCE_DIGEST_VERIFIER) < first_cmake_command,
         "build script must verify the vendored source tree before constructing CMake commands",
     )
+    build_command = build.find("let mut build = Command::new(SYSTEM_CMAKE);")
+    require(build_command != -1, "closed CMake static-library build command is missing")
+    require(
+        len(re.findall(re.escape(EXPECTED_SOURCE_DIGEST_VERIFIER), build)) == 2
+        and build.find(EXPECTED_SOURCE_DIGEST_VERIFIER, first_cmake_command + 1)
+        < build_command,
+        "build script must re-verify the vendored source tree after configuration and before compiling",
+    )
 
 
 def require_closed_build_process_boundary(build: str) -> None:

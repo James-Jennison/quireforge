@@ -342,6 +342,33 @@ class CmakeOptionsTests(unittest.TestCase):
         with self.assertRaisesRegex(SystemExit, "before constructing CMake commands"):
             VALIDATOR.require_build_time_vendored_tree_verification(build)
 
+    def test_rejects_missing_post_configuration_vendored_tree_verification(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace(
+            "    verify_vendored_tree_digest(&source_dir);\n\n    let mut build = Command::new(SYSTEM_CMAKE);",
+            "    let mut build = Command::new(SYSTEM_CMAKE);",
+        )
+
+        with self.assertRaisesRegex(
+            SystemExit,
+            "re-verify the vendored source tree after configuration and before compiling",
+        ):
+            VALIDATOR.require_build_time_vendored_tree_verification(build)
+
+    def test_rejects_post_configuration_verification_after_compiler_construction(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace(
+            "    verify_vendored_tree_digest(&source_dir);\n\n    let mut build = Command::new(SYSTEM_CMAKE);",
+            "    let mut build = Command::new(SYSTEM_CMAKE);\n"
+            "    verify_vendored_tree_digest(&source_dir);",
+        )
+
+        with self.assertRaisesRegex(
+            SystemExit,
+            "re-verify the vendored source tree after configuration and before compiling",
+        ):
+            VALIDATOR.require_build_time_vendored_tree_verification(build)
+
     def test_rejects_a_symlinked_or_non_directory_vendored_source_root(self) -> None:
         build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
         build = build.replace(

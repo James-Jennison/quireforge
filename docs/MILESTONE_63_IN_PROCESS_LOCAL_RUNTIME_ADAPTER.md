@@ -44,9 +44,9 @@ compiler-launcher/initial-flag, GNU Make flag, compiler search/override, and
 dynamic-loader injection variables. CMake user and system package registries
 are disabled and no package registry entry can be exported. The build
 script compiles only the static `llama` target and its CPU ggml dependencies,
-after independently
-recomputing and matching the pinned vendored source-tree SHA-256 before CMake
-is invoked. Both CMake invocations use the fixed system CMake executable and a
+after independently recomputing and matching the pinned vendored source-tree
+SHA-256 before CMake configuration and again immediately before compilation.
+Both CMake invocations use the fixed system CMake executable and a
 fixed system tool path, rather than an inherited executable search path. It
 also rejects any Rust runtime-source reference to a `llama_*` or
 `ggml_*` C API, keeping the vendor integration build-only until a later adapter

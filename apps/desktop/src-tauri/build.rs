@@ -277,6 +277,11 @@ fn build_llama_cpp() {
         "closed llama.cpp static-library configuration",
     );
 
+    // Configuration reads the vendored CMake sources. Re-check their pinned
+    // content before the subsequent compiler invocation so a mid-build source
+    // change fails closed instead of compiling a different tree.
+    verify_vendored_tree_digest(&source_dir);
+
     let mut build = Command::new(SYSTEM_CMAKE);
     build
         .arg("--build")
