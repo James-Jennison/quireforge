@@ -38,6 +38,8 @@ approved CMake subprocesses. Both subprocesses strip inherited compiler,
 CMake-injection, and GNU Make flag variables. The build script compiles only
 the static `llama` target and its CPU ggml dependencies, after independently
 recomputing and matching the pinned vendored source-tree SHA-256 before CMake
-is invoked. Full repository
+is invoked. It also rejects any Rust runtime-source reference to a `llama_*` or
+`ggml_*` C API, keeping the vendor integration build-only until a later adapter
+is approved. Full repository
 validation remains required; no package or installed-host claim is made until
 the separately approved offline model input is available.

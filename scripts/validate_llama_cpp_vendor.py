@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 VENDOR = ROOT / "third_party" / "llama.cpp"
 MANIFEST = VENDOR / "PROVENANCE.json"
 BUILD_SCRIPT = ROOT / "apps" / "desktop" / "src-tauri" / "build.rs"
+NATIVE_SOURCE = ROOT / "apps" / "desktop" / "src-tauri" / "src"
 EXPECTED_COMMIT = "3653e6d6d547ec763317d9ecd0ace334a7e21359"
 EXPECTED_FINGERPRINT = "968479A1AFF927E37D1A566BB5690EEEBB952194"
 EXPECTED_MANIFEST = {
@@ -390,6 +391,22 @@ def require_closed_cargo_linkage(build: str) -> None:
     )
 
 
+def require_no_rust_runtime_api_usage(source_directory: Path) -> None:
+    """Keep the M63 source boundary build-only until a later adapter is approved."""
+    prohibited_api = re.compile(r"\b(?:llama|ggml)_[A-Za-z0-9_]*\b")
+    violations = []
+    for path in sorted(source_directory.rglob("*.rs")):
+        relative = path.relative_to(source_directory)
+        matches = sorted(set(prohibited_api.findall(path.read_text(encoding="utf-8"))))
+        if matches:
+            violations.append(f"{relative}: {', '.join(matches)}")
+    require(
+        not violations,
+        "Rust runtime source must not reference llama.cpp or ggml APIs: "
+        + "; ".join(violations),
+    )
+
+
 def main() -> None:
     require_regular_vendored_source_tree(VENDOR)
     manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
@@ -414,6 +431,7 @@ def main() -> None:
     require_closed_cmake_environment(build)
     require_closed_cmake_build_invocation(build)
     require_closed_cargo_linkage(build)
+    require_no_rust_runtime_api_usage(NATIVE_SOURCE)
     print("M63 llama.cpp vendor validation passed.")
 
 

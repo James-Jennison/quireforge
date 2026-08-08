@@ -270,6 +270,30 @@ class CmakeOptionsTests(unittest.TestCase):
         with self.assertRaisesRegex(SystemExit, "unexpected native library search directive"):
             VALIDATOR.require_closed_cargo_linkage(build)
 
+    def test_rejects_rust_runtime_references_to_vendored_c_apis(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            source = Path(temporary_directory)
+            (source / "runtime.rs").write_text(
+                "fn unavailable() { let _ = llama_model_load_from_file; }\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(
+                SystemExit,
+                "Rust runtime source must not reference llama.cpp or ggml APIs",
+            ):
+                VALIDATOR.require_no_rust_runtime_api_usage(source)
+
+    def test_allows_rust_source_without_vendored_c_api_references(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            source = Path(temporary_directory)
+            (source / "runtime.rs").write_text(
+                "fn unavailable() { let status = \"unavailable\"; }\n",
+                encoding="utf-8",
+            )
+
+            VALIDATOR.require_no_rust_runtime_api_usage(source)
+
 
 if __name__ == "__main__":
     unittest.main()
