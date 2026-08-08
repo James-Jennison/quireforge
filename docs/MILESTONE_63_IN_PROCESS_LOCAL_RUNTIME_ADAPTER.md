@@ -34,7 +34,8 @@ outcome-unknown, quarantine, and content-free-audit rules.
 `scripts/validate_llama_cpp_vendor.py` verifies the provenance manifest,
 deterministic source-tree digest, license evidence, absence of model artifacts,
 the closed CMake configuration, and that the build script starts only its two
-approved CMake subprocesses. Both subprocesses strip inherited compiler,
+approved CMake subprocesses. Both subprocesses clear the inherited environment,
+then set only the fixed system build path; this excludes compiler,
 CMake-injection, language compiler target/argument/toolchain/archive-tool,
 compiler-launcher/initial-flag, GNU Make flag, compiler search/override, and
 dynamic-loader injection variables. The build

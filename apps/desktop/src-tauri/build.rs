@@ -256,6 +256,7 @@ fn build_llama_cpp() {
         .arg(&build_dir)
         .arg("-DCMAKE_BUILD_TYPE=Release");
     configure.args(LLAMA_CPP_CMAKE_OPTIONS);
+    configure.env_clear();
     for variable in CLOSED_CMAKE_ENVIRONMENT {
         configure.env_remove(variable);
     }
@@ -273,6 +274,7 @@ fn build_llama_cpp() {
         .arg("Release")
         .arg("--target")
         .arg("llama");
+    build.env_clear();
     for variable in CLOSED_CMAKE_ENVIRONMENT {
         build.env_remove(variable);
     }

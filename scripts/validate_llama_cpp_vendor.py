@@ -376,6 +376,11 @@ def require_closed_cmake_environment(build: str) -> None:
         )
         require(command_match is not None, f"{description} invocation is missing")
         require(
+            len(re.findall(rf"{command_name}\.env_clear\(\);", command_match.group("body")))
+            == 1,
+            f"{description} must clear the inherited environment exactly once",
+        )
+        require(
             len(
                 re.findall(
                     rf"for variable in CLOSED_CMAKE_ENVIRONMENT \{{\s*"
