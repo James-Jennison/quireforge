@@ -132,6 +132,20 @@ class CmakeOptionsTests(unittest.TestCase):
         with self.assertRaisesRegex(SystemExit, "environment list changed"):
             VALIDATOR.require_closed_cmake_environment(build)
 
+    def test_rejects_a_missing_cmake_build_type_environment_scrub(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace('    "CMAKE_BUILD_TYPE",\n', "")
+
+        with self.assertRaisesRegex(SystemExit, "environment list changed"):
+            VALIDATOR.require_closed_cmake_environment(build)
+
+    def test_rejects_a_missing_cmake_configuration_types_environment_scrub(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace('    "CMAKE_CONFIGURATION_TYPES",\n', "")
+
+        with self.assertRaisesRegex(SystemExit, "environment list changed"):
+            VALIDATOR.require_closed_cmake_environment(build)
+
     def test_rejects_a_missing_compiler_target_environment_scrub(self) -> None:
         build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
         build = build.replace('    "CMAKE_CXX_COMPILER_TARGET",\n', "")
