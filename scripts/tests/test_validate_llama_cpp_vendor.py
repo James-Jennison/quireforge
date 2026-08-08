@@ -239,6 +239,19 @@ class CmakeOptionsTests(unittest.TestCase):
         with self.assertRaisesRegex(SystemExit, "does not verify the vendored source tree"):
             VALIDATOR.require_build_time_vendored_tree_verification(build)
 
+    def test_rejects_digest_verification_after_cmake_command_construction(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace(
+            "    verify_vendored_tree_digest(&source_dir);\n    register_vendored_source_tree(&source_dir);\n\n"
+            '    let mut configure = Command::new("cmake");',
+            "    register_vendored_source_tree(&source_dir);\n\n"
+            '    let mut configure = Command::new("cmake");\n'
+            "    verify_vendored_tree_digest(&source_dir);",
+        )
+
+        with self.assertRaisesRegex(SystemExit, "before constructing CMake commands"):
+            VALIDATOR.require_build_time_vendored_tree_verification(build)
+
     def test_rejects_a_symlinked_or_non_directory_vendored_source_root(self) -> None:
         build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
         build = build.replace(

@@ -284,6 +284,12 @@ def require_build_time_vendored_tree_verification(build: str) -> None:
         "use sha2::{Digest, Sha256};" in build,
         "build script must use SHA-256 for the vendored source digest",
     )
+    first_cmake_command = build.find('Command::new("cmake")')
+    require(first_cmake_command != -1, "closed CMake build commands are missing")
+    require(
+        build.find(EXPECTED_SOURCE_DIGEST_VERIFIER) < first_cmake_command,
+        "build script must verify the vendored source tree before constructing CMake commands",
+    )
 
 
 def require_closed_build_process_boundary(build: str) -> None:
