@@ -512,6 +512,23 @@ class CmakeOptionsTests(unittest.TestCase):
         with self.assertRaisesRegex(SystemExit, "must not alias Command"):
             VALIDATOR.require_closed_build_process_boundary(build)
 
+    def test_rejects_a_type_alias_through_an_imported_process_module(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace(
+            "use std::{",
+            "use std::process as process_alias;\n\nuse std::{",
+        ).replace(
+            "const EXPECTED_VENDORED_TREE_SHA256",
+            "type UnapprovedCommand = process_alias::Command;\n\n"
+            "const EXPECTED_VENDORED_TREE_SHA256",
+        ).replace(
+            '    tauri_build::build();',
+            '    UnapprovedCommand::new("curl");\n    tauri_build::build();',
+        )
+
+        with self.assertRaisesRegex(SystemExit, "must not alias Command"):
+            VALIDATOR.require_closed_build_process_boundary(build)
+
     def test_rejects_a_configuration_that_does_not_pass_the_verified_source(self) -> None:
         build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
         build = build.replace('.arg(&source_dir)', '.arg(&build_dir)', 1)

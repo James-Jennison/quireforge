@@ -370,8 +370,8 @@ def require_closed_build_process_boundary(build: str) -> None:
             build,
         )
         or re.search(
-            r"\btype\s+[A-Za-z_][A-Za-z0-9_]*\s*=\s*(?:std\s*::\s*)?"
-            r"(?:process\s*::\s*)?Command\s*;",
+            r"\btype\s+[A-Za-z_][A-Za-z0-9_]*\s*=\s*"
+            r"(?:[A-Za-z_][A-Za-z0-9_]*\s*::\s*)*Command\s*;",
             build,
         )
     )
