@@ -183,6 +183,17 @@ class CmakeOptionsTests(unittest.TestCase):
         with self.assertRaisesRegex(SystemExit, "must clear the inherited environment"):
             VALIDATOR.require_closed_cmake_environment(build)
 
+    def test_rejects_an_extra_configuration_environment_assignment(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace(
+            '    configure.env("PATH", CLOSED_BUILD_PATH);\n',
+            '    configure.env("PATH", CLOSED_BUILD_PATH);\n'
+            '    configure.env("CMAKE_TOOLCHAIN_FILE", "/tmp/untrusted");\n',
+        )
+
+        with self.assertRaisesRegex(SystemExit, "must not add environment assignments"):
+            VALIDATOR.require_closed_cmake_environment(build)
+
     def test_rejects_an_incomplete_toolchain_environment_scrub(self) -> None:
         build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
         build = build.replace('    "CMAKE_TOOLCHAIN_FILE",\n', "")

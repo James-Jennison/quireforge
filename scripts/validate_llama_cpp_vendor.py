@@ -418,6 +418,13 @@ def require_closed_cmake_environment(build: str) -> None:
             == 1,
             f"{description} must use the fixed system build path exactly once",
         )
+        environment_methods = re.findall(
+            rf"\b{command_name}\.(env[A-Za-z_]*)\s*\(", command_match.group("body")
+        )
+        require(
+            environment_methods == ["env_clear", "env_remove", "env"],
+            f"{description} must not add environment assignments",
+        )
 
 
 def require_closed_cmake_build_invocation(build: str) -> None:
