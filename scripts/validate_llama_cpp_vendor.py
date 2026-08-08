@@ -364,6 +364,21 @@ def require_build_time_vendored_tree_verification(build: str) -> None:
 
 
 def require_closed_build_process_boundary(build: str) -> None:
+    command_aliases = (
+        re.search(
+            r"\buse\b[\s\S]*?\bCommand\s+as\s+[A-Za-z_][A-Za-z0-9_]*",
+            build,
+        )
+        or re.search(
+            r"\btype\s+[A-Za-z_][A-Za-z0-9_]*\s*=\s*(?:std\s*::\s*)?"
+            r"(?:process\s*::\s*)?Command\s*;",
+            build,
+        )
+    )
+    require(
+        command_aliases is None,
+        "build script must not alias Command outside the approved CMake subprocesses",
+    )
     command_calls = re.findall(
         r"(?:std\s*::\s*)?(?:process\s*::\s*)?Command\s*::\s*new\s*\(",
         build,
