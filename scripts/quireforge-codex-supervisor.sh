@@ -94,17 +94,12 @@ is_sensitive_output() {
 }
 
 stream_worker_output() {
-  local line withheld=0
+  local line
   while IFS= read -r line || [[ -n "$line" ]]; do
     if is_sensitive_output "$line"; then
       printf '[redacted sensitive output]\n'
-      withheld=0
-    elif [[ "$line" =~ ^(OpenAI\ Codex|--------|workdir:|model:|provider:|approval:|sandbox:|reasoning\ effort:|reasoning\ summaries:|tokens\ used|AUTOPILOT_PROGRESS:) ]]; then
+    else
       printf '%s\n' "$line"
-      withheld=0
-    elif [[ $withheld -eq 0 ]]; then
-      printf '[withheld non-operational Codex output]\n'
-      withheld=1
     fi
   done
 }
@@ -238,7 +233,7 @@ run_task() {
   write_status "Sandboxed Codex is implementing the highest-value safe task" "running" "$validation" "Await tested ready-to-commit marker" "none"
   log "starting sandboxed Codex task at $before_head"
   if codex exec --ephemeral --sandbox workspace-write --cd "$repository_root" --output-last-message "$result_path" \
-    'Read and obey AGENTS.md first. Inspect docs/CURRENT_STATE.md, docs/ROADMAP.md, relevant ADRs, and git status. Implement the highest-value safe, reversible, local QuireForge task. You are sandboxed: never run git add, git commit, or git push. Do not access credentials or accounts, use browser sessions, connect to a real provider/runtime, transmit over the network, deploy, publish, take destructive action, make third-party commitments, or make irreversible product-direction decisions. Preserve the Linux Tauri desktop-app scope. Run the required relevant tests. During work, emit only concise non-secret, non-source progress summaries prefixed exactly AUTOPILOT_PROGRESS:. Do not expose credentials, source payloads, signing material, release artifacts, secret-bearing URLs, headers, or secrets in progress or final output. Only after all required tests pass and tracked task changes are ready, end your final response with exactly one machine-readable line: AUTOPILOT_READY_TO_COMMIT: <concise commit subject>. Otherwise state HUMAN_ONLY_BLOCKER: <concise reason> and do not emit an AUTOPILOT_READY_TO_COMMIT line.' \
+    'Read and obey AGENTS.md first. Inspect docs/CURRENT_STATE.md, docs/ROADMAP.md, relevant ADRs, and git status. Implement the highest-value safe, reversible, local QuireForge task. You are sandboxed: never run git add, git commit, or git push. Do not access credentials or accounts, use browser sessions, connect to a real provider/runtime, transmit over the network, deploy, publish, take destructive action, make third-party commitments, or make irreversible product-direction decisions. Preserve the Linux Tauri desktop-app scope. Run the required relevant tests. During work, emit concise progress summaries prefixed exactly AUTOPILOT_PROGRESS:. Never expose credentials, signing material, secret-bearing URLs, headers, or secrets in progress or final output. Only after all required tests pass and tracked task changes are ready, end your final response with exactly one machine-readable line: AUTOPILOT_READY_TO_COMMIT: <concise commit subject>. Otherwise state HUMAN_ONLY_BLOCKER: <concise reason> and do not emit an AUTOPILOT_READY_TO_COMMIT line.' \
     2>&1 | stream_worker_output | tee -a "$worker_log_path"; then
     :
   else
