@@ -248,7 +248,14 @@ def cmake_option_entries(build: str) -> list[str]:
         flags=re.DOTALL,
     )
     require(match is not None, "closed CMake option list is missing")
-    return re.findall(r'"(-D[^"\\]+)"', match.group("options"))
+    option_body = match.group("options")
+    entries = re.findall(r'"([^"\\]+)"', option_body)
+    remaining = re.sub(r'"[^"\\]+"', "", option_body)
+    require(
+        re.fullmatch(r"[\s,]*", remaining) is not None,
+        "closed CMake option list must contain only literal definitions",
+    )
+    return entries
 
 
 def require_closed_cmake_options(build: str) -> None:
