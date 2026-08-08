@@ -39,21 +39,20 @@ export function ContextAssemblyWorkbench({
     [busy, setBusy] = useState(false),
     [notice, setNotice] = useState(
       "Fictional local-only context review. Nothing is selected by default.",
-  );
+    );
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
   useEffect(() => {
     let current = true;
-    setSources([]);
-    setTasks(null);
-    setTaskId(null);
-    setIncludePlan(false);
-    setReview(null);
-    setReviewCollectionId(null);
-    setReviewEvidenceIds([]);
-    setSelectedSources([]);
-    setSnapshot(null);
-    if (!projectId) return () => {
-      current = false;
-    };
+    if (!projectId)
+      return () => {
+        current = false;
+      };
     void loadDurableSources({ projectId })
       .then((value) => {
         if (current) setSources(value.sources);
@@ -80,7 +79,6 @@ export function ContextAssemblyWorkbench({
   useEffect(() => {
     let current = true;
     if (!taskId) {
-      setReview(null);
       return () => {
         current = false;
       };
@@ -118,12 +116,16 @@ export function ContextAssemblyWorkbench({
     setBusy(true);
     try {
       const next = await action();
-      setSnapshot(next);
-      setNotice(next.diagnostic ?? next.auditState);
+      if (mounted.current) {
+        setSnapshot(next);
+        setNotice(next.diagnostic ?? next.auditState);
+      }
     } catch {
-      setNotice("Context assembly is unavailable; no dispatch occurred.");
+      if (mounted.current) {
+        setNotice("Context assembly is unavailable; no dispatch occurred.");
+      }
     } finally {
-      setBusy(false);
+      if (mounted.current) setBusy(false);
     }
   };
   const canConfirm =

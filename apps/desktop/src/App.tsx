@@ -4580,6 +4580,7 @@ export default function App({
                         }
                       >
                         <ContextAssemblyWorkbench
+                          key={currentProject?.id ?? "no-project"}
                           projectId={currentProject?.id ?? null}
                           projectLabel={currentProject?.displayName ?? null}
                           onClose={() => setContextAssemblyWorkbenchOpen(false)}

@@ -117,12 +117,14 @@ describe("ContextAssemblyWorkbench", () => {
 
     const view = render(
       <ContextAssemblyWorkbench
+        key="019fbee6-476f-71b0-853c-f067657aa69c"
         projectId="019fbee6-476f-71b0-853c-f067657aa69c"
         onClose={() => undefined}
       />,
     );
     view.rerender(
       <ContextAssemblyWorkbench
+        key="019fbee6-476f-71b0-853c-f067657aa69d"
         projectId="019fbee6-476f-71b0-853c-f067657aa69d"
         onClose={() => undefined}
       />,
@@ -149,5 +151,67 @@ describe("ContextAssemblyWorkbench", () => {
         screen.queryByLabelText(/stale project source/i),
       ).not.toBeInTheDocument(),
     );
+  });
+
+  it("discards a stale prepared bundle when the project scope changes", async () => {
+    let resolvePrepare:
+      | ((
+          value: Awaited<ReturnType<typeof bridge.prepareContextAssembly>>,
+        ) => void)
+      | undefined;
+    bridge.prepareContextAssembly.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolvePrepare = resolve;
+        }),
+    );
+    const view = render(
+      <ContextAssemblyWorkbench
+        key="019fbee6-476f-71b0-853c-f067657aa69c"
+        projectId="019fbee6-476f-71b0-853c-f067657aa69c"
+        onClose={() => undefined}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText(/explicit user instruction/i), {
+      target: { value: "Review this selection" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /prepare review/i }));
+
+    view.rerender(
+      <ContextAssemblyWorkbench
+        key="019fbee6-476f-71b0-853c-f067657aa69d"
+        projectId="019fbee6-476f-71b0-853c-f067657aa69d"
+        onClose={() => undefined}
+      />,
+    );
+    resolvePrepare?.({
+      schemaVersion: 1,
+      fictionalLocalOnly: true,
+      sink: "fictional-local-context-sink-v1",
+      state: "prepared",
+      projectId: "019fbee6-476f-71b0-853c-f067657aa69c",
+      taskId: null,
+      bundleId: "019fbee6-476f-71b0-853c-f067657aa69b",
+      authorizationId: null,
+      bundleDigest:
+        "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      expiresAtMs: 1,
+      items: [],
+      totalBytes: 12,
+      estimatedTokens: 3,
+      exclusions: [],
+      auditState: "prepared",
+      diagnostic: null,
+    });
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /prepare review/i }),
+      ).toBeDisabled(),
+    );
+    expect(
+      screen.queryByLabelText(/prepared context summary/i),
+    ).not.toBeInTheDocument();
   });
 });
