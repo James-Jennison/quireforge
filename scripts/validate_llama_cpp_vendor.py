@@ -147,6 +147,17 @@ def require_verified_cmake_source(build: str) -> None:
     )
 
 
+def require_closed_build_process_boundary(build: str) -> None:
+    command_calls = re.findall(r"Command::new\s*\(", build)
+    command_executables = re.findall(
+        r'Command::new\s*\(\s*"([^"\\]+)"\s*\)', build
+    )
+    require(
+        len(command_calls) == 2 and command_executables == ["cmake", "cmake"],
+        "build script must start only the two approved CMake subprocesses",
+    )
+
+
 def command_arguments(body: str) -> list[str]:
     return [
         literal or variable
@@ -292,6 +303,7 @@ def main() -> None:
     build = BUILD_SCRIPT.read_text(encoding="utf-8")
     require(cmake_options(build) == EXPECTED_CMAKE_OPTIONS, "closed CMake options changed")
     require_verified_cmake_source(build)
+    require_closed_build_process_boundary(build)
     require_verified_cmake_configure_arguments(build)
     require_closed_cmake_invocation(build)
     require_closed_cmake_environment(build)
