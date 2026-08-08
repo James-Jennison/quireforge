@@ -113,7 +113,10 @@ cache tests cover reuse, tamper eviction, and unsafe cache-name rejection.
 It uses isolated ignored caches, no personal Codex home or credentials, no live
 model call, no host package installation, and no local Vite server.
 
-The dependency-free source-contract subset is also part of `pnpm validate`:
+The dependency-free source-contract subset is also part of `pnpm validate`.
+It includes the package/release checks and the M63 vendored llama.cpp
+configuration-guard mutation tests; neither builds a model artifact nor starts
+a runtime:
 
 ```bash
 pnpm package:test
