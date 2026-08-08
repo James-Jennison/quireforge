@@ -353,7 +353,14 @@ def require_verified_cmake_configure_arguments(build: str) -> None:
     require(configure_match is not None, "closed CMake configuration invocation is missing")
     require(
         command_arguments(configure_match.group("body"))
-        == ["-S", "&source_dir", "-B", "&build_dir", "-DCMAKE_BUILD_TYPE=Release"],
+        == [
+            "-S",
+            "&source_dir",
+            "-B",
+            "&build_dir",
+            "--fresh",
+            "-DCMAKE_BUILD_TYPE=Release",
+        ],
         "closed CMake configuration must use only the verified source and private build directory",
     )
 

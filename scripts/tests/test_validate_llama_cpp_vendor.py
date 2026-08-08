@@ -423,6 +423,13 @@ class CmakeOptionsTests(unittest.TestCase):
         with self.assertRaisesRegex(SystemExit, "must use only the verified source"):
             VALIDATOR.require_verified_cmake_configure_arguments(build)
 
+    def test_rejects_a_configuration_that_reuses_a_cmake_cache(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace('        .arg("--fresh")\n', "")
+
+        with self.assertRaisesRegex(SystemExit, "must use only the verified source"):
+            VALIDATOR.require_verified_cmake_configure_arguments(build)
+
     def test_rejects_a_cmake_build_with_an_extra_target(self) -> None:
         build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
         build = build.replace('.arg("llama");', '.arg("all");', 1)

@@ -16,6 +16,8 @@ server, UI, examples, upstream test, benchmark, install, CURL, subprocess,
 network, dynamic-backend, and GPU/backend build options are explicitly off.
 CMake user and system package registries are disabled, and the build cannot
 export a package registry entry.
+Each configuration starts with CMake's `--fresh` mode, so generated cache
+state cannot add configuration outside the fixed closed option list.
 
 No model artifact is included, acquired, hashed, packaged, or activated. The
 fixed application resource therefore remains unavailable until a separately
@@ -46,6 +48,8 @@ are disabled and no package registry entry can be exported. The build
 script compiles only the static `llama` target and its CPU ggml dependencies,
 after independently recomputing and matching the pinned vendored source-tree
 SHA-256 before CMake configuration and again immediately before compilation.
+Configuration starts with `--fresh`, discarding prior generated CMake cache
+state before the fixed closed configuration is evaluated.
 Both CMake invocations use the fixed system CMake executable and a
 fixed system tool path, rather than an inherited executable search path. It
 also rejects any Rust runtime-source reference to a `llama_*` or

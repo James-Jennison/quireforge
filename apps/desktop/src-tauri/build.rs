@@ -265,6 +265,10 @@ fn build_llama_cpp() {
         .arg(&source_dir)
         .arg("-B")
         .arg(&build_dir)
+        // Discard any cached CMake configuration in Cargo's generated output
+        // directory. The closed options below must be the complete build
+        // configuration, rather than inheriting a prior cache entry.
+        .arg("--fresh")
         .arg("-DCMAKE_BUILD_TYPE=Release");
     configure.args(LLAMA_CPP_CMAKE_OPTIONS);
     configure.env_clear();
