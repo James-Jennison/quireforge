@@ -34,7 +34,8 @@ outcome-unknown, quarantine, and content-free-audit rules.
 `scripts/validate_llama_cpp_vendor.py` verifies the provenance manifest,
 deterministic source-tree digest, license evidence, absence of model artifacts,
 the closed CMake configuration, and that the build script starts only its two
-approved CMake subprocesses. The build script compiles only the static `llama`
-target and its CPU ggml dependencies. Full repository validation remains
-required; no package or installed-host claim is made until the separately
-approved offline model input is available.
+approved CMake subprocesses. Both subprocesses strip inherited compiler,
+CMake-injection, and GNU Make flag variables. The build script compiles only
+the static `llama` target and its CPU ggml dependencies. Full repository
+validation remains required; no package or installed-host claim is made until
+the separately approved offline model input is available.

@@ -77,6 +77,9 @@ const CLOSED_CMAKE_ENVIRONMENT: &[&str] = &[
     "CMAKE_USER_MAKE_RULES_OVERRIDE",
     "CMAKE_USER_MAKE_RULES_OVERRIDE_C",
     "CMAKE_USER_MAKE_RULES_OVERRIDE_CXX",
+    "MAKEFLAGS",
+    "MFLAGS",
+    "GNUMAKEFLAGS",
 ];
 
 fn run(command: &mut Command, description: &str) {
