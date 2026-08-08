@@ -117,6 +117,40 @@ human_blocker() {
   write_status "Autonomous task blocked" "blocked" "failed" "Resolve the blocker, remove the sentinel, then restart" "$reason"
 }
 
+host_validation_is_allowed() {
+  # Keep this list deliberately exact: worker output must never become a shell
+  # command channel. Add an entry only after it is approved for local host use.
+  case "$1" in
+    "pnpm test:e2e") return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+run_host_validation() {
+  local command="$1"
+  if ! host_validation_is_allowed "$command"; then
+    human_blocker "Codex requested a host validation command outside the approved allowlist."
+    return 2
+  fi
+
+  write_status "Trusted supervisor is running host validation" "running" "running: $command" "Await host validation before commit" "none"
+  log "running approved host validation: $command"
+  case "$command" in
+    "pnpm test:e2e")
+      if pnpm test:e2e 2>&1 | stream_worker_output | tee -a "$worker_log_path"; then
+        write_status "Trusted supervisor completed host validation" "running" "passed: $command" "Commit and push the validated task changes" "none"
+        log "approved host validation passed: $command"
+        return 0
+      fi
+      ;;
+  esac
+  # A host test failure is actionable validation feedback, not a human-only
+  # block. Do not create the sentinel unless a real hard-stop is reported.
+  write_status "Host validation failed" "failed" "failed: $command" "Fix the validation failure, then restart the supervisor" "none"
+  log "approved host validation failed: $command"
+  return 1
+}
+
 require_clean_worktree() {
   if [[ -n "$(git -C "$repository_root" status --porcelain)" ]]; then
     human_blocker "Worktree is not clean; preserve and resolve existing changes before a new task."
@@ -226,14 +260,15 @@ record_no_progress() {
 }
 
 run_task() {
-  local before_head result_path exit_code=0 validation="not reported" subject
+  local before_head result_path exit_code=0 validation="not reported" subject validation_failure
+  local -a host_requests
   require_clean_worktree || return 1
   before_head="$(git -C "$repository_root" rev-parse HEAD)"
   result_path="$state_root/last-message.$(date +%s).txt"
   write_status "Sandboxed Codex is implementing the highest-value safe task" "running" "$validation" "Await tested ready-to-commit marker" "none"
   log "starting sandboxed Codex task at $before_head"
   if codex exec --ephemeral --sandbox workspace-write --cd "$repository_root" --output-last-message "$result_path" \
-    'Read and obey AGENTS.md first. Inspect docs/CURRENT_STATE.md, docs/ROADMAP.md, relevant ADRs, and git status. Implement the highest-value safe, reversible, local QuireForge task. You are sandboxed: never run git add, git commit, or git push. Do not access credentials or accounts, use browser sessions, connect to a real provider/runtime, transmit over the network, deploy, publish, take destructive action, make third-party commitments, or make irreversible product-direction decisions. Preserve the Linux Tauri desktop-app scope. Run the required relevant tests. During work, emit concise progress summaries prefixed exactly AUTOPILOT_PROGRESS:. Never expose credentials, signing material, secret-bearing URLs, headers, or secrets in progress or final output. Only after all required tests pass and tracked task changes are ready, end your final response with exactly one machine-readable line: AUTOPILOT_READY_TO_COMMIT: <concise commit subject>. Otherwise state HUMAN_ONLY_BLOCKER: <concise reason> and do not emit an AUTOPILOT_READY_TO_COMMIT line.' \
+    'Read and obey AGENTS.md first. Inspect docs/CURRENT_STATE.md, docs/ROADMAP.md, relevant ADRs, and git status. Implement the highest-value safe, reversible, local QuireForge task. You are sandboxed: never run git add, git commit, or git push. Do not access credentials or accounts, use browser sessions, connect to a real provider/runtime, transmit over the network, deploy, publish, take destructive action, make third-party commitments, or make irreversible product-direction decisions. Preserve the Linux Tauri desktop-app scope. Run focused unit tests, type-check, lint, and formatting checks that work inside this sandbox. Never run pnpm test:e2e, Playwright, or any browser or host-listener E2E command in the sandbox. If host validation is required, emit one exact line per required command before the ready marker: AUTOPILOT_HOST_VALIDATION: pnpm test:e2e. During work, emit concise progress summaries prefixed exactly AUTOPILOT_PROGRESS:. Never expose credentials, signing material, secret-bearing URLs, headers, or secrets in progress or final output. Only after sandbox-safe checks pass, requested host validation has been declared, and tracked task changes are ready, end your final response with exactly one machine-readable line: AUTOPILOT_READY_TO_COMMIT: <concise commit subject>. If ordinary validation fails, state AUTOPILOT_VALIDATION_FAILED: <concise reason> and do not emit ready. State HUMAN_ONLY_BLOCKER: <concise reason> only for credentials, production access, public release, destructive action, third-party commitment, browser/account access, or a genuinely irreversible product-direction decision.' \
     2>&1 | stream_worker_output | tee -a "$worker_log_path"; then
     :
   else
@@ -244,8 +279,16 @@ run_task() {
     rm -f -- "$result_path"
     return 1
   fi
+  validation_failure="$( { grep '^AUTOPILOT_VALIDATION_FAILED:' "$result_path" 2>/dev/null || true; } | tail -n 1 | sed 's/^AUTOPILOT_VALIDATION_FAILED:[[:space:]]*//')"
+  if [[ -n "$validation_failure" ]]; then
+    write_status "Sandboxed task validation failed" "failed" "failed: $validation_failure" "Fix the validation failure, then restart the supervisor" "none"
+    log "sandboxed task validation failed: $validation_failure"
+    rm -f -- "$result_path"
+    return 1
+  fi
   if [[ $exit_code -ne 0 ]]; then
-    human_blocker "Sandboxed Codex exited with status $exit_code."
+    write_status "Sandboxed Codex task failed" "failed" "failed: Codex exited with status $exit_code" "Inspect the worker log, fix the task, then restart the supervisor" "none"
+    log "sandboxed Codex exited with status $exit_code"
     rm -f -- "$result_path"
     return 1
   fi
@@ -259,7 +302,16 @@ run_task() {
     rm -f -- "$result_path"
     return 0
   fi
-  write_status "Trusted supervisor is validating, committing, and pushing task changes" "running" "tests passed according to Codex ready marker" "Verify clean post-push alignment" "none"
+  mapfile -t host_requests < <(sed -n 's/^AUTOPILOT_HOST_VALIDATION:[[:space:]]*//p' "$result_path")
+  local request
+  for request in "${host_requests[@]}"; do
+    [[ -n "$request" ]] || continue
+    if ! run_host_validation "$request"; then
+      rm -f -- "$result_path"
+      return 1
+    fi
+  done
+  write_status "Trusted supervisor is validating, committing, and pushing task changes" "running" "sandbox checks and requested host validation passed" "Verify clean post-push alignment" "none"
   mapfile -t changed_paths < <(git -C "$repository_root" diff --name-only --diff-filter=ACDMRTUXB)
   if ! finalize_commit "$subject" false "${changed_paths[@]}"; then
     rm -f -- "$result_path"

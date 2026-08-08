@@ -9,11 +9,16 @@ Its atomically replaced, non-secret status snapshot is
 
 It reads `AGENTS.md` through Codex, uses `flock` so only one supervisor task
 runs, and requires a clean worktree before starting a new task. Codex stays in
-the `workspace-write` sandbox and never commits or pushes. After Codex reports
-the tested `AUTOPILOT_READY_TO_COMMIT` marker, the trusted outer supervisor runs
-the scoped diff check, stages only changed tracked task files, commits, pushes
-`main`, and verifies clean post-push alignment. A validation, commit, or push
-failure is a blocker. Codex stdout/stderr is written near-raw to `worker.log`
+the `workspace-write` sandbox and never commits or pushes. It runs focused
+tests, type-checking, linting, and formatting there, but never browser or
+host-listener E2E checks. When needed it requests an exact
+`AUTOPILOT_HOST_VALIDATION: pnpm test:e2e` marker before its
+`AUTOPILOT_READY_TO_COMMIT` marker. The trusted outer supervisor accepts only
+that explicit allowlisted command, runs it on the local host, then runs the
+scoped diff check, stages only changed tracked task files, commits, pushes
+`main`, and verifies clean post-push alignment. A host test failure is a failed
+validation state, not a human-only blocker; it becomes a sentinel only for a
+real hard-stop. Codex stdout/stderr is written near-raw to `worker.log`
 and the tmux pane through the same `tee` pipeline. Only secret-like output is
 redacted; source and ordinary task output remain visible for local monitoring.
 A real human-only blocker creates
