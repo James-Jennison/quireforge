@@ -191,6 +191,16 @@ class CmakeOptionsTests(unittest.TestCase):
         with self.assertRaisesRegex(SystemExit, "does not track every"):
             VALIDATOR.require_complete_vendored_source_tracking(build)
 
+    def test_rejects_a_tracker_without_directory_change_tracking(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace(
+            '    println!("cargo:rerun-if-changed={}", directory.display());\n',
+            "",
+        )
+
+        with self.assertRaisesRegex(SystemExit, "must register every directory"):
+            VALIDATOR.require_complete_vendored_source_tracking(build)
+
     def test_rejects_a_tracker_without_symlink_rejection(self) -> None:
         build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
         build = build.replace("!file_type.is_symlink()", "file_type.is_symlink()")

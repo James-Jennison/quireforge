@@ -90,6 +90,7 @@ fn run(command: &mut Command, description: &str) {
 }
 
 fn register_vendored_source_tree(directory: &Path) {
+    println!("cargo:rerun-if-changed={}", directory.display());
     let entries = fs::read_dir(directory)
         .unwrap_or_else(|error| panic!("could not read verified llama.cpp source: {error}"));
     let mut paths = entries

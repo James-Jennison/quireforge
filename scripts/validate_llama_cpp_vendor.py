@@ -210,6 +210,10 @@ def require_complete_vendored_source_tracking(build: str) -> None:
         "vendored source tracker must recurse into every directory",
     )
     require(
+        'println!("cargo:rerun-if-changed={}", directory.display());' in tracker,
+        "vendored source tracker must register every directory",
+    )
+    require(
         'println!("cargo:rerun-if-changed={}", path.display());' in tracker,
         "vendored source tracker must register every regular file",
     )
