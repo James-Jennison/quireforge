@@ -54,12 +54,16 @@ fn run(command: &mut Command, description: &str) {
 }
 
 fn build_llama_cpp() {
-    let manifest_dir = PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").expect("manifest directory"));
+    let manifest_dir =
+        PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").expect("manifest directory"));
     let source_dir = manifest_dir.join("../../../third_party/llama.cpp");
     let output_dir = PathBuf::from(env::var_os("OUT_DIR").expect("Cargo output directory"));
     let build_dir = output_dir.join("m63-llama.cpp-build");
 
-    assert!(source_dir.join("PROVENANCE.json").is_file(), "missing verified llama.cpp source");
+    assert!(
+        source_dir.join("PROVENANCE.json").is_file(),
+        "missing verified llama.cpp source"
+    );
     println!("cargo:rerun-if-changed={}", source_dir.display());
 
     let mut configure = Command::new("cmake");
@@ -70,7 +74,10 @@ fn build_llama_cpp() {
         .arg(&build_dir)
         .arg("-DCMAKE_BUILD_TYPE=Release");
     configure.args(LLAMA_CPP_CMAKE_OPTIONS);
-    run(&mut configure, "closed llama.cpp static-library configuration");
+    run(
+        &mut configure,
+        "closed llama.cpp static-library configuration",
+    );
 
     let mut build = Command::new("cmake");
     build
@@ -80,8 +87,14 @@ fn build_llama_cpp() {
         .arg("llama");
     run(&mut build, "closed llama.cpp static-library build");
 
-    println!("cargo:rustc-link-search=native={}", build_dir.join("src").display());
-    println!("cargo:rustc-link-search=native={}", build_dir.join("ggml/src").display());
+    println!(
+        "cargo:rustc-link-search=native={}",
+        build_dir.join("src").display()
+    );
+    println!(
+        "cargo:rustc-link-search=native={}",
+        build_dir.join("ggml/src").display()
+    );
     for library in ["llama", "ggml", "ggml-base", "ggml-cpu"] {
         println!("cargo:rustc-link-lib=static={library}");
     }

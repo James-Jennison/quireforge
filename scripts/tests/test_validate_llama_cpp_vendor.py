@@ -35,6 +35,32 @@ class CmakeOptionsTests(unittest.TestCase):
         self.assertNotEqual(VALIDATOR.cmake_options(build), VALIDATOR.EXPECTED_CMAKE_OPTIONS)
         self.assertIn("-DGGML_CUDA=ON", VALIDATOR.cmake_options(build))
 
+    def test_requires_the_closed_option_list_once_without_extra_definitions(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+
+        VALIDATOR.require_closed_cmake_invocation(build)
+
+    def test_accepts_rustfmt_whitespace_in_the_configure_declaration(self) -> None:
+        build = '''let mut configure =
+            Command::new("cmake");
+            configure.arg("-DCMAKE_BUILD_TYPE=Release");
+            configure.args(LLAMA_CPP_CMAKE_OPTIONS);
+            run(
+                &mut configure,
+                "closed llama.cpp static-library configuration",
+            );'''
+
+        VALIDATOR.require_closed_cmake_invocation(build)
+
+    def test_rejects_an_unguarded_cmake_definition(self) -> None:
+        build = '''let mut configure = Command::new("cmake");
+            configure.arg("-DGGML_CUDA=ON");
+            configure.args(LLAMA_CPP_CMAKE_OPTIONS);
+            run(&mut configure, "closed llama.cpp static-library configuration");'''
+
+        with self.assertRaisesRegex(SystemExit, "unguarded -D option"):
+            VALIDATOR.require_closed_cmake_invocation(build)
+
 
 if __name__ == "__main__":
     unittest.main()

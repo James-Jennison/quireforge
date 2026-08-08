@@ -83,6 +83,7 @@ EXPECTED_CMAKE_OPTIONS = {
     "-DGGML_VIRTGPU=OFF",
     "-DGGML_RPC=OFF",
 }
+ALLOWED_CONFIGURE_DEFINITIONS = {"-DCMAKE_BUILD_TYPE=Release"}
 
 
 def tree_digest() -> str:
@@ -114,6 +115,26 @@ def cmake_options(build: str) -> set[str]:
     return set(re.findall(r'"(-D[^"\\]+)"', match.group("options")))
 
 
+def require_closed_cmake_invocation(build: str) -> None:
+    configure_match = re.search(
+        r"let mut configure\s*=\s*Command::new\(\"cmake\"\);(?P<body>.*?)"
+        r"run\(\s*&mut configure,\s*\"closed llama\.cpp static-library configuration\",?\s*\);",
+        build,
+        flags=re.DOTALL,
+    )
+    require(configure_match is not None, "closed CMake configuration invocation is missing")
+    configure_body = configure_match.group("body")
+    require(
+        len(re.findall(r"configure\.args\(LLAMA_CPP_CMAKE_OPTIONS\);", configure_body)) == 1,
+        "closed CMake options are not applied exactly once",
+    )
+    unguarded_definitions = set(re.findall(r'\.arg\("(-D[^"\\]+)"\)', configure_body))
+    require(
+        unguarded_definitions == ALLOWED_CONFIGURE_DEFINITIONS,
+        "closed CMake configuration includes an unguarded -D option",
+    )
+
+
 def main() -> None:
     manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
     require(set(manifest) == set(EXPECTED_MANIFEST) | {"vendored_tree_sha256"}, "unexpected provenance manifest schema")
@@ -128,6 +149,7 @@ def main() -> None:
         require(path.suffix.lower() not in prohibited_suffixes, f"model artifact found: {path.relative_to(VENDOR)}")
     build = BUILD_SCRIPT.read_text(encoding="utf-8")
     require(cmake_options(build) == EXPECTED_CMAKE_OPTIONS, "closed CMake options changed")
+    require_closed_cmake_invocation(build)
     print("M63 llama.cpp vendor validation passed.")
 
 
