@@ -16,6 +16,7 @@ readonly worker_log_path="$state_root/worker.log"
 readonly lock_path="$state_root/run.lock"
 readonly interval_seconds="${QUIRE_FORGE_SUPERVISOR_INTERVAL_SECONDS:-300}"
 readonly started_at="$(date --iso-8601=seconds)"
+readonly worker_sandbox_mode="danger-full-access"
 
 usage() {
   printf 'Usage: %s [--once] [--dry-run] [--self-test] [--worker] [--finalize-recovery SUBJECT PATH...]\n' "${0##*/}"
@@ -184,7 +185,8 @@ run_completion_state_self_test() {
   [[ "$(post_push_completion_state same same '')" == "aligned-and-clean" ]] || return 1
   [[ "$(post_push_completion_state local upstream '')" == "upstream-mismatch" ]] || return 1
   [[ "$(post_push_completion_state same same '?? task-file')" == "uncommitted-changes" ]] || return 1
-  printf 'Supervisor completion-state checks passed.\n'
+  [[ "$worker_sandbox_mode" == "danger-full-access" ]] || return 1
+  printf 'Supervisor completion-state and worker-access checks passed.\n'
 }
 
 finalize_commit() {
@@ -315,10 +317,10 @@ run_task() {
   require_clean_worktree || return 1
   before_head="$(git -C "$repository_root" rev-parse HEAD)"
   result_path="$state_root/last-message.$(date +%s).txt"
-  write_status "Sandboxed Codex is implementing the highest-value safe task" "running" "$validation" "Await tested ready-to-commit marker" "none"
-  log "starting sandboxed Codex task at $before_head"
-  if codex exec --ephemeral --sandbox workspace-write --cd "$repository_root" --output-last-message "$result_path" \
-    'Read and obey AGENTS.md first. Inspect docs/CURRENT_STATE.md, docs/ROADMAP.md, relevant ADRs, and git status. Implement the highest-value safe, reversible, local QuireForge task. You are sandboxed: never run git add, git commit, or git push. Do not access credentials or accounts, use browser sessions, connect to a real provider/runtime, transmit over the network, deploy, publish, take destructive action, make third-party commitments, or make irreversible product-direction decisions. Preserve the Linux Tauri desktop-app scope. Run focused unit tests, type-check, lint, and formatting checks that work inside this sandbox. Never run pnpm test:e2e, Playwright, or any browser or host-listener E2E command in the sandbox. If host validation is required, emit one exact line per required command before the ready marker: AUTOPILOT_HOST_VALIDATION: pnpm test:e2e. During work, emit concise progress summaries prefixed exactly AUTOPILOT_PROGRESS:. Never expose credentials, signing material, secret-bearing URLs, headers, or secrets in progress or final output. Only after sandbox-safe checks pass, requested host validation has been declared, and tracked task changes are ready, end your final response with exactly one machine-readable line: AUTOPILOT_READY_TO_COMMIT: <concise commit subject>. If ordinary validation fails, state AUTOPILOT_VALIDATION_FAILED: <concise reason> and do not emit ready. State HUMAN_ONLY_BLOCKER: <concise reason> only for credentials, production access, public release, destructive action, third-party commitment, browser/account access, or a genuinely irreversible product-direction decision.' \
+  write_status "Full-access Codex worker is implementing the highest-value safe task" "running" "$validation" "Await tested ready-to-commit marker" "none"
+  log "starting full-access Codex task at $before_head"
+  if codex exec --ephemeral --sandbox "$worker_sandbox_mode" --cd "$repository_root" --output-last-message "$result_path" \
+    'Read and obey AGENTS.md first. Inspect docs/CURRENT_STATE.md, docs/ROADMAP.md, relevant ADRs, and git status. Implement the highest-value safe, reversible, local QuireForge task. You are a supervisor-launched full-access worker. The outer supervisor owns Git operations: never run git add, git commit, or git push. Do not access credentials or accounts, use browser sessions, connect to a real provider/runtime, transmit over the network, deploy, publish, take destructive action, make third-party commitments, or make irreversible product-direction decisions. Preserve the Linux Tauri desktop-app scope. Run focused unit tests, type-check, lint, and formatting checks that are relevant to the task. If host validation is required, emit one exact line per required command before the ready marker: AUTOPILOT_HOST_VALIDATION: pnpm test:e2e. During work, emit concise progress summaries prefixed exactly AUTOPILOT_PROGRESS:. Never expose credentials, signing material, secret-bearing URLs, headers, or secrets in progress or final output. Only after relevant checks pass, requested host validation has been declared, and tracked task changes are ready, end your final response with exactly one machine-readable line: AUTOPILOT_READY_TO_COMMIT: <concise commit subject>. If an ordinary test or validation fails, state AUTOPILOT_VALIDATION_FAILED: <concise reason> and do not emit ready. State HUMAN_ONLY_BLOCKER: <concise reason> only for credentials, production access, public release, destructive action, third-party commitment, browser/account access, or a genuinely irreversible product-direction decision.' \
     2>&1 | stream_worker_output | tee -a "$worker_log_path"; then
     :
   else
@@ -331,14 +333,14 @@ run_task() {
   fi
   validation_failure="$( { grep '^AUTOPILOT_VALIDATION_FAILED:' "$result_path" 2>/dev/null || true; } | tail -n 1 | sed 's/^AUTOPILOT_VALIDATION_FAILED:[[:space:]]*//')"
   if [[ -n "$validation_failure" ]]; then
-    write_status "Sandboxed task validation failed" "failed" "failed: $validation_failure" "Fix the validation failure, then restart the supervisor" "none"
-    log "sandboxed task validation failed: $validation_failure"
+    write_status "Worker test or validation failed" "failed" "failed: $validation_failure" "Fix the test or validation failure, then restart the supervisor" "none"
+    log "worker test or validation failed: $validation_failure"
     rm -f -- "$result_path"
     return 1
   fi
   if [[ $exit_code -ne 0 ]]; then
-    write_status "Sandboxed Codex task failed" "failed" "failed: Codex exited with status $exit_code" "Inspect the worker log, fix the task, then restart the supervisor" "none"
-    log "sandboxed Codex exited with status $exit_code"
+    write_status "Full-access Codex worker failed" "failed" "failed: Codex exited with status $exit_code" "Inspect the worker log, fix the task, then restart the supervisor" "none"
+    log "full-access Codex worker exited with status $exit_code"
     rm -f -- "$result_path"
     return 1
   fi
@@ -348,7 +350,7 @@ run_task() {
       rm -f -- "$result_path"
       return 1
     fi
-    write_status "Sandboxed Codex made no committable progress" "idle" "ready-to-commit marker absent" "Start the next safe task" "none"
+    write_status "Full-access Codex worker made no committable progress" "idle" "ready-to-commit marker absent" "Start the next safe task" "none"
     rm -f -- "$result_path"
     return 0
   fi

@@ -27,7 +27,28 @@ class SupervisorCompletionStateTests(unittest.TestCase):
             )
 
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(result.stdout, "Supervisor completion-state checks passed.\n")
+        self.assertEqual(
+            result.stdout,
+            "Supervisor completion-state and worker-access checks passed.\n",
+        )
+
+    def test_only_the_worker_uses_the_full_access_sandbox_setting(self) -> None:
+        script = SUPERVISOR.read_text(encoding="utf-8")
+
+        self.assertIn('readonly worker_sandbox_mode="danger-full-access"', script)
+        self.assertIn(
+            'codex exec --ephemeral --sandbox "$worker_sandbox_mode"',
+            script,
+        )
+        self.assertEqual(script.count("--sandbox"), 1)
+
+    def test_worker_safety_protections_remain_explicit(self) -> None:
+        script = SUPERVISOR.read_text(encoding="utf-8")
+
+        self.assertIn("post_push_completion_state", script)
+        self.assertIn("has_untracked_changes", script)
+        self.assertIn("Task-created untracked changes remain; nothing was committed.", script)
+        self.assertIn("Worker test or validation failed", script)
 
 
 if __name__ == "__main__":
