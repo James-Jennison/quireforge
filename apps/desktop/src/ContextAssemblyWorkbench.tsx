@@ -83,6 +83,10 @@ export function ContextAssemblyWorkbench({
     snapshot.bundleId &&
     snapshot.authorizationId &&
     snapshot.bundleDigest;
+  const invalidatePreparedBundle = () => {
+    setSnapshot(null);
+    setNotice("Selection changed. Prepare a new local-only review.");
+  };
   return (
     <section
       className="mock-inference-workbench"
@@ -114,7 +118,7 @@ export function ContextAssemblyWorkbench({
           disabled={busy}
           onChange={(e) => {
             setText(e.target.value);
-            setSnapshot(null);
+            invalidatePreparedBundle();
           }}
         />
       </label>
@@ -128,7 +132,10 @@ export function ContextAssemblyWorkbench({
           type="checkbox"
           checked={includeScopeMetadata}
           disabled={busy}
-          onChange={(event) => setIncludeScopeMetadata(event.target.checked)}
+          onChange={(event) => {
+            setIncludeScopeMetadata(event.target.checked);
+            invalidatePreparedBundle();
+          }}
         />
         Include bounded project/task metadata as untrusted evidence
       </label>
@@ -143,6 +150,7 @@ export function ContextAssemblyWorkbench({
             setReview(null);
             setReviewCollectionId(null);
             setReviewEvidenceIds([]);
+            invalidatePreparedBundle();
           }}
         >
           <option value="">Project only</option>
@@ -159,7 +167,10 @@ export function ContextAssemblyWorkbench({
             type="checkbox"
             checked={includePlan}
             disabled={busy}
-            onChange={(event) => setIncludePlan(event.target.checked)}
+            onChange={(event) => {
+              setIncludePlan(event.target.checked);
+              invalidatePreparedBundle();
+            }}
           />
           Include the selected task plan as untrusted plan evidence
         </label>
@@ -172,6 +183,7 @@ export function ContextAssemblyWorkbench({
             onChange={(event) => {
               setReviewCollectionId(event.target.value || null);
               setReviewEvidenceIds([]);
+              invalidatePreparedBundle();
             }}
           >
             <option value="">No review evidence</option>
@@ -194,13 +206,14 @@ export function ContextAssemblyWorkbench({
                   <input
                     type="checkbox"
                     checked={reviewEvidenceIds.includes(item.itemId)}
-                    onChange={() =>
+                    onChange={() => {
                       setReviewEvidenceIds((current) =>
                         current.includes(item.itemId)
                           ? current.filter((id) => id !== item.itemId)
                           : [...current, item.itemId],
-                      )
-                    }
+                      );
+                      invalidatePreparedBundle();
+                    }}
                   />
                   {item.title}
                 </label>
@@ -221,7 +234,7 @@ export function ContextAssemblyWorkbench({
                       ? current.filter((value) => value !== source.sourceId)
                       : [...current, source.sourceId],
                   );
-                  setSnapshot(null);
+                  invalidatePreparedBundle();
                 }}
               />
               {source.title} · {source.sourceClass} · {source.byteSize} bytes
