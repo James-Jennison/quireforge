@@ -123,6 +123,9 @@ const CLOSED_CMAKE_ENVIRONMENT: &[&str] = &[
     "GNUMAKEFLAGS",
 ];
 
+const CLOSED_BUILD_PATH: &str = "/usr/bin:/bin";
+const SYSTEM_CMAKE: &str = "/usr/bin/cmake";
+
 fn run(command: &mut Command, description: &str) {
     let status = command
         .status()
@@ -245,7 +248,7 @@ fn build_llama_cpp() {
     verify_vendored_tree_digest(&source_dir);
     register_vendored_source_tree(&source_dir);
 
-    let mut configure = Command::new("cmake");
+    let mut configure = Command::new(SYSTEM_CMAKE);
     configure
         .arg("-S")
         .arg(&source_dir)
@@ -256,12 +259,13 @@ fn build_llama_cpp() {
     for variable in CLOSED_CMAKE_ENVIRONMENT {
         configure.env_remove(variable);
     }
+    configure.env("PATH", CLOSED_BUILD_PATH);
     run(
         &mut configure,
         "closed llama.cpp static-library configuration",
     );
 
-    let mut build = Command::new("cmake");
+    let mut build = Command::new(SYSTEM_CMAKE);
     build
         .arg("--build")
         .arg(&build_dir)
@@ -272,6 +276,7 @@ fn build_llama_cpp() {
     for variable in CLOSED_CMAKE_ENVIRONMENT {
         build.env_remove(variable);
     }
+    build.env("PATH", CLOSED_BUILD_PATH);
     run(&mut build, "closed llama.cpp static-library build");
 
     println!(

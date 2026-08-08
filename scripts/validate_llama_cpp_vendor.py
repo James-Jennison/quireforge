@@ -99,6 +99,8 @@ EXPECTED_LINK_SEARCH_DIRECTORIES = [
     'build_dir.join("ggml/src")',
 ]
 EXPECTED_STATIC_LIBRARIES = ["llama", "ggml", "ggml-base", "ggml-cpu"]
+EXPECTED_CLOSED_BUILD_PATH = "/usr/bin:/bin"
+EXPECTED_SYSTEM_CMAKE = "/usr/bin/cmake"
 EXPECTED_CLOSED_CMAKE_ENVIRONMENT = {
     "CC",
     "CXX",
@@ -284,7 +286,7 @@ def require_build_time_vendored_tree_verification(build: str) -> None:
         "use sha2::{Digest, Sha256};" in build,
         "build script must use SHA-256 for the vendored source digest",
     )
-    first_cmake_command = build.find('Command::new("cmake")')
+    first_cmake_command = build.find("Command::new(SYSTEM_CMAKE)")
     require(first_cmake_command != -1, "closed CMake build commands are missing")
     require(
         build.find(EXPECTED_SOURCE_DIGEST_VERIFIER) < first_cmake_command,
@@ -294,11 +296,10 @@ def require_build_time_vendored_tree_verification(build: str) -> None:
 
 def require_closed_build_process_boundary(build: str) -> None:
     command_calls = re.findall(r"Command::new\s*\(", build)
-    command_executables = re.findall(
-        r'Command::new\s*\(\s*"([^"\\]+)"\s*\)', build
-    )
     require(
-        len(command_calls) == 2 and command_executables == ["cmake", "cmake"],
+        len(command_calls) == 2
+        and f'const SYSTEM_CMAKE: &str = "{EXPECTED_SYSTEM_CMAKE}";' in build
+        and len(re.findall(r"Command::new\(SYSTEM_CMAKE\)", build)) == 2,
         "build script must start only the two approved CMake subprocesses",
     )
 
@@ -314,7 +315,7 @@ def command_arguments(body: str) -> list[str]:
 
 def require_verified_cmake_configure_arguments(build: str) -> None:
     configure_match = re.search(
-        r"let mut configure\s*=\s*Command::new\(\"cmake\"\);(?P<body>.*?)"
+        r"let mut configure\s*=\s*Command::new\(SYSTEM_CMAKE\);(?P<body>.*?)"
         r"run\(\s*&mut configure,\s*\"closed llama\.cpp static-library configuration\",?\s*\);",
         build,
         flags=re.DOTALL,
@@ -329,7 +330,7 @@ def require_verified_cmake_configure_arguments(build: str) -> None:
 
 def require_closed_cmake_invocation(build: str) -> None:
     configure_match = re.search(
-        r"let mut configure\s*=\s*Command::new\(\"cmake\"\);(?P<body>.*?)"
+        r"let mut configure\s*=\s*Command::new\(SYSTEM_CMAKE\);(?P<body>.*?)"
         r"run\(\s*&mut configure,\s*\"closed llama\.cpp static-library configuration\",?\s*\);",
         build,
         flags=re.DOTALL,
@@ -359,12 +360,16 @@ def require_closed_cmake_environment(build: str) -> None:
         environment_variables == EXPECTED_CLOSED_CMAKE_ENVIRONMENT,
         "closed CMake environment list changed",
     )
+    require(
+        f'const CLOSED_BUILD_PATH: &str = "{EXPECTED_CLOSED_BUILD_PATH}";' in build,
+        "closed build path changed",
+    )
     for command_name, description in (
         ("configure", "closed llama.cpp static-library configuration"),
         ("build", "closed llama.cpp static-library build"),
     ):
         command_match = re.search(
-            rf"let mut {command_name}\s*=\s*Command::new\(\"cmake\"\);(?P<body>.*?)"
+            rf"let mut {command_name}\s*=\s*Command::new\(SYSTEM_CMAKE\);(?P<body>.*?)"
             rf"run\(\s*&mut {command_name},\s*\"{re.escape(description)}\",?\s*\);",
             build,
             flags=re.DOTALL,
@@ -381,11 +386,16 @@ def require_closed_cmake_environment(build: str) -> None:
             == 1,
             f"{description} must remove the inherited toolchain environment exactly once",
         )
+        require(
+            len(re.findall(rf'{command_name}\.env\("PATH", CLOSED_BUILD_PATH\);', command_match.group("body")))
+            == 1,
+            f"{description} must use the fixed system build path exactly once",
+        )
 
 
 def require_closed_cmake_build_invocation(build: str) -> None:
     build_match = re.search(
-        r"let mut build\s*=\s*Command::new\(\"cmake\"\);(?P<body>.*?)"
+        r"let mut build\s*=\s*Command::new\(SYSTEM_CMAKE\);(?P<body>.*?)"
         r"run\(\s*&mut build,\s*\"closed llama\.cpp static-library build\",?\s*\);",
         build,
         flags=re.DOTALL,

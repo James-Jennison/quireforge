@@ -80,7 +80,7 @@ class CmakeOptionsTests(unittest.TestCase):
 
     def test_accepts_rustfmt_whitespace_in_the_configure_declaration(self) -> None:
         build = '''let mut configure =
-            Command::new("cmake");
+            Command::new(SYSTEM_CMAKE);
             configure.arg("-DCMAKE_BUILD_TYPE=Release");
             configure.args(LLAMA_CPP_CMAKE_OPTIONS);
             run(
@@ -91,7 +91,7 @@ class CmakeOptionsTests(unittest.TestCase):
         VALIDATOR.require_closed_cmake_invocation(build)
 
     def test_rejects_an_unguarded_cmake_definition(self) -> None:
-        build = '''let mut configure = Command::new("cmake");
+        build = '''let mut configure = Command::new(SYSTEM_CMAKE);
             configure.arg("-DGGML_CUDA=ON");
             configure.args(LLAMA_CPP_CMAKE_OPTIONS);
             run(&mut configure, "closed llama.cpp static-library configuration");'''
@@ -103,6 +103,23 @@ class CmakeOptionsTests(unittest.TestCase):
         build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
 
         VALIDATOR.require_closed_cmake_environment(build)
+
+    def test_rejects_a_non_system_cmake_executable(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace(
+            'const SYSTEM_CMAKE: &str = "/usr/bin/cmake";',
+            'const SYSTEM_CMAKE: &str = "cmake";',
+        )
+
+        with self.assertRaisesRegex(SystemExit, "only the two approved CMake subprocesses"):
+            VALIDATOR.require_closed_build_process_boundary(build)
+
+    def test_rejects_a_missing_fixed_system_build_path(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace('    configure.env("PATH", CLOSED_BUILD_PATH);\n', "")
+
+        with self.assertRaisesRegex(SystemExit, "fixed system build path"):
+            VALIDATOR.require_closed_cmake_environment(build)
 
     def test_rejects_an_incomplete_toolchain_environment_scrub(self) -> None:
         build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
@@ -243,9 +260,9 @@ class CmakeOptionsTests(unittest.TestCase):
         build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
         build = build.replace(
             "    verify_vendored_tree_digest(&source_dir);\n    register_vendored_source_tree(&source_dir);\n\n"
-            '    let mut configure = Command::new("cmake");',
+            '    let mut configure = Command::new(SYSTEM_CMAKE);',
             "    register_vendored_source_tree(&source_dir);\n\n"
-            '    let mut configure = Command::new("cmake");\n'
+            '    let mut configure = Command::new(SYSTEM_CMAKE);\n'
             "    verify_vendored_tree_digest(&source_dir);",
         )
 

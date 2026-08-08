@@ -41,7 +41,9 @@ dynamic-loader injection variables. The build
 script compiles only the static `llama` target and its CPU ggml dependencies,
 after independently
 recomputing and matching the pinned vendored source-tree SHA-256 before CMake
-is invoked. It also rejects any Rust runtime-source reference to a `llama_*` or
+is invoked. Both CMake invocations use the fixed system CMake executable and a
+fixed system tool path, rather than an inherited executable search path. It
+also rejects any Rust runtime-source reference to a `llama_*` or
 `ggml_*` C API, keeping the vendor integration build-only until a later adapter
 is approved. Full repository
 validation remains required; no package or installed-host claim is made until
