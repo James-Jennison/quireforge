@@ -203,24 +203,28 @@ def require_closed_cmake_environment(build: str) -> None:
         environment_variables == EXPECTED_CLOSED_CMAKE_ENVIRONMENT,
         "closed CMake environment list changed",
     )
-    configure_match = re.search(
-        r"let mut configure\s*=\s*Command::new\(\"cmake\"\);(?P<body>.*?)"
-        r"run\(\s*&mut configure,\s*\"closed llama\.cpp static-library configuration\",?\s*\);",
-        build,
-        flags=re.DOTALL,
-    )
-    require(configure_match is not None, "closed CMake configuration invocation is missing")
-    require(
-        len(
-            re.findall(
-                r"for variable in CLOSED_CMAKE_ENVIRONMENT \{\s*"
-                r"configure\.env_remove\(variable\);\s*\}",
-                configure_match.group("body"),
-            )
+    for command_name, description in (
+        ("configure", "closed llama.cpp static-library configuration"),
+        ("build", "closed llama.cpp static-library build"),
+    ):
+        command_match = re.search(
+            rf"let mut {command_name}\s*=\s*Command::new\(\"cmake\"\);(?P<body>.*?)"
+            rf"run\(\s*&mut {command_name},\s*\"{re.escape(description)}\",?\s*\);",
+            build,
+            flags=re.DOTALL,
         )
-        == 1,
-        "closed CMake configuration must remove the inherited toolchain environment exactly once",
-    )
+        require(command_match is not None, f"{description} invocation is missing")
+        require(
+            len(
+                re.findall(
+                    rf"for variable in CLOSED_CMAKE_ENVIRONMENT \{{\s*"
+                    rf"{command_name}\.env_remove\(variable\);\s*\}}",
+                    command_match.group("body"),
+                )
+            )
+            == 1,
+            f"{description} must remove the inherited toolchain environment exactly once",
+        )
 
 
 def require_closed_cmake_build_invocation(build: str) -> None:

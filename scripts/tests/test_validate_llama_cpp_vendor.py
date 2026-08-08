@@ -85,6 +85,18 @@ class CmakeOptionsTests(unittest.TestCase):
         with self.assertRaisesRegex(SystemExit, "must remove the inherited toolchain environment"):
             VALIDATOR.require_closed_cmake_environment(build)
 
+    def test_rejects_a_missing_build_toolchain_environment_scrub(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace(
+            "    for variable in CLOSED_CMAKE_ENVIRONMENT {\n"
+            "        build.env_remove(variable);\n"
+            "    }\n",
+            "",
+        )
+
+        with self.assertRaisesRegex(SystemExit, "static-library build must remove"):
+            VALIDATOR.require_closed_cmake_environment(build)
+
     def test_rejects_a_non_vendored_cmake_source(self) -> None:
         build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
         build = build.replace(

@@ -108,6 +108,9 @@ fn build_llama_cpp() {
         .arg(&build_dir)
         .arg("--target")
         .arg("llama");
+    for variable in CLOSED_CMAKE_ENVIRONMENT {
+        build.env_remove(variable);
+    }
     run(&mut build, "closed llama.cpp static-library build");
 
     println!(
