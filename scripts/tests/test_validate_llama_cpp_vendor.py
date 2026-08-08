@@ -61,6 +61,17 @@ class CmakeOptionsTests(unittest.TestCase):
         build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
 
         self.assertEqual(VALIDATOR.cmake_options(build), VALIDATOR.EXPECTED_CMAKE_OPTIONS)
+        VALIDATOR.require_closed_cmake_options(build)
+
+    def test_rejects_a_duplicate_closed_cmake_option(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace(
+            '    "-DGGML_CPU=ON",\n',
+            '    "-DGGML_CPU=ON",\n    "-DGGML_CPU=ON",\n',
+        )
+
+        with self.assertRaisesRegex(SystemExit, "must not contain duplicate definitions"):
+            VALIDATOR.require_closed_cmake_options(build)
 
     def test_rejects_a_missing_option_list(self) -> None:
         with self.assertRaisesRegex(SystemExit, "option list is missing"):

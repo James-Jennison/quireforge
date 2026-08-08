@@ -238,13 +238,29 @@ def require_regular_vendored_source_tree(directory: Path) -> None:
 
 
 def cmake_options(build: str) -> set[str]:
+    return set(cmake_option_entries(build))
+
+
+def cmake_option_entries(build: str) -> list[str]:
     match = re.search(
         r"const LLAMA_CPP_CMAKE_OPTIONS: &\[&str\] = &\[(?P<options>.*?)\];",
         build,
         flags=re.DOTALL,
     )
     require(match is not None, "closed CMake option list is missing")
-    return set(re.findall(r'"(-D[^"\\]+)"', match.group("options")))
+    return re.findall(r'"(-D[^"\\]+)"', match.group("options"))
+
+
+def require_closed_cmake_options(build: str) -> None:
+    options = cmake_option_entries(build)
+    require(
+        len(options) == len(set(options)),
+        "closed CMake option list must not contain duplicate definitions",
+    )
+    require(
+        set(options) == EXPECTED_CMAKE_OPTIONS,
+        "closed CMake options changed",
+    )
 
 
 def require_verified_cmake_source(build: str) -> None:
@@ -563,7 +579,7 @@ def main() -> None:
     require(not (VENDOR / ".git").exists(), "Git history was vendored")
     require_no_model_artifacts(VENDOR)
     build = BUILD_SCRIPT.read_text(encoding="utf-8")
-    require(cmake_options(build) == EXPECTED_CMAKE_OPTIONS, "closed CMake options changed")
+    require_closed_cmake_options(build)
     require_verified_cmake_source(build)
     require_complete_vendored_source_tracking(build)
     require_build_time_vendored_tree_verification(build)
