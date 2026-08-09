@@ -285,7 +285,7 @@ describe("ContextAssemblyWorkbench", () => {
     );
   });
 
-  it("keeps a bounded local-runtime failure visible without offering a retry", async () => {
+  it("keeps a bridge failure visible without offering a retry", async () => {
     const confirmed = {
       schemaVersion: 1,
       fictionalLocalOnly: true,
@@ -316,16 +316,9 @@ describe("ContextAssemblyWorkbench", () => {
       authorizationId: null,
     });
     bridge.acknowledgeContextAssemblyReview.mockResolvedValueOnce(confirmed);
-    bridge.runContextAssemblyLocalRuntime.mockResolvedValueOnce({
-      schemaVersion: 1,
-      localOnly: true,
-      state: "failed",
-      output: null,
-      diagnostic: "model-unavailable",
-      inputTokenLimit: 4096,
-      outputTokenLimit: 512,
-      deadlineSeconds: 60,
-    });
+    bridge.runContextAssemblyLocalRuntime.mockRejectedValueOnce(
+      new Error("native command unavailable"),
+    );
 
     render(
       <ContextAssemblyWorkbench
@@ -358,7 +351,7 @@ describe("ContextAssemblyWorkbench", () => {
       ),
     );
     expect(
-      screen.getByText(/local runtime: model-unavailable/i),
+      screen.getByText(/local runtime: runtime-unavailable/i),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /run once with local-only model/i }),

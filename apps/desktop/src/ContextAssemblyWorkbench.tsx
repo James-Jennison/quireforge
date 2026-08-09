@@ -417,8 +417,20 @@ function ContextAssemblyWorkbenchScope({
                   mounted.current &&
                   projectScope.current === actionProjectId
                 ) {
+                  setRuntime({
+                    schemaVersion: 1,
+                    localOnly: true,
+                    state: "failed",
+                    output: null,
+                    diagnostic: "runtime-unavailable",
+                    inputTokenLimit: 4096,
+                    outputTokenLimit: 512,
+                    deadlineSeconds: 60,
+                  });
                   setRuntimeRunning(false);
-                  setNotice("Local runtime is unavailable; no retry occurred.");
+                  setNotice(
+                    "Local runtime is unavailable; the one attempt remains closed with no retry.",
+                  );
                 }
               })
               .finally(() => {
