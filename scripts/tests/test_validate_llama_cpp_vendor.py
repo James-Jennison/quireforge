@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib.util
 import os
+import tarfile
 import tempfile
 import unittest
 import zipfile
@@ -141,6 +142,43 @@ class CmakeOptionsTests(unittest.TestCase):
             source = Path(temporary_directory)
             with zipfile.ZipFile(source / "source-only.zip", "w") as archive:
                 archive.writestr("nested/readme.txt", "source only")
+
+            VALIDATOR.require_no_model_artifacts(source)
+
+    def test_rejects_a_model_artifact_named_inside_a_tar_archive(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            source = Path(temporary_directory)
+            model = source / "unapproved-model.gguf"
+            model.write_bytes(b"not a model")
+            with tarfile.open(source / "archive.tar", "w") as archive:
+                archive.add(model, arcname="nested/unapproved-model.gguf")
+            model.unlink()
+
+            with self.assertRaisesRegex(SystemExit, "model artifact found in TAR archive"):
+                VALIDATOR.require_no_model_artifacts(source)
+
+    def test_rejects_a_renamed_ggml_model_artifact_inside_a_tar_archive(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            source = Path(temporary_directory)
+            model = source / "unapproved-model"
+            model.write_bytes(b"ggml\\x03\\x00\\x00\\x00")
+            with tarfile.open(source / "archive.tar.gz", "w:gz") as archive:
+                archive.add(model, arcname="nested/unapproved-model")
+            model.unlink()
+
+            with self.assertRaisesRegex(
+                SystemExit, "model artifact signature found \\(GGML\\) in TAR archive"
+            ):
+                VALIDATOR.require_no_model_artifacts(source)
+
+    def test_allows_a_tar_archive_without_model_artifacts(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            source = Path(temporary_directory)
+            readme = source / "readme.txt"
+            readme.write_text("source only", encoding="utf-8")
+            with tarfile.open(source / "source-only.tar.xz", "w:xz") as archive:
+                archive.add(readme, arcname="nested/readme.txt")
+            readme.unlink()
 
             VALIDATOR.require_no_model_artifacts(source)
 

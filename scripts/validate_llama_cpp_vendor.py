@@ -7,6 +7,7 @@ import hashlib
 import json
 import re
 import stat
+import tarfile
 import zipfile
 from collections import Counter
 from itertools import chain
@@ -1003,6 +1004,7 @@ def require_no_model_artifacts(
                 f"model artifact signature found ({format_name}): {relative}",
             )
         require_no_model_artifacts_in_zip(path, relative)
+        require_no_model_artifacts_in_tar(path, relative)
 
 
 def require_no_model_artifacts_in_zip(path: Path, relative: Path) -> None:
@@ -1034,6 +1036,42 @@ def require_no_model_artifacts_in_zip(path: Path, relative: Path) -> None:
                     )
     except (OSError, zipfile.BadZipFile, zipfile.LargeZipFile, RuntimeError) as error:
         require(False, f"could not safely inspect ZIP archive {relative}: {error}")
+
+
+def require_no_model_artifacts_in_tar(path: Path, relative: Path) -> None:
+    """Reject model files hidden in a repository-owned TAR-family archive.
+
+    TAR inspection never extracts entries; it examines only archive metadata and
+    the first four uncompressed bytes of each regular entry, matching the ZIP
+    guard for the GGUF/GGML signatures protected by this boundary.
+    """
+    if not tarfile.is_tarfile(path):
+        return
+    try:
+        with tarfile.open(path) as archive:
+            for entry in archive:
+                if not entry.isfile():
+                    continue
+                entry_path = Path(entry.name)
+                require(
+                    entry_path.suffix.lower() not in MODEL_ARTIFACT_SUFFIXES,
+                    f"model artifact found in TAR archive: {relative}!{entry.name}",
+                )
+                member = archive.extractfile(entry)
+                require(
+                    member is not None,
+                    f"could not safely inspect TAR archive entry: {relative}!{entry.name}",
+                )
+                with member:
+                    header = member.read(4)
+                for magic, format_name in MODEL_ARTIFACT_MAGIC.items():
+                    require(
+                        header != magic,
+                        "model artifact signature found "
+                        f"({format_name}) in TAR archive: {relative}!{entry.name}",
+                    )
+    except (OSError, tarfile.TarError, RuntimeError) as error:
+        require(False, f"could not safely inspect TAR archive {relative}: {error}")
 
 
 def require_no_repository_model_artifacts(repository_root: Path) -> None:
