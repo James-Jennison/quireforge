@@ -71,8 +71,8 @@ state before the fixed closed configuration is evaluated.
 Both CMake invocations use the fixed system CMake executable and a
 fixed system tool path, rather than an inherited executable search path. It
 also rejects any Rust runtime-source reference to a `llama_*` or
-`ggml_*` C API, keeping the vendor integration build-only until a later adapter
-is approved. It also rejects CMake command working-directory overrides or
-out-of-block command mutations. Full repository
+`ggml_*` C API or native FFI declaration, keeping the vendor integration
+build-only until a later adapter is approved. It also rejects CMake command
+working-directory overrides or out-of-block command mutations. Full repository
 validation remains required; no package or installed-host claim is made until
 the separately approved offline model input is available.

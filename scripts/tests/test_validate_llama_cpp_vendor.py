@@ -818,6 +818,21 @@ class CmakeOptionsTests(unittest.TestCase):
             ):
                 VALIDATOR.require_no_rust_runtime_api_usage(source)
 
+    def test_rejects_native_ffi_declarations_in_rust_runtime_source(self) -> None:
+        for declaration in ('extern "C" {', 'unsafe extern "C" {'):
+            with self.subTest(declaration=declaration), tempfile.TemporaryDirectory() as temporary_directory:
+                source = Path(temporary_directory)
+                (source / "runtime.rs").write_text(
+                    f"{declaration}\n    fn hidden_runtime_entry();\n}}\n",
+                    encoding="utf-8",
+                )
+
+                with self.assertRaisesRegex(
+                    SystemExit,
+                    "must not reference llama.cpp or ggml APIs or declare native FFI",
+                ):
+                    VALIDATOR.require_no_rust_runtime_api_usage(source)
+
     def test_allows_rust_source_without_vendored_c_api_references(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             source = Path(temporary_directory)
