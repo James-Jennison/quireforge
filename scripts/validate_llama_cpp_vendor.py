@@ -1146,6 +1146,10 @@ def require_no_model_artifacts_in_ar_stream(
             member_name = read(name_size).decode("utf-8")
             member_start += name_size
             member_size -= name_size
+        require(
+            "\x00" not in member_name,
+            f"could not safely inspect {archive_kind} member name: {relative}!{encoded_name}",
+        )
         member_relative = Path(f"{relative}!{member_name}")
         require(
             member_relative.suffix.lower() not in MODEL_ARTIFACT_SUFFIXES,

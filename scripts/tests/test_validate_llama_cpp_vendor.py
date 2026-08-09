@@ -273,6 +273,39 @@ class CmakeOptionsTests(unittest.TestCase):
             with self.assertRaisesRegex(SystemExit, "model artifact found in ar archive"):
                 VALIDATOR.require_no_model_artifacts(source)
 
+    def test_rejects_a_nul_padded_traditional_ar_member_name(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            source = Path(temporary_directory)
+            (source / "archive.a").write_bytes(
+                VALIDATOR.AR_MAGIC + ar_member("model.gguf\x00x", b"not a model")
+            )
+
+            with self.assertRaisesRegex(SystemExit, "could not safely inspect ar archive member name"):
+                VALIDATOR.require_no_model_artifacts(source)
+
+    def test_rejects_a_nul_padded_gnu_ar_member_name(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            source = Path(temporary_directory)
+            long_names = b"model.gguf\x00ignored/\n"
+            (source / "archive.a").write_bytes(
+                VALIDATOR.AR_MAGIC
+                + ar_member("/", long_names).replace(b"/               ", b"//              ", 1)
+                + ar_gnu_member(0, b"not a model")
+            )
+
+            with self.assertRaisesRegex(SystemExit, "could not safely inspect ar archive GNU member name"):
+                VALIDATOR.require_no_model_artifacts(source)
+
+    def test_rejects_a_nul_padded_bsd_ar_member_name(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            source = Path(temporary_directory)
+            (source / "archive.a").write_bytes(
+                VALIDATOR.AR_MAGIC + ar_bsd_member("model.gguf\x00ignored", b"not a model")
+            )
+
+            with self.assertRaisesRegex(SystemExit, "could not safely inspect ar archive member name"):
+                VALIDATOR.require_no_model_artifacts(source)
+
     def test_rejects_a_truncated_ar_member(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             source = Path(temporary_directory)
