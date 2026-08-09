@@ -7,6 +7,7 @@ import hashlib
 import json
 import re
 import stat
+import zipfile
 from collections import Counter
 from itertools import chain
 from pathlib import Path
@@ -1001,6 +1002,38 @@ def require_no_model_artifacts(
                 header != magic,
                 f"model artifact signature found ({format_name}): {relative}",
             )
+        require_no_model_artifacts_in_zip(path, relative)
+
+
+def require_no_model_artifacts_in_zip(path: Path, relative: Path) -> None:
+    """Reject model files hidden in a repository-owned ZIP archive.
+
+    ZIP inspection never extracts entries; it examines only archive metadata and
+    the first four uncompressed bytes of each regular entry, which is sufficient
+    for the GGUF/GGML signatures guarded by this boundary.
+    """
+    if not zipfile.is_zipfile(path):
+        return
+    try:
+        with zipfile.ZipFile(path) as archive:
+            for entry in archive.infolist():
+                if entry.is_dir():
+                    continue
+                entry_path = Path(entry.filename)
+                require(
+                    entry_path.suffix.lower() not in MODEL_ARTIFACT_SUFFIXES,
+                    f"model artifact found in ZIP archive: {relative}!{entry.filename}",
+                )
+                with archive.open(entry) as member:
+                    header = member.read(4)
+                for magic, format_name in MODEL_ARTIFACT_MAGIC.items():
+                    require(
+                        header != magic,
+                        "model artifact signature found "
+                        f"({format_name}) in ZIP archive: {relative}!{entry.filename}",
+                    )
+    except (OSError, zipfile.BadZipFile, zipfile.LargeZipFile, RuntimeError) as error:
+        require(False, f"could not safely inspect ZIP archive {relative}: {error}")
 
 
 def require_no_repository_model_artifacts(repository_root: Path) -> None:

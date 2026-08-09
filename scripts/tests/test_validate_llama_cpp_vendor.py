@@ -6,6 +6,7 @@ import importlib.util
 import os
 import tempfile
 import unittest
+import zipfile
 from pathlib import Path
 
 
@@ -114,6 +115,34 @@ class CmakeOptionsTests(unittest.TestCase):
 
             with self.assertRaisesRegex(SystemExit, "model artifact signature found \\(GGML\\)"):
                 VALIDATOR.require_no_model_artifacts(source)
+
+    def test_rejects_a_model_artifact_named_inside_a_zip_archive(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            source = Path(temporary_directory)
+            with zipfile.ZipFile(source / "archive.zip", "w") as archive:
+                archive.writestr("nested/unapproved-model.gguf", b"not a model")
+
+            with self.assertRaisesRegex(SystemExit, "model artifact found in ZIP archive"):
+                VALIDATOR.require_no_model_artifacts(source)
+
+    def test_rejects_a_renamed_gguf_model_artifact_inside_a_zip_archive(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            source = Path(temporary_directory)
+            with zipfile.ZipFile(source / "archive.zip", "w") as archive:
+                archive.writestr("nested/unapproved-model", b"GGUF\\x03\\x00\\x00\\x00")
+
+            with self.assertRaisesRegex(
+                SystemExit, "model artifact signature found \\(GGUF\\) in ZIP archive"
+            ):
+                VALIDATOR.require_no_model_artifacts(source)
+
+    def test_allows_a_zip_archive_without_model_artifacts(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            source = Path(temporary_directory)
+            with zipfile.ZipFile(source / "source-only.zip", "w") as archive:
+                archive.writestr("nested/readme.txt", "source only")
+
+            VALIDATOR.require_no_model_artifacts(source)
 
     def test_allows_non_model_source_files(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
