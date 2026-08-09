@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.0-beta.65 — Local-runtime acceptance correction
+
+- Restores M63 preparation for an explicit instruction without an optional
+  durable source, keeps cancellation responsive during the CPU-bound attempt,
+  and presents the governed review as a contained local workbench.
+
 ## 0.1.0-beta.64 — In-process local runtime candidate
 
 - Carries the M63 credential-free, CPU-only local-runtime candidate forward
