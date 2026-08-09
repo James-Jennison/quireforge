@@ -179,11 +179,11 @@ unsafe fn attempt_stopped(data: *mut c_void) -> bool {
     })
 }
 
-fn stopped_diagnostic(control: &RunControl) -> &'static str {
+fn stopped(control: &RunControl) -> LocalRuntimeSnapshot {
     if control.cancelled.load(Ordering::Acquire) {
-        "cancelled"
+        cancelled()
     } else {
-        "deadline-exceeded"
+        failed("deadline-exceeded")
     }
 }
 
@@ -297,13 +297,11 @@ fn run_once(canonical_bytes: &[u8], control: &RunControl) -> LocalRuntimeSnapsho
         model_params.progress_callback_user_data = (control as *const RunControl).cast_mut().cast();
         let model = llama_model_load_from_file(path.as_ptr(), model_params);
         if model.is_null() {
-            return failed(
-                if attempt_stopped((control as *const RunControl).cast_mut().cast()) {
-                    stopped_diagnostic(control)
-                } else {
-                    "model-unavailable"
-                },
-            );
+            return if attempt_stopped((control as *const RunControl).cast_mut().cast()) {
+                stopped(control)
+            } else {
+                failed("model-unavailable")
+            };
         }
         let mut context_params = llama_context_default_params();
         // Preserve the fixed 4,096-token reviewed input allowance while
@@ -347,13 +345,11 @@ fn run_once(canonical_bytes: &[u8], control: &RunControl) -> LocalRuntimeSnapsho
         {
             llama_free(context);
             llama_model_free(model);
-            return failed(
-                if attempt_stopped((control as *const RunControl).cast_mut().cast()) {
-                    stopped_diagnostic(control)
-                } else {
-                    "runtime-failed"
-                },
-            );
+            return if attempt_stopped((control as *const RunControl).cast_mut().cast()) {
+                stopped(control)
+            } else {
+                failed("runtime-failed")
+            };
         }
         let sampler = llama_sampler_chain_init(llama_sampler_chain_default_params());
         if sampler.is_null() {
@@ -368,7 +364,7 @@ fn run_once(canonical_bytes: &[u8], control: &RunControl) -> LocalRuntimeSnapsho
                 llama_sampler_free(sampler);
                 llama_free(context);
                 llama_model_free(model);
-                return failed(stopped_diagnostic(control));
+                return stopped(control);
             }
             let token = llama_sampler_sample(sampler, context, -1);
             if llama_vocab_is_eog(vocab, token) {
@@ -397,13 +393,11 @@ fn run_once(canonical_bytes: &[u8], control: &RunControl) -> LocalRuntimeSnapsho
                 llama_sampler_free(sampler);
                 llama_free(context);
                 llama_model_free(model);
-                return failed(
-                    if attempt_stopped((control as *const RunControl).cast_mut().cast()) {
-                        stopped_diagnostic(control)
-                    } else {
-                        "runtime-failed"
-                    },
-                );
+                return if attempt_stopped((control as *const RunControl).cast_mut().cast()) {
+                    stopped(control)
+                } else {
+                    failed("runtime-failed")
+                };
             }
         }
         llama_sampler_free(sampler);
@@ -435,9 +429,29 @@ fn failed(diagnostic: &str) -> LocalRuntimeSnapshot {
     }
 }
 
+fn cancelled() -> LocalRuntimeSnapshot {
+    LocalRuntimeSnapshot {
+        schema_version: 1,
+        local_only: true,
+        state: "cancelled".into(),
+        output: None,
+        diagnostic: Some("cancelled".into()),
+        input_token_limit: INPUT_TOKEN_LIMIT as u16,
+        output_token_limit: OUTPUT_TOKEN_LIMIT as u16,
+        deadline_seconds: 60,
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::LocalRuntimeService;
+    use super::{cancelled, LocalRuntimeService};
+
+    #[test]
+    fn cancellation_has_a_distinct_terminal_snapshot() {
+        let snapshot = cancelled();
+        assert_eq!(snapshot.state, "cancelled");
+        assert_eq!(snapshot.diagnostic.as_deref(), Some("cancelled"));
+    }
 
     #[test]
     fn local_runtime_rejects_a_second_concurrent_attempt_and_releases_afterward() {

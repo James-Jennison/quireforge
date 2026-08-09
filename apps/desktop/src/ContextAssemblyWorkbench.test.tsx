@@ -41,9 +41,9 @@ describe("ContextAssemblyWorkbench", () => {
     let complete!: (value: {
       schemaVersion: 1;
       localOnly: true;
-      state: "completed";
-      output: string;
-      diagnostic: null;
+      state: "cancelled";
+      output: null;
+      diagnostic: "cancelled";
       inputTokenLimit: 4096;
       outputTokenLimit: 512;
       deadlineSeconds: 60;
@@ -150,17 +150,19 @@ describe("ContextAssemblyWorkbench", () => {
     complete({
       schemaVersion: 1,
       localOnly: true,
-      state: "completed",
-      output: "Local response",
-      diagnostic: null,
+      state: "cancelled",
+      output: null,
+      diagnostic: "cancelled",
       inputTokenLimit: 4096,
       outputTokenLimit: 512,
       deadlineSeconds: 60,
     });
-    await screen.findByText("Local response");
-    expect(screen.getByLabelText(/local runtime result/i)).toHaveTextContent(
-      /local-only attempt: completed/i,
+    await waitFor(() =>
+      expect(screen.getByLabelText(/local runtime result/i)).toHaveTextContent(
+        /local-only attempt: cancelled/i,
+      ),
     );
+    expect(screen.getByText(/local runtime: cancelled/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Cancel" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Revoke" })).toBeDisabled();
   });
