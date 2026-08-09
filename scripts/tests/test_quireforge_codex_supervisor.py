@@ -46,9 +46,19 @@ class SupervisorCompletionStateTests(unittest.TestCase):
         script = SUPERVISOR.read_text(encoding="utf-8")
 
         self.assertIn("post_push_completion_state", script)
-        self.assertIn("has_untracked_changes", script)
-        self.assertIn("Task-created untracked changes remain; nothing was committed.", script)
+        self.assertIn("collect_admissible_untracked_task_paths", script)
+        self.assertIn("is_admissible_untracked_task_path", script)
+        self.assertIn("PRIVATE KEY", script)
+        self.assertIn("outside the approved source-file boundary", script)
         self.assertIn("Worker test or validation failed", script)
+
+    def test_worker_untracked_file_admission_is_bounded_to_safe_source_files(self) -> None:
+        script = SUPERVISOR.read_text(encoding="utf-8")
+
+        self.assertIn(".github/*|apps/*|docs/*|packaging/*|scripts/*", script)
+        self.assertIn("*.md|*.rs|*.toml|*.ts|*.tsx", script)
+        self.assertIn('"$(stat -c %s -- "$absolute_path")" -le 1048576', script)
+        self.assertIn("! -L", script)
 
     def test_tmux_recovery_restarts_only_continuable_states(self) -> None:
         script = SUPERVISOR.read_text(encoding="utf-8")

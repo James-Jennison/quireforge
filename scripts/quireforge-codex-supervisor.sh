@@ -166,8 +166,32 @@ incomplete_task() {
   write_status "Task incomplete" "failed" "not committed: $reason" "Preserve and resolve remaining changes, then restart the supervisor" "none"
 }
 
-has_untracked_changes() {
-  [[ -n "$(git -C "$repository_root" ls-files --others --exclude-standard)" ]]
+is_admissible_untracked_task_path() {
+  local path="$1" absolute_path
+  [[ "$path" != /* && "$path" != *".."* ]] || return 1
+  case "$path" in
+    .github/*|apps/*|docs/*|packaging/*|scripts/*) ;;
+    *) return 1 ;;
+  esac
+  case "$path" in
+    *.md|*.rs|*.toml|*.ts|*.tsx|*.js|*.mjs|*.cjs|*.json|*.jsonc|*.css|*.html|*.svg|*.sh|*.py|*.yml|*.yaml)
+      ;;
+    *) return 1 ;;
+  esac
+  absolute_path="$repository_root/$path"
+  [[ -f "$absolute_path" && ! -L "$absolute_path" ]] || return 1
+  [[ "$(stat -c %s -- "$absolute_path")" -le 1048576 ]] || return 1
+  ! grep -E -q -- '(-----BEGIN [A-Z ]*PRIVATE KEY-----|(^|[^[:alnum:]_])(sk-|sk-proj-|ghp_|github_pat_|AKIA)[[:alnum:]_-]{16,})' "$absolute_path"
+}
+
+collect_admissible_untracked_task_paths() {
+  local path
+  mapfile -d '' -t untracked_task_paths < <(
+    git -C "$repository_root" ls-files --others --exclude-standard -z
+  )
+  for path in "${untracked_task_paths[@]}"; do
+    is_admissible_untracked_task_path "$path" || return 1
+  done
 }
 
 post_push_completion_state() {
@@ -387,8 +411,8 @@ run_task() {
     rm -f -- "$result_path"
     return 0
   fi
-  if has_untracked_changes; then
-    incomplete_task "Task-created untracked changes remain; nothing was committed."
+  if ! collect_admissible_untracked_task_paths; then
+    incomplete_task "Task-created untracked output is outside the approved source-file boundary; nothing was committed."
     rm -f -- "$result_path"
     return 1
   fi
@@ -403,6 +427,7 @@ run_task() {
   done
   write_status "Trusted supervisor is validating, committing, and pushing task changes" "running" "sandbox checks and requested host validation passed" "Verify clean post-push alignment" "none"
   mapfile -t changed_paths < <(git -C "$repository_root" diff --name-only --diff-filter=ACDMRTUXB)
+  changed_paths+=("${untracked_task_paths[@]}")
   if ! finalize_commit "$subject" "${changed_paths[@]}"; then
     rm -f -- "$result_path"
     return 1

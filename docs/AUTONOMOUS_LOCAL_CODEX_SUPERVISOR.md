@@ -17,10 +17,13 @@ through an exact
 `AUTOPILOT_HOST_VALIDATION: pnpm test:e2e` marker before its
 `AUTOPILOT_READY_TO_COMMIT` marker. The trusted outer supervisor accepts only
 that explicit allowlisted command, runs it on the local host, then runs the
-scoped diff check, stages only changed tracked task files, commits, pushes
-`main`, and verifies clean post-push alignment. A host test failure is a failed
-validation state, not a human-only blocker; it becomes a sentinel only for a
-real hard-stop. Codex stdout/stderr is written near-raw to `worker.log`
+scoped diff check, stages changed tracked task files and only bounded admissible
+untracked text-source files from the clean-start worker, commits, pushes `main`,
+and verifies clean post-push alignment. Untracked files outside the approved
+source directories/extensions, symlinks, files over 1 MiB, and files containing
+private-key or common token markers remain terminal safe failures. A host test
+failure is a failed validation state, not a human-only blocker; it becomes a
+sentinel only for a real hard-stop. Codex stdout/stderr is written near-raw to `worker.log`
 and the tmux pane through the same `tee` pipeline. Only secret-like output is
 redacted; source and ordinary task output remain visible for local monitoring.
 A real human-only blocker creates
