@@ -248,6 +248,86 @@ describe("ContextAssemblyWorkbench", () => {
     );
   });
 
+  it("keeps a bounded local-runtime failure visible without offering a retry", async () => {
+    const confirmed = {
+      schemaVersion: 1,
+      fictionalLocalOnly: true,
+      sink: "fictional-local-context-sink-v1",
+      state: "awaiting_confirmation",
+      projectId: "019fbee6-476f-71b0-853c-f067657aa69c",
+      taskId: null,
+      bundleId: "019fbee6-476f-71b0-853c-f067657aa69b",
+      authorizationId: "019fbee6-476f-71b0-853c-f067657aa69a",
+      bundleDigest:
+        "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      expiresAtMs: 1,
+      items: [],
+      totalBytes: 12,
+      estimatedTokens: 3,
+      exclusions: [],
+      auditState: "review acknowledged",
+      diagnostic: null,
+    };
+    bridge.prepareContextAssembly.mockResolvedValueOnce({
+      ...confirmed,
+      state: "prepared",
+      authorizationId: null,
+    });
+    bridge.reviewContextAssembly.mockResolvedValueOnce({
+      ...confirmed,
+      state: "awaiting_review",
+      authorizationId: null,
+    });
+    bridge.acknowledgeContextAssemblyReview.mockResolvedValueOnce(confirmed);
+    bridge.runContextAssemblyLocalRuntime.mockResolvedValueOnce({
+      schemaVersion: 1,
+      localOnly: true,
+      state: "failed",
+      output: null,
+      diagnostic: "model-unavailable",
+      inputTokenLimit: 4096,
+      outputTokenLimit: 512,
+      deadlineSeconds: 60,
+    });
+
+    render(
+      <ContextAssemblyWorkbench
+        projectId="019fbee6-476f-71b0-853c-f067657aa69c"
+        onClose={() => undefined}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText(/explicit user instruction/i), {
+      target: { value: "Summarize the reviewed request" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /prepare review/i }));
+    await screen.findByRole("button", { name: /review prepared bundle/i });
+    fireEvent.click(
+      screen.getByRole("button", { name: /review prepared bundle/i }),
+    );
+    await screen.findByRole("button", { name: /acknowledge exact review/i });
+    fireEvent.click(
+      screen.getByRole("button", { name: /acknowledge exact review/i }),
+    );
+    await screen.findByRole("button", {
+      name: /run once with local-only model/i,
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: /run once with local-only model/i }),
+    );
+
+    await waitFor(() =>
+      expect(screen.getByLabelText(/local runtime result/i)).toHaveTextContent(
+        /local-only attempt: failed/i,
+      ),
+    );
+    expect(
+      screen.getByText(/local runtime: model-unavailable/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /run once with local-only model/i }),
+    ).toBeDisabled();
+  });
+
   it("invalidates a prepared bundle when its selection changes", async () => {
     render(
       <ContextAssemblyWorkbench

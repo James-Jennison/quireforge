@@ -380,7 +380,7 @@ function ContextAssemblyWorkbenchScope({
           Prepare review
         </button>
         <button
-          disabled={!canConfirm || busy}
+          disabled={!canConfirm || busy || runtime !== null}
           onClick={() => {
             const actionProjectId = projectId;
             setRuntime(null);
@@ -484,6 +484,9 @@ function ContextAssemblyWorkbenchScope({
             </p>
           )}
           {runtime?.output && <pre>{runtime.output}</pre>}
+          {runtime?.diagnostic && (
+            <p role="status">Local runtime: {runtime.diagnostic}.</p>
+          )}
         </section>
       )}
     </section>

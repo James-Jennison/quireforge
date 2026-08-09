@@ -14,6 +14,7 @@ use std::{
 const MODEL_PATH_ENV: &str = "QUIRE_FORGE_M63_MODEL_PATH";
 const INPUT_TOKEN_LIMIT: usize = 4_096;
 const OUTPUT_TOKEN_LIMIT: usize = 512;
+const CONTEXT_TOKEN_LIMIT: usize = INPUT_TOKEN_LIMIT + OUTPUT_TOKEN_LIMIT;
 const OUTPUT_BYTE_LIMIT: usize = 16 * 1024;
 const DEADLINE: Duration = Duration::from_secs(60);
 
@@ -98,6 +99,10 @@ struct SamplerChainParams {
 unsafe extern "C" {
     fn llama_backend_init();
     fn llama_backend_free();
+    fn llama_log_set(
+        callback: unsafe extern "C" fn(i32, *const c_char, *mut c_void),
+        user_data: *mut c_void,
+    );
     fn llama_model_default_params() -> ModelParams;
     fn llama_context_default_params() -> ContextParams;
     fn llama_sampler_chain_default_params() -> SamplerChainParams;
@@ -152,6 +157,11 @@ impl Drop for Backend {
 unsafe extern "C" fn continue_before_deadline(_: f32, data: *mut c_void) -> bool {
     !deadline_elapsed(data)
 }
+
+// llama.cpp writes its default diagnostics to stderr, including model-load
+// details. M63's model location is supervisor-owned and must not cross the
+// local runtime boundary, so the adapter deliberately discards those details.
+unsafe extern "C" fn discard_runtime_log(_: i32, _: *const c_char, _: *mut c_void) {}
 
 unsafe extern "C" fn abort_at_deadline(data: *mut c_void) -> bool {
     deadline_elapsed(data)
@@ -217,6 +227,7 @@ fn run_once(canonical_bytes: &[u8]) -> LocalRuntimeSnapshot {
     };
     let started = Instant::now();
     unsafe {
+        llama_log_set(discard_runtime_log, std::ptr::null_mut());
         let _backend = Backend::initialize();
         let mut model_params = llama_model_default_params();
         model_params.n_gpu_layers = 0;
@@ -232,7 +243,9 @@ fn run_once(canonical_bytes: &[u8]) -> LocalRuntimeSnapshot {
             });
         }
         let mut context_params = llama_context_default_params();
-        context_params.n_ctx = INPUT_TOKEN_LIMIT as u32;
+        // Preserve the fixed 4,096-token reviewed input allowance while
+        // reserving the separately fixed 512-token output allowance.
+        context_params.n_ctx = CONTEXT_TOKEN_LIMIT as u32;
         context_params.n_batch = 512;
         context_params.n_ubatch = 512;
         context_params.n_threads = 1;
@@ -248,7 +261,7 @@ fn run_once(canonical_bytes: &[u8]) -> LocalRuntimeSnapshot {
             return failed("runtime-unavailable");
         }
         let vocab = llama_model_get_vocab(model);
-        let mut tokens = vec![0_i32; INPUT_TOKEN_LIMIT];
+        let mut tokens = vec![0_i32; INPUT_TOKEN_LIMIT + 1];
         let token_count = llama_tokenize(
             vocab,
             prompt.as_ptr(),
@@ -258,7 +271,7 @@ fn run_once(canonical_bytes: &[u8]) -> LocalRuntimeSnapshot {
             true,
             true,
         );
-        if token_count <= 0 || token_count as usize >= INPUT_TOKEN_LIMIT {
+        if token_count <= 0 || token_count as usize > INPUT_TOKEN_LIMIT {
             llama_free(context);
             llama_model_free(model);
             return failed("reviewed-input-too-large");
