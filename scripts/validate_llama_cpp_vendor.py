@@ -268,6 +268,7 @@ AR_HEADER_BYTES = 60
 MAX_NESTED_ARCHIVE_BYTES = 8 * 1024 * 1024
 MAX_ARCHIVE_NESTING = 3
 MAX_ARCHIVE_MEMBERS = 4096
+MAX_ARCHIVE_MEMBER_NAME_BYTES = 4096
 REPOSITORY_MODEL_ARTIFACT_EXCLUSIONS = {
     ".agents",
     ".cache",
@@ -1033,6 +1034,9 @@ def require_no_model_artifacts_in_zip(path: Path, relative: Path) -> None:
                 if entry.is_dir():
                     continue
                 entry_path = Path(entry.filename)
+                require_admitted_archive_member_name(
+                    entry.filename, relative, "ZIP archive"
+                )
                 require(
                     entry_path.suffix.lower() not in MODEL_ARTIFACT_SUFFIXES,
                     f"model artifact found in ZIP archive: {relative}!{entry.filename}",
@@ -1068,6 +1072,7 @@ def require_no_model_artifacts_in_tar(path: Path, relative: Path) -> None:
                 if not entry.isfile():
                     continue
                 entry_path = Path(entry.name)
+                require_admitted_archive_member_name(entry.name, relative, "TAR archive")
                 require(
                     entry_path.suffix.lower() not in MODEL_ARTIFACT_SUFFIXES,
                     f"model artifact found in TAR archive: {relative}!{entry.name}",
@@ -1165,6 +1170,7 @@ def require_no_model_artifacts_in_ar_stream(
             "\x00" not in member_name,
             f"could not safely inspect {archive_kind} member name: {relative}!{encoded_name}",
         )
+        require_admitted_archive_member_name(member_name, relative, archive_kind)
         member_relative = Path(f"{relative}!{member_name}")
         require(
             member_relative.suffix.lower() not in MODEL_ARTIFACT_SUFFIXES,
@@ -1203,6 +1209,18 @@ def ar_member_name(
         )
         return name
     return encoded_name.rstrip("/")
+
+
+def require_admitted_archive_member_name(member_name: str, relative: Path, archive_kind: str) -> None:
+    """Keep archive metadata bounded before it becomes a diagnostic path."""
+    require(
+        "\x00" not in member_name,
+        f"could not safely inspect {archive_kind} member name: {relative}",
+    )
+    require(
+        len(member_name.encode("utf-8")) <= MAX_ARCHIVE_MEMBER_NAME_BYTES,
+        f"{archive_kind} member name exceeds the M63 admission limit: {relative}",
+    )
 
 
 def require_no_model_artifacts_in_archive_member(
@@ -1263,6 +1281,9 @@ def require_no_model_artifacts_in_archive_payload(payload: bytes, relative: Path
                     if entry.is_dir():
                         continue
                     entry_path = Path(entry.filename)
+                    require_admitted_archive_member_name(
+                        entry.filename, relative, "nested ZIP archive"
+                    )
                     require(
                         entry_path.suffix.lower() not in MODEL_ARTIFACT_SUFFIXES,
                         f"model artifact found in nested ZIP archive: {relative}!{entry.filename}",
@@ -1288,6 +1309,9 @@ def require_no_model_artifacts_in_archive_payload(payload: bytes, relative: Path
                     if not entry.isfile():
                         continue
                     entry_path = Path(entry.name)
+                    require_admitted_archive_member_name(
+                        entry.name, relative, "nested TAR archive"
+                    )
                     require(
                         entry_path.suffix.lower() not in MODEL_ARTIFACT_SUFFIXES,
                         f"model artifact found in nested TAR archive: {relative}!{entry.name}",
