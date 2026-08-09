@@ -41,6 +41,12 @@ validator, type-check, lint, and formatting gates passed locally on
 2026-08-09. The local Debian package and the installed-host M63 execution/
 desktop acceptance remain required; this is not a release-ready claim.
 
+The adapter's context-parameter C ABI now mirrors the pinned vendored llama.cpp
+header, and its focused lifecycle test proves a second concurrent local attempt
+is rejected immediately while the completed attempt releases the single slot.
+This remains source-level candidate evidence only; package and installed-host
+acceptance are still required.
+
 The candidate procedure is recorded in
 [Testing](TESTING.md#m63-local-runtime-installed-host-acceptance). It requires
 the installed-host operator to retain only content-free package and lifecycle

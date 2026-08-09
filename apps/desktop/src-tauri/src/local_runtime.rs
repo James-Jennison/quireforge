@@ -75,9 +75,7 @@ struct ContextParams {
     kv_unified: bool,
     samplers: *mut c_void,
     n_samplers: usize,
-    name: [c_char; 64],
-    extra: *mut c_void,
-    padding: [c_char; 8],
+    ctx_other: *mut c_void,
 }
 
 #[repr(C)]
@@ -191,18 +189,37 @@ pub(crate) struct LocalRuntimeService {
     active: Mutex<bool>,
 }
 
+struct ActiveRunGuard<'a> {
+    active: &'a Mutex<bool>,
+}
+
+impl Drop for ActiveRunGuard<'_> {
+    fn drop(&mut self) {
+        if let Ok(mut active) = self.active.lock() {
+            *active = false;
+        }
+    }
+}
+
 impl LocalRuntimeService {
     pub(crate) fn run(&self, canonical_bytes: &[u8]) -> LocalRuntimeSnapshot {
+        let Ok(_active_run) = self.claim_slot() else {
+            return failed("runtime-busy");
+        };
+        run_once(canonical_bytes)
+    }
+
+    fn claim_slot(&self) -> Result<ActiveRunGuard<'_>, ()> {
         let Ok(mut active) = self.active.lock() else {
-            return failed("runtime-unavailable");
+            return Err(());
         };
         if *active {
-            return failed("runtime-busy");
+            return Err(());
         }
         *active = true;
-        let result = run_once(canonical_bytes);
-        *active = false;
-        result
+        Ok(ActiveRunGuard {
+            active: &self.active,
+        })
     }
 }
 
@@ -365,5 +382,22 @@ fn failed(diagnostic: &str) -> LocalRuntimeSnapshot {
         input_token_limit: INPUT_TOKEN_LIMIT as u16,
         output_token_limit: OUTPUT_TOKEN_LIMIT as u16,
         deadline_seconds: 60,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::LocalRuntimeService;
+
+    #[test]
+    fn local_runtime_rejects_a_second_concurrent_attempt_and_releases_afterward() {
+        let runtime = LocalRuntimeService::default();
+        let active = runtime.claim_slot().expect("first attempt claims the slot");
+        assert!(runtime.claim_slot().is_err(), "second attempt is rejected");
+        drop(active);
+        assert!(
+            runtime.claim_slot().is_ok(),
+            "terminal attempt releases the slot"
+        );
     }
 }
