@@ -735,6 +735,10 @@ def require_no_rust_runtime_api_usage(source_directory: Path) -> None:
     )
     source_include = re.compile(rf"\binclude{rust_separator}!")
     path_module = re.compile(rf"#{rust_separator}\[{rust_separator}path{rust_separator}=")
+    rust_attribute = re.compile(
+        rf"#{rust_separator}\[{rust_separator}(?P<contents>[^\]]*)\]",
+        flags=re.DOTALL,
+    )
     violations = []
     for path in sorted(source_directory.rglob("*")):
         relative = path.relative_to(source_directory)
@@ -759,6 +763,12 @@ def require_no_rust_runtime_api_usage(source_directory: Path) -> None:
             violations.append(f"{relative}: Rust source include macro")
         if path_module.search(source):
             violations.append(f"{relative}: Rust path module attribute")
+        for attribute in rust_attribute.finditer(source):
+            contents = attribute.group("contents")
+            if re.match(rf"cfg_attr{rust_separator}\(", contents) and re.search(
+                rf"\bpath{rust_separator}=", contents
+            ):
+                violations.append(f"{relative}: conditional Rust path module attribute")
     require(
         not violations,
         "Rust runtime source must not reference llama.cpp or ggml APIs or declare native FFI "

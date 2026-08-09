@@ -1019,6 +1019,22 @@ class CmakeOptionsTests(unittest.TestCase):
             with self.assertRaisesRegex(SystemExit, "or import unscanned Rust source"):
                 VALIDATOR.require_no_rust_runtime_api_usage(source)
 
+    def test_rejects_conditional_rust_path_module_attributes(self) -> None:
+        for attribute in (
+            '#[cfg_attr(feature = "unapproved", path = "../unreviewed-runtime.rs")]',
+            '# /* unapproved */ [cfg_attr /* unapproved */ (feature = "unapproved", '
+            'path /* unapproved */ = "../unreviewed-runtime.rs")]',
+        ):
+            with self.subTest(attribute=attribute), tempfile.TemporaryDirectory() as temporary_directory:
+                source = Path(temporary_directory)
+                (source / "runtime.rs").write_text(
+                    f"{attribute}\nmod unreviewed_runtime;\n",
+                    encoding="utf-8",
+                )
+
+                with self.assertRaisesRegex(SystemExit, "or import unscanned Rust source"):
+                    VALIDATOR.require_no_rust_runtime_api_usage(source)
+
     def test_allows_rust_source_without_vendored_c_api_references(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             source = Path(temporary_directory)
