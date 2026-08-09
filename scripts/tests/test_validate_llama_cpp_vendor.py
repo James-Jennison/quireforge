@@ -741,6 +741,47 @@ class CmakeOptionsTests(unittest.TestCase):
         with self.assertRaisesRegex(SystemExit, "must not alias (the process module|Command)"):
             VALIDATOR.require_closed_build_process_boundary(build)
 
+    def test_rejects_build_script_rust_source_includes(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace(
+            "fn build_llama_cpp() {",
+            'include! ("unreviewed-build.rs");\n\nfn build_llama_cpp() {',
+        )
+
+        with self.assertRaisesRegex(SystemExit, "build script must not import unscanned Rust source"):
+            VALIDATOR.require_no_build_script_source_injection(build)
+
+    def test_rejects_build_script_path_modules(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace(
+            "fn build_llama_cpp() {",
+            '#[path = "unreviewed-build.rs"]\nmod unreviewed_build;\n\nfn build_llama_cpp() {',
+        )
+
+        with self.assertRaisesRegex(SystemExit, "build script must not import unscanned Rust source"):
+            VALIDATOR.require_no_build_script_source_injection(build)
+
+    def test_rejects_comment_separated_build_script_out_of_line_modules(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace(
+            "fn build_llama_cpp() {",
+            "mod /* unapproved */ hidden_build;\n\nfn build_llama_cpp() {",
+        )
+
+        with self.assertRaisesRegex(SystemExit, "build script must not import unscanned Rust source"):
+            VALIDATOR.require_no_build_script_source_injection(build)
+
+    def test_rejects_conditional_build_script_path_modules(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace(
+            "fn build_llama_cpp() {",
+            '#[cfg_attr(feature = "hidden", path = "unreviewed-build.rs")]\n'
+            "mod hidden_build;\n\nfn build_llama_cpp() {",
+        )
+
+        with self.assertRaisesRegex(SystemExit, "build script must not import unscanned Rust source"):
+            VALIDATOR.require_no_build_script_source_injection(build)
+
     def test_rejects_a_helper_that_adds_a_cmake_argument(self) -> None:
         build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
         build = build.replace(

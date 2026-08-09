@@ -478,6 +478,40 @@ def require_closed_build_process_boundary(build: str) -> None:
     )
 
 
+def require_no_build_script_source_injection(build: str) -> None:
+    """Keep the closed build-process check from being bypassed by extra Rust files."""
+    # ``build.rs`` is deliberately a single reviewed source file. An include or
+    # out-of-line module could add build-time process behavior that the closed
+    # command parser cannot inspect in this file.
+    rust_separator = r"(?:\s|/\*[\s\S]*?\*/|//[^\n]*(?:\n|$))*"
+    source_include = re.compile(rf"\binclude{rust_separator}!")
+    path_module = re.compile(rf"#{rust_separator}\[{rust_separator}path{rust_separator}=")
+    rust_attribute = re.compile(
+        rf"#{rust_separator}\[{rust_separator}(?P<contents>[^\]]*)\]",
+        flags=re.DOTALL,
+    )
+    out_of_line_module = re.compile(
+        rf"\bmod{rust_separator}[A-Za-z_][A-Za-z0-9_]*{rust_separator};"
+    )
+    violations = []
+    if source_include.search(build):
+        violations.append("Rust source include macro")
+    if path_module.search(build):
+        violations.append("Rust path module attribute")
+    for attribute in rust_attribute.finditer(build):
+        contents = attribute.group("contents")
+        if re.match(rf"cfg_attr{rust_separator}\(", contents) and re.search(
+            rf"\bpath{rust_separator}=", contents
+        ):
+            violations.append("conditional Rust path module attribute")
+    if out_of_line_module.search(build):
+        violations.append("out-of-line Rust module")
+    require(
+        not violations,
+        "build script must not import unscanned Rust source: " + "; ".join(violations),
+    )
+
+
 def without_rust_comments(source: str) -> str:
     """Normalize comment separators before checking closed build-script syntax."""
     return re.sub(r"/\*[\s\S]*?\*/|//[^\n]*", "", source)
@@ -856,6 +890,7 @@ def main() -> None:
     require_complete_vendored_source_tracking(build)
     require_build_time_vendored_tree_verification(build)
     require_closed_build_process_boundary(build)
+    require_no_build_script_source_injection(build)
     require_closed_command_mutation_boundary(build)
     require_closed_command_execution_boundary(build)
     require_verified_cmake_configure_arguments(build)
