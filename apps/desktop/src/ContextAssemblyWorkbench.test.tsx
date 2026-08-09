@@ -114,7 +114,7 @@ describe("ContextAssemblyWorkbench", () => {
       /local-only attempt: running/i,
     );
     expect(screen.getByText(/no automatic retry/i)).toBeInTheDocument();
-    bridge.cancelContextAssemblyLocalRuntime.mockResolvedValueOnce(true);
+    bridge.cancelContextAssemblyLocalRuntime.mockResolvedValueOnce(false);
     fireEvent.click(
       screen.getByRole("button", { name: /request cancellation/i }),
     );
@@ -125,9 +125,27 @@ describe("ContextAssemblyWorkbench", () => {
     );
     expect(
       screen.getByText(
-        /cancellation requested for the one local-only attempt/i,
+        /cancellation could not be requested; the one local-only attempt remains bounded/i,
       ),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /request cancellation/i }),
+    ).toBeEnabled();
+
+    bridge.cancelContextAssemblyLocalRuntime.mockResolvedValueOnce(true);
+    fireEvent.click(
+      screen.getByRole("button", { name: /request cancellation/i }),
+    );
+    expect(
+      screen.getByRole("button", { name: /cancellation requested/i }),
+    ).toBeDisabled();
+    await waitFor(() =>
+      expect(
+        screen.getByText(
+          /cancellation requested for the one local-only attempt/i,
+        ),
+      ).toBeInTheDocument(),
+    );
 
     complete({
       schemaVersion: 1,
@@ -143,6 +161,8 @@ describe("ContextAssemblyWorkbench", () => {
     expect(screen.getByLabelText(/local runtime result/i)).toHaveTextContent(
       /local-only attempt: completed/i,
     );
+    expect(screen.getByRole("button", { name: "Cancel" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Revoke" })).toBeDisabled();
   });
 
   it("labels the local-only authority boundary and starts with no selected source", () => {

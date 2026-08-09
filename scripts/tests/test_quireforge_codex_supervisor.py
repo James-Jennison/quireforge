@@ -60,6 +60,7 @@ class SupervisorCompletionStateTests(unittest.TestCase):
         self.assertIn("Do not make standalone source-boundary hardening", script)
         self.assertIn("QUIRE_FORGE_M63_MODEL_PATH", script)
         self.assertIn("connect to an external provider", script)
+        self.assertIn("cargo metadata --locked --no-deps --format-version 1", script)
 
     def test_worker_exposes_only_the_approved_model_path_to_tool_shells(self) -> None:
         script = SUPERVISOR.read_text(encoding="utf-8")

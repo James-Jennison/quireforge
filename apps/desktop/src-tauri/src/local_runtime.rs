@@ -174,11 +174,9 @@ unsafe extern "C" fn abort_at_deadline(data: *mut c_void) -> bool {
 }
 
 unsafe fn attempt_stopped(data: *mut c_void) -> bool {
-    data.cast::<RunControl>()
-        .as_ref()
-        .is_none_or(|control| {
-            control.cancelled.load(Ordering::Acquire) || control.started.elapsed() >= DEADLINE
-        })
+    data.cast::<RunControl>().as_ref().is_none_or(|control| {
+        control.cancelled.load(Ordering::Acquire) || control.started.elapsed() >= DEADLINE
+    })
 }
 
 fn stopped_diagnostic(control: &RunControl) -> &'static str {
@@ -299,11 +297,13 @@ fn run_once(canonical_bytes: &[u8], control: &RunControl) -> LocalRuntimeSnapsho
         model_params.progress_callback_user_data = (control as *const RunControl).cast_mut().cast();
         let model = llama_model_load_from_file(path.as_ptr(), model_params);
         if model.is_null() {
-            return failed(if attempt_stopped((control as *const RunControl).cast_mut().cast()) {
-                stopped_diagnostic(control)
-            } else {
-                "model-unavailable"
-            });
+            return failed(
+                if attempt_stopped((control as *const RunControl).cast_mut().cast()) {
+                    stopped_diagnostic(control)
+                } else {
+                    "model-unavailable"
+                },
+            );
         }
         let mut context_params = llama_context_default_params();
         // Preserve the fixed 4,096-token reviewed input allowance while
@@ -347,11 +347,13 @@ fn run_once(canonical_bytes: &[u8], control: &RunControl) -> LocalRuntimeSnapsho
         {
             llama_free(context);
             llama_model_free(model);
-            return failed(if attempt_stopped((control as *const RunControl).cast_mut().cast()) {
-                stopped_diagnostic(control)
-            } else {
-                "runtime-failed"
-            });
+            return failed(
+                if attempt_stopped((control as *const RunControl).cast_mut().cast()) {
+                    stopped_diagnostic(control)
+                } else {
+                    "runtime-failed"
+                },
+            );
         }
         let sampler = llama_sampler_chain_init(llama_sampler_chain_default_params());
         if sampler.is_null() {
@@ -395,11 +397,13 @@ fn run_once(canonical_bytes: &[u8], control: &RunControl) -> LocalRuntimeSnapsho
                 llama_sampler_free(sampler);
                 llama_free(context);
                 llama_model_free(model);
-                return failed(if attempt_stopped((control as *const RunControl).cast_mut().cast()) {
-                    stopped_diagnostic(control)
-                } else {
-                    "runtime-failed"
-                });
+                return failed(
+                    if attempt_stopped((control as *const RunControl).cast_mut().cast()) {
+                        stopped_diagnostic(control)
+                    } else {
+                        "runtime-failed"
+                    },
+                );
             }
         }
         llama_sampler_free(sampler);
@@ -441,8 +445,14 @@ mod tests {
         let (_, active) = runtime
             .claim_slot("bundle-a")
             .expect("first attempt claims the slot");
-        assert!(runtime.claim_slot("bundle-b").is_err(), "second attempt is rejected");
-        assert!(runtime.request_cancel("bundle-a"), "exact bundle can cancel");
+        assert!(
+            runtime.claim_slot("bundle-b").is_err(),
+            "second attempt is rejected"
+        );
+        assert!(
+            runtime.request_cancel("bundle-a"),
+            "exact bundle can cancel"
+        );
         assert!(
             !runtime.request_cancel("bundle-b"),
             "other bundles cannot cancel the active attempt"

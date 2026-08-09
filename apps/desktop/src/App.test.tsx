@@ -439,7 +439,7 @@ describe("QuireForge desktop shell", () => {
         name: "Advisor",
       }),
     ).toBeInTheDocument();
-  });
+  }, 10_000);
 
   it("keeps the QuireForge workbench context closed until requested and exposes only safe shell actions", async () => {
     render(

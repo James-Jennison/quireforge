@@ -61,6 +61,7 @@ function ContextAssemblyWorkbenchScope({
     [snapshot, setSnapshot] = useState<ContextAssemblySnapshot | null>(null),
     [runtime, setRuntime] = useState<LocalRuntimeSnapshot | null>(null),
     [runtimeRunning, setRuntimeRunning] = useState(false),
+    [cancellationRequested, setCancellationRequested] = useState(false),
     [busy, setBusy] = useState(false),
     [notice, setNotice] = useState(
       "Local-only reviewed context. Nothing is selected by default.",
@@ -167,8 +168,11 @@ function ContextAssemblyWorkbenchScope({
     setSnapshot(null);
     setRuntime(null);
     setRuntimeRunning(false);
+    setCancellationRequested(false);
     setNotice("Selection changed. Prepare a new local-only review.");
   };
+  const canModifyPreparedBundle =
+    !runtimeRunning && runtime === null && Boolean(snapshot?.bundleId) && !busy;
   return (
     <section
       className="mock-inference-workbench"
@@ -386,6 +390,7 @@ function ContextAssemblyWorkbenchScope({
             const actionProjectId = projectId;
             setRuntime(null);
             setRuntimeRunning(true);
+            setCancellationRequested(false);
             setNotice(
               "One local-only CPU attempt is running. It has a fixed deadline and no automatic retry.",
             );
@@ -430,18 +435,35 @@ function ContextAssemblyWorkbenchScope({
           Run once with local-only model
         </button>
         <button
-          disabled={!runtimeRunning && (!snapshot?.bundleId || busy)}
+          disabled={
+            runtimeRunning ? cancellationRequested : !canModifyPreparedBundle
+          }
           onClick={() => {
             if (runtimeRunning) {
+              setCancellationRequested(true);
               void cancelContextAssemblyLocalRuntime({
                 bundleId: snapshot!.bundleId,
-              }).then((accepted) => {
-                if (accepted && mounted.current) {
+              })
+                .then((accepted) => {
+                  if (!mounted.current) return;
+                  if (accepted) {
+                    setNotice(
+                      "Cancellation requested for the one local-only attempt.",
+                    );
+                  } else {
+                    setCancellationRequested(false);
+                    setNotice(
+                      "Cancellation could not be requested; the one local-only attempt remains bounded.",
+                    );
+                  }
+                })
+                .catch(() => {
+                  if (!mounted.current) return;
+                  setCancellationRequested(false);
                   setNotice(
-                    "Cancellation requested for the one local-only attempt.",
+                    "Cancellation is unavailable; the one local-only attempt remains bounded.",
                   );
-                }
-              });
+                });
               return;
             }
             void run(() =>
@@ -449,10 +471,14 @@ function ContextAssemblyWorkbenchScope({
             );
           }}
         >
-          {runtimeRunning ? "Request cancellation" : "Cancel"}
+          {runtimeRunning
+            ? cancellationRequested
+              ? "Cancellation requested"
+              : "Request cancellation"
+            : "Cancel"}
         </button>
         <button
-          disabled={!snapshot?.bundleId || busy}
+          disabled={!canModifyPreparedBundle}
           onClick={() =>
             void run(() =>
               revokeContextAssembly({ bundleId: snapshot!.bundleId }),
