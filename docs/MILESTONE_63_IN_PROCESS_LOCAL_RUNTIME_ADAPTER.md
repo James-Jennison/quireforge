@@ -38,14 +38,17 @@ posture; it replaces that phase only with the bounded returned result or
 failure. The result remains in the open view only.
 The focused storage and workbench tests, repository validation, package
 validator, type-check, lint, and formatting gates passed locally on
-2026-08-09. The local Debian package and the installed-host M63 execution/
-desktop acceptance remain required; this is not a release-ready claim.
+2026-08-09. The authoritative pinned Ubuntu 22.04 package gate subsequently
+produced and validated the clean-tree `0.1.0-beta.63` local candidate with its
+two required Debian artifacts. That gate excluded the model and did not start
+the runtime. The separate installed-host M63 execution/desktop acceptance
+remains required; this is not a release-ready claim.
 
 The adapter's context-parameter C ABI now mirrors the pinned vendored llama.cpp
 header, and its focused lifecycle test proves a second concurrent local attempt
 is rejected immediately while the completed attempt releases the single slot.
-This remains source-level candidate evidence only; package and installed-host
-acceptance are still required.
+This remains local candidate evidence only; installed-host acceptance is still
+required.
 
 The candidate procedure is recorded in
 [Testing](TESTING.md#m63-local-runtime-installed-host-acceptance). It requires
