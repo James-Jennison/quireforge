@@ -474,8 +474,14 @@ def require_closed_build_process_boundary(build: str) -> None:
     )
 
 
+def without_rust_comments(source: str) -> str:
+    """Normalize comment separators before checking closed build-script syntax."""
+    return re.sub(r"/\*[\s\S]*?\*/|//[^\n]*", "", source)
+
+
 def require_closed_command_mutation_boundary(build: str) -> None:
     """Prevent helpers from mutating either closed CMake command out of band."""
+    build = without_rust_comments(build)
     mutation_pattern = (
         r"\b([A-Za-z_][A-Za-z0-9_]*)\s*\.\s*"
         r"(arg|args|current_dir|env|envs|env_clear|env_remove)\s*\("
@@ -511,7 +517,7 @@ def require_closed_command_execution_boundary(build: str) -> None:
     """Allow the two approved CMake commands to execute only through ``run``."""
     # Ignore comments when counting executable method calls so explanatory text
     # cannot affect the closed source check.
-    code = re.sub(r"/\*[\s\S]*?\*/|//[^\n]*", "", build)
+    code = without_rust_comments(build)
     command_execution_calls = re.findall(
         r"\b([A-Za-z_][A-Za-z0-9_]*)\s*\.\s*"
         r"(status|output|spawn|exec)\s*\(",
@@ -597,6 +603,7 @@ def require_closed_cmake_invocation(build: str) -> None:
 
 
 def require_closed_cmake_environment(build: str) -> None:
+    build = without_rust_comments(build)
     environment_match = re.search(
         r"const CLOSED_CMAKE_ENVIRONMENT: &\[&str\] = &\[(?P<variables>.*?)\];",
         build,
@@ -624,7 +631,7 @@ def require_closed_cmake_environment(build: str) -> None:
         )
         require(command_match is not None, f"{description} invocation is missing")
         require(
-            len(re.findall(rf"{command_name}\.env_clear\(\);", command_match.group("body")))
+            len(re.findall(rf"{command_name}\s*\.\s*env_clear\(\);", command_match.group("body")))
             == 1,
             f"{description} must clear the inherited environment exactly once",
         )
@@ -632,7 +639,7 @@ def require_closed_cmake_environment(build: str) -> None:
             len(
                 re.findall(
                     rf"for variable in CLOSED_CMAKE_ENVIRONMENT \{{\s*"
-                    rf"{command_name}\.env_remove\(variable\);\s*\}}",
+                    rf"{command_name}\s*\.\s*env_remove\(variable\);\s*\}}",
                     command_match.group("body"),
                 )
             )
@@ -640,12 +647,12 @@ def require_closed_cmake_environment(build: str) -> None:
             f"{description} must remove the inherited toolchain environment exactly once",
         )
         require(
-            len(re.findall(rf'{command_name}\.env\("PATH", CLOSED_BUILD_PATH\);', command_match.group("body")))
+            len(re.findall(rf'{command_name}\s*\.\s*env\("PATH", CLOSED_BUILD_PATH\);', command_match.group("body")))
             == 1,
             f"{description} must use the fixed system build path exactly once",
         )
         environment_methods = re.findall(
-            rf"\b{command_name}\.(env[A-Za-z_]*)\s*\(", command_match.group("body")
+            rf"\b{command_name}\s*\.\s*(env[A-Za-z_]*)\s*\(", command_match.group("body")
         )
         require(
             environment_methods == ["env_clear", "env_remove", "env"],

@@ -783,6 +783,28 @@ class CmakeOptionsTests(unittest.TestCase):
         with self.assertRaisesRegex(SystemExit, "must not override the closed CMake working directory"):
             VALIDATOR.require_closed_command_mutation_boundary(build)
 
+    def test_rejects_a_comment_separated_cmake_environment_assignment(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace(
+            '    configure.env("PATH", CLOSED_BUILD_PATH);',
+            '    configure.env("PATH", CLOSED_BUILD_PATH);\n'
+            '    configure /* hidden */ .env("CC", "/tmp/unapproved");',
+        )
+
+        with self.assertRaisesRegex(SystemExit, "must not add environment assignments"):
+            VALIDATOR.require_closed_cmake_environment(build)
+
+    def test_rejects_a_comment_separated_cmake_working_directory_override(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace(
+            "    configure.args(LLAMA_CPP_CMAKE_OPTIONS);",
+            '    configure.args(LLAMA_CPP_CMAKE_OPTIONS);\n'
+            '    configure /* hidden */ .current_dir("/tmp/unapproved");',
+        )
+
+        with self.assertRaisesRegex(SystemExit, "must not override the closed CMake working directory"):
+            VALIDATOR.require_closed_command_mutation_boundary(build)
+
     def test_requires_only_the_closed_cmake_execution_paths(self) -> None:
         build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
 
