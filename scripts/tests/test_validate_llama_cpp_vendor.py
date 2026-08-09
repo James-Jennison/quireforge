@@ -278,6 +278,27 @@ class CmakeOptionsTests(unittest.TestCase):
             with self.assertRaisesRegex(SystemExit, "ZIP archive member name exceeds"):
                 VALIDATOR.require_no_model_artifacts(source)
 
+    def test_rejects_an_unsafe_zip_archive_member_name(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            source = Path(temporary_directory)
+            with zipfile.ZipFile(source / "archive.zip", "w") as archive:
+                archive.writestr("../source-only.txt", "source only")
+
+            with self.assertRaisesRegex(SystemExit, "ZIP archive member name"):
+                VALIDATOR.require_no_model_artifacts(source)
+
+    def test_rejects_an_unsafe_tar_archive_member_name(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            source = Path(temporary_directory)
+            readme = source / "readme.txt"
+            readme.write_text("source only", encoding="utf-8")
+            with tarfile.open(source / "archive.tar", "w") as archive:
+                archive.add(readme, arcname="../source-only.txt")
+            readme.unlink()
+
+            with self.assertRaisesRegex(SystemExit, "TAR archive member name"):
+                VALIDATOR.require_no_model_artifacts(source)
+
     def test_rejects_a_model_artifact_named_inside_an_ar_archive(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             source = Path(temporary_directory)
@@ -309,6 +330,16 @@ class CmakeOptionsTests(unittest.TestCase):
             )
 
             with self.assertRaisesRegex(SystemExit, "ar archive member name exceeds"):
+                VALIDATOR.require_no_model_artifacts(source)
+
+    def test_rejects_an_unsafe_ar_archive_member_name(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            source = Path(temporary_directory)
+            (source / "archive.a").write_bytes(
+                VALIDATOR.AR_MAGIC + ar_member("../source-only", b"source only")
+            )
+
+            with self.assertRaisesRegex(SystemExit, "ar archive member name"):
                 VALIDATOR.require_no_model_artifacts(source)
 
     def test_rejects_a_renamed_model_artifact_inside_an_ar_archive(self) -> None:

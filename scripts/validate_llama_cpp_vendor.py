@@ -1035,12 +1035,10 @@ def require_no_model_artifacts_in_zip(path: Path, relative: Path) -> None:
                     member_count <= MAX_ARCHIVE_MEMBERS,
                     f"ZIP archive member count exceeds the M63 admission limit: {relative}",
                 )
+                require_admitted_archive_member_name(entry.filename, relative, "ZIP archive")
                 if entry.is_dir():
                     continue
                 entry_path = Path(entry.filename)
-                require_admitted_archive_member_name(
-                    entry.filename, relative, "ZIP archive"
-                )
                 require(
                     entry_path.suffix.lower() not in MODEL_ARTIFACT_SUFFIXES,
                     f"model artifact found in ZIP archive: {relative}!{entry.filename}",
@@ -1073,10 +1071,10 @@ def require_no_model_artifacts_in_tar(path: Path, relative: Path) -> None:
                     member_count <= MAX_ARCHIVE_MEMBERS,
                     f"TAR archive member count exceeds the M63 admission limit: {relative}",
                 )
+                require_admitted_archive_member_name(entry.name, relative, "TAR archive")
                 if not entry.isfile():
                     continue
                 entry_path = Path(entry.name)
-                require_admitted_archive_member_name(entry.name, relative, "TAR archive")
                 require(
                     entry_path.suffix.lower() not in MODEL_ARTIFACT_SUFFIXES,
                     f"model artifact found in TAR archive: {relative}!{entry.name}",
@@ -1230,9 +1228,14 @@ def ar_member_name(
 
 
 def require_admitted_archive_member_name(member_name: str, relative: Path, archive_kind: str) -> None:
-    """Keep archive metadata bounded before it becomes a diagnostic path."""
+    """Keep archive metadata bounded and unambiguous before diagnostics use it."""
     require(
-        "\x00" not in member_name,
+        member_name
+        and "\x00" not in member_name
+        and not member_name.startswith(("/", "\\"))
+        and "\\" not in member_name
+        and not any(ord(character) < 32 or ord(character) == 127 for character in member_name)
+        and all(segment not in {"", ".", ".."} for segment in member_name.split("/")),
         f"could not safely inspect {archive_kind} member name: {relative}",
     )
     require(
@@ -1331,12 +1334,12 @@ def require_no_model_artifacts_in_archive_payload(payload: bytes, relative: Path
                         member_count <= MAX_ARCHIVE_MEMBERS,
                         f"nested ZIP archive member count exceeds the M63 admission limit: {relative}",
                     )
-                    if entry.is_dir():
-                        continue
-                    entry_path = Path(entry.filename)
                     require_admitted_archive_member_name(
                         entry.filename, relative, "nested ZIP archive"
                     )
+                    if entry.is_dir():
+                        continue
+                    entry_path = Path(entry.filename)
                     require(
                         entry_path.suffix.lower() not in MODEL_ARTIFACT_SUFFIXES,
                         f"model artifact found in nested ZIP archive: {relative}!{entry.filename}",
@@ -1359,12 +1362,12 @@ def require_no_model_artifacts_in_archive_payload(payload: bytes, relative: Path
                         member_count <= MAX_ARCHIVE_MEMBERS,
                         f"nested TAR archive member count exceeds the M63 admission limit: {relative}",
                     )
-                    if not entry.isfile():
-                        continue
-                    entry_path = Path(entry.name)
                     require_admitted_archive_member_name(
                         entry.name, relative, "nested TAR archive"
                     )
+                    if not entry.isfile():
+                        continue
+                    entry_path = Path(entry.name)
                     require(
                         entry_path.suffix.lower() not in MODEL_ARTIFACT_SUFFIXES,
                         f"model artifact found in nested TAR archive: {relative}!{entry.name}",
