@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.0-beta.64 — In-process local runtime candidate
+
+- Carries the M63 credential-free, CPU-only local-runtime candidate forward
+  with canonical completed, failed, and cancelled lifecycle outcomes, bounded
+  cancellation, and visible local-only terminal status.
+- The model remains local, read-only, outside Git and packages. This candidate
+  adds no credential, provider, network, tool, browser, connector, or external
+  action authority; installed-host model execution acceptance remains required.
+
 ## 0.1.0-beta.63 — Governed Context Assembly
 
 - Implements M60's explicit, bounded, native-owned context selection,
