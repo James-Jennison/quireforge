@@ -751,6 +751,21 @@ class CmakeOptionsTests(unittest.TestCase):
         with self.assertRaisesRegex(SystemExit, "build script must not import unscanned Rust source"):
             VALIDATOR.require_no_build_script_source_injection(build)
 
+    def test_rejects_build_script_string_and_byte_source_includes(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+
+        for macro in ("include_str", "include_bytes"):
+            with self.subTest(macro=macro):
+                injected = build.replace(
+                    "fn build_llama_cpp() {",
+                    f'{macro}! ("unreviewed-build-input");\n\nfn build_llama_cpp() {{',
+                )
+
+                with self.assertRaisesRegex(
+                    SystemExit, "build script must not import unscanned Rust source"
+                ):
+                    VALIDATOR.require_no_build_script_source_injection(injected)
+
     def test_rejects_build_script_path_modules(self) -> None:
         build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
         build = build.replace(

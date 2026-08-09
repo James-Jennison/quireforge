@@ -484,7 +484,7 @@ def require_no_build_script_source_injection(build: str) -> None:
     # out-of-line module could add build-time process behavior that the closed
     # command parser cannot inspect in this file.
     rust_separator = r"(?:\s|/\*[\s\S]*?\*/|//[^\n]*(?:\n|$))*"
-    source_include = re.compile(rf"\binclude{rust_separator}!")
+    source_include = re.compile(rf"\binclude(?:_str|_bytes)?{rust_separator}!")
     path_module = re.compile(rf"#{rust_separator}\[{rust_separator}path{rust_separator}=")
     rust_attribute = re.compile(
         rf"#{rust_separator}\[{rust_separator}(?P<contents>[^\]]*)\]",
