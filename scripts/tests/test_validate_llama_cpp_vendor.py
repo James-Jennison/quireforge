@@ -685,6 +685,19 @@ class CmakeOptionsTests(unittest.TestCase):
         with self.assertRaisesRegex(SystemExit, "must not alias (the process module|Command)"):
             VALIDATOR.require_closed_build_process_boundary(build)
 
+    def test_rejects_a_unicode_aliased_unapproved_build_subprocess(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace(
+            "use std::{",
+            "use std::process::Command as Ā;\n\nuse std::{",
+        ).replace(
+            '    tauri_build::build();',
+            '    let _unapproved = Ā::new("curl");\n    tauri_build::build();',
+        )
+
+        with self.assertRaisesRegex(SystemExit, "must remain ASCII-only"):
+            VALIDATOR.require_closed_build_process_boundary(build)
+
     def test_rejects_a_process_module_aliased_unapproved_build_subprocess(self) -> None:
         build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
         build = build.replace(

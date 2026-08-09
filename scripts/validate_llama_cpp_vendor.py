@@ -420,6 +420,10 @@ def require_build_time_vendored_tree_verification(build: str) -> None:
 def require_closed_build_process_boundary(build: str) -> None:
     # Rust permits comments between path segments and the constructor call. Treat
     # them as whitespace so they cannot conceal an additional subprocess.
+    require(
+        build.isascii(),
+        "build script must remain ASCII-only so Unicode aliases cannot conceal subprocesses",
+    )
     rust_separator = r"(?:\s|/\*[\s\S]*?\*/|//[^\n]*(?:\n|$))*"
     process_module_alias = re.search(
         r"\buse\b[\s\S]*?\bprocess\s+as\s+[A-Za-z_][A-Za-z0-9_]*",
