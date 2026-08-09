@@ -317,6 +317,13 @@ class CmakeOptionsTests(unittest.TestCase):
 
         VALIDATOR.require_closed_cmake_environment(build)
 
+    def test_rejects_a_duplicate_closed_cmake_environment_variable(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace('    "CMAKE_TOOLCHAIN_FILE",\n', '    "CMAKE_TOOLCHAIN_FILE",\n    "CMAKE_TOOLCHAIN_FILE",\n')
+
+        with self.assertRaisesRegex(SystemExit, "must not contain duplicate variables"):
+            VALIDATOR.require_closed_cmake_environment(build)
+
     def test_rejects_a_non_system_cmake_executable(self) -> None:
         build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
         build = build.replace(

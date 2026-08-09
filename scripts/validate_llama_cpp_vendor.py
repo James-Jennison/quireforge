@@ -666,7 +666,12 @@ def require_closed_cmake_environment(build: str) -> None:
         flags=re.DOTALL,
     )
     require(environment_match is not None, "closed CMake environment list is missing")
-    environment_variables = set(re.findall(r'"([^"\\]+)"', environment_match.group("variables")))
+    environment_entries = re.findall(r'"([^"\\]+)"', environment_match.group("variables"))
+    require(
+        len(environment_entries) == len(set(environment_entries)),
+        "closed CMake environment list must not contain duplicate variables",
+    )
+    environment_variables = set(environment_entries)
     require(
         environment_variables == EXPECTED_CLOSED_CMAKE_ENVIRONMENT,
         "closed CMake environment list changed",
