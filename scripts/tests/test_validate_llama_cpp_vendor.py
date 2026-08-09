@@ -137,6 +137,18 @@ class CmakeOptionsTests(unittest.TestCase):
             }.issubset(options)
         )
 
+    def test_forbids_cmake_writes_to_the_verified_vendored_source_tree(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+
+        options = VALIDATOR.cmake_options(build)
+
+        self.assertTrue(
+            {
+                "-DCMAKE_DISABLE_SOURCE_CHANGES=ON",
+                "-DCMAKE_DISABLE_IN_SOURCE_BUILD=ON",
+            }.issubset(options)
+        )
+
     def test_requires_fixed_system_compiler_and_archive_tool_paths(self) -> None:
         build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
 
