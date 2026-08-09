@@ -81,6 +81,9 @@ also rejects CMake command
 working-directory overrides or out-of-block command mutations. Full repository
 validation remains required; no package or installed-host claim is made until
 the separately approved offline model input is available.
+It also permits only the fixed vendored-source change tracking and static CPU
+linkage Cargo directives, rejecting any additional build-script output or
+compile-configuration directive.
 The validator also requires its own build script and the scanned Rust runtime
 source root to be real, non-symlinked filesystem entries before reading them,
 so either guard cannot be redirected outside the reviewed working tree.

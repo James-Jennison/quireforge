@@ -1080,6 +1080,31 @@ class CmakeOptionsTests(unittest.TestCase):
         with self.assertRaisesRegex(SystemExit, "unexpected native library search directive"):
             VALIDATOR.require_closed_cargo_linkage(build)
 
+    def test_requires_only_the_approved_cargo_directives(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+
+        VALIDATOR.require_closed_cargo_directives(build)
+
+    def test_rejects_an_extra_cargo_compile_configuration_directive(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace(
+            '    tauri_build::build();',
+            '    println!("cargo:rustc-cfg=unapproved_runtime");\n    tauri_build::build();',
+        )
+
+        with self.assertRaisesRegex(SystemExit, "approved println calls"):
+            VALIDATOR.require_closed_cargo_directives(build)
+
+    def test_rejects_a_non_directive_build_script_output_macro(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace(
+            '    tauri_build::build();',
+            '    print!("unapproved build output");\n    tauri_build::build();',
+        )
+
+        with self.assertRaisesRegex(SystemExit, "only through the approved println calls"):
+            VALIDATOR.require_closed_cargo_directives(build)
+
     def test_rejects_rust_runtime_references_to_vendored_c_apis(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             source = Path(temporary_directory)

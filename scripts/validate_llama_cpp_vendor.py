@@ -7,6 +7,7 @@ import hashlib
 import json
 import re
 import stat
+from collections import Counter
 from itertools import chain
 from pathlib import Path
 
@@ -130,6 +131,14 @@ EXPECTED_LINK_SEARCH_DIRECTORIES = [
     'build_dir.join("ggml/src")',
 ]
 EXPECTED_STATIC_LIBRARIES = ["llama", "ggml", "ggml-base", "ggml-cpu"]
+EXPECTED_CARGO_DIRECTIVES = Counter(
+    {
+        "cargo:rerun-if-changed={}": 2,
+        "cargo:rustc-link-search=native={}": 2,
+        "cargo:rustc-link-lib=static={library}": 1,
+        "cargo:rustc-link-lib=dylib=stdc++": 1,
+    }
+)
 EXPECTED_CLOSED_BUILD_PATH = "/usr/bin:/bin"
 EXPECTED_SYSTEM_CMAKE = "/usr/bin/cmake"
 EXPECTED_CLOSED_CMAKE_ENVIRONMENT = {
@@ -829,6 +838,21 @@ def require_closed_cargo_linkage(build: str) -> None:
     )
 
 
+def require_closed_cargo_directives(build: str) -> None:
+    """Allow only the fixed Cargo directives needed by the static build."""
+    code = without_rust_comments(build)
+    output_macros = re.findall(r"\b(print|println)\s*!\s*\(", code)
+    require(
+        output_macros == ["println"] * sum(EXPECTED_CARGO_DIRECTIVES.values()),
+        "build script must emit Cargo directives only through the approved println calls",
+    )
+    cargo_directives = Counter(re.findall(r'"(cargo:[^"\\]*)"', code))
+    require(
+        cargo_directives == EXPECTED_CARGO_DIRECTIVES,
+        "build script must emit only the approved Cargo directives",
+    )
+
+
 def require_no_rust_runtime_api_usage(source_directory: Path) -> None:
     """Keep the M63 source boundary build-only until a later adapter is approved."""
     require_regular_source_directory(source_directory, "Rust runtime source root")
@@ -975,6 +999,7 @@ def main() -> None:
     require_closed_cmake_environment(build)
     require_closed_cmake_build_invocation(build)
     require_closed_cargo_linkage(build)
+    require_closed_cargo_directives(build)
     require_no_rust_runtime_api_usage(NATIVE_SOURCE)
     print("M63 llama.cpp vendor validation passed.")
 
