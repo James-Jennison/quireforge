@@ -189,6 +189,16 @@ class CmakeOptionsTests(unittest.TestCase):
 
             VALIDATOR.require_no_model_artifacts(source)
 
+    def test_rejects_a_zip_archive_with_too_many_members(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            source = Path(temporary_directory)
+            with zipfile.ZipFile(source / "archive.zip", "w") as archive:
+                for index in range(VALIDATOR.MAX_ARCHIVE_MEMBERS + 1):
+                    archive.writestr(f"source/{index}.txt", "source only")
+
+            with self.assertRaisesRegex(SystemExit, "ZIP archive member count exceeds"):
+                VALIDATOR.require_no_model_artifacts(source)
+
     def test_rejects_a_model_artifact_named_inside_a_tar_archive(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             source = Path(temporary_directory)
@@ -226,6 +236,19 @@ class CmakeOptionsTests(unittest.TestCase):
 
             VALIDATOR.require_no_model_artifacts(source)
 
+    def test_rejects_a_tar_archive_with_too_many_members(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            source = Path(temporary_directory)
+            readme = source / "readme.txt"
+            readme.write_text("source only", encoding="utf-8")
+            with tarfile.open(source / "archive.tar", "w") as archive:
+                for index in range(VALIDATOR.MAX_ARCHIVE_MEMBERS + 1):
+                    archive.add(readme, arcname=f"source/{index}.txt")
+            readme.unlink()
+
+            with self.assertRaisesRegex(SystemExit, "TAR archive member count exceeds"):
+                VALIDATOR.require_no_model_artifacts(source)
+
     def test_rejects_a_model_artifact_named_inside_an_ar_archive(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             source = Path(temporary_directory)
@@ -234,6 +257,18 @@ class CmakeOptionsTests(unittest.TestCase):
             )
 
             with self.assertRaisesRegex(SystemExit, "model artifact found in ar archive"):
+                VALIDATOR.require_no_model_artifacts(source)
+
+    def test_rejects_an_ar_archive_with_too_many_members(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            source = Path(temporary_directory)
+            members = b"".join(
+                ar_member(f"source-{index}", b"source only")
+                for index in range(VALIDATOR.MAX_ARCHIVE_MEMBERS + 1)
+            )
+            (source / "archive.a").write_bytes(VALIDATOR.AR_MAGIC + members)
+
+            with self.assertRaisesRegex(SystemExit, "ar archive member count exceeds"):
                 VALIDATOR.require_no_model_artifacts(source)
 
     def test_rejects_a_renamed_model_artifact_inside_an_ar_archive(self) -> None:

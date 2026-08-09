@@ -267,6 +267,7 @@ AR_MAGIC = b"!<arch>\n"
 AR_HEADER_BYTES = 60
 MAX_NESTED_ARCHIVE_BYTES = 8 * 1024 * 1024
 MAX_ARCHIVE_NESTING = 3
+MAX_ARCHIVE_MEMBERS = 4096
 REPOSITORY_MODEL_ARTIFACT_EXCLUSIONS = {
     ".agents",
     ".cache",
@@ -1024,7 +1025,11 @@ def require_no_model_artifacts_in_zip(path: Path, relative: Path) -> None:
         return
     try:
         with zipfile.ZipFile(path) as archive:
-            for entry in archive.infolist():
+            for member_count, entry in enumerate(archive.infolist(), start=1):
+                require(
+                    member_count <= MAX_ARCHIVE_MEMBERS,
+                    f"ZIP archive member count exceeds the M63 admission limit: {relative}",
+                )
                 if entry.is_dir():
                     continue
                 entry_path = Path(entry.filename)
@@ -1055,7 +1060,11 @@ def require_no_model_artifacts_in_tar(path: Path, relative: Path) -> None:
         return
     try:
         with tarfile.open(path) as archive:
-            for entry in archive:
+            for member_count, entry in enumerate(archive, start=1):
+                require(
+                    member_count <= MAX_ARCHIVE_MEMBERS,
+                    f"TAR archive member count exceeds the M63 admission limit: {relative}",
+                )
                 if not entry.isfile():
                     continue
                 entry_path = Path(entry.name)
@@ -1102,7 +1111,13 @@ def require_no_model_artifacts_in_ar_stream(
     read = getattr(archive, "read")
     seek = getattr(archive, "seek")
     long_names: bytes | None = None
+    member_count = 0
     while header := read(AR_HEADER_BYTES):
+        member_count += 1
+        require(
+            member_count <= MAX_ARCHIVE_MEMBERS,
+            f"{archive_kind} member count exceeds the M63 admission limit: {relative}",
+        )
         require(
             len(header) == AR_HEADER_BYTES and header[-2:] == b"`\n",
             f"could not safely inspect {archive_kind} member header: {relative}",
@@ -1240,7 +1255,11 @@ def require_no_model_artifacts_in_archive_payload(payload: bytes, relative: Path
             return
         if zipfile.is_zipfile(payload_file):
             with zipfile.ZipFile(payload_file) as archive:
-                for entry in archive.infolist():
+                for member_count, entry in enumerate(archive.infolist(), start=1):
+                    require(
+                        member_count <= MAX_ARCHIVE_MEMBERS,
+                        f"nested ZIP archive member count exceeds the M63 admission limit: {relative}",
+                    )
                     if entry.is_dir():
                         continue
                     entry_path = Path(entry.filename)
@@ -1261,7 +1280,11 @@ def require_no_model_artifacts_in_archive_payload(payload: bytes, relative: Path
         if tarfile.is_tarfile(payload_file):
             payload_file.seek(0)
             with tarfile.open(fileobj=payload_file, mode="r:*") as archive:
-                for entry in archive:
+                for member_count, entry in enumerate(archive, start=1):
+                    require(
+                        member_count <= MAX_ARCHIVE_MEMBERS,
+                        f"nested TAR archive member count exceeds the M63 admission limit: {relative}",
+                    )
                     if not entry.isfile():
                         continue
                     entry_path = Path(entry.name)
