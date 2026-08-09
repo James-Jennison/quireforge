@@ -1163,6 +1163,23 @@ class CmakeOptionsTests(unittest.TestCase):
                 ):
                     VALIDATOR.require_no_rust_runtime_api_usage(source)
 
+    def test_rejects_exported_native_ffi_functions_in_rust_runtime_source(self) -> None:
+        for definition in (
+            'extern "C" fn hidden_runtime_entry() {}',
+            'pub unsafe extern "C" fn hidden_runtime_entry() {}',
+            'pub /* unapproved */ extern /* unapproved */ "C" '
+            '/* unapproved */ fn hidden_runtime_entry() {}',
+        ):
+            with self.subTest(definition=definition), tempfile.TemporaryDirectory() as temporary_directory:
+                source = Path(temporary_directory)
+                (source / "runtime.rs").write_text(f"{definition}\n", encoding="utf-8")
+
+                with self.assertRaisesRegex(
+                    SystemExit,
+                    "must not reference llama.cpp or ggml APIs or declare native FFI",
+                ):
+                    VALIDATOR.require_no_rust_runtime_api_usage(source)
+
     def test_rejects_rust_source_include_macros(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             source = Path(temporary_directory)

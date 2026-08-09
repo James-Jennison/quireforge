@@ -871,6 +871,11 @@ def require_no_rust_runtime_api_usage(source_directory: Path) -> None:
         rf"\b(?:unsafe{rust_separator})?extern{rust_separator}"
         rf"(?:\"[^\"]+\"{rust_separator})?\{{"
     )
+    ffi_function = re.compile(
+        rf"\b(?:pub(?:{rust_separator}\([^)]*\))?{rust_separator})?"
+        rf"(?:unsafe{rust_separator})?extern{rust_separator}"
+        rf"(?:\"[^\"]+\"{rust_separator})?fn\b"
+    )
     source_include = re.compile(rf"\binclude{rust_separator}!")
     path_module = re.compile(rf"#{rust_separator}\[{rust_separator}path{rust_separator}=")
     rust_attribute = re.compile(
@@ -897,6 +902,8 @@ def require_no_rust_runtime_api_usage(source_directory: Path) -> None:
             violations.append(f"{relative}: {', '.join(matches)}")
         if ffi_declaration.search(source):
             violations.append(f"{relative}: native FFI declaration")
+        if ffi_function.search(source):
+            violations.append(f"{relative}: native FFI function")
         if source_include.search(source):
             violations.append(f"{relative}: Rust source include macro")
         if path_module.search(source):
