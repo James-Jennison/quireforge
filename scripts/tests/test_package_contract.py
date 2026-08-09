@@ -172,7 +172,7 @@ class PackageContractTests(unittest.TestCase):
         self.assertIn("version = source_version()", source)
         self.assertNotIn("requires beta", source)
 
-    def test_temporary_desktop_bundle_envelope_is_closed_and_bounded(self) -> None:
+    def test_permanent_desktop_bundle_budget_is_closed_and_bounded(self) -> None:
         budget = json.loads(
             (ROOT / "apps/desktop/scripts/bundle-budget.json").read_text(
                 encoding="utf-8"
@@ -182,9 +182,9 @@ class PackageContractTests(unittest.TestCase):
             budget,
             {
                 "entryBytes": 256 * 1024,
-                "appShellBytes": 448 * 1024,
-                "totalJavaScriptBytes": 1536 * 1024,
-                "stylesheetsBytes": 160 * 1024,
+                "appShellBytes": 320 * 1024,
+                "totalJavaScriptBytes": 1280 * 1024,
+                "stylesheetsBytes": 144 * 1024,
             },
         )
         self.assertLess(budget["appShellBytes"], budget["totalJavaScriptBytes"])

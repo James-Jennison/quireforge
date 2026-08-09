@@ -1,19 +1,17 @@
 # Desktop Bundle Size Ledger
 
-During the active Advisor and QuireForge UI-construction period, desktop
-production bundles remain measured and enforced under temporary ceilings:
-256 KiB startup entry, 448 KiB application shell, 1,572,864 bytes (1.5 MiB)
-total JavaScript, and 163,840 bytes (160 KiB) CSS. The beta.38 baseline was
-194,943 bytes entry, 309,489 bytes application shell, 941,807 bytes total
-JavaScript, and 108,515 bytes CSS. The startup-entry limit remains unchanged
-because it has 34.5% headroom. The 64-KiB shell, 256-KiB total-JavaScript, and
-32-KiB CSS allocation increments supply measured headroom for the approved
-M44–M58 UI work, including the three additional implementation packages in
-M52, M54, and M56; decision-only M51, M53, M55, M57, and M58 add no package
-bytes by themselves. These are not final performance targets and may not
-increase without fresh measured evidence and separate approval. Every package
-gate records actual totals and largest assets; a post-workspace reconciliation
-gate must establish strict permanent ceilings before product readiness.
+The post-workbench reconciliation is complete. Desktop production bundles use
+permanent ceilings: 256 KiB startup entry, 320 KiB application shell, 1.25 MiB
+total JavaScript, and 144 KiB CSS. They are enforced by
+`apps/desktop/scripts/bundle-budget.json`; no automatic increase exists.
+
+A clean current production build measured 195,014 bytes entry, 239,280 bytes
+application shell, 1,103,448 bytes total JavaScript, and 118,484 bytes CSS.
+The limits retain 34.4%, 37.0%, 18.8%, and 24.5% headroom respectively. They
+preserve the small startup boundary and existing route/pane splitting while
+replacing the M44–M58 temporary construction envelope with evidence-based
+limits. Any future increase requires fresh measured evidence and explicit
+approval; every package gate continues to record totals and largest assets.
 
 | Milestone | Version | Commit | JavaScript | CSS | Ceiling | Change | Explanation |
 | --- | --- | --- | ---: | ---: | --- | --- | --- |

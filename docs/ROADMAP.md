@@ -1193,6 +1193,13 @@ reconciliation remains mandatory.
 lifecycle, container/installed smoke, and visible-launch gates passed. It does
 not add a product capability or alter the permanent-budget reconciliation gate.
 
+**Permanent-budget reconciliation complete:** A clean current production build
+measured 195,014-byte entry, 239,280-byte application shell, 1,103,448 bytes
+of JavaScript, and 118,484 bytes of CSS. The closed permanent budget is now
+256 KiB entry, 320 KiB application shell, 1.25 MiB JavaScript, and 144 KiB
+CSS. It preserves lazy route/pane loading, sets no new product authority, and
+requires fresh measured evidence and explicit approval for any future increase.
+
 ### 44 — Unified Single Attachment Entry
 
 Present one **Attach a file** action that routes only to already supported,
@@ -1680,12 +1687,12 @@ browser/provider expansion; direct third-party connectors (including Figma or
 GitHub); MCP per-project enablement; browser verification agents; extension
 marketplaces; and parallel/multi-agent execution each require their own
 security, authority, transport, dependency, and retention proposal before any
-implementation. A post-workbench bundle-reconciliation gate must establish
-evidence-based permanent JavaScript and CSS ceilings before product-readiness or
-public-release approval. That gate must use the bundle-size ledger for every
-changed desktop package from M44 onward, measure route/chunk and stylesheet
-costs, review lazy-pane mounting and duplicate dependencies/CSS, and establish
-strict permanent ceilings rather than repeatedly raising temporary caps.
+implementation. The completed post-workbench bundle reconciliation established
+evidence-based permanent JavaScript and CSS ceilings before any future
+product-readiness or public-release approval. It measured route/chunk and
+stylesheet costs, retained lazy pane loading, and set strict closed limits
+rather than extending the temporary construction envelope. Future increases
+still require fresh measured evidence and explicit approval.
 
 ### Advisor Approval/Dispatch Phases A–B3 (completed capability history)
 

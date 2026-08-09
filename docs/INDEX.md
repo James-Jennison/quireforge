@@ -69,6 +69,9 @@ implementation position and [Roadmap](ROADMAP.md) for approved sequencing.
 - [Milestone 60 — Governed Context Assembly](MILESTONE_60_GOVERNED_CONTEXT_ASSEMBLY.md)
   — explicit bounded selection, private deterministic assembly, review, and a
   fictional local-only one-use sink.
+- [Desktop permanent bundle-budget reconciliation](BUNDLE_PERMANENT_RECONCILIATION.md)
+  — measured, closed desktop JavaScript and CSS ceilings after the M44–M58
+  construction period.
 - [Post-M41 packaging-efficiency checkpoint](PACKAGING_EFFICIENCY_CHECKPOINT.md)
   — checksum-verified immutable guest-input caching within the authoritative
   Ubuntu 22.04 release workflow.
