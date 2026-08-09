@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -123,6 +124,27 @@ class CmakeOptionsTests(unittest.TestCase):
 
         with self.assertRaisesRegex(SystemExit, "must exclude every guarded model artifact suffix"):
             VALIDATOR.require_model_artifact_ignores(gitignore)
+
+    def test_rejects_a_symlinked_rust_source_before_reading_its_target(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            source = Path(temporary_directory) / "source"
+            source.mkdir()
+            target = Path(temporary_directory) / "external.rs"
+            target.write_text("// outside verified source\n", encoding="utf-8")
+            (source / "runtime.rs").symlink_to(target)
+
+            with self.assertRaisesRegex(SystemExit, "must not follow symlinks"):
+                VALIDATOR.require_no_rust_runtime_api_usage(source)
+
+    def test_rejects_a_non_regular_native_source_entry(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            source = Path(temporary_directory) / "source"
+            source.mkdir()
+            fifo = source / "unapproved-entry"
+            os.mkfifo(fifo)
+
+            with self.assertRaisesRegex(SystemExit, "non-regular entry"):
+                VALIDATOR.require_no_rust_runtime_api_usage(source)
 
     def test_reads_the_exact_closed_option_list(self) -> None:
         build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")

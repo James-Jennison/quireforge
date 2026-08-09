@@ -659,8 +659,19 @@ def require_no_rust_runtime_api_usage(source_directory: Path) -> None:
     """Keep the M63 source boundary build-only until a later adapter is approved."""
     prohibited_api = re.compile(r"\b(?:llama|ggml)_[A-Za-z0-9_]*\b")
     violations = []
-    for path in sorted(source_directory.rglob("*.rs")):
+    for path in sorted(source_directory.rglob("*")):
         relative = path.relative_to(source_directory)
+        metadata = path.lstat()
+        require(
+            not stat.S_ISLNK(metadata.st_mode),
+            "Rust runtime-source guard must not follow symlinks: " f"{relative}",
+        )
+        require(
+            stat.S_ISDIR(metadata.st_mode) or stat.S_ISREG(metadata.st_mode),
+            "Rust runtime-source guard found a non-regular entry: " f"{relative}",
+        )
+        if not stat.S_ISREG(metadata.st_mode) or path.suffix != ".rs":
+            continue
         matches = sorted(set(prohibited_api.findall(path.read_text(encoding="utf-8"))))
         if matches:
             violations.append(f"{relative}: {', '.join(matches)}")
