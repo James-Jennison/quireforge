@@ -745,6 +745,19 @@ class CmakeOptionsTests(unittest.TestCase):
         with self.assertRaisesRegex(SystemExit, "must mutate CMake commands only"):
             VALIDATOR.require_closed_command_mutation_boundary(build)
 
+    def test_rejects_a_helper_that_adds_batched_cmake_environment_assignments(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace(
+            "fn build_llama_cpp() {",
+            'fn add_unapproved_environment(command: &mut Command) {\n'
+            '    command.envs([("CMAKE_TOOLCHAIN_FILE", "/tmp/untrusted")]);\n'
+            "}\n\n"
+            "fn build_llama_cpp() {",
+        )
+
+        with self.assertRaisesRegex(SystemExit, "must mutate CMake commands only"):
+            VALIDATOR.require_closed_command_mutation_boundary(build)
+
     def test_rejects_a_helper_that_reuses_an_approved_command_name(self) -> None:
         build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
         build = build.replace(
