@@ -62,6 +62,8 @@ generic archive/linker/symbol-tool, compiler-launcher/initial-flag, GNU Make
 flag, compiler search/override, and dynamic-loader injection variables. CMake
 user and system package registries
 are disabled and no package registry entry can be exported. The build
+environment also removes CMake language linker-launcher and static-analysis
+tool variables before either configuration or compilation. The build
 script compiles only the static `llama` target and its CPU ggml dependencies,
 after independently rechecking that the vendored root remains a real directory
 and recomputing and matching the pinned vendored source-tree SHA-256 before
