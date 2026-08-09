@@ -2024,11 +2024,11 @@ fn context_assembly_run_local_runtime(
     };
     let snapshot = runtime.run(&request.bundle_id, &canonical_bytes);
     let terminal = if snapshot.state == "completed" {
-        "local-runtime-completed"
+        "closed"
     } else if snapshot.state == "cancelled" {
         "cancelled"
     } else {
-        "local-runtime-failed"
+        "failed"
     };
     if !projects.complete_context_bundle(&request.bundle_id, terminal) {
         return local_runtime::LocalRuntimeSnapshot {

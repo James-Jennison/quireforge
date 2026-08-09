@@ -5432,6 +5432,7 @@ impl ProjectRepository {
                 | "timed_out"
                 | "failed"
                 | "rejected_delivery"
+                | "closed"
         ) {
             return Err(StorageError::InvalidStoredValue);
         }
@@ -11066,7 +11067,7 @@ mod tests {
     }
 
     #[test]
-    fn local_runtime_start_consumes_bytes_before_execution_and_recovers() {
+    fn local_runtime_start_consumes_bytes_before_execution_and_completes_once() {
         let mut repository = ProjectRepository::in_memory().expect("fresh schema");
         let project_id = Uuid::now_v7().to_string();
         insert_active_project(&repository, &project_id, &Uuid::now_v7().to_string());
@@ -11093,7 +11094,51 @@ mod tests {
             [&bundle_id],
             |row| row.get::<_, i64>(0),
         ).expect("pre-execution audit"), 2);
-        recover_interrupted_context_bundles(&repository.connection).expect("recovery");
+        repository
+            .complete_context_bundle(&bundle_id, "closed")
+            .expect("completed local runtime is terminal");
+        let completed: (String, bool, i64) = repository
+            .connection
+            .query_row(
+                "SELECT state, canonical_bytes IS NULL, completed_at_ms IS NOT NULL FROM context_bundles WHERE id=?1",
+                [&bundle_id],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            )
+            .expect("completed runtime state");
+        assert_eq!(
+            completed,
+            ("closed".into(), true, 1),
+            "the one consumed local attempt has one durable terminal outcome"
+        );
+        assert_eq!(
+            repository
+                .connection
+                .query_row(
+                    "SELECT count(*) FROM context_bundle_audit WHERE bundle_id=?1 AND event_kind='terminal' AND outcome='closed'",
+                    [&bundle_id],
+                    |row| row.get::<_, i64>(0),
+                )
+                .expect("terminal audit"),
+            1
+        );
+    }
+
+    #[test]
+    fn local_runtime_failure_is_a_terminal_bundle_outcome() {
+        let mut repository = ProjectRepository::in_memory().expect("fresh schema");
+        let project_id = Uuid::now_v7().to_string();
+        insert_active_project(&repository, &project_id, &Uuid::now_v7().to_string());
+        let bundle_id = Uuid::now_v7().to_string();
+        repository.connection.execute(
+            "INSERT INTO context_bundles (id,schema_version,project_id,task_id,bundle_digest,canonical_bytes,policy_version,assembly_version,state,expires_at_ms,created_at_ms,completed_at_ms,authorization_id) VALUES (?1,1,?2,NULL,?3,?4,1,1,'awaiting_confirmation',9999999999999,1,NULL,?5)",
+            params![bundle_id, project_id, "f".repeat(64), b"private canonical bytes".as_slice(), Uuid::now_v7().to_string()],
+        ).expect("confirmed context bundle");
+        repository
+            .start_local_runtime_context_bundle(&bundle_id)
+            .expect("runtime start");
+        repository
+            .complete_context_bundle(&bundle_id, "failed")
+            .expect("failed local runtime is terminal");
         assert_eq!(
             repository
                 .connection
@@ -11102,8 +11147,8 @@ mod tests {
                     [&bundle_id],
                     |row| row.get::<_, String>(0),
                 )
-                .expect("recovered state"),
-            "expired"
+                .expect("failed runtime state"),
+            "failed"
         );
     }
 

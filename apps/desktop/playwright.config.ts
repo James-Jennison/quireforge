@@ -1,9 +1,13 @@
 import { defineConfig, devices } from "@playwright/test";
+import { localTestWorkerCap } from "../../scripts/local-test-workers.mjs";
+
+const workers = localTestWorkerCap("QUIRE_FORGE_PLAYWRIGHT_WORKERS", 2);
 
 export default defineConfig({
   testDir: "./tests",
   outputDir: "./test-results",
   reporter: process.env.CI ? "github" : "list",
+  ...(workers === undefined ? {} : { workers }),
   use: {
     baseURL: "http://127.0.0.1:1420",
     ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE

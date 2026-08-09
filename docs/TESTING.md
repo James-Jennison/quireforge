@@ -43,6 +43,12 @@ non-browser gate for meaningful milestone closure. Run desktop E2E only for UI
 behavior changes, and use package-container validation only for
 packaging-sensitive changes.
 
+Local Vitest runs default to four workers per package and Playwright runs to
+two workers per package, so validation leaves capacity for the desktop. Set
+`QUIRE_FORGE_VITEST_MAX_WORKERS` or `QUIRE_FORGE_PLAYWRIGHT_WORKERS` to a
+positive integer to override a local cap. CI retains each tool's normal
+concurrency unless explicitly configured.
+
 | Scope | Existing commands |
 | --- | --- |
 | Targeted desktop | `pnpm --filter @quireforge/desktop check`<br>`pnpm --filter @quireforge/desktop lint`<br>`pnpm --filter @quireforge/desktop format:check`<br>`pnpm --filter @quireforge/desktop test`<br>`pnpm --filter @quireforge/desktop build`<br>`pnpm --filter @quireforge/desktop validate:dist` |
