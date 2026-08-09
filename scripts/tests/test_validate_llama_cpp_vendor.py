@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import io
 import os
 import tarfile
 import tempfile
@@ -181,6 +182,36 @@ class CmakeOptionsTests(unittest.TestCase):
             readme.unlink()
 
             VALIDATOR.require_no_model_artifacts(source)
+
+    def test_rejects_a_model_artifact_inside_a_nested_zip_archive(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            source = Path(temporary_directory)
+            nested = io.BytesIO()
+            with zipfile.ZipFile(nested, "w") as archive:
+                archive.writestr("unapproved-model.gguf", b"not a model")
+            with zipfile.ZipFile(source / "outer.zip", "w") as archive:
+                archive.writestr("nested.zip", nested.getvalue())
+
+            with self.assertRaisesRegex(SystemExit, "model artifact found in nested ZIP archive"):
+                VALIDATOR.require_no_model_artifacts(source)
+
+    def test_rejects_a_renamed_model_artifact_inside_a_nested_tar_archive(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            source = Path(temporary_directory)
+            nested = source / "nested.tar"
+            model = source / "unapproved-model"
+            model.write_bytes(b"GGUF\\x03\\x00\\x00\\x00")
+            with tarfile.open(nested, "w") as archive:
+                archive.add(model, arcname="unapproved-model")
+            model.unlink()
+            with zipfile.ZipFile(source / "outer.zip", "w") as archive:
+                archive.write(nested, arcname="nested.tar")
+            nested.unlink()
+
+            with self.assertRaisesRegex(
+                SystemExit, "model artifact signature found \\(GGUF\\) in nested archive"
+            ):
+                VALIDATOR.require_no_model_artifacts(source)
 
     def test_allows_non_model_source_files(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:

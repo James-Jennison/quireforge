@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import json
 import re
 import stat
@@ -262,6 +263,8 @@ MODEL_ARTIFACT_MAGIC = {
     b"GGUF": "GGUF",
     b"ggml": "GGML",
 }
+MAX_NESTED_ARCHIVE_BYTES = 8 * 1024 * 1024
+MAX_ARCHIVE_NESTING = 3
 REPOSITORY_MODEL_ARTIFACT_EXCLUSIONS = {
     ".agents",
     ".cache",
@@ -1027,12 +1030,12 @@ def require_no_model_artifacts_in_zip(path: Path, relative: Path) -> None:
                     f"model artifact found in ZIP archive: {relative}!{entry.filename}",
                 )
                 with archive.open(entry) as member:
-                    header = member.read(4)
-                for magic, format_name in MODEL_ARTIFACT_MAGIC.items():
-                    require(
-                        header != magic,
-                        "model artifact signature found "
-                        f"({format_name}) in ZIP archive: {relative}!{entry.filename}",
+                    require_no_model_artifacts_in_archive_member(
+                        member,
+                        entry.file_size,
+                        Path(f"{relative}!{entry.filename}"),
+                        1,
+                        "ZIP archive",
                     )
     except (OSError, zipfile.BadZipFile, zipfile.LargeZipFile, RuntimeError) as error:
         require(False, f"could not safely inspect ZIP archive {relative}: {error}")
@@ -1063,15 +1066,107 @@ def require_no_model_artifacts_in_tar(path: Path, relative: Path) -> None:
                     f"could not safely inspect TAR archive entry: {relative}!{entry.name}",
                 )
                 with member:
-                    header = member.read(4)
-                for magic, format_name in MODEL_ARTIFACT_MAGIC.items():
-                    require(
-                        header != magic,
-                        "model artifact signature found "
-                        f"({format_name}) in TAR archive: {relative}!{entry.name}",
+                    require_no_model_artifacts_in_archive_member(
+                        member,
+                        entry.size,
+                        Path(f"{relative}!{entry.name}"),
+                        1,
+                        "TAR archive",
                     )
     except (OSError, tarfile.TarError, RuntimeError) as error:
         require(False, f"could not safely inspect TAR archive {relative}: {error}")
+
+
+def require_no_model_artifacts_in_archive_member(
+    member: object, member_size: int, relative: Path, depth: int, archive_kind: str
+) -> None:
+    """Inspect one archive member without extracting it to the filesystem."""
+    read = getattr(member, "read")
+    prefix = read(512)
+    header = prefix[:4]
+    for magic, format_name in MODEL_ARTIFACT_MAGIC.items():
+        require(
+            header != magic,
+            f"model artifact signature found ({format_name}) in {archive_kind}: {relative}",
+        )
+    if not archive_payload_candidate(prefix):
+        return
+    require(
+        depth < MAX_ARCHIVE_NESTING,
+        f"archive nesting exceeds the M63 admission limit: {relative}",
+    )
+    require(
+        member_size <= MAX_NESTED_ARCHIVE_BYTES,
+        f"nested archive exceeds the M63 admission limit: {relative}",
+    )
+    payload = prefix + read(MAX_NESTED_ARCHIVE_BYTES + 1 - len(prefix))
+    require(
+        len(payload) <= MAX_NESTED_ARCHIVE_BYTES,
+        f"nested archive exceeds the M63 admission limit: {relative}",
+    )
+    require_no_model_artifacts_in_archive_payload(payload, relative, depth)
+
+
+def archive_payload_candidate(prefix: bytes) -> bool:
+    """Recognize supported archive signatures before bounded in-memory parsing."""
+    return (
+        prefix.startswith((b"PK\x03\x04", b"PK\x05\x06", b"PK\x07\x08"))
+        or prefix.startswith((b"\x1f\x8b", b"BZh", b"\xfd7zXZ\x00"))
+        or prefix[257:262] == b"ustar"
+    )
+
+
+def require_no_model_artifacts_in_archive_payload(payload: bytes, relative: Path, depth: int) -> None:
+    """Recursively inspect one bounded ZIP or TAR-family archive payload."""
+    payload_file = io.BytesIO(payload)
+    try:
+        if zipfile.is_zipfile(payload_file):
+            with zipfile.ZipFile(payload_file) as archive:
+                for entry in archive.infolist():
+                    if entry.is_dir():
+                        continue
+                    entry_path = Path(entry.filename)
+                    require(
+                        entry_path.suffix.lower() not in MODEL_ARTIFACT_SUFFIXES,
+                        f"model artifact found in nested ZIP archive: {relative}!{entry.filename}",
+                    )
+                    with archive.open(entry) as member:
+                        require_no_model_artifacts_in_archive_member(
+                            member,
+                            entry.file_size,
+                            Path(f"{relative}!{entry.filename}"),
+                            depth + 1,
+                            "nested archive",
+                        )
+            return
+        payload_file.seek(0)
+        if tarfile.is_tarfile(payload_file):
+            payload_file.seek(0)
+            with tarfile.open(fileobj=payload_file, mode="r:*") as archive:
+                for entry in archive:
+                    if not entry.isfile():
+                        continue
+                    entry_path = Path(entry.name)
+                    require(
+                        entry_path.suffix.lower() not in MODEL_ARTIFACT_SUFFIXES,
+                        f"model artifact found in nested TAR archive: {relative}!{entry.name}",
+                    )
+                    member = archive.extractfile(entry)
+                    require(
+                        member is not None,
+                        f"could not safely inspect nested TAR archive entry: {relative}!{entry.name}",
+                    )
+                    with member:
+                        require_no_model_artifacts_in_archive_member(
+                            member,
+                            entry.size,
+                            Path(f"{relative}!{entry.name}"),
+                            depth + 1,
+                            "nested archive",
+                        )
+            return
+    except (OSError, tarfile.TarError, zipfile.BadZipFile, zipfile.LargeZipFile, RuntimeError) as error:
+        require(False, f"could not safely inspect nested archive {relative}: {error}")
 
 
 def require_no_repository_model_artifacts(repository_root: Path) -> None:
