@@ -60,6 +60,16 @@ class SupervisorCompletionStateTests(unittest.TestCase):
         self.assertIn("QUIRE_FORGE_M63_MODEL_PATH", script)
         self.assertIn("connect to an external provider", script)
 
+    def test_worker_exposes_only_the_approved_model_path_to_tool_shells(self) -> None:
+        script = SUPERVISOR.read_text(encoding="utf-8")
+
+        self.assertIn("shell_environment_policy.inherit=\"none\"", script)
+        self.assertIn(
+            'shell_environment_policy.include_only=["QUIRE_FORGE_M63_MODEL_PATH"]',
+            script,
+        )
+        self.assertNotIn("shell_environment_policy.inherit=all", script)
+
     def test_worker_untracked_file_admission_is_bounded_to_safe_source_files(self) -> None:
         script = SUPERVISOR.read_text(encoding="utf-8")
 
