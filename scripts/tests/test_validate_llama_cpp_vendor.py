@@ -128,9 +128,16 @@ class CmakeOptionsTests(unittest.TestCase):
 
     def test_rejects_a_missing_model_artifact_gitignore_pattern(self) -> None:
         gitignore = (ROOT / ".gitignore").read_text(encoding="utf-8")
-        gitignore = gitignore.replace("*.gguf\n", "")
+        gitignore = gitignore.replace("*.[gG][gG][uU][fF]\n", "")
 
         with self.assertRaisesRegex(SystemExit, "must exclude every guarded model artifact suffix"):
+            VALIDATOR.require_model_artifact_ignores(gitignore)
+
+    def test_rejects_a_lowercase_only_model_artifact_gitignore_pattern(self) -> None:
+        gitignore = (ROOT / ".gitignore").read_text(encoding="utf-8")
+        gitignore = gitignore.replace("*.[gG][gG][uU][fF]", "*.gguf")
+
+        with self.assertRaisesRegex(SystemExit, "case-insensitively"):
             VALIDATOR.require_model_artifact_ignores(gitignore)
 
     def test_rejects_a_symlinked_rust_source_before_reading_its_target(self) -> None:

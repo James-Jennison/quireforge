@@ -799,10 +799,13 @@ def require_model_artifact_ignores(gitignore: str) -> None:
         for line in gitignore.splitlines()
         if line.strip() and not line.lstrip().startswith("#")
     }
-    expected_patterns = {f"*{suffix}" for suffix in MODEL_ARTIFACT_SUFFIXES}
+    expected_patterns = {
+        "*." + "".join(f"[{character.lower()}{character.upper()}]" for character in suffix[1:])
+        for suffix in MODEL_ARTIFACT_SUFFIXES
+    }
     require(
         expected_patterns.issubset(ignored_patterns),
-        "Git ignore policy must exclude every guarded model artifact suffix",
+        "Git ignore policy must exclude every guarded model artifact suffix case-insensitively",
     )
 
 

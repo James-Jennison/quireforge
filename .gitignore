@@ -42,15 +42,15 @@ test-results/
 support-bundle-*.zip
 
 # M63 model artifacts must remain outside the repository and packages.
-*.bin
-*.ckpt
-*.gguf
-*.ggml
-*.mlmodel
-*.npy
-*.npz
-*.onnx
-*.pt
-*.pth
-*.safetensors
-*.tflite
+*.[bB][iI][nN]
+*.[cC][kK][pP][tT]
+*.[gG][gG][uU][fF]
+*.[gG][gG][mM][lL]
+*.[mM][lL][mM][oO][dD][eE][lL]
+*.[nN][pP][yY]
+*.[nN][pP][zZ]
+*.[oO][nN][nN][xX]
+*.[pP][tT]
+*.[pP][tT][hH]
+*.[sS][aA][fF][eE][tT][eE][nN][sS][oO][rR][sS]
+*.[tT][fF][lL][iI][tT][eE]
