@@ -113,6 +113,13 @@ EXPECTED_CMAKE_OPTIONS = {
 }
 ALLOWED_CONFIGURE_DEFINITIONS = {"-DCMAKE_BUILD_TYPE=Release"}
 EXPECTED_SOURCE_DIR_EXPRESSION = 'manifest_dir.join("../../../third_party/llama.cpp")'
+EXPECTED_SOURCE_DIR_DECLARATION = (
+    'let source_dir = manifest_dir.join("../../../third_party/llama.cpp");'
+)
+EXPECTED_OUTPUT_DIR_DECLARATION = (
+    'let output_dir = PathBuf::from(env::var_os("OUT_DIR").expect("Cargo output directory"));'
+)
+EXPECTED_BUILD_DIR_DECLARATION = 'let build_dir = output_dir.join("m63-llama.cpp-build");'
 EXPECTED_SOURCE_TRACKER = "register_vendored_source_tree(&source_dir);"
 EXPECTED_SOURCE_ROOT_INSPECTION = "fs::symlink_metadata(directory)"
 EXPECTED_SOURCE_ROOT_VERIFIER = "require_vendored_source_root(directory);"
@@ -316,6 +323,24 @@ def require_verified_cmake_source(build: str) -> None:
         EXPECTED_SOURCE_DIR_EXPRESSION in build,
         "CMake source is not the verified vendored llama.cpp tree",
     )
+
+
+def require_closed_build_directories(build: str) -> None:
+    """Pin the values passed to CMake, not just their local variable names."""
+    for variable, declaration, description in (
+        ("source_dir", EXPECTED_SOURCE_DIR_DECLARATION, "verified vendored source"),
+        ("output_dir", EXPECTED_OUTPUT_DIR_DECLARATION, "Cargo output directory"),
+        ("build_dir", EXPECTED_BUILD_DIR_DECLARATION, "private build directory"),
+    ):
+        declarations = re.findall(rf"\blet\s+{variable}\s*=", build)
+        require(
+            declarations == [f"let {variable} ="],
+            f"build script must declare the {description} exactly once",
+        )
+        require(
+            declaration in build,
+            f"build script must use the pinned {description}",
+        )
 
 
 def require_complete_vendored_source_tracking(build: str) -> None:
@@ -910,6 +935,7 @@ def main() -> None:
     build = BUILD_SCRIPT.read_text(encoding="utf-8")
     require_closed_cmake_options(build)
     require_verified_cmake_source(build)
+    require_closed_build_directories(build)
     require_complete_vendored_source_tracking(build)
     require_build_time_vendored_tree_verification(build)
     require_closed_build_process_boundary(build)

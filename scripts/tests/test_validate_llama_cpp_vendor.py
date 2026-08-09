@@ -498,6 +498,32 @@ class CmakeOptionsTests(unittest.TestCase):
         with self.assertRaisesRegex(SystemExit, "source is not the verified"):
             VALIDATOR.require_verified_cmake_source(build)
 
+    def test_requires_the_pinned_cmake_source_and_build_directory_declarations(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+
+        VALIDATOR.require_closed_build_directories(build)
+
+    def test_rejects_a_shadowed_vendored_source_directory(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace(
+            '    let build_dir = output_dir.join("m63-llama.cpp-build");\n',
+            '    let source_dir = PathBuf::from("/unreviewed-source");\n'
+            '    let build_dir = output_dir.join("m63-llama.cpp-build");\n',
+        )
+
+        with self.assertRaisesRegex(SystemExit, "verified vendored source exactly once"):
+            VALIDATOR.require_closed_build_directories(build)
+
+    def test_rejects_a_non_private_cmake_build_directory(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace(
+            'let build_dir = output_dir.join("m63-llama.cpp-build");',
+            'let build_dir = source_dir.join("unapproved-build");',
+        )
+
+        with self.assertRaisesRegex(SystemExit, "pinned private build directory"):
+            VALIDATOR.require_closed_build_directories(build)
+
     def test_requires_complete_vendored_source_tracking(self) -> None:
         build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
 
