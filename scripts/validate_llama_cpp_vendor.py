@@ -567,11 +567,15 @@ def require_read_only_build_script_filesystem_boundary(build: str) -> None:
         not re.search(r"\bstd\s*::\s*fs\s*::", code),
         "build script must use only the reviewed filesystem calls",
     )
-    filesystem_calls = re.findall(
-        r"\bfs\s*::\s*([A-Za-z_][A-Za-z0-9_]*)\s*\(", code
+    require(
+        not re.search(r"\bfs\s*::\s*\{", code),
+        "build script must use only the reviewed filesystem calls",
+    )
+    filesystem_references = re.findall(
+        r"\bfs\s*::\s*([A-Za-z_][A-Za-z0-9_]*)", code
     )
     require(
-        filesystem_calls == ["read_dir", "symlink_metadata", "read_dir", "read"],
+        filesystem_references == ["read_dir", "symlink_metadata", "read_dir", "read"],
         "build script must use only the approved read-only filesystem calls",
     )
 

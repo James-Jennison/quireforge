@@ -82,8 +82,9 @@ working-directory overrides or out-of-block command mutations. Full repository
 validation remains required; no package or installed-host claim is made until
 the separately approved offline model input is available.
 It also permits only the fixed vendored-source change tracking and static CPU
-linkage Cargo directives, rejecting any additional build-script output or
-compile-configuration directive.
+linkage Cargo directives, rejecting any additional build-script output,
+compile-configuration directive, or filesystem reference beyond the reviewed
+read-only source-inspection calls.
 The validator also pins the build script to its reviewed read-only filesystem
 calls, rejecting source or generated-output mutation from that build boundary.
 Each approved Cargo directive must be emitted directly by its fixed `println!`

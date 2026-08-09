@@ -873,6 +873,16 @@ class CmakeOptionsTests(unittest.TestCase):
         with self.assertRaisesRegex(SystemExit, "must not alias the filesystem module"):
             VALIDATOR.require_read_only_build_script_filesystem_boundary(build)
 
+    def test_rejects_a_nested_import_of_a_build_script_filesystem_mutation(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace(
+            "use std::{",
+            "use std::{fs::{write},",
+        )
+
+        with self.assertRaisesRegex(SystemExit, "reviewed filesystem calls"):
+            VALIDATOR.require_read_only_build_script_filesystem_boundary(build)
+
     def test_rejects_build_script_rust_source_includes(self) -> None:
         build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
         build = build.replace(
