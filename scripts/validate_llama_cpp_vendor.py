@@ -400,6 +400,9 @@ def require_build_time_vendored_tree_verification(build: str) -> None:
 
 
 def require_closed_build_process_boundary(build: str) -> None:
+    # Rust permits comments between path segments and the constructor call. Treat
+    # them as whitespace so they cannot conceal an additional subprocess.
+    rust_separator = r"(?:\s|/\*[\s\S]*?\*/|//[^\n]*(?:\n|$))*"
     process_module_alias = re.search(
         r"\buse\b[\s\S]*?\bprocess\s+as\s+[A-Za-z_][A-Za-z0-9_]*",
         build,
@@ -424,11 +427,15 @@ def require_closed_build_process_boundary(build: str) -> None:
         "build script must not alias Command outside the approved CMake subprocesses",
     )
     command_references = re.findall(
-        r"(?:std\s*::\s*)?(?:process\s*::\s*)?Command\s*::\s*new\b",
+        rf"(?:std{rust_separator}::{rust_separator})?"
+        rf"(?:process{rust_separator}::{rust_separator})?"
+        rf"Command{rust_separator}::{rust_separator}new\b",
         build,
     )
     command_calls = re.findall(
-        r"(?:std\s*::\s*)?(?:process\s*::\s*)?Command\s*::\s*new\s*\(",
+        rf"(?:std{rust_separator}::{rust_separator})?"
+        rf"(?:process{rust_separator}::{rust_separator})?"
+        rf"Command{rust_separator}::{rust_separator}new{rust_separator}\(",
         build,
     )
     require(
