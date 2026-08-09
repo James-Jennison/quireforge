@@ -85,6 +85,14 @@ class CmakeOptionsTests(unittest.TestCase):
             with self.assertRaisesRegex(SystemExit, "must not follow symlinks"):
                 VALIDATOR.require_no_model_artifacts(source)
 
+    def test_rejects_a_non_regular_entry_before_scanning_for_model_artifacts(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            source = Path(temporary_directory)
+            os.mkfifo(source / "unapproved-entry")
+
+            with self.assertRaisesRegex(SystemExit, "found a non-regular entry"):
+                VALIDATOR.require_no_model_artifacts(source)
+
     def test_rejects_a_model_artifact_anywhere_in_repository_owned_content(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             repository = Path(temporary_directory)

@@ -700,6 +700,11 @@ def require_no_model_artifacts(
             f"{relative}",
         )
         require(
+            stat.S_ISDIR(metadata.st_mode) or stat.S_ISREG(metadata.st_mode),
+            "model artifact admission scan found a non-regular entry: "
+            f"{relative}",
+        )
+        require(
             path.suffix.lower() not in MODEL_ARTIFACT_SUFFIXES,
             f"model artifact found: {relative}",
         )
