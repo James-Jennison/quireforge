@@ -332,8 +332,9 @@ fn build_llama_cpp() {
     // only Cargo's private native build directory to obtain the same
     // cache-free configuration on every supported package platform.
     if build_dir.exists() {
-        fs::remove_dir_all(&build_dir)
-            .unwrap_or_else(|error| panic!("could not reset private llama.cpp build directory: {error}"));
+        fs::remove_dir_all(&build_dir).unwrap_or_else(|error| {
+            panic!("could not reset private llama.cpp build directory: {error}")
+        });
     }
 
     let mut configure = Command::new(SYSTEM_CMAKE);

@@ -87,15 +87,14 @@ compilation before Cargo receives static-library link directives.
 Configuration starts with `--fresh`, discarding prior generated CMake cache
 state before the fixed closed configuration is evaluated.
 Both CMake invocations use the fixed system CMake executable and a
-fixed system tool path, rather than an inherited executable search path. It
-also rejects any Rust runtime-source reference to a `llama_*` or
-`ggml_*` C API, native FFI declaration, Rust `include!` source injection, or
-Rust `#[path = "..."]` module injection,
-keeping the vendor integration build-only until a later adapter is approved. It
-also rejects CMake command
-working-directory overrides or out-of-block command mutations. Full repository
-validation remains required; no package or installed-host claim is made until
-the separately approved offline model input is available.
+fixed system tool path, rather than an inherited executable search path. The
+validator rejects `llama_*` or `ggml_*` C API references, native FFI
+declarations, Rust `include!` source injection, or Rust `#[path = "..."]`
+module injection everywhere except the reviewed `local_runtime.rs` adapter. It
+also rejects CMake command working-directory overrides or out-of-block command
+mutations. Full repository validation remains required; no package or
+installed-host claim is made until the separately approved offline model input
+is available.
 It also permits only the fixed vendored-source change tracking and static CPU
 linkage Cargo directives, rejecting any additional build-script output,
 compile-configuration directive, or filesystem reference beyond the reviewed
