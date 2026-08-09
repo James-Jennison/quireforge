@@ -7,6 +7,7 @@ Type=simple
 WorkingDirectory=/mnt/faststorage/quireforge
 Environment=QUIRE_FORGE_SUPERVISOR_STATE_DIR=%h/.local/state/quireforge-codex-supervisor
 Environment=QUIRE_FORGE_SUPERVISOR_INTERVAL_SECONDS=60
+Environment=QUIRE_FORGE_M63_MODEL_PATH=%h/.local/share/quireforge/models/qwen2.5-3b-instruct-q4_k_m.gguf
 ExecStart=/mnt/faststorage/quireforge/scripts/quireforge-codex-supervisor.sh
 Restart=on-failure
 RestartSec=10s

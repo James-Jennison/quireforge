@@ -52,6 +52,14 @@ class SupervisorCompletionStateTests(unittest.TestCase):
         self.assertIn("outside the approved source-file boundary", script)
         self.assertIn("Worker test or validation failed", script)
 
+    def test_worker_prioritizes_the_m63_vertical_slice_over_guard_churn(self) -> None:
+        script = SUPERVISOR.read_text(encoding="utf-8")
+
+        self.assertIn("approved M63 credential-free local-runtime vertical slice", script)
+        self.assertIn("Do not make standalone source-boundary hardening", script)
+        self.assertIn("QUIRE_FORGE_M63_MODEL_PATH", script)
+        self.assertIn("connect to an external provider", script)
+
     def test_worker_untracked_file_admission_is_bounded_to_safe_source_files(self) -> None:
         script = SUPERVISOR.read_text(encoding="utf-8")
 

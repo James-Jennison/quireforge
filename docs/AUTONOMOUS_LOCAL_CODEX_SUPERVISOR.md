@@ -53,7 +53,10 @@ systemctl --user enable --now quireforge-codex-supervisor.service
 
 The supervisor never deploys, publishes, accesses credentials, or uses browser
 sessions. It follows the roadmap's autonomous post-M62 rule while retaining its
-hard stops.
+hard stops. Its current product priority is the approved M63 credential-free
+local-runtime vertical slice and its releasable-candidate evidence. Standalone
+validator or source-boundary hardening is deferred unless it directly blocks
+that vertical slice.
 
 ## Local inspection and control
 
