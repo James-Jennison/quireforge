@@ -1072,6 +1072,7 @@ def require_no_model_artifacts_in_tar(path: Path, relative: Path) -> None:
                     f"TAR archive member count exceeds the M63 admission limit: {relative}",
                 )
                 require_admitted_archive_member_name(entry.name, relative, "TAR archive")
+                require_admitted_tar_member_type(entry, relative, "TAR archive")
                 if not entry.isfile():
                     continue
                 entry_path = Path(entry.name)
@@ -1244,6 +1245,14 @@ def require_admitted_archive_member_name(member_name: str, relative: Path, archi
     )
 
 
+def require_admitted_tar_member_type(entry: tarfile.TarInfo, relative: Path, archive_kind: str) -> None:
+    """Admit only inert directory metadata and inspectable regular files."""
+    require(
+        entry.isdir() or entry.isfile(),
+        f"could not safely inspect {archive_kind} member type: {relative}!{entry.name}",
+    )
+
+
 def require_no_model_artifacts_in_archive_member(
     member: object, member_size: int, relative: Path, depth: int, archive_kind: str
 ) -> None:
@@ -1365,6 +1374,7 @@ def require_no_model_artifacts_in_archive_payload(payload: bytes, relative: Path
                     require_admitted_archive_member_name(
                         entry.name, relative, "nested TAR archive"
                     )
+                    require_admitted_tar_member_type(entry, relative, "nested TAR archive")
                     if not entry.isfile():
                         continue
                     entry_path = Path(entry.name)

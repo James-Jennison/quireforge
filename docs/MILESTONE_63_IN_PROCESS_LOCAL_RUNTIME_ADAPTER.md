@@ -53,7 +53,7 @@ outcome-unknown, quarantine, and content-free-audit rules.
 
 `scripts/validate_llama_cpp_vendor.py` verifies the provenance manifest,
 deterministic source-tree digest, license evidence, absence of model artifacts,
-bounded archive member counts, unambiguous relative names, nesting, and standalone gzip/bzip2/xz
+bounded archive member counts, unambiguous relative names, regular-file/directory-only TAR entries, nesting, and standalone gzip/bzip2/xz
 payload expansion, the closed CMake configuration, and
 that the build script starts only its two approved CMake subprocesses. Both
 subprocesses clear the inherited environment,

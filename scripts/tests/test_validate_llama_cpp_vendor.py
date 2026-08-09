@@ -299,6 +299,18 @@ class CmakeOptionsTests(unittest.TestCase):
             with self.assertRaisesRegex(SystemExit, "TAR archive member name"):
                 VALIDATOR.require_no_model_artifacts(source)
 
+    def test_rejects_a_tar_archive_symbolic_link(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            source = Path(temporary_directory)
+            link = tarfile.TarInfo("unapproved-link")
+            link.type = tarfile.SYMTYPE
+            link.linkname = "unapproved-model.gguf"
+            with tarfile.open(source / "archive.tar", "w") as archive:
+                archive.addfile(link)
+
+            with self.assertRaisesRegex(SystemExit, "TAR archive member type"):
+                VALIDATOR.require_no_model_artifacts(source)
+
     def test_rejects_a_model_artifact_named_inside_an_ar_archive(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             source = Path(temporary_directory)
