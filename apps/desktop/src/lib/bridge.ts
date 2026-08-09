@@ -57,6 +57,7 @@ import {
   contextAssemblyConfirmRequestSchema,
   contextAssemblyPrepareRequestSchema,
   contextAssemblySnapshotSchema,
+  localRuntimeSnapshotSchema,
   type ContextAssemblySnapshot,
 } from "./contextAssembly";
 import {
@@ -450,6 +451,8 @@ export const CONTROLLED_BROWSER_VERIFICATION_REVOKE_COMMAND =
 export const CONTEXT_ASSEMBLY_STATUS_COMMAND = "context_assembly_status";
 export const CONTEXT_ASSEMBLY_PREPARE_COMMAND = "context_assembly_prepare";
 export const CONTEXT_ASSEMBLY_CONFIRM_COMMAND = "context_assembly_confirm";
+export const CONTEXT_ASSEMBLY_RUN_LOCAL_RUNTIME_COMMAND =
+  "context_assembly_run_local_runtime";
 export const CONTEXT_ASSEMBLY_REVIEW_COMMAND = "context_assembly_review";
 export const CONTEXT_ASSEMBLY_ACKNOWLEDGE_REVIEW_COMMAND =
   "context_assembly_acknowledge_review";
@@ -1740,6 +1743,16 @@ export const confirmContextAssembly = (
     request,
     contextAssemblyConfirmRequestSchema,
     invokeFunction,
+  );
+export const runContextAssemblyLocalRuntime = async (
+  request: unknown,
+  invokeFunction: InvokeFunction = invokeTauri,
+) =>
+  localRuntimeSnapshotSchema.parse(
+    await invokeFunction(
+      CONTEXT_ASSEMBLY_RUN_LOCAL_RUNTIME_COMMAND,
+      { request: contextAssemblyConfirmRequestSchema.parse(request) },
+    ),
   );
 export const reviewContextAssembly = (
   request: unknown,

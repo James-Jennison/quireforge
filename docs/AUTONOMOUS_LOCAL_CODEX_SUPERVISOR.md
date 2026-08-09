@@ -56,9 +56,9 @@ sessions. It follows the roadmap's autonomous post-M62 rule while retaining its
 hard stops. Its current product priority is the approved M63 credential-free
 local-runtime vertical slice and its releasable-candidate evidence. Standalone
 validator or source-boundary hardening is deferred unless it directly blocks
-that vertical slice. Its Codex worker tool shells inherit only the approved
-read-only M63 model-path variable, never the surrounding desktop-session
-environment.
+that vertical slice. Its Codex worker tool shells inherit only the standard
+command path and approved read-only M63 model-path variable, never the
+surrounding desktop-session environment.
 
 ## Local inspection and control
 

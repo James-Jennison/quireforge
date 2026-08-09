@@ -3,6 +3,7 @@ import {
   cancelContextAssembly,
   acknowledgeContextAssemblyReview,
   confirmContextAssembly,
+  runContextAssemblyLocalRuntime,
   reviewContextAssembly,
   prepareContextAssembly,
   revokeContextAssembly,
@@ -10,7 +11,10 @@ import {
   loadTaskCatalog,
   loadLocalReview,
 } from "./lib/bridge";
-import type { ContextAssemblySnapshot } from "./lib/contextAssembly";
+import type {
+  ContextAssemblySnapshot,
+  LocalRuntimeSnapshot,
+} from "./lib/contextAssembly";
 import type { DurableSourceSummary } from "./lib/durableSources";
 import type { TaskCatalogSnapshot } from "./lib/taskRecords";
 import type { LocalReviewSnapshot } from "./lib/localReview";
@@ -55,6 +59,7 @@ function ContextAssemblyWorkbenchScope({
     [includeScopeMetadata, setIncludeScopeMetadata] = useState(false),
     [selectedSources, setSelectedSources] = useState<string[]>([]),
     [snapshot, setSnapshot] = useState<ContextAssemblySnapshot | null>(null),
+    [runtime, setRuntime] = useState<LocalRuntimeSnapshot | null>(null),
     [busy, setBusy] = useState(false),
     [notice, setNotice] = useState(
       "Fictional local-only context review. Nothing is selected by default.",
@@ -159,6 +164,7 @@ function ContextAssemblyWorkbenchScope({
     snapshot.bundleDigest;
   const invalidatePreparedBundle = () => {
     setSnapshot(null);
+    setRuntime(null);
     setNotice("Selection changed. Prepare a new local-only review.");
   };
   return (
@@ -386,6 +392,37 @@ function ContextAssemblyWorkbenchScope({
           Confirm once
         </button>
         <button
+          disabled={!canConfirm || busy}
+          onClick={() => {
+            const actionProjectId = projectId;
+            setBusy(true);
+            void runContextAssemblyLocalRuntime({
+              bundleId: snapshot!.bundleId,
+              authorizationId: snapshot!.authorizationId,
+              bundleDigest: snapshot!.bundleDigest,
+            })
+              .then((next) => {
+                if (mounted.current && projectScope.current === actionProjectId) {
+                  setRuntime(next);
+                  setNotice(
+                    next.diagnostic ??
+                      "Local-only runtime completed. Output stays in this open view.",
+                  );
+                }
+              })
+              .catch(() => {
+                if (mounted.current && projectScope.current === actionProjectId)
+                  setNotice("Local runtime is unavailable; no retry occurred.");
+              })
+              .finally(() => {
+                if (mounted.current && projectScope.current === actionProjectId)
+                  setBusy(false);
+              });
+          }}
+        >
+          Run once with local-only model
+        </button>
+        <button
           disabled={!snapshot?.bundleId || busy}
           onClick={() =>
             void run(() =>
@@ -424,6 +461,16 @@ function ContextAssemblyWorkbenchScope({
               </li>
             ))}
           </ul>
+        </section>
+      )}
+      {runtime && (
+        <section aria-label="Local runtime result">
+          <p>
+            Local-only attempt: {runtime.state}. CPU-only; one attempt; maximum
+            {runtime.inputTokenLimit} input tokens, {runtime.outputTokenLimit} output
+            tokens, and {runtime.deadlineSeconds} seconds.
+          </p>
+          {runtime.output && <pre>{runtime.output}</pre>}
         </section>
       )}
     </section>

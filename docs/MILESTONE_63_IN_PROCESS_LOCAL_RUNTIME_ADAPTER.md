@@ -1,6 +1,6 @@
 # M63 — In-Process Credential-Free Local Runtime Adapter
 
-Status: approved source/build boundary; not runtime-enabled.
+Status: initial local-only runtime path implemented; not release-ready.
 
 M63 selects only a native in-process llama.cpp route for the future
 credential-free local runtime. It is CPU-only and permits no GPU offload. The
@@ -19,10 +19,12 @@ export a package registry entry.
 Each configuration starts with CMake's `--fresh` mode, so generated cache
 state cannot add configuration outside the fixed closed option list.
 
-The model artifact is neither included in this repository nor packaged or
-activated. The fixed application resource remains unavailable because this
-source/build boundary has no Rust command or public adapter API that invokes
-the vendored C API.
+The model artifact is neither included in this repository nor packaged. The
+initial adapter consumes one confirmed M60 reviewed bundle once, invokes only
+the local CPU-only runtime, bounds input/output/deadline, and keeps its result
+in the open local view. It has no provider, network, credential, tool, or
+external-action path. End-to-end model execution and installed-host acceptance
+remain required before any release-ready claim.
 
 ## Approved offline acquisition record
 
@@ -38,8 +40,8 @@ outside the repository, excluded from Git, and read-only after verification.
 | Bytes | `2104932768` |
 | SHA-256 | `626b4a6678b86442240e33df819e00132d3ba7dddfe1cdc4fbb18e0a9615c62d` |
 
-This is content-free provenance evidence only. It grants no model activation,
-runtime API, provider, network, packaging, release, or deployment authority.
+This is content-free provenance evidence only. It grants no provider, network,
+packaging, release, or deployment authority.
 
 This work grants no credentials, account, OAuth, provider, socket, process,
 shell, environment override, arbitrary filesystem, discovery, browser,

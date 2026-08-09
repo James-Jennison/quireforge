@@ -349,6 +349,38 @@ impl ContextAssemblyService {
             None,
         )
     }
+    /// Atomically consumes an exact reviewed bundle for the M63 local runtime.
+    /// The private bytes leave this service only for the in-process call and
+    /// are cleared before that call can return; a failed caller cannot replay
+    /// the authorization or reconstruct the selection after restart.
+    pub(crate) fn claim_for_local_runtime(
+        &self,
+        request: &ContextConfirmRequest,
+    ) -> Result<Vec<u8>, ContextSnapshot> {
+        let mut bundles = self.bundles.lock().expect("context lock");
+        let Some(bundle) = bundles.get_mut(&request.bundle_id) else {
+            return Err(rejected("bundle-unavailable"));
+        };
+        if bundle.state != "awaiting_confirmation"
+            || bundle.authorization_id != request.authorization_id
+            || bundle.digest != request.bundle_digest
+        {
+            return Err(rejected("authorization-replayed-or-mismatched"));
+        }
+        if now_ms() >= bundle.expires {
+            bundle.state = "expired";
+            bundle.bytes.clear();
+            return Err(snapshot(
+                Some((&request.bundle_id, bundle)),
+                "expired",
+                None,
+                "authorization expired; no local runtime started",
+                None,
+            ));
+        }
+        bundle.state = "local-runtime-running";
+        Ok(std::mem::take(&mut bundle.bytes))
+    }
     pub(crate) fn terminal_state(&self, id: &str, requested: &'static str) -> &'static str {
         let Ok(bundles) = self.bundles.lock() else {
             return "rejected";

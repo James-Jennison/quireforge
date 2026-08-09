@@ -65,7 +65,7 @@ class SupervisorCompletionStateTests(unittest.TestCase):
 
         self.assertIn("shell_environment_policy.inherit=\"none\"", script)
         self.assertIn(
-            'shell_environment_policy.include_only=["QUIRE_FORGE_M63_MODEL_PATH"]',
+            'shell_environment_policy.include_only=["PATH","QUIRE_FORGE_M63_MODEL_PATH"]',
             script,
         )
         self.assertNotIn("shell_environment_policy.inherit=all", script)

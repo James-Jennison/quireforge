@@ -15,6 +15,7 @@ mod controlled_browser_verification;
 mod desktop;
 mod dynamic_analysis;
 mod git;
+mod local_runtime;
 mod mock_inference;
 mod preview;
 mod project;
@@ -1987,6 +1988,49 @@ fn context_assembly_confirm(
 }
 
 #[tauri::command]
+fn context_assembly_run_local_runtime(
+    request: context_assembly::ContextConfirmRequest,
+    assemblies: tauri::State<'_, context_assembly::ContextAssemblyService>,
+    runtime: tauri::State<'_, local_runtime::LocalRuntimeService>,
+    projects: tauri::State<'_, ProjectService>,
+) -> local_runtime::LocalRuntimeSnapshot {
+    let canonical_bytes = match assemblies.claim_for_local_runtime(&request) {
+        Ok(bytes) => bytes,
+        Err(snapshot) => {
+            return local_runtime::LocalRuntimeSnapshot {
+                schema_version: 1,
+                local_only: true,
+                state: "failed".into(),
+                output: None,
+                diagnostic: snapshot.diagnostic,
+                input_token_limit: 4096,
+                output_token_limit: 512,
+                deadline_seconds: 60,
+            }
+        }
+    };
+    let snapshot = runtime.run(&canonical_bytes);
+    let terminal = if snapshot.state == "completed" {
+        "local-runtime-completed"
+    } else {
+        "local-runtime-failed"
+    };
+    if !projects.complete_context_bundle(&request.bundle_id, terminal) {
+        return local_runtime::LocalRuntimeSnapshot {
+            schema_version: 1,
+            local_only: true,
+            state: "failed".into(),
+            output: None,
+            diagnostic: Some("durable-audit-unavailable".into()),
+            input_token_limit: 4096,
+            output_token_limit: 512,
+            deadline_seconds: 60,
+        };
+    }
+    snapshot
+}
+
+#[tauri::command]
 fn context_assembly_review(
     request: context_assembly::ContextAttemptRequest,
     service: tauri::State<'_, context_assembly::ContextAssemblyService>,
@@ -3281,6 +3325,7 @@ pub fn run() {
         .manage(connector_foundation::ConnectorGovernanceService::default())
         .manage(controlled_browser_verification::ControlledBrowserVerificationService::default())
         .manage(context_assembly::ContextAssemblyService::default())
+        .manage(local_runtime::LocalRuntimeService::default())
         .setup(|app| {
             match app.path().app_data_dir() {
                 Ok(directory) => {
@@ -3423,6 +3468,7 @@ pub fn run() {
             context_assembly_status,
             context_assembly_prepare,
             context_assembly_confirm,
+            context_assembly_run_local_runtime,
             context_assembly_review,
             context_assembly_acknowledge_review,
             context_assembly_cancel,

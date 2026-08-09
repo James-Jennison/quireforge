@@ -919,7 +919,7 @@ def require_closed_cargo_directives(build: str) -> None:
 
 
 def require_no_rust_runtime_api_usage(source_directory: Path) -> None:
-    """Keep the M63 source boundary build-only until a later adapter is approved."""
+    """Keep all Rust except the approved M63 adapter free of native runtime APIs."""
     require_regular_source_parent(source_directory, "Rust runtime source root")
     require_regular_source_directory(source_directory, "Rust runtime source root")
     prohibited_api = re.compile(r"\b(?:llama|ggml)_[A-Za-z0-9_]*\b")
@@ -956,6 +956,12 @@ def require_no_rust_runtime_api_usage(source_directory: Path) -> None:
             "Rust runtime-source guard found a non-regular entry: " f"{relative}",
         )
         if not stat.S_ISREG(metadata.st_mode) or path.suffix != ".rs":
+            continue
+        # M63 authorizes exactly one reviewed in-process adapter. It owns the
+        # direct C ABI and is deliberately kept separate from every other
+        # native service so the former source/build-only restriction remains
+        # in force everywhere else.
+        if relative == Path("local_runtime.rs"):
             continue
         source = path.read_text(encoding="utf-8")
         matches = sorted(set(prohibited_api.findall(source)))

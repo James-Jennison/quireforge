@@ -151,9 +151,10 @@ in-process, CPU-only llama.cpp static-library build for the fixed Qwen2.5-3B
 descriptor. The separately approved offline acquisition is recorded with its
 upstream revision and SHA-256 in
 [MILESTONE_63_IN_PROCESS_LOCAL_RUNTIME_ADAPTER.md](MILESTONE_63_IN_PROCESS_LOCAL_RUNTIME_ADAPTER.md).
-The model remains outside the repository, un-packaged and inactive; the route
-is unavailable and fails closed because no runtime adapter has been approved
-or implemented.
+The model remains outside the repository and un-packaged. An initial local-only
+M63 adapter path consumes one confirmed reviewed bundle once and retains its
+bounded result only in the open local view; end-to-end model execution and
+installed-host acceptance remain required before any release-ready claim.
 
 M54 Local Review is complete at package/source commit
 `c4c2752466f36f791fde47edbc5c6b02b0e21320`, tagged

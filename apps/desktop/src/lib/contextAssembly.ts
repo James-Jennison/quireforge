@@ -55,3 +55,17 @@ export const contextAssemblySnapshotSchema = z
 export type ContextAssemblySnapshot = z.infer<
   typeof contextAssemblySnapshotSchema
 >;
+
+export const localRuntimeSnapshotSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    localOnly: z.literal(true),
+    state: z.enum(["completed", "failed"]),
+    output: z.string().max(16 * 1024).nullable(),
+    diagnostic: z.string().max(120).nullable(),
+    inputTokenLimit: z.literal(4096),
+    outputTokenLimit: z.literal(512),
+    deadlineSeconds: z.literal(60),
+  })
+  .strict();
+export type LocalRuntimeSnapshot = z.infer<typeof localRuntimeSnapshotSchema>;
