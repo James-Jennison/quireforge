@@ -26,6 +26,11 @@ in the open local view. It has no provider, network, credential, tool, or
 external-action path. End-to-end model execution and installed-host acceptance
 remain required before any release-ready claim.
 
+Each attempt applies the fixed 6 GiB process address-space ceiling before model
+loading and restores the prior soft limit as the attempt exits. If the ceiling
+cannot be applied, the attempt fails locally before model loading with a
+bounded diagnostic and no retry.
+
 ## Local candidate evidence
 
 The local candidate records the M63 attempt as `dispatching` and clears the

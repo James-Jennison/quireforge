@@ -20,6 +20,7 @@ const OUTPUT_TOKEN_LIMIT: usize = 512;
 const CONTEXT_TOKEN_LIMIT: usize = INPUT_TOKEN_LIMIT + OUTPUT_TOKEN_LIMIT;
 const OUTPUT_BYTE_LIMIT: usize = 16 * 1024;
 const DEADLINE: Duration = Duration::from_secs(60);
+const MEMORY_CEILING_BYTES: libc::rlim_t = 6 * 1024 * 1024 * 1024;
 
 #[repr(C)]
 struct ModelParams {
@@ -214,6 +215,49 @@ struct ActiveRun {
     control: Arc<RunControl>,
 }
 
+/// Temporarily confines model allocation to M63's fixed address-space budget.
+/// The previous soft limit is restored as the local attempt exits.
+struct MemoryCeiling {
+    previous: Option<libc::rlimit>,
+}
+
+impl MemoryCeiling {
+    fn apply() -> Result<Self, ()> {
+        let mut previous = libc::rlimit {
+            rlim_cur: 0,
+            rlim_max: 0,
+        };
+        // SAFETY: reads this process's resource limit without retaining pointers.
+        if unsafe { libc::getrlimit(libc::RLIMIT_AS, &mut previous) } != 0 {
+            return Err(());
+        }
+        if previous.rlim_cur <= MEMORY_CEILING_BYTES {
+            return Ok(Self { previous: None });
+        }
+        let constrained = libc::rlimit {
+            rlim_cur: MEMORY_CEILING_BYTES.min(previous.rlim_max),
+            rlim_max: previous.rlim_max,
+        };
+        // SAFETY: reduces only the soft limit for this bounded attempt; Drop
+        // restores the exact observed value before the command returns.
+        if unsafe { libc::setrlimit(libc::RLIMIT_AS, &constrained) } != 0 {
+            return Err(());
+        }
+        Ok(Self {
+            previous: Some(previous),
+        })
+    }
+}
+
+impl Drop for MemoryCeiling {
+    fn drop(&mut self) {
+        if let Some(previous) = self.previous {
+            // SAFETY: restores the exact soft/hard values observed by apply.
+            let _ = unsafe { libc::setrlimit(libc::RLIMIT_AS, &previous) };
+        }
+    }
+}
+
 impl Drop for ActiveRunGuard<'_> {
     fn drop(&mut self) {
         if let Ok(mut active) = self.active.lock() {
@@ -277,6 +321,9 @@ fn run_once(canonical_bytes: &[u8], control: &RunControl) -> LocalRuntimeSnapsho
     }
     let Ok(path) = CString::new(model_path) else {
         return failed("model-unavailable");
+    };
+    let Ok(_memory_ceiling) = MemoryCeiling::apply() else {
+        return failed("memory-ceiling-unavailable");
     };
     let prompt = match std::str::from_utf8(canonical_bytes) {
         Ok(value) => format!(
@@ -444,13 +491,18 @@ fn cancelled() -> LocalRuntimeSnapshot {
 
 #[cfg(test)]
 mod tests {
-    use super::{cancelled, LocalRuntimeService};
+    use super::{cancelled, LocalRuntimeService, MEMORY_CEILING_BYTES};
 
     #[test]
     fn cancellation_has_a_distinct_terminal_snapshot() {
         let snapshot = cancelled();
         assert_eq!(snapshot.state, "cancelled");
         assert_eq!(snapshot.diagnostic.as_deref(), Some("cancelled"));
+    }
+
+    #[test]
+    fn local_runtime_memory_ceiling_matches_the_approved_six_gib_limit() {
+        assert_eq!(MEMORY_CEILING_BYTES, 6 * 1024 * 1024 * 1024);
     }
 
     #[test]
