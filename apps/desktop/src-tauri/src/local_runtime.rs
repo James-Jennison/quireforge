@@ -19,8 +19,10 @@ const INPUT_TOKEN_LIMIT: usize = 4_096;
 const OUTPUT_TOKEN_LIMIT: usize = 512;
 const CONTEXT_TOKEN_LIMIT: usize = INPUT_TOKEN_LIMIT + OUTPUT_TOKEN_LIMIT;
 const OUTPUT_BYTE_LIMIT: usize = 16 * 1024;
+const CHAT_PROMPT_BYTE_LIMIT: usize = 2 * (96 * 1024 + 256);
 const DEADLINE: Duration = Duration::from_secs(60);
 const MEMORY_CEILING_BYTES: libc::rlim_t = 6 * 1024 * 1024 * 1024;
+const SYSTEM_PROMPT: &str = "You are a local, offline assistant. Answer the reviewed request only.";
 
 #[repr(C)]
 struct ModelParams {
@@ -98,6 +100,12 @@ struct SamplerChainParams {
     no_perf: bool,
 }
 
+#[repr(C)]
+struct ChatMessage {
+    role: *const c_char,
+    content: *const c_char,
+}
+
 unsafe extern "C" {
     fn llama_backend_init();
     fn llama_backend_free();
@@ -113,6 +121,15 @@ unsafe extern "C" {
     fn llama_init_from_model(model: *mut c_void, params: ContextParams) -> *mut c_void;
     fn llama_free(context: *mut c_void);
     fn llama_model_get_vocab(model: *const c_void) -> *const c_void;
+    fn llama_model_chat_template(model: *const c_void, name: *const c_char) -> *const c_char;
+    fn llama_chat_apply_template(
+        template: *const c_char,
+        chat: *const ChatMessage,
+        message_count: usize,
+        add_assistant: bool,
+        buffer: *mut c_char,
+        buffer_length: i32,
+    ) -> i32;
     fn llama_tokenize(
         vocab: *const c_void,
         text: *const c_char,
@@ -325,13 +342,14 @@ fn run_once(canonical_bytes: &[u8], control: &RunControl) -> LocalRuntimeSnapsho
     let Ok(_memory_ceiling) = MemoryCeiling::apply() else {
         return failed("memory-ceiling-unavailable");
     };
-    let prompt = match std::str::from_utf8(canonical_bytes) {
-        Ok(value) => format!(
-            "You are a local, offline assistant. Answer the reviewed request only.\n\n{value}"
-        ),
+    let reviewed_request = match std::str::from_utf8(canonical_bytes) {
+        Ok(value) => value,
         Err(_) => return failed("reviewed-input-invalid"),
     };
-    let Ok(prompt) = CString::new(prompt) else {
+    let Ok(system_prompt) = CString::new(SYSTEM_PROMPT) else {
+        return failed("runtime-unavailable");
+    };
+    let Ok(reviewed_request) = CString::new(reviewed_request) else {
         return failed("reviewed-input-invalid");
     };
     unsafe {
@@ -350,6 +368,13 @@ fn run_once(canonical_bytes: &[u8], control: &RunControl) -> LocalRuntimeSnapsho
                 failed("model-unavailable")
             };
         }
+        let prompt = match format_reviewed_chat_prompt(model, &system_prompt, &reviewed_request) {
+            Ok(prompt) => prompt,
+            Err(diagnostic) => {
+                llama_model_free(model);
+                return failed(diagnostic);
+            }
+        };
         let mut context_params = llama_context_default_params();
         // Preserve the fixed 4,096-token reviewed input allowance while
         // reserving the separately fixed 512-token output allowance.
@@ -463,6 +488,63 @@ fn run_once(canonical_bytes: &[u8], control: &RunControl) -> LocalRuntimeSnapsho
     }
 }
 
+/// Formats the fixed reviewed request through the model's embedded chat
+/// template. The selected Qwen descriptor supplies that template; guessing a
+/// prompt wire format here would make the adapter model-dependent in an
+/// unreviewed way.
+unsafe fn format_reviewed_chat_prompt(
+    model: *mut c_void,
+    system_prompt: &CString,
+    reviewed_request: &CString,
+) -> Result<CString, &'static str> {
+    let template = llama_model_chat_template(model, std::ptr::null());
+    if template.is_null() {
+        return Err("chat-template-unavailable");
+    }
+    let system_role = c"system";
+    let user_role = c"user";
+    let messages = [
+        ChatMessage {
+            role: system_role.as_ptr(),
+            content: system_prompt.as_ptr(),
+        },
+        ChatMessage {
+            role: user_role.as_ptr(),
+            content: reviewed_request.as_ptr(),
+        },
+    ];
+    let required = llama_chat_apply_template(
+        template,
+        messages.as_ptr(),
+        messages.len(),
+        true,
+        std::ptr::null_mut(),
+        0,
+    );
+    if required <= 0 || required as usize > CHAT_PROMPT_BYTE_LIMIT {
+        return Err("reviewed-input-too-large");
+    }
+    let mut formatted = vec![0_i8; required as usize + 1];
+    let written = llama_chat_apply_template(
+        template,
+        messages.as_ptr(),
+        messages.len(),
+        true,
+        formatted.as_mut_ptr(),
+        formatted.len() as i32,
+    );
+    if written != required {
+        return Err("chat-template-unavailable");
+    }
+    CString::new(
+        formatted[..written as usize]
+            .iter()
+            .map(|byte| *byte as u8)
+            .collect::<Vec<_>>(),
+    )
+    .map_err(|_| "reviewed-input-invalid")
+}
+
 fn failed(diagnostic: &str) -> LocalRuntimeSnapshot {
     LocalRuntimeSnapshot {
         schema_version: 1,
@@ -491,7 +573,9 @@ fn cancelled() -> LocalRuntimeSnapshot {
 
 #[cfg(test)]
 mod tests {
-    use super::{cancelled, LocalRuntimeService, MEMORY_CEILING_BYTES};
+    use super::{
+        cancelled, LocalRuntimeService, CHAT_PROMPT_BYTE_LIMIT, MEMORY_CEILING_BYTES, SYSTEM_PROMPT,
+    };
 
     #[test]
     fn cancellation_has_a_distinct_terminal_snapshot() {
@@ -503,6 +587,12 @@ mod tests {
     #[test]
     fn local_runtime_memory_ceiling_matches_the_approved_six_gib_limit() {
         assert_eq!(MEMORY_CEILING_BYTES, 6 * 1024 * 1024 * 1024);
+    }
+
+    #[test]
+    fn local_runtime_uses_a_bounded_two_message_chat_prompt() {
+        assert!(SYSTEM_PROMPT.contains("local, offline assistant"));
+        assert_eq!(CHAT_PROMPT_BYTE_LIMIT, 2 * (96 * 1024 + 256));
     }
 
     #[test]

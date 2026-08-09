@@ -59,8 +59,11 @@ execution/desktop acceptance is still required.
 The adapter's context-parameter C ABI now mirrors the pinned vendored llama.cpp
 header, and its focused lifecycle test proves a second concurrent local attempt
 is rejected immediately while the completed attempt releases the single slot.
-This remains local candidate evidence only; installed-host acceptance is still
-required.
+The fixed Qwen route formats its two-message system/reviewed-request exchange
+through that model's embedded chat template before tokenization; an unavailable
+or oversized template result is a bounded local failure and never falls back to
+an ad-hoc prompt format. This remains local candidate evidence only;
+installed-host acceptance is still required.
 
 The candidate procedure is recorded in
 [Testing](TESTING.md#m63-local-runtime-installed-host-acceptance). It requires
