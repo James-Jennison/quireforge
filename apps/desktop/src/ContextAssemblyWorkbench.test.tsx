@@ -36,6 +36,100 @@ const bridge = vi.hoisted(() => ({
 vi.mock("./lib/bridge", () => bridge);
 
 describe("ContextAssemblyWorkbench", () => {
+  it("shows the bounded running state until the one local attempt resolves", async () => {
+    let complete!: (value: {
+      schemaVersion: 1;
+      localOnly: true;
+      state: "completed";
+      output: string;
+      diagnostic: null;
+      inputTokenLimit: 4096;
+      outputTokenLimit: 512;
+      deadlineSeconds: 60;
+    }) => void;
+    bridge.runContextAssemblyLocalRuntime.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          complete = resolve;
+        }),
+    );
+    const confirmed = {
+      schemaVersion: 1,
+      fictionalLocalOnly: true,
+      sink: "fictional-local-context-sink-v1",
+      state: "awaiting_confirmation",
+      projectId: "019fbee6-476f-71b0-853c-f067657aa69c",
+      taskId: null,
+      bundleId: "019fbee6-476f-71b0-853c-f067657aa69b",
+      authorizationId: "019fbee6-476f-71b0-853c-f067657aa69a",
+      bundleDigest:
+        "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      expiresAtMs: 1,
+      items: [],
+      totalBytes: 12,
+      estimatedTokens: 3,
+      exclusions: [],
+      auditState: "review acknowledged",
+      diagnostic: null,
+    };
+    bridge.prepareContextAssembly.mockResolvedValueOnce({
+      ...confirmed,
+      state: "prepared",
+      authorizationId: null,
+    });
+    bridge.reviewContextAssembly.mockResolvedValueOnce({
+      ...confirmed,
+      state: "awaiting_review",
+      authorizationId: null,
+    });
+    bridge.acknowledgeContextAssemblyReview.mockResolvedValueOnce(confirmed);
+
+    render(
+      <ContextAssemblyWorkbench
+        projectId="019fbee6-476f-71b0-853c-f067657aa69c"
+        onClose={() => undefined}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText(/explicit user instruction/i), {
+      target: { value: "Summarize the reviewed request" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /prepare review/i }));
+    await screen.findByRole("button", { name: /review prepared bundle/i });
+    fireEvent.click(
+      screen.getByRole("button", { name: /review prepared bundle/i }),
+    );
+    await screen.findByRole("button", { name: /acknowledge exact review/i });
+    fireEvent.click(
+      screen.getByRole("button", { name: /acknowledge exact review/i }),
+    );
+    await screen.findByRole("button", {
+      name: /run once with local-only model/i,
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: /run once with local-only model/i }),
+    );
+
+    expect(screen.getByLabelText(/local runtime result/i)).toHaveTextContent(
+      /local-only attempt: running/i,
+    );
+    expect(screen.getByText(/no automatic retry/i)).toBeInTheDocument();
+
+    complete({
+      schemaVersion: 1,
+      localOnly: true,
+      state: "completed",
+      output: "Local response",
+      diagnostic: null,
+      inputTokenLimit: 4096,
+      outputTokenLimit: 512,
+      deadlineSeconds: 60,
+    });
+    await screen.findByText("Local response");
+    expect(screen.getByLabelText(/local runtime result/i)).toHaveTextContent(
+      /local-only attempt: completed/i,
+    );
+  });
+
   it("labels the local-only authority boundary and starts with no selected source", () => {
     render(
       <ContextAssemblyWorkbench

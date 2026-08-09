@@ -59,6 +59,7 @@ function ContextAssemblyWorkbenchScope({
     [selectedSources, setSelectedSources] = useState<string[]>([]),
     [snapshot, setSnapshot] = useState<ContextAssemblySnapshot | null>(null),
     [runtime, setRuntime] = useState<LocalRuntimeSnapshot | null>(null),
+    [runtimeRunning, setRuntimeRunning] = useState(false),
     [busy, setBusy] = useState(false),
     [notice, setNotice] = useState(
       "Local-only reviewed context. Nothing is selected by default.",
@@ -164,6 +165,7 @@ function ContextAssemblyWorkbenchScope({
   const invalidatePreparedBundle = () => {
     setSnapshot(null);
     setRuntime(null);
+    setRuntimeRunning(false);
     setNotice("Selection changed. Prepare a new local-only review.");
   };
   return (
@@ -381,6 +383,11 @@ function ContextAssemblyWorkbenchScope({
           disabled={!canConfirm || busy}
           onClick={() => {
             const actionProjectId = projectId;
+            setRuntime(null);
+            setRuntimeRunning(true);
+            setNotice(
+              "One local-only CPU attempt is running. It has a fixed deadline and no automatic retry.",
+            );
             setBusy(true);
             void runContextAssemblyLocalRuntime({
               bundleId: snapshot!.bundleId,
@@ -400,12 +407,22 @@ function ContextAssemblyWorkbenchScope({
                 }
               })
               .catch(() => {
-                if (mounted.current && projectScope.current === actionProjectId)
+                if (
+                  mounted.current &&
+                  projectScope.current === actionProjectId
+                ) {
+                  setRuntimeRunning(false);
                   setNotice("Local runtime is unavailable; no retry occurred.");
+                }
               })
               .finally(() => {
-                if (mounted.current && projectScope.current === actionProjectId)
+                if (
+                  mounted.current &&
+                  projectScope.current === actionProjectId
+                ) {
+                  setRuntimeRunning(false);
                   setBusy(false);
+                }
               });
           }}
         >
@@ -452,14 +469,21 @@ function ContextAssemblyWorkbenchScope({
           </ul>
         </section>
       )}
-      {runtime && (
+      {(runtimeRunning || runtime) && (
         <section aria-label="Local runtime result">
           <p>
-            Local-only attempt: {runtime.state}. CPU-only; one attempt; maximum
-            {runtime.inputTokenLimit} input tokens, {runtime.outputTokenLimit}{" "}
-            output tokens, and {runtime.deadlineSeconds} seconds.
+            Local-only attempt: {runtimeRunning ? "running" : runtime!.state}.{" "}
+            CPU-only; one attempt; maximum {runtime?.inputTokenLimit ?? 4096}{" "}
+            input tokens, {runtime?.outputTokenLimit ?? 512} output tokens, and{" "}
+            {runtime?.deadlineSeconds ?? 60} seconds.
           </p>
-          {runtime.output && <pre>{runtime.output}</pre>}
+          {runtimeRunning && (
+            <p className="context-note">
+              This view is waiting for the one bounded result. Closing it does
+              not authorize another attempt or retain a result.
+            </p>
+          )}
+          {runtime?.output && <pre>{runtime.output}</pre>}
         </section>
       )}
     </section>

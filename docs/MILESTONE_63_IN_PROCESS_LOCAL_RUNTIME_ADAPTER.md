@@ -32,6 +32,10 @@ The local candidate records the M63 attempt as `dispatching` and clears the
 durable canonical bundle bytes before invoking the in-process runtime. It adds
 content-free authorization and dispatch audit events before the call, allows
 only one terminal transition, and expires an interrupted dispatch on restart.
+The governed local-only view exposes the nonterminal `running` phase while the
+one CPU attempt is pending, including its fixed limits and no-automatic-retry
+posture; it replaces that phase only with the bounded returned result or
+failure. The result remains in the open view only.
 The focused storage and workbench tests, repository validation, package
 validator, type-check, lint, and formatting gates passed locally on
 2026-08-09. The local Debian package and the installed-host M63 execution/
