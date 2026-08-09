@@ -295,6 +295,22 @@ def require_regular_vendored_source_tree(directory: Path) -> None:
         )
 
 
+def require_regular_source_file(path: Path, description: str) -> None:
+    metadata = path.lstat()
+    require(
+        not stat.S_ISLNK(metadata.st_mode) and stat.S_ISREG(metadata.st_mode),
+        f"{description} must be a real regular file",
+    )
+
+
+def require_regular_source_directory(path: Path, description: str) -> None:
+    metadata = path.lstat()
+    require(
+        not stat.S_ISLNK(metadata.st_mode) and stat.S_ISDIR(metadata.st_mode),
+        f"{description} must be a real directory",
+    )
+
+
 def cmake_options(build: str) -> set[str]:
     return set(cmake_option_entries(build))
 
@@ -815,6 +831,7 @@ def require_closed_cargo_linkage(build: str) -> None:
 
 def require_no_rust_runtime_api_usage(source_directory: Path) -> None:
     """Keep the M63 source boundary build-only until a later adapter is approved."""
+    require_regular_source_directory(source_directory, "Rust runtime source root")
     prohibited_api = re.compile(r"\b(?:llama|ggml)_[A-Za-z0-9_]*\b")
     # Rust permits comments anywhere whitespace is accepted. Keep comments in
     # the scanned source (so a suspicious token in a comment remains visible),
@@ -942,6 +959,7 @@ def main() -> None:
     require(not (VENDOR / ".git").exists(), "Git history was vendored")
     require_no_repository_model_artifacts(ROOT)
     require_model_artifact_ignores(GITIGNORE.read_text(encoding="utf-8"))
+    require_regular_source_file(BUILD_SCRIPT, "M63 build script")
     build = BUILD_SCRIPT.read_text(encoding="utf-8")
     require_closed_cmake_options(build)
     require_verified_cmake_source(build)

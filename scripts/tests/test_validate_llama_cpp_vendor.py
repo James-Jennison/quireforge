@@ -19,6 +19,28 @@ SPEC.loader.exec_module(VALIDATOR)
 
 
 class CmakeOptionsTests(unittest.TestCase):
+    def test_rejects_a_symlinked_m63_build_script(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            temporary_root = Path(temporary_directory)
+            source = temporary_root / "build.rs"
+            source.write_text("fn main() {}\n", encoding="utf-8")
+            source_link = temporary_root / "build-link.rs"
+            source_link.symlink_to(source)
+
+            with self.assertRaisesRegex(SystemExit, "M63 build script must be a real regular file"):
+                VALIDATOR.require_regular_source_file(source_link, "M63 build script")
+
+    def test_rejects_a_symlinked_rust_runtime_source_root(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            temporary_root = Path(temporary_directory)
+            source = temporary_root / "source"
+            source.mkdir()
+            source_link = temporary_root / "source-link"
+            source_link.symlink_to(source, target_is_directory=True)
+
+            with self.assertRaisesRegex(SystemExit, "Rust runtime source root must be a real directory"):
+                VALIDATOR.require_no_rust_runtime_api_usage(source_link)
+
     def test_rejects_a_symlinked_vendored_source_root(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             temporary_root = Path(temporary_directory)
