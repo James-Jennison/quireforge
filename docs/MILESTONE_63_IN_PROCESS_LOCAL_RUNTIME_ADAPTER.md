@@ -84,6 +84,8 @@ the separately approved offline model input is available.
 It also permits only the fixed vendored-source change tracking and static CPU
 linkage Cargo directives, rejecting any additional build-script output or
 compile-configuration directive.
+The validator also pins the build script to its reviewed read-only filesystem
+calls, rejecting source or generated-output mutation from that build boundary.
 Each approved Cargo directive must be emitted directly by its fixed `println!`
 call; indirect or dynamically assembled directive output is rejected.
 The validator also requires its own build script and the scanned Rust runtime

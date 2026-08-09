@@ -838,6 +838,41 @@ class CmakeOptionsTests(unittest.TestCase):
         with self.assertRaisesRegex(SystemExit, "must not alias (the process module|Command)"):
             VALIDATOR.require_closed_build_process_boundary(build)
 
+    def test_requires_only_the_reviewed_read_only_build_script_filesystem_calls(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+
+        VALIDATOR.require_read_only_build_script_filesystem_boundary(build)
+
+    def test_rejects_a_build_script_filesystem_mutation(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace(
+            '    tauri_build::build();',
+            '    fs::write("unapproved-build-output", "unexpected");\n    tauri_build::build();',
+        )
+
+        with self.assertRaisesRegex(SystemExit, "approved read-only filesystem calls"):
+            VALIDATOR.require_read_only_build_script_filesystem_boundary(build)
+
+    def test_rejects_a_fully_qualified_build_script_filesystem_mutation(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace(
+            '    tauri_build::build();',
+            '    std::fs::write("unapproved-build-output", "unexpected");\n    tauri_build::build();',
+        )
+
+        with self.assertRaisesRegex(SystemExit, "only the reviewed filesystem calls"):
+            VALIDATOR.require_read_only_build_script_filesystem_boundary(build)
+
+    def test_rejects_an_aliased_build_script_filesystem_module(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace(
+            "use std::{",
+            "use std::fs as unapproved_fs;\n\nuse std::{",
+        )
+
+        with self.assertRaisesRegex(SystemExit, "must not alias the filesystem module"):
+            VALIDATOR.require_read_only_build_script_filesystem_boundary(build)
+
     def test_rejects_build_script_rust_source_includes(self) -> None:
         build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
         build = build.replace(

@@ -556,6 +556,26 @@ def require_closed_build_process_boundary(build: str) -> None:
     )
 
 
+def require_read_only_build_script_filesystem_boundary(build: str) -> None:
+    """Keep the build-only boundary from mutating sources or generated output."""
+    code = without_rust_comments(build)
+    require(
+        not re.search(r"\bfs\s+as\s+[A-Za-z_][A-Za-z0-9_]*", code),
+        "build script must not alias the filesystem module",
+    )
+    require(
+        not re.search(r"\bstd\s*::\s*fs\s*::", code),
+        "build script must use only the reviewed filesystem calls",
+    )
+    filesystem_calls = re.findall(
+        r"\bfs\s*::\s*([A-Za-z_][A-Za-z0-9_]*)\s*\(", code
+    )
+    require(
+        filesystem_calls == ["read_dir", "symlink_metadata", "read_dir", "read"],
+        "build script must use only the approved read-only filesystem calls",
+    )
+
+
 def require_no_build_script_source_injection(build: str) -> None:
     """Keep the closed build-process check from being bypassed by extra Rust files."""
     # ``build.rs`` is deliberately a single reviewed source file. An include or
@@ -1003,6 +1023,7 @@ def main() -> None:
     require_complete_vendored_source_tracking(build)
     require_build_time_vendored_tree_verification(build)
     require_closed_build_process_boundary(build)
+    require_read_only_build_script_filesystem_boundary(build)
     require_no_build_script_source_injection(build)
     require_closed_command_mutation_boundary(build)
     require_closed_command_execution_boundary(build)
