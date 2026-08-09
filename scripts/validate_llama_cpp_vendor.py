@@ -206,6 +206,9 @@ MODEL_ARTIFACT_SUFFIXES = {
     ".safetensors",
     ".tflite",
 }
+MODEL_ARTIFACT_MAGIC = {
+    b"GGUF": "GGUF",
+}
 
 
 def tree_digest() -> str:
@@ -655,6 +658,14 @@ def require_no_model_artifacts(directory: Path) -> None:
             path.suffix.lower() not in MODEL_ARTIFACT_SUFFIXES,
             f"model artifact found: {path.relative_to(directory)}",
         )
+        if not path.is_file():
+            continue
+        header = path.read_bytes()[:4]
+        for magic, format_name in MODEL_ARTIFACT_MAGIC.items():
+            require(
+                header != magic,
+                f"model artifact signature found ({format_name}): {path.relative_to(directory)}",
+            )
 
 
 def main() -> None:

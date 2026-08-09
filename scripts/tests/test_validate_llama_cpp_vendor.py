@@ -50,6 +50,14 @@ class CmakeOptionsTests(unittest.TestCase):
                 with self.assertRaisesRegex(SystemExit, "model artifact found"):
                     VALIDATOR.require_no_model_artifacts(source)
 
+    def test_rejects_a_renamed_gguf_model_artifact(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            source = Path(temporary_directory)
+            (source / "vendored-data").write_bytes(b"GGUF\x03\x00\x00\x00")
+
+            with self.assertRaisesRegex(SystemExit, "model artifact signature found \\(GGUF\\)"):
+                VALIDATOR.require_no_model_artifacts(source)
+
     def test_allows_non_model_source_files(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             source = Path(temporary_directory)
