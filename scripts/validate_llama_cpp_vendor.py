@@ -263,6 +263,8 @@ MODEL_ARTIFACT_MAGIC = {
     b"GGUF": "GGUF",
     b"ggml": "GGML",
 }
+AR_MAGIC = b"!<arch>\n"
+AR_HEADER_BYTES = 60
 MAX_NESTED_ARCHIVE_BYTES = 8 * 1024 * 1024
 MAX_ARCHIVE_NESTING = 3
 REPOSITORY_MODEL_ARTIFACT_EXCLUSIONS = {
@@ -1008,6 +1010,7 @@ def require_no_model_artifacts(
             )
         require_no_model_artifacts_in_zip(path, relative)
         require_no_model_artifacts_in_tar(path, relative)
+        require_no_model_artifacts_in_ar(path, relative)
 
 
 def require_no_model_artifacts_in_zip(path: Path, relative: Path) -> None:
@@ -1077,6 +1080,112 @@ def require_no_model_artifacts_in_tar(path: Path, relative: Path) -> None:
         require(False, f"could not safely inspect TAR archive {relative}: {error}")
 
 
+def require_no_model_artifacts_in_ar(path: Path, relative: Path) -> None:
+    """Reject model files hidden in a repository-owned Unix ar archive.
+
+    Debian packages and static-library archives use this container format. The
+    scanner reads members in place and never extracts them to the filesystem.
+    """
+    with path.open("rb") as archive:
+        if archive.read(len(AR_MAGIC)) != AR_MAGIC:
+            return
+        try:
+            require_no_model_artifacts_in_ar_stream(archive, relative, "ar archive")
+        except (OSError, UnicodeDecodeError, ValueError) as error:
+            require(False, f"could not safely inspect ar archive {relative}: {error}")
+
+
+def require_no_model_artifacts_in_ar_stream(
+    archive: object, relative: Path, archive_kind: str
+) -> None:
+    """Inspect a stream positioned immediately after an ar global header."""
+    read = getattr(archive, "read")
+    seek = getattr(archive, "seek")
+    long_names: bytes | None = None
+    while header := read(AR_HEADER_BYTES):
+        require(
+            len(header) == AR_HEADER_BYTES and header[-2:] == b"`\n",
+            f"could not safely inspect {archive_kind} member header: {relative}",
+        )
+        encoded_name = header[:16].decode("ascii").rstrip()
+        encoded_size = header[48:58].decode("ascii").strip()
+        require(
+            encoded_size.isdecimal(),
+            f"could not safely inspect {archive_kind} member size: {relative}!{encoded_name}",
+        )
+        encoded_member_size = int(encoded_size)
+        encoded_member_start = getattr(archive, "tell")()
+        archive_end = seek(0, 2)
+        require(
+            encoded_member_start + encoded_member_size <= archive_end,
+            f"could not safely inspect truncated {archive_kind} member: {relative}!{encoded_name}",
+        )
+        seek(encoded_member_start)
+        if encoded_name == "//":
+            require(
+                encoded_member_size <= MAX_NESTED_ARCHIVE_BYTES,
+                f"ar long-name table exceeds the M63 admission limit: {relative}",
+            )
+            long_names = read(encoded_member_size)
+            require(
+                len(long_names) == encoded_member_size,
+                f"could not safely inspect {archive_kind} long-name table: {relative}",
+            )
+            seek(encoded_member_start + encoded_member_size + (encoded_member_size % 2))
+            continue
+
+        member_name = ar_member_name(encoded_name, long_names, relative, archive_kind)
+        member_start = encoded_member_start
+        member_size = encoded_member_size
+        if encoded_name.startswith("#1/"):
+            name_size = int(encoded_name[3:])
+            require(
+                name_size <= member_size,
+                f"could not safely inspect {archive_kind} BSD member name: {relative}",
+            )
+            member_name = read(name_size).decode("utf-8")
+            member_start += name_size
+            member_size -= name_size
+        member_relative = Path(f"{relative}!{member_name}")
+        require(
+            member_relative.suffix.lower() not in MODEL_ARTIFACT_SUFFIXES,
+            f"model artifact found in {archive_kind}: {member_relative}",
+        )
+        require_no_model_artifacts_in_archive_member(
+            archive, member_size, member_relative, 1, archive_kind
+        )
+        seek(encoded_member_start + encoded_member_size + (encoded_member_size % 2))
+
+
+def ar_member_name(
+    encoded_name: str, long_names: bytes | None, relative: Path, archive_kind: str
+) -> str:
+    """Resolve traditional, GNU, and BSD ar member names without extraction."""
+    if encoded_name.startswith("#1/"):
+        require(
+            encoded_name[3:].isdecimal(),
+            f"could not safely inspect {archive_kind} BSD member name: {relative}",
+        )
+        return encoded_name
+    if encoded_name.startswith("/") and encoded_name[1:].isdecimal():
+        require(
+            long_names is not None,
+            f"could not safely inspect {archive_kind} GNU member name: {relative}",
+        )
+        offset = int(encoded_name[1:])
+        require(
+            offset < len(long_names),
+            f"could not safely inspect {archive_kind} GNU member name: {relative}",
+        )
+        name = long_names[offset:].split(b"/\n", 1)[0].decode("utf-8")
+        require(
+            name and "\x00" not in name,
+            f"could not safely inspect {archive_kind} GNU member name: {relative}",
+        )
+        return name
+    return encoded_name.rstrip("/")
+
+
 def require_no_model_artifacts_in_archive_member(
     member: object, member_size: int, relative: Path, depth: int, archive_kind: str
 ) -> None:
@@ -1111,6 +1220,7 @@ def archive_payload_candidate(prefix: bytes) -> bool:
     """Recognize supported archive signatures before bounded in-memory parsing."""
     return (
         prefix.startswith((b"PK\x03\x04", b"PK\x05\x06", b"PK\x07\x08"))
+        or prefix.startswith(AR_MAGIC)
         or prefix.startswith((b"\x1f\x8b", b"BZh", b"\xfd7zXZ\x00"))
         or prefix[257:262] == b"ustar"
     )
@@ -1120,6 +1230,10 @@ def require_no_model_artifacts_in_archive_payload(payload: bytes, relative: Path
     """Recursively inspect one bounded ZIP or TAR-family archive payload."""
     payload_file = io.BytesIO(payload)
     try:
+        if payload.startswith(AR_MAGIC):
+            payload_file.seek(len(AR_MAGIC))
+            require_no_model_artifacts_in_ar_stream(payload_file, relative, "nested ar archive")
+            return
         if zipfile.is_zipfile(payload_file):
             with zipfile.ZipFile(payload_file) as archive:
                 for entry in archive.infolist():

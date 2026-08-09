@@ -21,6 +21,49 @@ VALIDATOR = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(VALIDATOR)
 
 
+def ar_member(name: str, content: bytes) -> bytes:
+    encoded_name = f"{name}/".encode("ascii")
+    header = (
+        encoded_name.ljust(16, b" ")
+        + b"0".ljust(12, b" ")
+        + b"0".ljust(6, b" ")
+        + b"0".ljust(6, b" ")
+        + b"100644".ljust(8, b" ")
+        + str(len(content)).encode("ascii").ljust(10, b" ")
+        + b"`\n"
+    )
+    return header + content + (b"\n" if len(content) % 2 else b"")
+
+
+def ar_gnu_member(offset: int, content: bytes) -> bytes:
+    name = f"/{offset}".encode("ascii")
+    header = (
+        name.ljust(16, b" ")
+        + b"0".ljust(12, b" ")
+        + b"0".ljust(6, b" ")
+        + b"0".ljust(6, b" ")
+        + b"100644".ljust(8, b" ")
+        + str(len(content)).encode("ascii").ljust(10, b" ")
+        + b"`\n"
+    )
+    return header + content + (b"\n" if len(content) % 2 else b"")
+
+
+def ar_bsd_member(name: str, content: bytes) -> bytes:
+    encoded_name = f"#1/{len(name.encode('utf-8'))}".encode("ascii")
+    payload = name.encode("utf-8") + content
+    header = (
+        encoded_name.ljust(16, b" ")
+        + b"0".ljust(12, b" ")
+        + b"0".ljust(6, b" ")
+        + b"0".ljust(6, b" ")
+        + b"100644".ljust(8, b" ")
+        + str(len(payload)).encode("ascii").ljust(10, b" ")
+        + b"`\n"
+    )
+    return header + payload + (b"\n" if len(payload) % 2 else b"")
+
+
 class CmakeOptionsTests(unittest.TestCase):
     def test_rejects_a_symlinked_m63_build_script(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
@@ -182,6 +225,75 @@ class CmakeOptionsTests(unittest.TestCase):
             readme.unlink()
 
             VALIDATOR.require_no_model_artifacts(source)
+
+    def test_rejects_a_model_artifact_named_inside_an_ar_archive(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            source = Path(temporary_directory)
+            (source / "archive.a").write_bytes(
+                VALIDATOR.AR_MAGIC + ar_member("model.gguf", b"not a model")
+            )
+
+            with self.assertRaisesRegex(SystemExit, "model artifact found in ar archive"):
+                VALIDATOR.require_no_model_artifacts(source)
+
+    def test_rejects_a_renamed_model_artifact_inside_an_ar_archive(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            source = Path(temporary_directory)
+            (source / "archive.deb").write_bytes(
+                VALIDATOR.AR_MAGIC + ar_member("data", b"GGUF\x03\x00\x00\x00")
+            )
+
+            with self.assertRaisesRegex(
+                SystemExit, "model artifact signature found \\(GGUF\\) in ar archive"
+            ):
+                VALIDATOR.require_no_model_artifacts(source)
+
+    def test_rejects_a_long_gnu_named_model_artifact_inside_an_ar_archive(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            source = Path(temporary_directory)
+            long_names = b"nested/unapproved-model.gguf/\n"
+            (source / "archive.a").write_bytes(
+                VALIDATOR.AR_MAGIC
+                + ar_member("/", b"symbol-table")
+                + ar_member("/", long_names).replace(b"/               ", b"//              ", 1)
+                + ar_gnu_member(0, b"not a model")
+            )
+
+            with self.assertRaisesRegex(SystemExit, "model artifact found in ar archive"):
+                VALIDATOR.require_no_model_artifacts(source)
+
+    def test_rejects_a_long_bsd_named_model_artifact_inside_an_ar_archive(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            source = Path(temporary_directory)
+            (source / "archive.a").write_bytes(
+                VALIDATOR.AR_MAGIC
+                + ar_bsd_member("nested/unapproved-model.gguf", b"not a model")
+            )
+
+            with self.assertRaisesRegex(SystemExit, "model artifact found in ar archive"):
+                VALIDATOR.require_no_model_artifacts(source)
+
+    def test_rejects_a_truncated_ar_member(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            source = Path(temporary_directory)
+            header = ar_member("data", b"")[: VALIDATOR.AR_HEADER_BYTES]
+            header = header[:48] + b"1024".ljust(10, b" ") + header[58:]
+            (source / "archive.a").write_bytes(VALIDATOR.AR_MAGIC + header)
+
+            with self.assertRaisesRegex(SystemExit, "truncated ar archive member"):
+                VALIDATOR.require_no_model_artifacts(source)
+
+    def test_rejects_a_model_artifact_inside_a_nested_ar_archive(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            source = Path(temporary_directory)
+            nested = VALIDATOR.AR_MAGIC + ar_member("model.gguf", b"not a model")
+            with zipfile.ZipFile(source / "outer.zip", "w") as archive:
+                archive.writestr("nested.a", nested)
+
+            with self.assertRaisesRegex(
+                SystemExit, "model artifact found in nested ar archive"
+            ):
+                VALIDATOR.require_no_model_artifacts(source)
 
     def test_rejects_a_model_artifact_inside_a_nested_zip_archive(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
