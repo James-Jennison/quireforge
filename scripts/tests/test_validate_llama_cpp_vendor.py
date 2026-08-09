@@ -951,7 +951,18 @@ class CmakeOptionsTests(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            with self.assertRaisesRegex(SystemExit, "or include Rust source"):
+            with self.assertRaisesRegex(SystemExit, "or import unscanned Rust source"):
+                VALIDATOR.require_no_rust_runtime_api_usage(source)
+
+    def test_rejects_rust_path_module_attributes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            source = Path(temporary_directory)
+            (source / "runtime.rs").write_text(
+                '#[path = "../unreviewed-runtime.txt"]\nmod unreviewed_runtime;\n',
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(SystemExit, "or import unscanned Rust source"):
                 VALIDATOR.require_no_rust_runtime_api_usage(source)
 
     def test_allows_rust_source_without_vendored_c_api_references(self) -> None:

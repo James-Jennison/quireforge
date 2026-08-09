@@ -722,6 +722,7 @@ def require_no_rust_runtime_api_usage(source_directory: Path) -> None:
     prohibited_api = re.compile(r"\b(?:llama|ggml)_[A-Za-z0-9_]*\b")
     ffi_declaration = re.compile(r"\b(?:unsafe\s+)?extern(?:\s+\"[^\"]+\")?\s*\{")
     source_include = re.compile(r"\binclude\s*!")
+    path_module = re.compile(r"#\s*\[\s*path\s*=")
     violations = []
     for path in sorted(source_directory.rglob("*")):
         relative = path.relative_to(source_directory)
@@ -744,10 +745,12 @@ def require_no_rust_runtime_api_usage(source_directory: Path) -> None:
             violations.append(f"{relative}: native FFI declaration")
         if source_include.search(source):
             violations.append(f"{relative}: Rust source include macro")
+        if path_module.search(source):
+            violations.append(f"{relative}: Rust path module attribute")
     require(
         not violations,
         "Rust runtime source must not reference llama.cpp or ggml APIs or declare native FFI "
-        "or include Rust source: "
+        "or import unscanned Rust source: "
         + "; ".join(violations),
     )
 
