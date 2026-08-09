@@ -3,9 +3,12 @@
 
 from __future__ import annotations
 
+import bz2
+import gzip
 import hashlib
 import io
 import json
+import lzma
 import re
 import stat
 import tarfile
@@ -1013,6 +1016,7 @@ def require_no_model_artifacts(
         require_no_model_artifacts_in_zip(path, relative)
         require_no_model_artifacts_in_tar(path, relative)
         require_no_model_artifacts_in_ar(path, relative)
+        require_no_model_artifacts_in_compressed_file(path, relative)
 
 
 def require_no_model_artifacts_in_zip(path: Path, relative: Path) -> None:
@@ -1107,6 +1111,20 @@ def require_no_model_artifacts_in_ar(path: Path, relative: Path) -> None:
             require_no_model_artifacts_in_ar_stream(archive, relative, "ar archive")
         except (OSError, UnicodeDecodeError, ValueError) as error:
             require(False, f"could not safely inspect ar archive {relative}: {error}")
+
+
+def require_no_model_artifacts_in_compressed_file(path: Path, relative: Path) -> None:
+    """Inspect a standalone compressed payload without extracting it to disk."""
+    with path.open("rb") as source:
+        prefix = source.read(6)
+    if not compressed_payload_candidate(prefix):
+        return
+    member_size = path.stat().st_size
+    require(
+        member_size <= MAX_NESTED_ARCHIVE_BYTES,
+        f"compressed archive exceeds the M63 admission limit: {relative}",
+    )
+    require_no_model_artifacts_in_compressed_payload(path.read_bytes(), relative, 0)
 
 
 def require_no_model_artifacts_in_ar_stream(
@@ -1258,8 +1276,40 @@ def archive_payload_candidate(prefix: bytes) -> bool:
     return (
         prefix.startswith((b"PK\x03\x04", b"PK\x05\x06", b"PK\x07\x08"))
         or prefix.startswith(AR_MAGIC)
-        or prefix.startswith((b"\x1f\x8b", b"BZh", b"\xfd7zXZ\x00"))
+        or compressed_payload_candidate(prefix)
         or prefix[257:262] == b"ustar"
+    )
+
+
+def compressed_payload_candidate(prefix: bytes) -> bool:
+    """Recognize supported standalone compression envelopes."""
+    return prefix.startswith((b"\x1f\x8b", b"BZh", b"\xfd7zXZ\x00"))
+
+
+def require_no_model_artifacts_in_compressed_payload(
+    payload: bytes, relative: Path, depth: int
+) -> None:
+    """Boundedly inspect gzip, bzip2, or xz data nested in an admitted archive."""
+    payload_file = io.BytesIO(payload)
+    try:
+        if payload.startswith(b"\x1f\x8b"):
+            reader = gzip.GzipFile(fileobj=payload_file)
+        elif payload.startswith(b"BZh"):
+            reader = bz2.BZ2File(payload_file)
+        elif payload.startswith(b"\xfd7zXZ\x00"):
+            reader = lzma.LZMAFile(payload_file)
+        else:
+            return
+        with reader:
+            expanded = reader.read(MAX_NESTED_ARCHIVE_BYTES + 1)
+        require(
+            len(expanded) <= MAX_NESTED_ARCHIVE_BYTES,
+            f"compressed archive exceeds the M63 admission limit: {relative}",
+        )
+    except (OSError, EOFError, lzma.LZMAError) as error:
+        require(False, f"could not safely inspect compressed archive {relative}: {error}")
+    require_no_model_artifacts_in_archive_member(
+        io.BytesIO(expanded), len(expanded), relative, depth, "nested compressed archive"
     )
 
 
@@ -1267,6 +1317,9 @@ def require_no_model_artifacts_in_archive_payload(payload: bytes, relative: Path
     """Recursively inspect one bounded ZIP or TAR-family archive payload."""
     payload_file = io.BytesIO(payload)
     try:
+        if compressed_payload_candidate(payload):
+            require_no_model_artifacts_in_compressed_payload(payload, relative, depth)
+            return
         if payload.startswith(AR_MAGIC):
             payload_file.seek(len(AR_MAGIC))
             require_no_model_artifacts_in_ar_stream(payload_file, relative, "nested ar archive")

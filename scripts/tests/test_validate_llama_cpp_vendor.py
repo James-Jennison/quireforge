@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import bz2
+import gzip
 import importlib.util
 import io
+import lzma
 import os
 import tarfile
 import tempfile
@@ -427,6 +430,35 @@ class CmakeOptionsTests(unittest.TestCase):
 
             with self.assertRaisesRegex(
                 SystemExit, "model artifact signature found \\(GGUF\\) in nested archive"
+            ):
+                VALIDATOR.require_no_model_artifacts(source)
+
+    def test_rejects_a_renamed_model_artifact_inside_nested_compressed_data(self) -> None:
+        compressors = {
+            "gzip": gzip.compress,
+            "bzip2": bz2.compress,
+            "xz": lzma.compress,
+        }
+        for format_name, compress in compressors.items():
+            with self.subTest(format_name=format_name), tempfile.TemporaryDirectory() as temporary_directory:
+                source = Path(temporary_directory)
+                with zipfile.ZipFile(source / "outer.zip", "w") as archive:
+                    archive.writestr("nested-source", compress(b"GGUF\\x03\\x00\\x00\\x00"))
+
+                with self.assertRaisesRegex(
+                    SystemExit,
+                    "model artifact signature found \\(GGUF\\) in nested compressed archive",
+                ):
+                    VALIDATOR.require_no_model_artifacts(source)
+
+    def test_rejects_a_renamed_model_artifact_inside_top_level_compressed_data(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            source = Path(temporary_directory)
+            (source / "compressed-source").write_bytes(gzip.compress(b"GGUF\\x03\\x00\\x00\\x00"))
+
+            with self.assertRaisesRegex(
+                SystemExit,
+                "model artifact signature found \\(GGUF\\) in nested compressed archive",
             ):
                 VALIDATOR.require_no_model_artifacts(source)
 
