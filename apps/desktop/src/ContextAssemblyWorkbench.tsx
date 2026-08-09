@@ -62,7 +62,7 @@ function ContextAssemblyWorkbenchScope({
     [runtime, setRuntime] = useState<LocalRuntimeSnapshot | null>(null),
     [busy, setBusy] = useState(false),
     [notice, setNotice] = useState(
-      "Fictional local-only context review. Nothing is selected by default.",
+      "Local-only reviewed context. Nothing is selected by default.",
     );
   const mounted = useRef(true);
   const projectScope = useRef(projectId);
@@ -176,7 +176,7 @@ function ContextAssemblyWorkbenchScope({
     >
       <header className="task-template-workbench__header">
         <div>
-          <p className="eyebrow">Fictional local-only context sink</p>
+          <p className="eyebrow">Credential-free local runtime</p>
           <h2 id={title}>Governed context review</h2>
         </div>
         <button ref={close} type="button" onClick={onClose}>
@@ -186,8 +186,9 @@ function ContextAssemblyWorkbenchScope({
       <p role="status">{notice}</p>
       <p>
         Project scope: {projectLabel ?? "Current attached project"}. This is not
-        provider transmission, inference, a credential, connector, browser, MCP,
-        automation, or mutation authority.
+        provider transmission, credential, connector, browser, MCP, automation,
+        or mutation authority. A confirmed review can run once in this open
+        local view only.
       </p>
       <label>
         Explicit user instruction
@@ -402,7 +403,10 @@ function ContextAssemblyWorkbenchScope({
               bundleDigest: snapshot!.bundleDigest,
             })
               .then((next) => {
-                if (mounted.current && projectScope.current === actionProjectId) {
+                if (
+                  mounted.current &&
+                  projectScope.current === actionProjectId
+                ) {
                   setRuntime(next);
                   setNotice(
                     next.diagnostic ??
@@ -467,8 +471,8 @@ function ContextAssemblyWorkbenchScope({
         <section aria-label="Local runtime result">
           <p>
             Local-only attempt: {runtime.state}. CPU-only; one attempt; maximum
-            {runtime.inputTokenLimit} input tokens, {runtime.outputTokenLimit} output
-            tokens, and {runtime.deadlineSeconds} seconds.
+            {runtime.inputTokenLimit} input tokens, {runtime.outputTokenLimit}{" "}
+            output tokens, and {runtime.deadlineSeconds} seconds.
           </p>
           {runtime.output && <pre>{runtime.output}</pre>}
         </section>

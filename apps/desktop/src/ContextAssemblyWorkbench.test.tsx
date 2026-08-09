@@ -30,6 +30,7 @@ const bridge = vi.hoisted(() => ({
   }),
   reviewContextAssembly: vi.fn(),
   revokeContextAssembly: vi.fn(),
+  runContextAssemblyLocalRuntime: vi.fn(),
 }));
 
 vi.mock("./lib/bridge", () => bridge);
@@ -58,6 +59,99 @@ describe("ContextAssemblyWorkbench", () => {
     expect(
       screen.getByRole("button", { name: /prepare review/i }),
     ).toBeDisabled();
+  });
+
+  it("runs one confirmed review in the local-only view and retains only its bounded result", async () => {
+    const confirmed = {
+      schemaVersion: 1,
+      fictionalLocalOnly: true,
+      sink: "fictional-local-context-sink-v1",
+      state: "awaiting_confirmation",
+      projectId: "019fbee6-476f-71b0-853c-f067657aa69c",
+      taskId: null,
+      bundleId: "019fbee6-476f-71b0-853c-f067657aa69b",
+      authorizationId: "019fbee6-476f-71b0-853c-f067657aa69a",
+      bundleDigest:
+        "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      expiresAtMs: 1,
+      items: [],
+      totalBytes: 12,
+      estimatedTokens: 3,
+      exclusions: [],
+      auditState: "review acknowledged",
+      diagnostic: null,
+    };
+    bridge.prepareContextAssembly.mockResolvedValueOnce({
+      ...confirmed,
+      state: "prepared",
+      authorizationId: null,
+    });
+    bridge.reviewContextAssembly.mockResolvedValueOnce({
+      ...confirmed,
+      state: "awaiting_review",
+      authorizationId: null,
+    });
+    bridge.acknowledgeContextAssemblyReview.mockResolvedValueOnce(confirmed);
+    bridge.runContextAssemblyLocalRuntime.mockResolvedValueOnce({
+      schemaVersion: 1,
+      localOnly: true,
+      state: "completed",
+      output: "Local response",
+      diagnostic: null,
+      inputTokenLimit: 4096,
+      outputTokenLimit: 512,
+      deadlineSeconds: 60,
+    });
+
+    render(
+      <ContextAssemblyWorkbench
+        projectId="019fbee6-476f-71b0-853c-f067657aa69c"
+        onClose={() => undefined}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText(/explicit user instruction/i), {
+      target: { value: "Summarize the reviewed request" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /prepare review/i }));
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /review prepared bundle/i }),
+      ).toBeEnabled(),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: /review prepared bundle/i }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /acknowledge exact review/i }),
+      ).toBeEnabled(),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: /acknowledge exact review/i }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /run once with local-only model/i }),
+      ).toBeEnabled(),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: /run once with local-only model/i }),
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.getByLabelText(/local runtime result/i),
+      ).toBeInTheDocument(),
+    );
+    expect(bridge.runContextAssemblyLocalRuntime).toHaveBeenCalledWith({
+      bundleId: confirmed.bundleId,
+      authorizationId: confirmed.authorizationId,
+      bundleDigest: confirmed.bundleDigest,
+    });
+    expect(screen.getByText("Local response")).toBeInTheDocument();
+    expect(screen.getByLabelText(/local runtime result/i)).toHaveTextContent(
+      /CPU-only; one attempt; maximum\s*4096 input tokens/i,
+    );
   });
 
   it("invalidates a prepared bundle when its selection changes", async () => {

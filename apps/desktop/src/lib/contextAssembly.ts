@@ -61,7 +61,10 @@ export const localRuntimeSnapshotSchema = z
     schemaVersion: z.literal(1),
     localOnly: z.literal(true),
     state: z.enum(["completed", "failed"]),
-    output: z.string().max(16 * 1024).nullable(),
+    output: z
+      .string()
+      .max(16 * 1024)
+      .nullable(),
     diagnostic: z.string().max(120).nullable(),
     inputTokenLimit: z.literal(4096),
     outputTokenLimit: z.literal(512),

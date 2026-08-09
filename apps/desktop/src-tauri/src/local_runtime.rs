@@ -7,7 +7,6 @@
 use serde::Serialize;
 use std::{
     ffi::{c_char, c_void, CString},
-    ptr,
     sync::Mutex,
     time::{Duration, Instant},
 };
@@ -75,7 +74,9 @@ struct ContextParams {
     kv_unified: bool,
     samplers: *mut c_void,
     n_samplers: usize,
-    ctx_other: *mut c_void,
+    name: [c_char; 64],
+    extra: *mut c_void,
+    padding: [c_char; 8],
 }
 
 #[repr(C)]
@@ -96,6 +97,7 @@ struct SamplerChainParams {
 
 unsafe extern "C" {
     fn llama_backend_init();
+    fn llama_backend_free();
     fn llama_model_default_params() -> ModelParams;
     fn llama_context_default_params() -> ContextParams;
     fn llama_sampler_chain_default_params() -> SamplerChainParams;
@@ -104,7 +106,15 @@ unsafe extern "C" {
     fn llama_init_from_model(model: *mut c_void, params: ContextParams) -> *mut c_void;
     fn llama_free(context: *mut c_void);
     fn llama_model_get_vocab(model: *const c_void) -> *const c_void;
-    fn llama_tokenize(vocab: *const c_void, text: *const c_char, text_len: i32, tokens: *mut i32, n_tokens: i32, add_special: bool, parse_special: bool) -> i32;
+    fn llama_tokenize(
+        vocab: *const c_void,
+        text: *const c_char,
+        text_len: i32,
+        tokens: *mut i32,
+        n_tokens: i32,
+        add_special: bool,
+        parse_special: bool,
+    ) -> i32;
     fn llama_batch_get_one(tokens: *mut i32, n_tokens: i32) -> Batch;
     fn llama_decode(context: *mut c_void, batch: Batch) -> i32;
     fn llama_sampler_chain_init(params: SamplerChainParams) -> *mut c_void;
@@ -114,7 +124,43 @@ unsafe extern "C" {
     fn llama_sampler_accept(sampler: *mut c_void, token: i32);
     fn llama_sampler_free(sampler: *mut c_void);
     fn llama_vocab_is_eog(vocab: *const c_void, token: i32) -> bool;
-    fn llama_token_to_piece(vocab: *const c_void, token: i32, buffer: *mut c_char, length: i32, lstrip: i32, special: bool) -> i32;
+    fn llama_token_to_piece(
+        vocab: *const c_void,
+        token: i32,
+        buffer: *mut c_char,
+        length: i32,
+        lstrip: i32,
+        special: bool,
+    ) -> i32;
+}
+
+struct Backend;
+
+impl Backend {
+    unsafe fn initialize() -> Self {
+        llama_backend_init();
+        Self
+    }
+}
+
+impl Drop for Backend {
+    fn drop(&mut self) {
+        unsafe { llama_backend_free() }
+    }
+}
+
+unsafe extern "C" fn continue_before_deadline(_: f32, data: *mut c_void) -> bool {
+    !deadline_elapsed(data)
+}
+
+unsafe extern "C" fn abort_at_deadline(data: *mut c_void) -> bool {
+    deadline_elapsed(data)
+}
+
+unsafe fn deadline_elapsed(data: *mut c_void) -> bool {
+    data.cast::<Instant>()
+        .as_ref()
+        .is_none_or(|started| started.elapsed() >= DEADLINE)
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -137,8 +183,12 @@ pub(crate) struct LocalRuntimeService {
 
 impl LocalRuntimeService {
     pub(crate) fn run(&self, canonical_bytes: &[u8]) -> LocalRuntimeSnapshot {
-        let Ok(mut active) = self.active.lock() else { return failed("runtime-unavailable"); };
-        if *active { return failed("runtime-busy"); }
+        let Ok(mut active) = self.active.lock() else {
+            return failed("runtime-unavailable");
+        };
+        if *active {
+            return failed("runtime-busy");
+        }
         *active = true;
         let result = run_once(canonical_bytes);
         *active = false;
@@ -147,22 +197,40 @@ impl LocalRuntimeService {
 }
 
 fn run_once(canonical_bytes: &[u8]) -> LocalRuntimeSnapshot {
-    let Ok(model_path) = std::env::var(MODEL_PATH_ENV) else { return failed("model-unavailable"); };
-    if model_path.is_empty() || model_path.as_bytes().contains(&0) { return failed("model-unavailable"); }
-    let Ok(path) = CString::new(model_path) else { return failed("model-unavailable"); };
+    let Ok(model_path) = std::env::var(MODEL_PATH_ENV) else {
+        return failed("model-unavailable");
+    };
+    if model_path.is_empty() || model_path.as_bytes().contains(&0) {
+        return failed("model-unavailable");
+    }
+    let Ok(path) = CString::new(model_path) else {
+        return failed("model-unavailable");
+    };
     let prompt = match std::str::from_utf8(canonical_bytes) {
-        Ok(value) => format!("You are a local, offline assistant. Answer the reviewed request only.\n\n{value}"),
+        Ok(value) => format!(
+            "You are a local, offline assistant. Answer the reviewed request only.\n\n{value}"
+        ),
         Err(_) => return failed("reviewed-input-invalid"),
     };
-    let Ok(prompt) = CString::new(prompt) else { return failed("reviewed-input-invalid"); };
+    let Ok(prompt) = CString::new(prompt) else {
+        return failed("reviewed-input-invalid");
+    };
     let started = Instant::now();
     unsafe {
-        llama_backend_init();
+        let _backend = Backend::initialize();
         let mut model_params = llama_model_default_params();
         model_params.n_gpu_layers = 0;
         model_params.split_mode = 0;
+        model_params.progress_callback = continue_before_deadline as *const c_void;
+        model_params.progress_callback_user_data = (&started as *const Instant).cast_mut().cast();
         let model = llama_model_load_from_file(path.as_ptr(), model_params);
-        if model.is_null() { return failed("model-unavailable"); }
+        if model.is_null() {
+            return failed(if started.elapsed() >= DEADLINE {
+                "deadline-exceeded"
+            } else {
+                "model-unavailable"
+            });
+        }
         let mut context_params = llama_context_default_params();
         context_params.n_ctx = INPUT_TOKEN_LIMIT as u32;
         context_params.n_batch = 512;
@@ -172,37 +240,117 @@ fn run_once(canonical_bytes: &[u8]) -> LocalRuntimeSnapshot {
         context_params.offload_kqv = false;
         context_params.op_offload = false;
         context_params.no_perf = true;
+        context_params.abort_callback = abort_at_deadline as *const c_void;
+        context_params.abort_callback_data = (&started as *const Instant).cast_mut().cast();
         let context = llama_init_from_model(model, context_params);
-        if context.is_null() { llama_model_free(model); return failed("runtime-unavailable"); }
+        if context.is_null() {
+            llama_model_free(model);
+            return failed("runtime-unavailable");
+        }
         let vocab = llama_model_get_vocab(model);
         let mut tokens = vec![0_i32; INPUT_TOKEN_LIMIT];
-        let token_count = llama_tokenize(vocab, prompt.as_ptr(), prompt.as_bytes().len() as i32, tokens.as_mut_ptr(), tokens.len() as i32, true, true);
-        if token_count <= 0 || token_count as usize >= INPUT_TOKEN_LIMIT { llama_free(context); llama_model_free(model); return failed("reviewed-input-too-large"); }
+        let token_count = llama_tokenize(
+            vocab,
+            prompt.as_ptr(),
+            prompt.as_bytes().len() as i32,
+            tokens.as_mut_ptr(),
+            tokens.len() as i32,
+            true,
+            true,
+        );
+        if token_count <= 0 || token_count as usize >= INPUT_TOKEN_LIMIT {
+            llama_free(context);
+            llama_model_free(model);
+            return failed("reviewed-input-too-large");
+        }
         tokens.truncate(token_count as usize);
-        if llama_decode(context, llama_batch_get_one(tokens.as_mut_ptr(), token_count)) != 0 { llama_free(context); llama_model_free(model); return failed("runtime-failed"); }
+        if llama_decode(
+            context,
+            llama_batch_get_one(tokens.as_mut_ptr(), token_count),
+        ) != 0
+        {
+            llama_free(context);
+            llama_model_free(model);
+            return failed(if started.elapsed() >= DEADLINE {
+                "deadline-exceeded"
+            } else {
+                "runtime-failed"
+            });
+        }
         let sampler = llama_sampler_chain_init(llama_sampler_chain_default_params());
-        if sampler.is_null() { llama_free(context); llama_model_free(model); return failed("runtime-unavailable"); }
+        if sampler.is_null() {
+            llama_free(context);
+            llama_model_free(model);
+            return failed("runtime-unavailable");
+        }
         llama_sampler_chain_add(sampler, llama_sampler_init_greedy());
         let mut output = String::new();
         for _ in 0..OUTPUT_TOKEN_LIMIT {
-            if started.elapsed() >= DEADLINE { llama_sampler_free(sampler); llama_free(context); llama_model_free(model); return failed("deadline-exceeded"); }
+            if started.elapsed() >= DEADLINE {
+                llama_sampler_free(sampler);
+                llama_free(context);
+                llama_model_free(model);
+                return failed("deadline-exceeded");
+            }
             let token = llama_sampler_sample(sampler, context, -1);
-            if llama_vocab_is_eog(vocab, token) { break; }
+            if llama_vocab_is_eog(vocab, token) {
+                break;
+            }
             let mut piece = [0_i8; 256];
-            let piece_len = llama_token_to_piece(vocab, token, piece.as_mut_ptr(), piece.len() as i32, 0, false);
-            if piece_len <= 0 || output.len().saturating_add(piece_len as usize) > OUTPUT_BYTE_LIMIT { break; }
-            output.push_str(&String::from_utf8_lossy(std::slice::from_raw_parts(piece.as_ptr().cast::<u8>(), piece_len as usize)));
+            let piece_len = llama_token_to_piece(
+                vocab,
+                token,
+                piece.as_mut_ptr(),
+                piece.len() as i32,
+                0,
+                false,
+            );
+            if piece_len <= 0 || output.len().saturating_add(piece_len as usize) > OUTPUT_BYTE_LIMIT
+            {
+                break;
+            }
+            output.push_str(&String::from_utf8_lossy(std::slice::from_raw_parts(
+                piece.as_ptr().cast::<u8>(),
+                piece_len as usize,
+            )));
             llama_sampler_accept(sampler, token);
             let mut next = [token];
-            if llama_decode(context, llama_batch_get_one(next.as_mut_ptr(), 1)) != 0 { llama_sampler_free(sampler); llama_free(context); llama_model_free(model); return failed("runtime-failed"); }
+            if llama_decode(context, llama_batch_get_one(next.as_mut_ptr(), 1)) != 0 {
+                llama_sampler_free(sampler);
+                llama_free(context);
+                llama_model_free(model);
+                return failed(if started.elapsed() >= DEADLINE {
+                    "deadline-exceeded"
+                } else {
+                    "runtime-failed"
+                });
+            }
         }
         llama_sampler_free(sampler);
         llama_free(context);
         llama_model_free(model);
-        LocalRuntimeSnapshot { schema_version: 1, local_only: true, state: "completed".into(), output: Some(output), diagnostic: None, input_token_limit: INPUT_TOKEN_LIMIT as u16, output_token_limit: OUTPUT_TOKEN_LIMIT as u16, deadline_seconds: 60 }
+        LocalRuntimeSnapshot {
+            schema_version: 1,
+            local_only: true,
+            state: "completed".into(),
+            output: Some(output),
+            diagnostic: None,
+            input_token_limit: INPUT_TOKEN_LIMIT as u16,
+            output_token_limit: OUTPUT_TOKEN_LIMIT as u16,
+            deadline_seconds: 60,
+        }
     }
 }
 
 fn failed(diagnostic: &str) -> LocalRuntimeSnapshot {
-    LocalRuntimeSnapshot { schema_version: 1, local_only: true, state: "failed".into(), output: None, diagnostic: Some(diagnostic.into()), input_token_limit: INPUT_TOKEN_LIMIT as u16, output_token_limit: OUTPUT_TOKEN_LIMIT as u16, deadline_seconds: 60 }
+    LocalRuntimeSnapshot {
+        schema_version: 1,
+        local_only: true,
+        state: "failed".into(),
+        output: None,
+        diagnostic: Some(diagnostic.into()),
+        input_token_limit: INPUT_TOKEN_LIMIT as u16,
+        output_token_limit: OUTPUT_TOKEN_LIMIT as u16,
+        deadline_seconds: 60,
+    }
 }

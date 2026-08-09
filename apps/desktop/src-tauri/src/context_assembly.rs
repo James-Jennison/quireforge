@@ -356,27 +356,27 @@ impl ContextAssemblyService {
     pub(crate) fn claim_for_local_runtime(
         &self,
         request: &ContextConfirmRequest,
-    ) -> Result<Vec<u8>, ContextSnapshot> {
+    ) -> Result<Vec<u8>, Box<ContextSnapshot>> {
         let mut bundles = self.bundles.lock().expect("context lock");
         let Some(bundle) = bundles.get_mut(&request.bundle_id) else {
-            return Err(rejected("bundle-unavailable"));
+            return Err(Box::new(rejected("bundle-unavailable")));
         };
         if bundle.state != "awaiting_confirmation"
             || bundle.authorization_id != request.authorization_id
             || bundle.digest != request.bundle_digest
         {
-            return Err(rejected("authorization-replayed-or-mismatched"));
+            return Err(Box::new(rejected("authorization-replayed-or-mismatched")));
         }
         if now_ms() >= bundle.expires {
             bundle.state = "expired";
             bundle.bytes.clear();
-            return Err(snapshot(
+            return Err(Box::new(snapshot(
                 Some((&request.bundle_id, bundle)),
                 "expired",
                 None,
                 "authorization expired; no local runtime started",
                 None,
-            ));
+            )));
         }
         bundle.state = "local-runtime-running";
         Ok(std::mem::take(&mut bundle.bytes))

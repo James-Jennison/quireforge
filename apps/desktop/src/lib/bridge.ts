@@ -1749,10 +1749,9 @@ export const runContextAssemblyLocalRuntime = async (
   invokeFunction: InvokeFunction = invokeTauri,
 ) =>
   localRuntimeSnapshotSchema.parse(
-    await invokeFunction(
-      CONTEXT_ASSEMBLY_RUN_LOCAL_RUNTIME_COMMAND,
-      { request: contextAssemblyConfirmRequestSchema.parse(request) },
-    ),
+    await invokeFunction(CONTEXT_ASSEMBLY_RUN_LOCAL_RUNTIME_COMMAND, {
+      request: contextAssemblyConfirmRequestSchema.parse(request),
+    }),
   );
 export const reviewContextAssembly = (
   request: unknown,
