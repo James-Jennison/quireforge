@@ -1288,6 +1288,101 @@ test("Local Review remains usable at effective 200% desktop reflow", async ({
   ).toBe(true);
 });
 
+test("governed context review runs one visible local-only model attempt", async ({
+  page,
+}) => {
+  const bundleId = "019a6300-0000-7000-8000-000000000001";
+  const authorizationId = "019a6300-0000-7000-8000-000000000002";
+  const digest = "c".repeat(64);
+  const prepared = {
+    schemaVersion: 1,
+    fictionalLocalOnly: true,
+    sink: "fictional-local-context-sink-v1",
+    state: "prepared",
+    projectId: "018f0000-0000-7000-8000-000000000001",
+    taskId: null,
+    bundleId,
+    authorizationId,
+    bundleDigest: digest,
+    expiresAtMs: 1_800_000_000_000,
+    items: [
+      {
+        ordinal: 0,
+        sourceClass: "authored-instruction",
+        provenance: "explicit-user-instruction",
+        byteSize: 29,
+        digest,
+        redactionCount: 0,
+        truncated: false,
+      },
+    ],
+    totalBytes: 29,
+    estimatedTokens: 8,
+    exclusions: ["ambient-context"],
+    auditState: "prepared; review required; no local runtime started",
+    diagnostic: null,
+  } as const;
+  const awaitingReview = {
+    ...prepared,
+    state: "awaiting_review",
+    auditState: "exact review required; no local runtime started",
+  } as const;
+  const awaitingConfirmation = {
+    ...prepared,
+    state: "awaiting_confirmation",
+    auditState: "review acknowledged; one local attempt is available",
+  } as const;
+  await installNativeFixture(page, {
+    ...nativeResponses,
+    context_assembly_prepare: prepared,
+    context_assembly_review: awaitingReview,
+    context_assembly_acknowledge_review: awaitingConfirmation,
+    context_assembly_run_local_runtime: {
+      schemaVersion: 1,
+      localOnly: true,
+      state: "completed",
+      output: "The reviewed request was handled locally.",
+      diagnostic: null,
+      inputTokenLimit: 4096,
+      outputTokenLimit: 512,
+      deadlineSeconds: 60,
+    },
+  });
+  await page.goto("/");
+  await openWorkspace(page, "New task");
+  const workflow = page.getByRole("region", {
+    name: "Fictional local mock workflow",
+  });
+  await workflow
+    .getByRole("button", { name: "Governed context review" })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Governed context review" }),
+  ).toBeVisible();
+  await page
+    .getByLabel("Explicit user instruction")
+    .fill("Summarize this reviewed request");
+  await page.getByRole("button", { name: "Prepare review" }).click();
+  await page.getByRole("button", { name: "Review prepared bundle" }).click();
+  await page.getByRole("button", { name: "Acknowledge exact review" }).click();
+  const run = page.getByRole("button", {
+    name: "Run once with local-only model",
+  });
+  await expect(run).toBeEnabled();
+  await run.click();
+  const result = page.getByLabel("Local runtime result");
+  await expect(result).toContainText("Local-only attempt: completed");
+  await expect(result).toContainText("CPU-only; one attempt");
+  await expect(result).toContainText(
+    "The reviewed request was handled locally.",
+  );
+  await expect(
+    page
+      .getByRole("dialog", { name: "Governed context review" })
+      .getByRole("button", { name: "Confirm once" }),
+  ).toHaveCount(0);
+});
+
 test("mock inference clears a prepared review when its bound input changes", async ({
   page,
 }) => {

@@ -37,6 +37,12 @@ validator, type-check, lint, and formatting gates passed locally on
 2026-08-09. The local Debian package and the installed-host M63 execution/
 desktop acceptance remain required; this is not a release-ready claim.
 
+The candidate procedure is recorded in
+[Testing](TESTING.md#m63-local-runtime-installed-host-acceptance). It requires
+the installed-host operator to retain only content-free package and lifecycle
+evidence after one explicit reviewed local attempt. The normal package gate
+must still exclude the model and never starts the runtime.
+
 ## Approved offline acquisition record
 
 The separately approved offline acquisition completed on

@@ -2,7 +2,6 @@ import { useEffect, useId, useRef, useState } from "react";
 import {
   cancelContextAssembly,
   acknowledgeContextAssemblyReview,
-  confirmContextAssembly,
   runContextAssemblyLocalRuntime,
   reviewContextAssembly,
   prepareContextAssembly,
@@ -377,20 +376,6 @@ function ContextAssemblyWorkbenchScope({
           }
         >
           Prepare review
-        </button>
-        <button
-          disabled={!canConfirm || busy}
-          onClick={() =>
-            void run(() =>
-              confirmContextAssembly({
-                bundleId: snapshot!.bundleId,
-                authorizationId: snapshot!.authorizationId,
-                bundleDigest: snapshot!.bundleDigest,
-              }),
-            )
-          }
-        >
-          Confirm once
         </button>
         <button
           disabled={!canConfirm || busy}

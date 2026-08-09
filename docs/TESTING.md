@@ -135,6 +135,38 @@ tagged, pinned-builder publication boundary and also requires
 `--expected-tag`. Routine local dirty builds are intentionally
 `local-candidate` manifests.
 
+## M63 local-runtime installed-host acceptance
+
+M63 remains a credential-free, in-process local candidate. Its package gate
+does not include a model artifact or start the runtime. After the normal
+candidate package gate has passed, an installed-host operator may perform one
+separate local acceptance run with the approved read-only model made available
+only by the supervisor-owned runtime environment. The operator must:
+
+- use the installed Debian candidate and an attached local project;
+- open **Governed context review**, prepare and review an explicit bounded
+  instruction, acknowledge that exact review, then choose **Run once with
+  local-only model**;
+- verify the visible result reports one CPU-only local-only attempt with the
+  fixed input/output/deadline limits, or reports a bounded failure without a
+  retry;
+- close the review and relaunch the application, confirming that no result or
+  canonical bundle content is restored; and
+- retain only content-free candidate evidence: candidate identity, package
+  manifest/checksum observations, pass/fail outcome, and bounded lifecycle
+  classification. Do not record model locations, payloads, output, account
+  state, or environment values.
+
+The browser acceptance fixture for the same visible workflow is:
+
+```bash
+pnpm test:e2e
+```
+
+This is local candidate evidence only. It does not authorize package
+publication, model packaging, credentials, network access, or a release-ready
+claim.
+
 ## Manual Milestone 21B checklist
 
 - Start from a clean exact source commit and run the authoritative pinned

@@ -1474,8 +1474,9 @@ class CmakeOptionsTests(unittest.TestCase):
         build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
         build = build.replace(
             "    if build_dir.exists() {\n"
-            "        fs::remove_dir_all(&build_dir)\n"
-            "            .unwrap_or_else(|error| panic!(\"could not reset private llama.cpp build directory: {error}\"));\n"
+            "        fs::remove_dir_all(&build_dir).unwrap_or_else(|error| {\n"
+            "            panic!(\"could not reset private llama.cpp build directory: {error}\")\n"
+            "        });\n"
             "    }\n\n",
             "",
         )
