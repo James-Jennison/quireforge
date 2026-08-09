@@ -208,6 +208,7 @@ MODEL_ARTIFACT_SUFFIXES = {
 }
 MODEL_ARTIFACT_MAGIC = {
     b"GGUF": "GGUF",
+    b"ggml": "GGML",
 }
 
 
