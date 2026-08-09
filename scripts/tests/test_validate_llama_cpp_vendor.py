@@ -943,6 +943,17 @@ class CmakeOptionsTests(unittest.TestCase):
                 ):
                     VALIDATOR.require_no_rust_runtime_api_usage(source)
 
+    def test_rejects_rust_source_include_macros(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            source = Path(temporary_directory)
+            (source / "runtime.rs").write_text(
+                'include! ("../unreviewed-runtime.rs");\n',
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(SystemExit, "or include Rust source"):
+                VALIDATOR.require_no_rust_runtime_api_usage(source)
+
     def test_allows_rust_source_without_vendored_c_api_references(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             source = Path(temporary_directory)
