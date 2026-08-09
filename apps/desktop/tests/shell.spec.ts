@@ -681,6 +681,23 @@ async function installNativeFixture(
       value !== null &&
       "sequence" in value &&
       Array.isArray((value as Record<string, unknown>).sequence);
+    const hasDeferredFixture = (
+      value: unknown,
+    ): value is { deferredResult: unknown } =>
+      typeof value === "object" && value !== null && "deferredResult" in value;
+    const hasDeferredResolution = (
+      value: unknown,
+    ): value is {
+      resolvesCommand: string;
+      deferredResult: unknown;
+      response: unknown;
+    } =>
+      typeof value === "object" &&
+      value !== null &&
+      typeof (value as Record<string, unknown>).resolvesCommand === "string" &&
+      "deferredResult" in value &&
+      "response" in value;
+    const deferred = new Map<string, (value: unknown) => void>();
     const target = window as unknown as {
       __TAURI_INTERNALS__: {
         invoke: (command: string) => Promise<unknown>;
@@ -696,6 +713,21 @@ async function installNativeFixture(
           if (next === undefined)
             throw new Error(`Exhausted fixture sequence: ${command}`);
           return Promise.resolve(structuredClone(next));
+        }
+        if (hasDeferredResolution(response)) {
+          const resolve = deferred.get(response.resolvesCommand);
+          if (!resolve)
+            throw new Error(
+              `No deferred fixture is pending: ${response.resolvesCommand}`,
+            );
+          deferred.delete(response.resolvesCommand);
+          resolve(structuredClone(response.deferredResult));
+          return Promise.resolve(structuredClone(response.response));
+        }
+        if (hasDeferredFixture(response)) {
+          return new Promise((resolve) => {
+            deferred.set(command, resolve);
+          });
         }
         return Promise.resolve(structuredClone(response));
       },
@@ -1381,6 +1413,83 @@ test("governed context review runs one visible local-only model attempt", async 
       .getByRole("dialog", { name: "Governed context review" })
       .getByRole("button", { name: "Confirm once" }),
   ).toHaveCount(0);
+});
+
+test("governed context review cancels only its pending local-only attempt", async ({
+  page,
+}) => {
+  const bundleId = "019a6300-0000-7000-8000-000000000011";
+  const authorizationId = "019a6300-0000-7000-8000-000000000012";
+  const digest = "d".repeat(64);
+  const prepared = {
+    schemaVersion: 1,
+    fictionalLocalOnly: true,
+    sink: "fictional-local-context-sink-v1",
+    state: "prepared",
+    projectId: "018f0000-0000-7000-8000-000000000001",
+    taskId: null,
+    bundleId,
+    authorizationId,
+    bundleDigest: digest,
+    expiresAtMs: 1_800_000_000_000,
+    items: [],
+    totalBytes: 29,
+    estimatedTokens: 8,
+    exclusions: [],
+    auditState: "prepared; review required; no local runtime started",
+    diagnostic: null,
+  } as const;
+  const cancelled = {
+    schemaVersion: 1,
+    localOnly: true,
+    state: "cancelled",
+    output: null,
+    diagnostic: "cancelled",
+    inputTokenLimit: 4096,
+    outputTokenLimit: 512,
+    deadlineSeconds: 60,
+  } as const;
+  await installNativeFixture(page, {
+    ...nativeResponses,
+    context_assembly_prepare: prepared,
+    context_assembly_review: {
+      ...prepared,
+      state: "awaiting_review",
+      authorizationId: null,
+    },
+    context_assembly_acknowledge_review: {
+      ...prepared,
+      state: "awaiting_confirmation",
+    },
+    context_assembly_run_local_runtime: { deferredResult: cancelled },
+    context_assembly_cancel_local_runtime: {
+      resolvesCommand: "context_assembly_run_local_runtime",
+      deferredResult: cancelled,
+      response: true,
+    },
+  });
+  await page.goto("/");
+  await openWorkspace(page, "New task");
+  await page
+    .getByRole("region", { name: "Fictional local mock workflow" })
+    .getByRole("button", { name: "Governed context review" })
+    .click();
+  await page
+    .getByLabel("Explicit user instruction")
+    .fill("Cancel this reviewed local request");
+  await page.getByRole("button", { name: "Prepare review" }).click();
+  await page.getByRole("button", { name: "Review prepared bundle" }).click();
+  await page.getByRole("button", { name: "Acknowledge exact review" }).click();
+  await page
+    .getByRole("button", { name: "Run once with local-only model" })
+    .click();
+  const result = page.getByLabel("Local runtime result");
+  await expect(result).toContainText("Local-only attempt: running");
+  await page.getByRole("button", { name: "Request cancellation" }).click();
+  await expect(result).toContainText("Local-only attempt: cancelled");
+  await expect(result).toContainText("Local runtime: cancelled.");
+  await expect(page.getByRole("button", { name: "Cancel" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Revoke" })).toBeDisabled();
 });
 
 test("mock inference clears a prepared review when its bound input changes", async ({
