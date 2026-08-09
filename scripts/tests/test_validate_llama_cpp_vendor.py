@@ -508,6 +508,16 @@ class CmakeOptionsTests(unittest.TestCase):
         with self.assertRaisesRegex(SystemExit, "does not verify the vendored source tree"):
             VALIDATOR.require_build_time_vendored_tree_verification(build)
 
+    def test_rejects_a_digest_verifier_that_does_not_recheck_the_source_root(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace(
+            "    require_vendored_source_root(directory);\n    let mut digest = Sha256::new();",
+            "    let mut digest = Sha256::new();",
+        )
+
+        with self.assertRaisesRegex(SystemExit, "must re-check that the source root"):
+            VALIDATOR.require_build_time_vendored_tree_verification(build)
+
     def test_rejects_digest_verification_after_cmake_command_construction(self) -> None:
         build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
         build = build.replace(

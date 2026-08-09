@@ -114,7 +114,8 @@ EXPECTED_CMAKE_OPTIONS = {
 ALLOWED_CONFIGURE_DEFINITIONS = {"-DCMAKE_BUILD_TYPE=Release"}
 EXPECTED_SOURCE_DIR_EXPRESSION = 'manifest_dir.join("../../../third_party/llama.cpp")'
 EXPECTED_SOURCE_TRACKER = "register_vendored_source_tree(&source_dir);"
-EXPECTED_SOURCE_ROOT_INSPECTION = "fs::symlink_metadata(&source_dir)"
+EXPECTED_SOURCE_ROOT_INSPECTION = "fs::symlink_metadata(directory)"
+EXPECTED_SOURCE_ROOT_VERIFIER = "require_vendored_source_root(directory);"
 EXPECTED_VENDORED_TREE_SHA256 = "9892c22a1a05adf0775615f1b845886f8f1be96ad7b6f71093103eaec546a511"
 EXPECTED_SOURCE_DIGEST_VERIFIER = "verify_vendored_tree_digest(&source_dir);"
 EXPECTED_LINK_SEARCH_DIRECTORIES = [
@@ -323,6 +324,10 @@ def require_complete_vendored_source_tracking(build: str) -> None:
         "build script does not inspect the vendored source root",
     )
     require(
+        "require_vendored_source_root(&source_dir);" in build,
+        "build script does not validate the vendored source root before tracking it",
+    )
+    require(
         "!source_metadata.file_type().is_symlink() && source_metadata.is_dir()" in build,
         "build script must reject a symlinked or non-directory vendored source root",
     )
@@ -376,6 +381,10 @@ def require_build_time_vendored_tree_verification(build: str) -> None:
     )
     require(verifier_match is not None, "vendored source digest verifier is missing")
     verifier = verifier_match.group("body")
+    require(
+        EXPECTED_SOURCE_ROOT_VERIFIER in verifier,
+        "vendored source digest verifier must re-check that the source root is a real directory",
+    )
     require(
         "vendored_tree_digest(directory, directory, &mut digest);" in verifier
         and "observed, EXPECTED_VENDORED_TREE_SHA256" in verifier,

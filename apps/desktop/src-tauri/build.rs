@@ -216,6 +216,16 @@ fn register_vendored_source_tree(directory: &Path) {
     }
 }
 
+fn require_vendored_source_root(directory: &Path) {
+    let source_metadata = fs::symlink_metadata(directory).unwrap_or_else(|error| {
+        panic!("could not inspect verified llama.cpp source root: {error}")
+    });
+    assert!(
+        !source_metadata.file_type().is_symlink() && source_metadata.is_dir(),
+        "verified llama.cpp source root must be a real directory"
+    );
+}
+
 fn vendored_tree_digest(directory: &Path, root: &Path, digest: &mut Sha256) {
     let mut entries = fs::read_dir(directory)
         .unwrap_or_else(|error| panic!("could not read verified llama.cpp source: {error}"))
@@ -265,6 +275,9 @@ fn vendored_tree_digest(directory: &Path, root: &Path, digest: &mut Sha256) {
 }
 
 fn verify_vendored_tree_digest(directory: &Path) {
+    // Every verification point re-checks the source root too, so a source-root
+    // replacement after initial setup cannot redirect a later tree walk.
+    require_vendored_source_root(directory);
     let mut digest = Sha256::new();
     vendored_tree_digest(directory, directory, &mut digest);
     let observed = format!("{:x}", digest.finalize());
@@ -285,13 +298,7 @@ fn build_llama_cpp() {
         source_dir.join("PROVENANCE.json").is_file(),
         "missing verified llama.cpp source"
     );
-    let source_metadata = fs::symlink_metadata(&source_dir).unwrap_or_else(|error| {
-        panic!("could not inspect verified llama.cpp source root: {error}")
-    });
-    assert!(
-        !source_metadata.file_type().is_symlink() && source_metadata.is_dir(),
-        "verified llama.cpp source root must be a real directory"
-    );
+    require_vendored_source_root(&source_dir);
     verify_vendored_tree_digest(&source_dir);
     register_vendored_source_tree(&source_dir);
 
