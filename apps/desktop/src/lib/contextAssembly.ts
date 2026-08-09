@@ -60,7 +60,7 @@ export const localRuntimeSnapshotSchema = z
   .object({
     schemaVersion: z.literal(1),
     localOnly: z.literal(true),
-    state: z.enum(["completed", "failed"]),
+    state: z.enum(["completed", "failed", "cancelled"]),
     output: z
       .string()
       .max(16 * 1024)

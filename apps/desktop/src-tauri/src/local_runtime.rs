@@ -7,7 +7,10 @@
 use serde::Serialize;
 use std::{
     ffi::{c_char, c_void, CString},
-    sync::Mutex,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc, Mutex,
+    },
     time::{Duration, Instant},
 };
 
@@ -152,8 +155,13 @@ impl Drop for Backend {
     }
 }
 
+struct RunControl {
+    started: Instant,
+    cancelled: AtomicBool,
+}
+
 unsafe extern "C" fn continue_before_deadline(_: f32, data: *mut c_void) -> bool {
-    !deadline_elapsed(data)
+    !attempt_stopped(data)
 }
 
 // llama.cpp writes its default diagnostics to stderr, including model-load
@@ -162,13 +170,23 @@ unsafe extern "C" fn continue_before_deadline(_: f32, data: *mut c_void) -> bool
 unsafe extern "C" fn discard_runtime_log(_: i32, _: *const c_char, _: *mut c_void) {}
 
 unsafe extern "C" fn abort_at_deadline(data: *mut c_void) -> bool {
-    deadline_elapsed(data)
+    attempt_stopped(data)
 }
 
-unsafe fn deadline_elapsed(data: *mut c_void) -> bool {
-    data.cast::<Instant>()
+unsafe fn attempt_stopped(data: *mut c_void) -> bool {
+    data.cast::<RunControl>()
         .as_ref()
-        .is_none_or(|started| started.elapsed() >= DEADLINE)
+        .is_none_or(|control| {
+            control.cancelled.load(Ordering::Acquire) || control.started.elapsed() >= DEADLINE
+        })
+}
+
+fn stopped_diagnostic(control: &RunControl) -> &'static str {
+    if control.cancelled.load(Ordering::Acquire) {
+        "cancelled"
+    } else {
+        "deadline-exceeded"
+    }
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -186,44 +204,73 @@ pub(crate) struct LocalRuntimeSnapshot {
 
 #[derive(Default)]
 pub(crate) struct LocalRuntimeService {
-    active: Mutex<bool>,
+    active: Mutex<Option<ActiveRun>>,
 }
 
 struct ActiveRunGuard<'a> {
-    active: &'a Mutex<bool>,
+    active: &'a Mutex<Option<ActiveRun>>,
+}
+
+struct ActiveRun {
+    bundle_id: String,
+    control: Arc<RunControl>,
 }
 
 impl Drop for ActiveRunGuard<'_> {
     fn drop(&mut self) {
         if let Ok(mut active) = self.active.lock() {
-            *active = false;
+            active.take();
         }
     }
 }
 
 impl LocalRuntimeService {
-    pub(crate) fn run(&self, canonical_bytes: &[u8]) -> LocalRuntimeSnapshot {
-        let Ok(_active_run) = self.claim_slot() else {
+    pub(crate) fn run(&self, bundle_id: &str, canonical_bytes: &[u8]) -> LocalRuntimeSnapshot {
+        let Ok((control, _active_run)) = self.claim_slot(bundle_id) else {
             return failed("runtime-busy");
         };
-        run_once(canonical_bytes)
+        run_once(canonical_bytes, &control)
     }
 
-    fn claim_slot(&self) -> Result<ActiveRunGuard<'_>, ()> {
+    pub(crate) fn request_cancel(&self, bundle_id: &str) -> bool {
+        let Ok(active) = self.active.lock() else {
+            return false;
+        };
+        let Some(active) = active.as_ref() else {
+            return false;
+        };
+        if active.bundle_id != bundle_id {
+            return false;
+        }
+        active.control.cancelled.store(true, Ordering::Release);
+        true
+    }
+
+    fn claim_slot(&self, bundle_id: &str) -> Result<(Arc<RunControl>, ActiveRunGuard<'_>), ()> {
         let Ok(mut active) = self.active.lock() else {
             return Err(());
         };
-        if *active {
+        if active.is_some() {
             return Err(());
         }
-        *active = true;
-        Ok(ActiveRunGuard {
-            active: &self.active,
-        })
+        let control = Arc::new(RunControl {
+            started: Instant::now(),
+            cancelled: AtomicBool::new(false),
+        });
+        *active = Some(ActiveRun {
+            bundle_id: bundle_id.into(),
+            control: Arc::clone(&control),
+        });
+        Ok((
+            control,
+            ActiveRunGuard {
+                active: &self.active,
+            },
+        ))
     }
 }
 
-fn run_once(canonical_bytes: &[u8]) -> LocalRuntimeSnapshot {
+fn run_once(canonical_bytes: &[u8], control: &RunControl) -> LocalRuntimeSnapshot {
     let Ok(model_path) = std::env::var(MODEL_PATH_ENV) else {
         return failed("model-unavailable");
     };
@@ -242,7 +289,6 @@ fn run_once(canonical_bytes: &[u8]) -> LocalRuntimeSnapshot {
     let Ok(prompt) = CString::new(prompt) else {
         return failed("reviewed-input-invalid");
     };
-    let started = Instant::now();
     unsafe {
         llama_log_set(discard_runtime_log, std::ptr::null_mut());
         let _backend = Backend::initialize();
@@ -250,11 +296,11 @@ fn run_once(canonical_bytes: &[u8]) -> LocalRuntimeSnapshot {
         model_params.n_gpu_layers = 0;
         model_params.split_mode = 0;
         model_params.progress_callback = continue_before_deadline as *const c_void;
-        model_params.progress_callback_user_data = (&started as *const Instant).cast_mut().cast();
+        model_params.progress_callback_user_data = (control as *const RunControl).cast_mut().cast();
         let model = llama_model_load_from_file(path.as_ptr(), model_params);
         if model.is_null() {
-            return failed(if started.elapsed() >= DEADLINE {
-                "deadline-exceeded"
+            return failed(if attempt_stopped((control as *const RunControl).cast_mut().cast()) {
+                stopped_diagnostic(control)
             } else {
                 "model-unavailable"
             });
@@ -271,7 +317,7 @@ fn run_once(canonical_bytes: &[u8]) -> LocalRuntimeSnapshot {
         context_params.op_offload = false;
         context_params.no_perf = true;
         context_params.abort_callback = abort_at_deadline as *const c_void;
-        context_params.abort_callback_data = (&started as *const Instant).cast_mut().cast();
+        context_params.abort_callback_data = (control as *const RunControl).cast_mut().cast();
         let context = llama_init_from_model(model, context_params);
         if context.is_null() {
             llama_model_free(model);
@@ -301,8 +347,8 @@ fn run_once(canonical_bytes: &[u8]) -> LocalRuntimeSnapshot {
         {
             llama_free(context);
             llama_model_free(model);
-            return failed(if started.elapsed() >= DEADLINE {
-                "deadline-exceeded"
+            return failed(if attempt_stopped((control as *const RunControl).cast_mut().cast()) {
+                stopped_diagnostic(control)
             } else {
                 "runtime-failed"
             });
@@ -316,11 +362,11 @@ fn run_once(canonical_bytes: &[u8]) -> LocalRuntimeSnapshot {
         llama_sampler_chain_add(sampler, llama_sampler_init_greedy());
         let mut output = String::new();
         for _ in 0..OUTPUT_TOKEN_LIMIT {
-            if started.elapsed() >= DEADLINE {
+            if attempt_stopped((control as *const RunControl).cast_mut().cast()) {
                 llama_sampler_free(sampler);
                 llama_free(context);
                 llama_model_free(model);
-                return failed("deadline-exceeded");
+                return failed(stopped_diagnostic(control));
             }
             let token = llama_sampler_sample(sampler, context, -1);
             if llama_vocab_is_eog(vocab, token) {
@@ -349,8 +395,8 @@ fn run_once(canonical_bytes: &[u8]) -> LocalRuntimeSnapshot {
                 llama_sampler_free(sampler);
                 llama_free(context);
                 llama_model_free(model);
-                return failed(if started.elapsed() >= DEADLINE {
-                    "deadline-exceeded"
+                return failed(if attempt_stopped((control as *const RunControl).cast_mut().cast()) {
+                    stopped_diagnostic(control)
                 } else {
                     "runtime-failed"
                 });
@@ -392,11 +438,18 @@ mod tests {
     #[test]
     fn local_runtime_rejects_a_second_concurrent_attempt_and_releases_afterward() {
         let runtime = LocalRuntimeService::default();
-        let active = runtime.claim_slot().expect("first attempt claims the slot");
-        assert!(runtime.claim_slot().is_err(), "second attempt is rejected");
+        let (_, active) = runtime
+            .claim_slot("bundle-a")
+            .expect("first attempt claims the slot");
+        assert!(runtime.claim_slot("bundle-b").is_err(), "second attempt is rejected");
+        assert!(runtime.request_cancel("bundle-a"), "exact bundle can cancel");
+        assert!(
+            !runtime.request_cancel("bundle-b"),
+            "other bundles cannot cancel the active attempt"
+        );
         drop(active);
         assert!(
-            runtime.claim_slot().is_ok(),
+            runtime.claim_slot("bundle-c").is_ok(),
             "terminal attempt releases the slot"
         );
     }

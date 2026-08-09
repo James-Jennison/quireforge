@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import {
   cancelContextAssembly,
+  cancelContextAssemblyLocalRuntime,
   acknowledgeContextAssemblyReview,
   runContextAssemblyLocalRuntime,
   reviewContextAssembly,
@@ -429,14 +430,26 @@ function ContextAssemblyWorkbenchScope({
           Run once with local-only model
         </button>
         <button
-          disabled={!snapshot?.bundleId || busy}
-          onClick={() =>
+          disabled={!runtimeRunning && (!snapshot?.bundleId || busy)}
+          onClick={() => {
+            if (runtimeRunning) {
+              void cancelContextAssemblyLocalRuntime({
+                bundleId: snapshot!.bundleId,
+              }).then((accepted) => {
+                if (accepted && mounted.current) {
+                  setNotice(
+                    "Cancellation requested for the one local-only attempt.",
+                  );
+                }
+              });
+              return;
+            }
             void run(() =>
               cancelContextAssembly({ bundleId: snapshot!.bundleId }),
-            )
-          }
+            );
+          }}
         >
-          Cancel
+          {runtimeRunning ? "Request cancellation" : "Cancel"}
         </button>
         <button
           disabled={!snapshot?.bundleId || busy}

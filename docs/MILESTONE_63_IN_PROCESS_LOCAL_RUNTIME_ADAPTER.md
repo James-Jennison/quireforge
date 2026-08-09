@@ -35,7 +35,10 @@ only one terminal transition, and expires an interrupted dispatch on restart.
 The governed local-only view exposes the nonterminal `running` phase while the
 one CPU attempt is pending, including its fixed limits and no-automatic-retry
 posture; it replaces that phase only with the bounded returned result or
-failure. The result remains in the open view only.
+failure. While the attempt is pending, the exact reviewed bundle can request
+cancellation; the in-process callbacks observe that request and finish as the
+bounded `cancelled` terminal outcome, with no retry. The result remains in the
+open view only.
 The focused storage and workbench tests, repository validation, package
 validator, type-check, lint, and formatting gates passed locally on
 2026-08-09. The authoritative pinned Ubuntu 22.04 package gate subsequently

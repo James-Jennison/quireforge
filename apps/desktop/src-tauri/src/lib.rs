@@ -2022,9 +2022,11 @@ fn context_assembly_run_local_runtime(
             };
         }
     };
-    let snapshot = runtime.run(&canonical_bytes);
+    let snapshot = runtime.run(&request.bundle_id, &canonical_bytes);
     let terminal = if snapshot.state == "completed" {
         "local-runtime-completed"
+    } else if snapshot.state == "cancelled" {
+        "cancelled"
     } else {
         "local-runtime-failed"
     };
@@ -2041,6 +2043,14 @@ fn context_assembly_run_local_runtime(
         };
     }
     snapshot
+}
+
+#[tauri::command]
+fn context_assembly_cancel_local_runtime(
+    request: context_assembly::ContextAttemptRequest,
+    runtime: tauri::State<'_, local_runtime::LocalRuntimeService>,
+) -> bool {
+    runtime.request_cancel(&request.bundle_id)
 }
 
 #[tauri::command]
@@ -3482,6 +3492,7 @@ pub fn run() {
             context_assembly_prepare,
             context_assembly_confirm,
             context_assembly_run_local_runtime,
+            context_assembly_cancel_local_runtime,
             context_assembly_review,
             context_assembly_acknowledge_review,
             context_assembly_cancel,

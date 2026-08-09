@@ -34,7 +34,7 @@
     "security:audit:node:exception": "python3 scripts/validate_node_audit_exception.py",
     "security:audit:rust": "cargo audit --deny warnings",
     "test": "pnpm -r --if-present test",
-    "test:e2e": "pnpm -r --if-present test:e2e",
+    "test:e2e": "pnpm --filter @quireforge/desktop test:e2e && pnpm --filter @quireforge/website test:e2e",
     "validate": "python3 scripts/validate_repository.py && pnpm package:test && pnpm check && pnpm lint && pnpm format:check && pnpm test && pnpm build && pnpm validate:dist && pnpm rust:check && pnpm rust:clippy && pnpm rust:test",
     "validate:dist": "pnpm --filter @quireforge/website validate:dist && pnpm --filter @quireforge/desktop validate:dist"
   }

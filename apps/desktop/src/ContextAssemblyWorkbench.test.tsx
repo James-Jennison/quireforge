@@ -5,6 +5,7 @@ import { ContextAssemblyWorkbench } from "./ContextAssemblyWorkbench";
 const bridge = vi.hoisted(() => ({
   acknowledgeContextAssemblyReview: vi.fn(),
   cancelContextAssembly: vi.fn(),
+  cancelContextAssemblyLocalRuntime: vi.fn(),
   confirmContextAssembly: vi.fn(),
   loadDurableSources: vi.fn().mockResolvedValue({ sources: [] }),
   loadLocalReview: vi.fn(),
@@ -113,6 +114,20 @@ describe("ContextAssemblyWorkbench", () => {
       /local-only attempt: running/i,
     );
     expect(screen.getByText(/no automatic retry/i)).toBeInTheDocument();
+    bridge.cancelContextAssemblyLocalRuntime.mockResolvedValueOnce(true);
+    fireEvent.click(
+      screen.getByRole("button", { name: /request cancellation/i }),
+    );
+    await waitFor(() =>
+      expect(bridge.cancelContextAssemblyLocalRuntime).toHaveBeenCalledWith({
+        bundleId: confirmed.bundleId,
+      }),
+    );
+    expect(
+      screen.getByText(
+        /cancellation requested for the one local-only attempt/i,
+      ),
+    ).toBeInTheDocument();
 
     complete({
       schemaVersion: 1,

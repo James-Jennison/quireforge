@@ -453,6 +453,8 @@ export const CONTEXT_ASSEMBLY_PREPARE_COMMAND = "context_assembly_prepare";
 export const CONTEXT_ASSEMBLY_CONFIRM_COMMAND = "context_assembly_confirm";
 export const CONTEXT_ASSEMBLY_RUN_LOCAL_RUNTIME_COMMAND =
   "context_assembly_run_local_runtime";
+export const CONTEXT_ASSEMBLY_CANCEL_LOCAL_RUNTIME_COMMAND =
+  "context_assembly_cancel_local_runtime";
 export const CONTEXT_ASSEMBLY_REVIEW_COMMAND = "context_assembly_review";
 export const CONTEXT_ASSEMBLY_ACKNOWLEDGE_REVIEW_COMMAND =
   "context_assembly_acknowledge_review";
@@ -1751,6 +1753,15 @@ export const runContextAssemblyLocalRuntime = async (
   localRuntimeSnapshotSchema.parse(
     await invokeFunction(CONTEXT_ASSEMBLY_RUN_LOCAL_RUNTIME_COMMAND, {
       request: contextAssemblyConfirmRequestSchema.parse(request),
+    }),
+  );
+export const cancelContextAssemblyLocalRuntime = async (
+  request: unknown,
+  invokeFunction: InvokeFunction = invokeTauri,
+) =>
+  z.boolean().parse(
+    await invokeFunction(CONTEXT_ASSEMBLY_CANCEL_LOCAL_RUNTIME_COMMAND, {
+      request: contextAssemblyAttemptRequestSchema.parse(request),
     }),
   );
 export const reviewContextAssembly = (
