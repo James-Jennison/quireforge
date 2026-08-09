@@ -6581,6 +6581,56 @@ body,
   gap: 8px;
 }
 
+.context-assembly-workbench {
+  position: fixed;
+  z-index: 90;
+  inset: 5vh 50% auto auto;
+  display: grid;
+  width: min(760px, calc(100vw - 32px));
+  max-height: 90vh;
+  gap: 16px;
+  padding: 24px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: 0 24px 72px rgb(0 0 0 / 45%);
+  transform: translateX(50%);
+}
+
+.context-assembly-workbench > label,
+.context-assembly-workbench fieldset {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+}
+
+.context-assembly-workbench textarea,
+.context-assembly-workbench select {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.context-assembly-workbench textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+.context-assembly-workbench .mock-inference-workbench__actions {
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
+}
+
+@media (max-width: 720px) {
+  .context-assembly-workbench {
+    inset: 16px;
+    width: auto;
+    max-height: calc(100vh - 32px);
+    padding: 18px;
+    transform: none;
+  }
+}
+
 .task-template-dialog {
   position: fixed;
   z-index: 80;

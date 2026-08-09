@@ -87,6 +87,7 @@ use sha2::{Digest, Sha256};
 use std::{
     ffi::OsString,
     path::PathBuf,
+    sync::Arc,
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 use uuid::Uuid;
@@ -1988,14 +1989,14 @@ fn context_assembly_confirm(
 }
 
 #[tauri::command]
-fn context_assembly_run_local_runtime(
+async fn context_assembly_run_local_runtime(
     request: context_assembly::ContextConfirmRequest,
     assemblies: tauri::State<'_, context_assembly::ContextAssemblyService>,
-    runtime: tauri::State<'_, local_runtime::LocalRuntimeService>,
+    runtime: tauri::State<'_, Arc<local_runtime::LocalRuntimeService>>,
     projects: tauri::State<'_, ProjectService>,
-) -> local_runtime::LocalRuntimeSnapshot {
+) -> Result<local_runtime::LocalRuntimeSnapshot, ()> {
     if !projects.start_local_runtime_context_bundle(&request.bundle_id) {
-        return local_runtime::LocalRuntimeSnapshot {
+        return Ok(local_runtime::LocalRuntimeSnapshot {
             schema_version: 1,
             local_only: true,
             state: "failed".into(),
@@ -2004,13 +2005,13 @@ fn context_assembly_run_local_runtime(
             input_token_limit: 4096,
             output_token_limit: 512,
             deadline_seconds: 60,
-        };
+        });
     }
     let canonical_bytes = match assemblies.claim_for_local_runtime(&request) {
         Ok(bytes) => bytes,
         Err(snapshot) => {
             let _ = projects.complete_context_bundle(&request.bundle_id, "failed");
-            return local_runtime::LocalRuntimeSnapshot {
+            return Ok(local_runtime::LocalRuntimeSnapshot {
                 schema_version: 1,
                 local_only: true,
                 state: "failed".into(),
@@ -2019,10 +2020,27 @@ fn context_assembly_run_local_runtime(
                 input_token_limit: 4096,
                 output_token_limit: 512,
                 deadline_seconds: 60,
-            };
+            });
         }
     };
-    let snapshot = runtime.run(&request.bundle_id, &canonical_bytes);
+    // Keep the Tauri command executor free while the approved in-process model
+    // runs. This leaves the exact-bundle cancellation command responsive; the
+    // shared runtime service still enforces M63's one-attempt slot.
+    let runtime = Arc::clone(&runtime);
+    let bundle_id = request.bundle_id.clone();
+    let snapshot =
+        tauri::async_runtime::spawn_blocking(move || runtime.run(&bundle_id, &canonical_bytes))
+            .await
+            .unwrap_or_else(|_| local_runtime::LocalRuntimeSnapshot {
+                schema_version: 1,
+                local_only: true,
+                state: "failed".into(),
+                output: None,
+                diagnostic: Some("runtime-unavailable".into()),
+                input_token_limit: 4096,
+                output_token_limit: 512,
+                deadline_seconds: 60,
+            });
     let terminal = if snapshot.state == "completed" {
         "closed"
     } else if snapshot.state == "cancelled" {
@@ -2031,7 +2049,7 @@ fn context_assembly_run_local_runtime(
         "failed"
     };
     if !projects.complete_context_bundle(&request.bundle_id, terminal) {
-        return local_runtime::LocalRuntimeSnapshot {
+        return Ok(local_runtime::LocalRuntimeSnapshot {
             schema_version: 1,
             local_only: true,
             state: "failed".into(),
@@ -2040,15 +2058,15 @@ fn context_assembly_run_local_runtime(
             input_token_limit: 4096,
             output_token_limit: 512,
             deadline_seconds: 60,
-        };
+        });
     }
-    snapshot
+    Ok(snapshot)
 }
 
 #[tauri::command]
 fn context_assembly_cancel_local_runtime(
     request: context_assembly::ContextAttemptRequest,
-    runtime: tauri::State<'_, local_runtime::LocalRuntimeService>,
+    runtime: tauri::State<'_, Arc<local_runtime::LocalRuntimeService>>,
 ) -> bool {
     runtime.request_cancel(&request.bundle_id)
 }
@@ -3348,7 +3366,7 @@ pub fn run() {
         .manage(connector_foundation::ConnectorGovernanceService::default())
         .manage(controlled_browser_verification::ControlledBrowserVerificationService::default())
         .manage(context_assembly::ContextAssemblyService::default())
-        .manage(local_runtime::LocalRuntimeService::default())
+        .manage(Arc::new(local_runtime::LocalRuntimeService::default()))
         .setup(|app| {
             match app.path().app_data_dir() {
                 Ok(directory) => {

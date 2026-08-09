@@ -2140,6 +2140,12 @@ impl ProjectService {
         task_id: Option<&str>,
         source_ids: &[String],
     ) -> Result<Vec<crate::context_assembly::Material>, DurableSourceDiagnosticCode> {
+        // A user-authored instruction is itself an explicit M60 selection. Do
+        // not require the optional durable-source store merely to prepare that
+        // instruction; an unavailable store must not block the no-source path.
+        if source_ids.is_empty() {
+            return Ok(Vec::new());
+        }
         let repository = self
             .repository
             .lock()

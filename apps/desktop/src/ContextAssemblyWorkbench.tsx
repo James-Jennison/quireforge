@@ -175,7 +175,7 @@ function ContextAssemblyWorkbenchScope({
     !runtimeRunning && runtime === null && Boolean(snapshot?.bundleId) && !busy;
   return (
     <section
-      className="mock-inference-workbench"
+      className="context-assembly-workbench"
       role="dialog"
       aria-modal="true"
       aria-labelledby={title}
