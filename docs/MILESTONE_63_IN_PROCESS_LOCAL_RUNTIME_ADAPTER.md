@@ -19,11 +19,27 @@ export a package registry entry.
 Each configuration starts with CMake's `--fresh` mode, so generated cache
 state cannot add configuration outside the fixed closed option list.
 
-No model artifact is included, acquired, hashed, packaged, or activated. The
-fixed application resource therefore remains unavailable until a separately
-approved offline acquisition records the model's upstream revision and
-SHA-256. No Rust command or public adapter API invokes the vendored C API in
-this source boundary.
+The model artifact is neither included in this repository nor packaged or
+activated. The fixed application resource remains unavailable because this
+source/build boundary has no Rust command or public adapter API that invokes
+the vendored C API.
+
+## Approved offline acquisition record
+
+The separately approved offline acquisition completed on
+`2026-08-08T17:34:14-07:00` for the fixed artifact only. The local artifact is
+outside the repository, excluded from Git, and read-only after verification.
+
+| Field | Recorded value |
+| --- | --- |
+| Upstream repository | `Qwen/Qwen2.5-3B-Instruct-GGUF` |
+| Pinned upstream revision | `7dabda4d13d513e3e842b20f0d435c732f172cbe` |
+| Artifact | `qwen2.5-3b-instruct-q4_k_m.gguf` |
+| Bytes | `2104932768` |
+| SHA-256 | `626b4a6678b86442240e33df819e00132d3ba7dddfe1cdc4fbb18e0a9615c62d` |
+
+This is content-free provenance evidence only. It grants no model activation,
+runtime API, provider, network, packaging, release, or deployment authority.
 
 This work grants no credentials, account, OAuth, provider, socket, process,
 shell, environment override, arbitrary filesystem, discovery, browser,
