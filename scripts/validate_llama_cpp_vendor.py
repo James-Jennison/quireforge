@@ -851,6 +851,11 @@ def require_closed_cargo_directives(build: str) -> None:
         cargo_directives == EXPECTED_CARGO_DIRECTIVES,
         "build script must emit only the approved Cargo directives",
     )
+    direct_directives = re.findall(r'\bprintln\s*!\s*\(\s*"cargo:', code)
+    require(
+        len(direct_directives) == sum(EXPECTED_CARGO_DIRECTIVES.values()),
+        "build script must emit every approved Cargo directive directly through println",
+    )
 
 
 def require_no_rust_runtime_api_usage(source_directory: Path) -> None:

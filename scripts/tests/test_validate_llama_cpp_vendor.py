@@ -1105,6 +1105,17 @@ class CmakeOptionsTests(unittest.TestCase):
         with self.assertRaisesRegex(SystemExit, "only through the approved println calls"):
             VALIDATOR.require_closed_cargo_directives(build)
 
+    def test_rejects_an_indirect_whitelisted_cargo_directive(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace(
+            '    println!("cargo:rustc-link-lib=dylib=stdc++");',
+            '    let directive = "cargo:rustc-link-lib=dylib=stdc++";\n'
+            '    println!("{directive}");',
+        )
+
+        with self.assertRaisesRegex(SystemExit, "every approved Cargo directive directly"):
+            VALIDATOR.require_closed_cargo_directives(build)
+
     def test_rejects_rust_runtime_references_to_vendored_c_apis(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             source = Path(temporary_directory)
