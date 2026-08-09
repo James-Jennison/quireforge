@@ -7,6 +7,7 @@ import hashlib
 import json
 import re
 import stat
+from itertools import chain
 from pathlib import Path
 
 
@@ -212,6 +213,15 @@ MODEL_ARTIFACT_SUFFIXES = {
 MODEL_ARTIFACT_MAGIC = {
     b"GGUF": "GGUF",
     b"ggml": "GGML",
+}
+REPOSITORY_MODEL_ARTIFACT_EXCLUSIONS = {
+    ".agents",
+    ".cache",
+    ".cargo",
+    ".codex",
+    ".git",
+    "node_modules",
+    "target",
 }
 
 
@@ -662,7 +672,7 @@ def require_no_rust_runtime_api_usage(source_directory: Path) -> None:
 
 
 def require_no_model_artifacts(directory: Path) -> None:
-    for path in directory.rglob("*"):
+    for path in chain((directory,), directory.rglob("*")):
         require(
             path.suffix.lower() not in MODEL_ARTIFACT_SUFFIXES,
             f"model artifact found: {path.relative_to(directory)}",
@@ -675,6 +685,19 @@ def require_no_model_artifacts(directory: Path) -> None:
                 header != magic,
                 f"model artifact signature found ({format_name}): {path.relative_to(directory)}",
             )
+
+
+def require_no_repository_model_artifacts(repository_root: Path) -> None:
+    """Reject model data anywhere in repository-owned source content.
+
+    The M63 artifact must stay outside this working copy.  Local tool caches,
+    dependency installs, and generated build outputs are not repository
+    content, so they are deliberately excluded from this admission guard.
+    """
+    for path in repository_root.iterdir():
+        if path.name in REPOSITORY_MODEL_ARTIFACT_EXCLUSIONS:
+            continue
+        require_no_model_artifacts(path)
 
 
 def require_model_artifact_ignores(gitignore: str) -> None:
@@ -700,7 +723,7 @@ def main() -> None:
     for license_path in manifest["license_files"]:
         require((VENDOR / license_path).is_file(), f"missing license evidence: {license_path}")
     require(not (VENDOR / ".git").exists(), "Git history was vendored")
-    require_no_model_artifacts(VENDOR)
+    require_no_repository_model_artifacts(ROOT)
     require_model_artifact_ignores(GITIGNORE.read_text(encoding="utf-8"))
     build = BUILD_SCRIPT.read_text(encoding="utf-8")
     require_closed_cmake_options(build)

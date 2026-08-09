@@ -73,6 +73,33 @@ class CmakeOptionsTests(unittest.TestCase):
 
             VALIDATOR.require_no_model_artifacts(source)
 
+    def test_rejects_a_model_artifact_anywhere_in_repository_owned_content(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            repository = Path(temporary_directory)
+            documentation = repository / "docs"
+            documentation.mkdir()
+            (documentation / "unapproved-model").write_bytes(b"GGUF\x03\x00\x00\x00")
+
+            with self.assertRaisesRegex(SystemExit, "model artifact signature found \\(GGUF\\)"):
+                VALIDATOR.require_no_repository_model_artifacts(repository)
+
+    def test_rejects_a_model_artifact_at_the_repository_root(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            repository = Path(temporary_directory)
+            (repository / "unapproved-model.gguf").write_bytes(b"not a model")
+
+            with self.assertRaisesRegex(SystemExit, "model artifact found"):
+                VALIDATOR.require_no_repository_model_artifacts(repository)
+
+    def test_excludes_transient_repository_directories_from_model_admission_scan(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            repository = Path(temporary_directory)
+            transient = repository / "target"
+            transient.mkdir()
+            (transient / "unapproved-model.gguf").write_bytes(b"GGUF\x03\x00\x00\x00")
+
+            VALIDATOR.require_no_repository_model_artifacts(repository)
+
     def test_requires_every_model_artifact_suffix_to_be_gitignored(self) -> None:
         gitignore = (ROOT / ".gitignore").read_text(encoding="utf-8")
 
