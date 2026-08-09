@@ -518,6 +518,18 @@ class CmakeOptionsTests(unittest.TestCase):
         with self.assertRaisesRegex(SystemExit, "only the two approved CMake subprocesses"):
             VALIDATOR.require_closed_build_process_boundary(build)
 
+    def test_rejects_a_function_item_reference_to_an_unapproved_build_subprocess(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace(
+            '    tauri_build::build();',
+            '    let launch = Command::new;\n'
+            '    let _unapproved = launch("curl");\n'
+            '    tauri_build::build();',
+        )
+
+        with self.assertRaisesRegex(SystemExit, "only the two approved CMake subprocesses"):
+            VALIDATOR.require_closed_build_process_boundary(build)
+
     def test_rejects_a_fully_qualified_unapproved_build_subprocess(self) -> None:
         build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
         build = build.replace(

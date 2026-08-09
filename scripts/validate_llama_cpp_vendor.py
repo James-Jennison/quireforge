@@ -412,12 +412,17 @@ def require_closed_build_process_boundary(build: str) -> None:
         command_aliases is None,
         "build script must not alias Command outside the approved CMake subprocesses",
     )
+    command_references = re.findall(
+        r"(?:std\s*::\s*)?(?:process\s*::\s*)?Command\s*::\s*new\b",
+        build,
+    )
     command_calls = re.findall(
         r"(?:std\s*::\s*)?(?:process\s*::\s*)?Command\s*::\s*new\s*\(",
         build,
     )
     require(
-        len(command_calls) == 2
+        len(command_references) == 2
+        and len(command_calls) == 2
         and f'const SYSTEM_CMAKE: &str = "{EXPECTED_SYSTEM_CMAKE}";' in build
         and len(
             re.findall(r"Command\s*::\s*new\s*\(SYSTEM_CMAKE\)", build)
