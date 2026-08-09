@@ -51,6 +51,7 @@ EXPECTED_MANIFEST = {
 }
 EXPECTED_CMAKE_OPTIONS = {
     "-DBUILD_SHARED_LIBS=OFF",
+    "-DCMAKE_POSITION_INDEPENDENT_CODE=ON",
     "-DLLAMA_BUILD_NUMBER=10326",
     f"-DLLAMA_BUILD_COMMIT={EXPECTED_COMMIT}",
     "-DGGML_BUILD_NUMBER=10326",
@@ -611,8 +612,15 @@ def require_read_only_build_script_filesystem_boundary(build: str) -> None:
     )
     require(
         filesystem_references
-        == ["read_dir", "symlink_metadata", "symlink_metadata", "read_dir", "read"],
-        "build script must use only the approved read-only filesystem calls",
+        == [
+            "read_dir",
+            "symlink_metadata",
+            "symlink_metadata",
+            "read_dir",
+            "read",
+            "remove_dir_all",
+        ],
+        "build script must use only the approved filesystem calls",
     )
 
 
@@ -750,10 +758,21 @@ def require_verified_cmake_configure_arguments(build: str) -> None:
             "&source_dir",
             "-B",
             "&build_dir",
-            "--fresh",
             "-DCMAKE_BUILD_TYPE=Release",
         ],
         "closed CMake configuration must use only the verified source and private build directory",
+    )
+
+
+def require_private_cmake_build_directory_reset(build: str) -> None:
+    require(
+        "if build_dir.exists() {\n        fs::remove_dir_all(&build_dir)" in build,
+        "private CMake build directory must be reset before configuration",
+    )
+    require(
+        build.find("fs::remove_dir_all(&build_dir)")
+        < build.find("let mut configure = Command::new(SYSTEM_CMAKE);"),
+        "private CMake build directory must reset before configuration",
     )
 
 
@@ -1460,6 +1479,7 @@ def main() -> None:
     require_closed_command_mutation_boundary(build)
     require_closed_command_execution_boundary(build)
     require_verified_cmake_configure_arguments(build)
+    require_private_cmake_build_directory_reset(build)
     require_closed_cmake_invocation(build)
     require_closed_cmake_environment(build)
     require_closed_cmake_build_invocation(build)

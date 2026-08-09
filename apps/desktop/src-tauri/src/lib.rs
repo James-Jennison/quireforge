@@ -1994,9 +1994,22 @@ fn context_assembly_run_local_runtime(
     runtime: tauri::State<'_, local_runtime::LocalRuntimeService>,
     projects: tauri::State<'_, ProjectService>,
 ) -> local_runtime::LocalRuntimeSnapshot {
+    if !projects.start_local_runtime_context_bundle(&request.bundle_id) {
+        return local_runtime::LocalRuntimeSnapshot {
+            schema_version: 1,
+            local_only: true,
+            state: "failed".into(),
+            output: None,
+            diagnostic: Some("authorization-replayed-or-mismatched".into()),
+            input_token_limit: 4096,
+            output_token_limit: 512,
+            deadline_seconds: 60,
+        };
+    }
     let canonical_bytes = match assemblies.claim_for_local_runtime(&request) {
         Ok(bytes) => bytes,
         Err(snapshot) => {
+            let _ = projects.complete_context_bundle(&request.bundle_id, "failed");
             return local_runtime::LocalRuntimeSnapshot {
                 schema_version: 1,
                 local_only: true,
@@ -2006,7 +2019,7 @@ fn context_assembly_run_local_runtime(
                 input_token_limit: 4096,
                 output_token_limit: 512,
                 deadline_seconds: 60,
-            }
+            };
         }
     };
     let snapshot = runtime.run(&canonical_bytes);

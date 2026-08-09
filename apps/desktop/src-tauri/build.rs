@@ -11,6 +11,7 @@ const EXPECTED_VENDORED_TREE_SHA256: &str =
 
 const LLAMA_CPP_CMAKE_OPTIONS: &[&str] = &[
     "-DBUILD_SHARED_LIBS=OFF",
+    "-DCMAKE_POSITION_INDEPENDENT_CODE=ON",
     "-DLLAMA_BUILD_NUMBER=10326",
     "-DLLAMA_BUILD_COMMIT=3653e6d6d547ec763317d9ecd0ace334a7e21359",
     "-DGGML_BUILD_NUMBER=10326",
@@ -327,16 +328,22 @@ fn build_llama_cpp() {
     verify_vendored_tree_digest(&source_dir);
     register_vendored_source_tree(&source_dir);
 
+    // CMake 3.22 on the supported Ubuntu baseline predates `--fresh`. Remove
+    // only Cargo's private native build directory to obtain the same
+    // cache-free configuration on every supported package platform.
+    if build_dir.exists() {
+        fs::remove_dir_all(&build_dir)
+            .unwrap_or_else(|error| panic!("could not reset private llama.cpp build directory: {error}"));
+    }
+
     let mut configure = Command::new(SYSTEM_CMAKE);
     configure
         .arg("-S")
         .arg(&source_dir)
         .arg("-B")
         .arg(&build_dir)
-        // Discard any cached CMake configuration in Cargo's generated output
-        // directory. The closed options below must be the complete build
-        // configuration, rather than inheriting a prior cache entry.
-        .arg("--fresh")
+        // The private build directory was reset above, so the closed options
+        // below cannot inherit a prior CMake cache entry.
         .arg("-DCMAKE_BUILD_TYPE=Release");
     configure.args(LLAMA_CPP_CMAKE_OPTIONS);
     configure.env_clear();

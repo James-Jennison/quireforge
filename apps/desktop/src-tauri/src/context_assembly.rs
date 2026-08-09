@@ -361,7 +361,7 @@ impl ContextAssemblyService {
         let Some(bundle) = bundles.get_mut(&request.bundle_id) else {
             return Err(Box::new(rejected("bundle-unavailable")));
         };
-        if bundle.state != "awaiting_confirmation"
+        if bundle.state != "dispatching"
             || bundle.authorization_id != request.authorization_id
             || bundle.digest != request.bundle_digest
         {

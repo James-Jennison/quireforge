@@ -11,6 +11,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 SUPERVISOR = ROOT / "scripts" / "quireforge-codex-supervisor.sh"
+SERVICE_UNIT = ROOT / "packaging" / "systemd-user" / "quireforge-codex-supervisor.service"
 
 
 class SupervisorCompletionStateTests(unittest.TestCase):
@@ -69,6 +70,14 @@ class SupervisorCompletionStateTests(unittest.TestCase):
             script,
         )
         self.assertNotIn("shell_environment_policy.inherit=all", script)
+
+    def test_installed_service_provides_the_bounded_standard_command_path(self) -> None:
+        service = SERVICE_UNIT.read_text(encoding="utf-8")
+
+        self.assertIn(
+            "Environment=PATH=%h/.local/bin:%h/.cargo/bin:/usr/local/bin:/usr/bin:/bin",
+            service,
+        )
 
     def test_worker_untracked_file_admission_is_bounded_to_safe_source_files(self) -> None:
         script = SUPERVISOR.read_text(encoding="utf-8")

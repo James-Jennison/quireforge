@@ -5439,7 +5439,7 @@ impl ProjectRepository {
         let tx = self
             .connection
             .transaction_with_behavior(TransactionBehavior::Immediate)?;
-        let changed=tx.execute("UPDATE context_bundles SET state=?1, canonical_bytes=NULL, completed_at_ms=?2 WHERE id=?3 AND state IN ('prepared','awaiting_review','awaiting_confirmation')",params![state,now,bundle_id])?;
+        let changed=tx.execute("UPDATE context_bundles SET state=?1, canonical_bytes=NULL, completed_at_ms=?2 WHERE id=?3 AND state IN ('prepared','awaiting_review','awaiting_confirmation','dispatching')",params![state,now,bundle_id])?;
         if changed != 1 {
             return Err(StorageError::InvalidStoredValue);
         };
@@ -5456,6 +5456,33 @@ impl ProjectRepository {
             tx.execute("INSERT INTO context_bundle_audit (id,bundle_id,event_kind,outcome,evidence_digest,created_at_ms) VALUES (?1,?2,'dispatching','dispatching',?3,?4)",params![Uuid::now_v7().to_string(),bundle_id,digest,now])?;
         }
         tx.execute("INSERT INTO context_bundle_audit (id,bundle_id,event_kind,outcome,evidence_digest,created_at_ms) VALUES (?1,?2,'terminal',?3,?4,?5)",params![Uuid::now_v7().to_string(),bundle_id,state,digest,now])?;
+        tx.commit()?;
+        Ok(())
+    }
+    /// Consumes a reviewed bundle before the M63 in-process call begins.  The
+    /// durable record never retains its private bytes while that call runs.
+    pub(crate) fn start_local_runtime_context_bundle(
+        &mut self,
+        bundle_id: &str,
+    ) -> Result<(), StorageError> {
+        let now = now_millis();
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let changed = tx.execute(
+            "UPDATE context_bundles SET state='dispatching', canonical_bytes=NULL WHERE id=?1 AND state='awaiting_confirmation'",
+            [bundle_id],
+        )?;
+        if changed != 1 {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let digest: String = tx.query_row(
+            "SELECT bundle_digest FROM context_bundles WHERE id=?1",
+            [bundle_id],
+            |row| row.get(0),
+        )?;
+        tx.execute("INSERT INTO context_bundle_audit (id,bundle_id,event_kind,outcome,evidence_digest,created_at_ms) VALUES (?1,?2,'authorized','authorized',?3,?4)",params![Uuid::now_v7().to_string(),bundle_id,digest,now])?;
+        tx.execute("INSERT INTO context_bundle_audit (id,bundle_id,event_kind,outcome,evidence_digest,created_at_ms) VALUES (?1,?2,'dispatching','local-runtime-running',?3,?4)",params![Uuid::now_v7().to_string(),bundle_id,digest,now])?;
         tx.commit()?;
         Ok(())
     }
@@ -8563,7 +8590,7 @@ fn recover_interrupted_context_bundles(connection: &Connection) -> Result<(), St
     let timestamp = now_millis();
     let pending = {
         let mut statement = connection
-            .prepare("SELECT id, bundle_digest FROM context_bundles WHERE state IN ('prepared','awaiting_review','awaiting_confirmation')")?;
+            .prepare("SELECT id, bundle_digest FROM context_bundles WHERE state IN ('prepared','awaiting_review','awaiting_confirmation','dispatching')")?;
         let rows = statement
             .query_map([], |row| {
                 Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
@@ -8577,7 +8604,7 @@ fn recover_interrupted_context_bundles(connection: &Connection) -> Result<(), St
     let transaction = connection.unchecked_transaction()?;
     for (bundle_id, digest) in pending {
         transaction.execute(
-            "UPDATE context_bundles SET state = 'expired', canonical_bytes = NULL, completed_at_ms = ?1 WHERE id = ?2 AND state IN ('prepared','awaiting_review','awaiting_confirmation')",
+            "UPDATE context_bundles SET state = 'expired', canonical_bytes = NULL, completed_at_ms = ?1 WHERE id = ?2 AND state IN ('prepared','awaiting_review','awaiting_confirmation','dispatching')",
             params![timestamp, bundle_id],
         )?;
         transaction.execute(
@@ -11036,6 +11063,48 @@ mod tests {
             )
             .expect("audit");
         assert_eq!(audit_count, 2);
+    }
+
+    #[test]
+    fn local_runtime_start_consumes_bytes_before_execution_and_recovers() {
+        let mut repository = ProjectRepository::in_memory().expect("fresh schema");
+        let project_id = Uuid::now_v7().to_string();
+        insert_active_project(&repository, &project_id, &Uuid::now_v7().to_string());
+        let bundle_id = Uuid::now_v7().to_string();
+        let digest = "e".repeat(64);
+        repository.connection.execute(
+            "INSERT INTO context_bundles (id,schema_version,project_id,task_id,bundle_digest,canonical_bytes,policy_version,assembly_version,state,expires_at_ms,created_at_ms,completed_at_ms,authorization_id) VALUES (?1,1,?2,NULL,?3,?4,1,1,'awaiting_confirmation',9999999999999,1,NULL,?5)",
+            params![bundle_id, project_id, digest, b"private canonical bytes".as_slice(), Uuid::now_v7().to_string()],
+        ).expect("confirmed context bundle");
+        repository
+            .start_local_runtime_context_bundle(&bundle_id)
+            .expect("runtime start");
+        let stored: (String, bool) = repository
+            .connection
+            .query_row(
+                "SELECT state, canonical_bytes IS NULL FROM context_bundles WHERE id=?1",
+                [&bundle_id],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .expect("running state");
+        assert_eq!(stored, ("dispatching".into(), true));
+        assert_eq!(repository.connection.query_row(
+            "SELECT count(*) FROM context_bundle_audit WHERE bundle_id=?1 AND event_kind IN ('authorized','dispatching')",
+            [&bundle_id],
+            |row| row.get::<_, i64>(0),
+        ).expect("pre-execution audit"), 2);
+        recover_interrupted_context_bundles(&repository.connection).expect("recovery");
+        assert_eq!(
+            repository
+                .connection
+                .query_row(
+                    "SELECT state FROM context_bundles WHERE id=?1",
+                    [&bundle_id],
+                    |row| row.get::<_, String>(0),
+                )
+                .expect("recovered state"),
+            "expired"
+        );
     }
 
     #[test]

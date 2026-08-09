@@ -1505,6 +1505,7 @@ describe("QuireForge desktop shell", () => {
     expect(
       await screen.findByRole("button", { name: "Stop task" }),
     ).toBeInTheDocument();
+    pollConversationTask.mockClear();
     unmount();
     await new Promise((resolve) => window.setTimeout(resolve, 300));
     expect(pollConversationTask).not.toHaveBeenCalled();

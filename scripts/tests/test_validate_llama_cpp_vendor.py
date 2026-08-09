@@ -1006,11 +1006,9 @@ class CmakeOptionsTests(unittest.TestCase):
     def test_rejects_digest_verification_after_cmake_command_construction(self) -> None:
         build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
         build = build.replace(
-            "    verify_vendored_tree_digest(&source_dir);\n    register_vendored_source_tree(&source_dir);\n\n"
-            '    let mut configure = Command::new(SYSTEM_CMAKE);',
-            "    register_vendored_source_tree(&source_dir);\n\n"
-            '    let mut configure = Command::new(SYSTEM_CMAKE);\n'
-            "    verify_vendored_tree_digest(&source_dir);",
+            "    verify_vendored_tree_digest(&source_dir);\n    register_vendored_source_tree(&source_dir);",
+            "    register_vendored_source_tree(&source_dir);",
+            1,
         )
 
         with self.assertRaisesRegex(SystemExit, "before constructing CMake commands"):
@@ -1266,7 +1264,7 @@ class CmakeOptionsTests(unittest.TestCase):
             '    fs::write("unapproved-build-output", "unexpected");\n    tauri_build::build();',
         )
 
-        with self.assertRaisesRegex(SystemExit, "approved read-only filesystem calls"):
+        with self.assertRaisesRegex(SystemExit, "approved filesystem calls"):
             VALIDATOR.require_read_only_build_script_filesystem_boundary(build)
 
     def test_rejects_a_fully_qualified_build_script_filesystem_mutation(self) -> None:
@@ -1472,12 +1470,18 @@ class CmakeOptionsTests(unittest.TestCase):
         with self.assertRaisesRegex(SystemExit, "must use only the verified source"):
             VALIDATOR.require_verified_cmake_configure_arguments(build)
 
-    def test_rejects_a_configuration_that_reuses_a_cmake_cache(self) -> None:
+    def test_rejects_a_configuration_without_a_private_build_directory_reset(self) -> None:
         build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
-        build = build.replace('        .arg("--fresh")\n', "")
+        build = build.replace(
+            "    if build_dir.exists() {\n"
+            "        fs::remove_dir_all(&build_dir)\n"
+            "            .unwrap_or_else(|error| panic!(\"could not reset private llama.cpp build directory: {error}\"));\n"
+            "    }\n\n",
+            "",
+        )
 
-        with self.assertRaisesRegex(SystemExit, "must use only the verified source"):
-            VALIDATOR.require_verified_cmake_configure_arguments(build)
+        with self.assertRaisesRegex(SystemExit, "private CMake build directory must be reset"):
+            VALIDATOR.require_private_cmake_build_directory_reset(build)
 
     def test_rejects_a_cmake_build_with_an_extra_target(self) -> None:
         build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")

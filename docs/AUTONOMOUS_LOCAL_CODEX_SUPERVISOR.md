@@ -60,6 +60,11 @@ that vertical slice. Its Codex worker tool shells inherit only the standard
 command path and approved read-only M63 model-path variable, never the
 surrounding desktop-session environment.
 
+The installed unit sets that standard command path explicitly: the current
+user's local executable and Cargo directories plus `/usr/local/bin`,
+`/usr/bin`, and `/bin`. This keeps package-validation tooling available to an
+isolated worker without exposing the rest of the desktop-session environment.
+
 ## Local inspection and control
 
 ```bash

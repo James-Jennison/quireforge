@@ -2256,6 +2256,17 @@ impl ProjectService {
             })
             .unwrap_or(false)
     }
+    pub(crate) fn start_local_runtime_context_bundle(&self, bundle_id: &str) -> bool {
+        self.repository
+            .lock()
+            .ok()
+            .and_then(|mut repository| {
+                repository
+                    .as_mut()
+                    .map(|repo| repo.start_local_runtime_context_bundle(bundle_id).is_ok())
+            })
+            .unwrap_or(false)
+    }
     pub(crate) fn review_context_bundle(&self, bundle_id: &str) -> bool {
         self.repository
             .lock()

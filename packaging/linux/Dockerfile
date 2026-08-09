@@ -12,6 +12,7 @@ RUN apt-get update \
       bc \
       bison \
       ca-certificates \
+      cmake \
       cpio \
       curl \
       dbus-x11 \
