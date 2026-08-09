@@ -203,7 +203,7 @@ class CmakeOptionsTests(unittest.TestCase):
         self.assertIn("-DGIT_EXECUTABLE=", options)
         self.assertIn("-DCMAKE_DISABLE_FIND_PACKAGE_Git=ON", options)
 
-    def test_disables_cmake_user_and_system_package_registries(self) -> None:
+    def test_disables_cmake_package_registries_and_system_environment_discovery(self) -> None:
         build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
 
         options = VALIDATOR.cmake_options(build)
@@ -212,6 +212,7 @@ class CmakeOptionsTests(unittest.TestCase):
             {
                 "-DCMAKE_FIND_USE_PACKAGE_REGISTRY=OFF",
                 "-DCMAKE_FIND_USE_SYSTEM_PACKAGE_REGISTRY=OFF",
+                "-DCMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH=OFF",
                 "-DCMAKE_FIND_PACKAGE_NO_PACKAGE_REGISTRY=ON",
                 "-DCMAKE_FIND_PACKAGE_NO_SYSTEM_PACKAGE_REGISTRY=ON",
                 "-DCMAKE_EXPORT_NO_PACKAGE_REGISTRY=ON",
