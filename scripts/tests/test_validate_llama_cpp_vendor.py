@@ -73,6 +73,17 @@ class CmakeOptionsTests(unittest.TestCase):
 
             VALIDATOR.require_no_model_artifacts(source)
 
+    def test_rejects_a_symlink_before_reading_its_target(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            source = Path(temporary_directory) / "source"
+            source.mkdir()
+            target = Path(temporary_directory) / "external-target"
+            target.write_bytes(b"GGUF\x03\x00\x00\x00")
+            (source / "unapproved-link").symlink_to(target)
+
+            with self.assertRaisesRegex(SystemExit, "must not follow symlinks"):
+                VALIDATOR.require_no_model_artifacts(source)
+
     def test_rejects_a_model_artifact_anywhere_in_repository_owned_content(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             repository = Path(temporary_directory)
@@ -94,7 +105,8 @@ class CmakeOptionsTests(unittest.TestCase):
     def test_excludes_transient_repository_directories_from_model_admission_scan(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             repository = Path(temporary_directory)
-            transient = repository / "target"
+            transient = repository / "apps" / "desktop" / "node_modules"
+            transient.parent.mkdir(parents=True)
             transient.mkdir()
             (transient / "unapproved-model.gguf").write_bytes(b"GGUF\x03\x00\x00\x00")
 

@@ -671,19 +671,30 @@ def require_no_rust_runtime_api_usage(source_directory: Path) -> None:
     )
 
 
-def require_no_model_artifacts(directory: Path) -> None:
+def require_no_model_artifacts(
+    directory: Path, excluded_directory_names: frozenset[str] = frozenset()
+) -> None:
     for path in chain((directory,), directory.rglob("*")):
+        relative = path.relative_to(directory)
+        if any(part in excluded_directory_names for part in relative.parts):
+            continue
+        metadata = path.lstat()
+        require(
+            not stat.S_ISLNK(metadata.st_mode),
+            "model artifact admission scan must not follow symlinks: "
+            f"{relative}",
+        )
         require(
             path.suffix.lower() not in MODEL_ARTIFACT_SUFFIXES,
-            f"model artifact found: {path.relative_to(directory)}",
+            f"model artifact found: {relative}",
         )
-        if not path.is_file():
+        if not stat.S_ISREG(metadata.st_mode):
             continue
         header = path.read_bytes()[:4]
         for magic, format_name in MODEL_ARTIFACT_MAGIC.items():
             require(
                 header != magic,
-                f"model artifact signature found ({format_name}): {path.relative_to(directory)}",
+                f"model artifact signature found ({format_name}): {relative}",
             )
 
 
@@ -694,10 +705,10 @@ def require_no_repository_model_artifacts(repository_root: Path) -> None:
     dependency installs, and generated build outputs are not repository
     content, so they are deliberately excluded from this admission guard.
     """
-    for path in repository_root.iterdir():
-        if path.name in REPOSITORY_MODEL_ARTIFACT_EXCLUSIONS:
-            continue
-        require_no_model_artifacts(path)
+    require_no_model_artifacts(
+        repository_root,
+        frozenset(REPOSITORY_MODEL_ARTIFACT_EXCLUSIONS),
+    )
 
 
 def require_model_artifact_ignores(gitignore: str) -> None:
