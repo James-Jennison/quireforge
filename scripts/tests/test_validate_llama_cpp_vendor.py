@@ -73,6 +73,18 @@ class CmakeOptionsTests(unittest.TestCase):
 
             VALIDATOR.require_no_model_artifacts(source)
 
+    def test_requires_every_model_artifact_suffix_to_be_gitignored(self) -> None:
+        gitignore = (ROOT / ".gitignore").read_text(encoding="utf-8")
+
+        VALIDATOR.require_model_artifact_ignores(gitignore)
+
+    def test_rejects_a_missing_model_artifact_gitignore_pattern(self) -> None:
+        gitignore = (ROOT / ".gitignore").read_text(encoding="utf-8")
+        gitignore = gitignore.replace("*.gguf\n", "")
+
+        with self.assertRaisesRegex(SystemExit, "must exclude every guarded model artifact suffix"):
+            VALIDATOR.require_model_artifact_ignores(gitignore)
+
     def test_reads_the_exact_closed_option_list(self) -> None:
         build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
 

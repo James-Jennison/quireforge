@@ -40,3 +40,17 @@ test-results/
 *.sqlite3
 *.log
 support-bundle-*.zip
+
+# M63 model artifacts must remain outside the repository and packages.
+*.bin
+*.ckpt
+*.gguf
+*.ggml
+*.mlmodel
+*.npy
+*.npz
+*.onnx
+*.pt
+*.pth
+*.safetensors
+*.tflite

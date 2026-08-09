@@ -15,6 +15,7 @@ VENDOR = ROOT / "third_party" / "llama.cpp"
 MANIFEST = VENDOR / "PROVENANCE.json"
 BUILD_SCRIPT = ROOT / "apps" / "desktop" / "src-tauri" / "build.rs"
 NATIVE_SOURCE = ROOT / "apps" / "desktop" / "src-tauri" / "src"
+GITIGNORE = ROOT / ".gitignore"
 EXPECTED_COMMIT = "3653e6d6d547ec763317d9ecd0ace334a7e21359"
 EXPECTED_FINGERPRINT = "968479A1AFF927E37D1A566BB5690EEEBB952194"
 EXPECTED_MANIFEST = {
@@ -676,6 +677,19 @@ def require_no_model_artifacts(directory: Path) -> None:
             )
 
 
+def require_model_artifact_ignores(gitignore: str) -> None:
+    ignored_patterns = {
+        line.strip()
+        for line in gitignore.splitlines()
+        if line.strip() and not line.lstrip().startswith("#")
+    }
+    expected_patterns = {f"*{suffix}" for suffix in MODEL_ARTIFACT_SUFFIXES}
+    require(
+        expected_patterns.issubset(ignored_patterns),
+        "Git ignore policy must exclude every guarded model artifact suffix",
+    )
+
+
 def main() -> None:
     require_regular_vendored_source_tree(VENDOR)
     manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
@@ -687,6 +701,7 @@ def main() -> None:
         require((VENDOR / license_path).is_file(), f"missing license evidence: {license_path}")
     require(not (VENDOR / ".git").exists(), "Git history was vendored")
     require_no_model_artifacts(VENDOR)
+    require_model_artifact_ignores(GITIGNORE.read_text(encoding="utf-8"))
     build = BUILD_SCRIPT.read_text(encoding="utf-8")
     require_closed_cmake_options(build)
     require_verified_cmake_source(build)
