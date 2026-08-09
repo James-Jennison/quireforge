@@ -36,7 +36,7 @@ commit, the wrapper starts the next worker. Blocked, failed-validation, and
 two-run no-progress states remain terminal. The user service restarts on an
 unexpected process failure. When `tmux` is unavailable, the same worker runs
 with the status/log fallback. The supervisor never installs packages or uses
-`sudo`.
+`sudo`. Its installed default interval between completed tasks is 60 seconds.
 
 The source unit is `packaging/systemd-user/quireforge-codex-supervisor.service`.
 Install it for the current user with:

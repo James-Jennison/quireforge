@@ -14,7 +14,7 @@ readonly progress_path="$state_root/no-progress-runs"
 readonly log_path="$state_root/supervisor.log"
 readonly worker_log_path="$state_root/worker.log"
 readonly lock_path="$state_root/run.lock"
-readonly interval_seconds="${QUIRE_FORGE_SUPERVISOR_INTERVAL_SECONDS:-300}"
+readonly interval_seconds="${QUIRE_FORGE_SUPERVISOR_INTERVAL_SECONDS:-60}"
 readonly started_at="$(date --iso-8601=seconds)"
 readonly worker_sandbox_mode="danger-full-access"
 
