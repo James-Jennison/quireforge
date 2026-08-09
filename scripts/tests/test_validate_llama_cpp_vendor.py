@@ -956,6 +956,24 @@ class CmakeOptionsTests(unittest.TestCase):
                 ):
                     VALIDATOR.require_no_rust_runtime_api_usage(source)
 
+    def test_rejects_comment_separated_native_ffi_declarations(self) -> None:
+        for declaration in (
+            'extern /* unapproved */ "C" {',
+            'unsafe /* unapproved */ extern /* unapproved */ "C" {',
+        ):
+            with self.subTest(declaration=declaration), tempfile.TemporaryDirectory() as temporary_directory:
+                source = Path(temporary_directory)
+                (source / "runtime.rs").write_text(
+                    f"{declaration}\n    fn hidden_runtime_entry();\n}}\n",
+                    encoding="utf-8",
+                )
+
+                with self.assertRaisesRegex(
+                    SystemExit,
+                    "must not reference llama.cpp or ggml APIs or declare native FFI",
+                ):
+                    VALIDATOR.require_no_rust_runtime_api_usage(source)
+
     def test_rejects_rust_source_include_macros(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             source = Path(temporary_directory)
@@ -967,11 +985,34 @@ class CmakeOptionsTests(unittest.TestCase):
             with self.assertRaisesRegex(SystemExit, "or import unscanned Rust source"):
                 VALIDATOR.require_no_rust_runtime_api_usage(source)
 
+    def test_rejects_comment_separated_rust_source_include_macros(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            source = Path(temporary_directory)
+            (source / "runtime.rs").write_text(
+                'include /* unapproved */! ("../unreviewed-runtime.rs");\n',
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(SystemExit, "or import unscanned Rust source"):
+                VALIDATOR.require_no_rust_runtime_api_usage(source)
+
     def test_rejects_rust_path_module_attributes(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             source = Path(temporary_directory)
             (source / "runtime.rs").write_text(
                 '#[path = "../unreviewed-runtime.txt"]\nmod unreviewed_runtime;\n',
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(SystemExit, "or import unscanned Rust source"):
+                VALIDATOR.require_no_rust_runtime_api_usage(source)
+
+    def test_rejects_comment_separated_rust_path_module_attributes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            source = Path(temporary_directory)
+            (source / "runtime.rs").write_text(
+                '# /* unapproved */ [path /* unapproved */ = "../unreviewed-runtime.txt"]\n'
+                "mod unreviewed_runtime;\n",
                 encoding="utf-8",
             )
 

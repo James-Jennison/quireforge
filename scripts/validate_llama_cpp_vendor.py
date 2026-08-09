@@ -724,9 +724,17 @@ def require_closed_cargo_linkage(build: str) -> None:
 def require_no_rust_runtime_api_usage(source_directory: Path) -> None:
     """Keep the M63 source boundary build-only until a later adapter is approved."""
     prohibited_api = re.compile(r"\b(?:llama|ggml)_[A-Za-z0-9_]*\b")
-    ffi_declaration = re.compile(r"\b(?:unsafe\s+)?extern(?:\s+\"[^\"]+\")?\s*\{")
-    source_include = re.compile(r"\binclude\s*!")
-    path_module = re.compile(r"#\s*\[\s*path\s*=")
+    # Rust permits comments anywhere whitespace is accepted. Keep comments in
+    # the scanned source (so a suspicious token in a comment remains visible),
+    # while recognizing comment-separated syntax that could otherwise hide an
+    # FFI declaration or an unscanned source import from this build-only guard.
+    rust_separator = r"(?:\s|/\*[\s\S]*?\*/|//[^\n]*(?:\n|$))*"
+    ffi_declaration = re.compile(
+        rf"\b(?:unsafe{rust_separator})?extern{rust_separator}"
+        rf"(?:\"[^\"]+\"{rust_separator})?\{{"
+    )
+    source_include = re.compile(rf"\binclude{rust_separator}!")
+    path_module = re.compile(rf"#{rust_separator}\[{rust_separator}path{rust_separator}=")
     violations = []
     for path in sorted(source_directory.rglob("*")):
         relative = path.relative_to(source_directory)
