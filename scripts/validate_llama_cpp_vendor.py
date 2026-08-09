@@ -124,6 +124,7 @@ EXPECTED_BUILD_DIR_DECLARATION = 'let build_dir = output_dir.join("m63-llama.cpp
 EXPECTED_SOURCE_TRACKER = "register_vendored_source_tree(&source_dir);"
 EXPECTED_SOURCE_ROOT_INSPECTION = "fs::symlink_metadata(directory)"
 EXPECTED_SOURCE_ROOT_VERIFIER = "require_vendored_source_root(directory);"
+EXPECTED_SOURCE_PARENT_VERIFIER = "require_vendored_source_parent(directory);"
 EXPECTED_VENDORED_TREE_SHA256 = "9892c22a1a05adf0775615f1b845886f8f1be96ad7b6f71093103eaec546a511"
 EXPECTED_SOURCE_DIGEST_VERIFIER = "verify_vendored_tree_digest(&source_dir);"
 EXPECTED_LINK_SEARCH_DIRECTORIES = [
@@ -289,6 +290,11 @@ def require(condition: bool, message: str) -> None:
 
 
 def require_regular_vendored_source_tree(directory: Path) -> None:
+    parent_metadata = directory.parent.lstat()
+    require(
+        not stat.S_ISLNK(parent_metadata.st_mode) and stat.S_ISDIR(parent_metadata.st_mode),
+        "vendored source parent must be a real directory",
+    )
     root_metadata = directory.lstat()
     require(
         not stat.S_ISLNK(root_metadata.st_mode) and stat.S_ISDIR(root_metadata.st_mode),
@@ -388,6 +394,10 @@ def require_complete_vendored_source_tracking(build: str) -> None:
         "build script does not validate the vendored source root before tracking it",
     )
     require(
+        "require_vendored_source_parent(&source_dir);" in build,
+        "build script does not validate the vendored source parent before tracking it",
+    )
+    require(
         "!source_metadata.file_type().is_symlink() && source_metadata.is_dir()" in build,
         "build script must reject a symlinked or non-directory vendored source root",
     )
@@ -444,6 +454,10 @@ def require_build_time_vendored_tree_verification(build: str) -> None:
     require(
         EXPECTED_SOURCE_ROOT_VERIFIER in verifier,
         "vendored source digest verifier must re-check that the source root is a real directory",
+    )
+    require(
+        EXPECTED_SOURCE_PARENT_VERIFIER in verifier,
+        "vendored source digest verifier must re-check that the source parent is a real directory",
     )
     require(
         "vendored_tree_digest(directory, directory, &mut digest);" in verifier
@@ -575,7 +589,8 @@ def require_read_only_build_script_filesystem_boundary(build: str) -> None:
         r"\bfs\s*::\s*([A-Za-z_][A-Za-z0-9_]*)", code
     )
     require(
-        filesystem_references == ["read_dir", "symlink_metadata", "read_dir", "read"],
+        filesystem_references
+        == ["read_dir", "symlink_metadata", "symlink_metadata", "read_dir", "read"],
         "build script must use only the approved read-only filesystem calls",
     )
 

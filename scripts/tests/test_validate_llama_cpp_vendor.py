@@ -52,6 +52,18 @@ class CmakeOptionsTests(unittest.TestCase):
             with self.assertRaisesRegex(SystemExit, "source root must be a real directory"):
                 VALIDATOR.require_regular_vendored_source_tree(source_link)
 
+    def test_rejects_a_symlinked_vendored_source_parent(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            temporary_root = Path(temporary_directory)
+            source_parent = temporary_root / "real-third-party"
+            source = source_parent / "llama.cpp"
+            source.mkdir(parents=True)
+            linked_parent = temporary_root / "third_party"
+            linked_parent.symlink_to(source_parent, target_is_directory=True)
+
+            with self.assertRaisesRegex(SystemExit, "source parent must be a real directory"):
+                VALIDATOR.require_regular_vendored_source_tree(linked_parent / "llama.cpp")
+
     def test_rejects_a_symlink_inside_the_vendored_source_tree(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             source = Path(temporary_directory) / "source"
