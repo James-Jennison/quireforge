@@ -433,18 +433,24 @@ def require_closed_build_process_boundary(build: str) -> None:
     command_references = re.findall(
         rf"(?:std{rust_separator}::{rust_separator})?"
         rf"(?:process{rust_separator}::{rust_separator})?"
-        rf"Command{rust_separator}::{rust_separator}new\b",
+        rf"Command{rust_separator}::{rust_separator}(?:new|default)\b",
         build,
     )
     command_calls = re.findall(
         rf"(?:std{rust_separator}::{rust_separator})?"
         rf"(?:process{rust_separator}::{rust_separator})?"
-        rf"Command{rust_separator}::{rust_separator}new{rust_separator}\(",
+        rf"Command{rust_separator}::{rust_separator}(?:new|default){rust_separator}\(",
         build,
     )
     require(
         len(command_references) == 2
         and len(command_calls) == 2
+        and not re.search(
+            rf"(?:std{rust_separator}::{rust_separator})?"
+            rf"(?:process{rust_separator}::{rust_separator})?"
+            rf"Command{rust_separator}::{rust_separator}default\b",
+            build,
+        )
         and f'const SYSTEM_CMAKE: &str = "{EXPECTED_SYSTEM_CMAKE}";' in build
         and len(
             re.findall(r"Command\s*::\s*new\s*\(SYSTEM_CMAKE\)", build)
