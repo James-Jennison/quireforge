@@ -212,6 +212,8 @@ class CmakeOptionsTests(unittest.TestCase):
             {
                 "-DCMAKE_FIND_USE_PACKAGE_REGISTRY=OFF",
                 "-DCMAKE_FIND_USE_SYSTEM_PACKAGE_REGISTRY=OFF",
+                "-DCMAKE_FIND_USE_CMAKE_PATH=OFF",
+                "-DCMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH=OFF",
                 "-DCMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH=OFF",
                 "-DCMAKE_FIND_USE_CMAKE_SYSTEM_PATH=OFF",
                 "-DCMAKE_FIND_USE_INSTALL_PREFIX=OFF",
