@@ -35,7 +35,7 @@ docker run \
   --volume "$cache_root/node_modules/root:/workspace/node_modules" \
   --volume "$cache_root/node_modules/desktop:/workspace/apps/desktop/node_modules" \
   --volume "$cache_root/node_modules/website:/workspace/apps/website/node_modules" \
-  --env CARGO_BUILD_JOBS=4 \
+  --env CARGO_BUILD_JOBS="${CARGO_BUILD_JOBS:-4}" \
   --env CARGO_HOME=/cache/cargo \
   --env CARGO_TARGET_DIR=/workspace/target/ubuntu-22.04 \
   --env CI=true \
