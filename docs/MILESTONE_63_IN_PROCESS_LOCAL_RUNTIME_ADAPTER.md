@@ -90,5 +90,6 @@ calls, rejecting source or generated-output mutation from that build boundary.
 Each approved Cargo directive must be emitted directly by its fixed `println!`
 call; indirect or dynamically assembled directive output is rejected.
 The validator also requires its own build script and the scanned Rust runtime
-source root to be real, non-symlinked filesystem entries before reading them,
-so either guard cannot be redirected outside the reviewed working tree.
+source root and immediate parent to be real, non-symlinked filesystem entries
+before reading them, so either guard cannot be redirected outside the reviewed
+working tree.

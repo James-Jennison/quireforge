@@ -326,6 +326,15 @@ def require_regular_source_directory(path: Path, description: str) -> None:
     )
 
 
+def require_regular_source_parent(path: Path, description: str) -> None:
+    parent = path.parent
+    metadata = parent.lstat()
+    require(
+        not stat.S_ISLNK(metadata.st_mode) and stat.S_ISDIR(metadata.st_mode),
+        f"{description} parent must be a real directory",
+    )
+
+
 def cmake_options(build: str) -> set[str]:
     return set(cmake_option_entries(build))
 
@@ -899,6 +908,7 @@ def require_closed_cargo_directives(build: str) -> None:
 
 def require_no_rust_runtime_api_usage(source_directory: Path) -> None:
     """Keep the M63 source boundary build-only until a later adapter is approved."""
+    require_regular_source_parent(source_directory, "Rust runtime source root")
     require_regular_source_directory(source_directory, "Rust runtime source root")
     prohibited_api = re.compile(r"\b(?:llama|ggml)_[A-Za-z0-9_]*\b")
     # Rust permits comments anywhere whitespace is accepted. Keep comments in

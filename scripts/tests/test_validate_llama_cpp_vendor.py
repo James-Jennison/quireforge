@@ -41,6 +41,20 @@ class CmakeOptionsTests(unittest.TestCase):
             with self.assertRaisesRegex(SystemExit, "Rust runtime source root must be a real directory"):
                 VALIDATOR.require_no_rust_runtime_api_usage(source_link)
 
+    def test_rejects_a_symlinked_rust_runtime_source_parent(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            temporary_root = Path(temporary_directory)
+            source_parent = temporary_root / "real-source-parent"
+            source = source_parent / "source"
+            source.mkdir(parents=True)
+            linked_parent = temporary_root / "source-parent"
+            linked_parent.symlink_to(source_parent, target_is_directory=True)
+
+            with self.assertRaisesRegex(
+                SystemExit, "Rust runtime source root parent must be a real directory"
+            ):
+                VALIDATOR.require_no_rust_runtime_api_usage(linked_parent / "source")
+
     def test_rejects_a_symlinked_vendored_source_root(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             temporary_root = Path(temporary_directory)
