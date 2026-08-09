@@ -531,6 +531,24 @@ class CmakeOptionsTests(unittest.TestCase):
         with self.assertRaisesRegex(SystemExit, "before constructing CMake commands"):
             VALIDATOR.require_build_time_vendored_tree_verification(build)
 
+    def test_rejects_missing_pre_configuration_vendored_tree_verification(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace(
+            "    // Change-registration walks the full source tree. Re-check after that walk\n"
+            "    // and immediately before CMake evaluates the vendored configuration.\n"
+            "    verify_vendored_tree_digest(&source_dir);\n"
+            "    run(\n"
+            "        &mut configure,",
+            "    run(\n"
+            "        &mut configure,",
+        )
+
+        with self.assertRaisesRegex(
+            SystemExit,
+            "immediately before CMake configuration",
+        ):
+            VALIDATOR.require_build_time_vendored_tree_verification(build)
+
     def test_rejects_missing_post_configuration_vendored_tree_verification(self) -> None:
         build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
         build = build.replace(

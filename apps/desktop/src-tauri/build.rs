@@ -312,6 +312,10 @@ fn build_llama_cpp() {
         configure.env_remove(variable);
     }
     configure.env("PATH", CLOSED_BUILD_PATH);
+
+    // Change-registration walks the full source tree. Re-check after that walk
+    // and immediately before CMake evaluates the vendored configuration.
+    verify_vendored_tree_digest(&source_dir);
     run(
         &mut configure,
         "closed llama.cpp static-library configuration",

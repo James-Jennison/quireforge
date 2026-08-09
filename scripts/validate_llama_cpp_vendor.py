@@ -396,11 +396,20 @@ def require_build_time_vendored_tree_verification(build: str) -> None:
         and verification_positions[0] < first_cmake_command,
         "build script must verify the vendored source tree before constructing CMake commands",
     )
+    configure_run = build.find(
+        'run(\n        &mut configure,\n        "closed llama.cpp static-library configuration",'
+    )
+    require(configure_run != -1, "closed CMake configuration execution is missing")
     build_command = build.find("let mut build = Command::new(SYSTEM_CMAKE);")
     require(build_command != -1, "closed CMake static-library build command is missing")
     require(
         len(verification_positions) >= 2
-        and first_cmake_command < verification_positions[1] < build_command,
+        and first_cmake_command < verification_positions[1] < configure_run,
+        "build script must re-verify the vendored source tree immediately before CMake configuration",
+    )
+    require(
+        len(verification_positions) >= 3
+        and configure_run < verification_positions[2] < build_command,
         "build script must re-verify the vendored source tree after configuration and before compiling",
     )
     post_build_verification = build.find(
@@ -409,8 +418,8 @@ def require_build_time_vendored_tree_verification(build: str) -> None:
     )
     first_link_directive = build.find('cargo:rustc-link-search=native=')
     require(
-        len(verification_positions) == 3
-        and post_build_verification == verification_positions[2]
+        len(verification_positions) == 4
+        and post_build_verification == verification_positions[3]
         and first_link_directive != -1
         and post_build_verification < first_link_directive,
         "build script must re-verify the vendored source tree after compiling and before Cargo linkage",
