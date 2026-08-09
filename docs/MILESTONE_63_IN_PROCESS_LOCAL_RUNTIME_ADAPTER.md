@@ -42,13 +42,14 @@ open view only.
 The focused storage and workbench tests, repository validation, package
 validator, type-check, lint, and formatting gates passed locally on
 2026-08-09. The authoritative pinned Ubuntu 22.04 package gate subsequently
-produced and validated the clean-tree `0.1.0-beta.63` local candidate with its
-two required Debian artifacts. That gate excluded the model and did not start
-the runtime. The storage lifecycle correction that records a completed local
-attempt as the canonical `closed` terminal state, and a bounded local failure
-as `failed`, requires fresh candidate package evidence before this record can
-support a later installed-host M63 execution/desktop acceptance. This remains
-local candidate work, not a release-ready claim.
+produced and validated the clean-tree `0.1.0-beta.64` local candidate at source
+commit `707a760a6cd1f3ca08bccaf92677f2f5397d4f88`, with its two required Debian
+artifacts and a visible package-launch smoke pass. That gate excluded the model
+and did not start the runtime. It includes the storage lifecycle correction
+that records a completed local attempt as canonical `closed`, a bounded local
+failure as `failed`, and an accepted cancellation as `cancelled`. This remains
+local candidate work, not a release-ready claim: installed-host M63
+execution/desktop acceptance is still required.
 
 The adapter's context-parameter C ABI now mirrors the pinned vendored llama.cpp
 header, and its focused lifecycle test proves a second concurrent local attempt
