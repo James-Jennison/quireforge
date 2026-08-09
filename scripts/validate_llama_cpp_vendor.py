@@ -505,6 +505,30 @@ def require_closed_command_mutation_boundary(build: str) -> None:
     )
 
 
+def require_closed_command_execution_boundary(build: str) -> None:
+    """Allow the two approved CMake commands to execute only through ``run``."""
+    # Ignore comments when counting executable method calls so explanatory text
+    # cannot affect the closed source check.
+    code = re.sub(r"/\*[\s\S]*?\*/|//[^\n]*", "", build)
+    command_execution_calls = re.findall(
+        r"\b([A-Za-z_][A-Za-z0-9_]*)\s*\.\s*"
+        r"(status|output|spawn|exec)\s*\(",
+        code,
+    )
+    require(
+        command_execution_calls == [("command", "status")],
+        "build script must execute CMake only through the closed run helper",
+    )
+    run_calls = re.findall(
+        r"\brun\s*\(\s*&mut\s*([A-Za-z_][A-Za-z0-9_]*)\s*,",
+        code,
+    )
+    require(
+        run_calls == ["configure", "build"],
+        "build script must run only the approved configuration and static-library build",
+    )
+
+
 def command_arguments(body: str) -> list[str]:
     return [
         literal or variable
@@ -792,6 +816,7 @@ def main() -> None:
     require_build_time_vendored_tree_verification(build)
     require_closed_build_process_boundary(build)
     require_closed_command_mutation_boundary(build)
+    require_closed_command_execution_boundary(build)
     require_verified_cmake_configure_arguments(build)
     require_closed_cmake_invocation(build)
     require_closed_cmake_environment(build)

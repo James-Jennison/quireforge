@@ -768,6 +768,32 @@ class CmakeOptionsTests(unittest.TestCase):
         with self.assertRaisesRegex(SystemExit, "must not override the closed CMake working directory"):
             VALIDATOR.require_closed_command_mutation_boundary(build)
 
+    def test_requires_only_the_closed_cmake_execution_paths(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+
+        VALIDATOR.require_closed_command_execution_boundary(build)
+
+    def test_rejects_direct_command_execution_outside_the_closed_run_helper(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace(
+            "    configure.args(LLAMA_CPP_CMAKE_OPTIONS);",
+            "    configure.args(LLAMA_CPP_CMAKE_OPTIONS);\n    configure.status();",
+        )
+
+        with self.assertRaisesRegex(SystemExit, "must execute CMake only through the closed run helper"):
+            VALIDATOR.require_closed_command_execution_boundary(build)
+
+    def test_rejects_an_extra_closed_run_helper_invocation(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace(
+            '    run(&mut build, "closed llama.cpp static-library build");',
+            '    run(&mut build, "closed llama.cpp static-library build");\n'
+            '    run(&mut configure, "closed llama.cpp static-library configuration");',
+        )
+
+        with self.assertRaisesRegex(SystemExit, "must run only the approved configuration"):
+            VALIDATOR.require_closed_command_execution_boundary(build)
+
     def test_rejects_a_configuration_that_does_not_pass_the_verified_source(self) -> None:
         build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
         build = build.replace('.arg(&source_dir)', '.arg(&build_dir)', 1)
