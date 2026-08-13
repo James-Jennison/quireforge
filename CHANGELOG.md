@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.0-beta.66 — M63 installed-host acceptance candidate
+
+- Carries forward the completed M63 preparation, authorization, concurrent
+  admission, and runtime-availability corrections in a uniquely versioned
+  candidate. Package and installed-host acceptance evidence remains pending.
+
 ## 0.1.0-beta.65 — Local-runtime acceptance correction
 
 - Restores M63 preparation for an explicit instruction without an optional

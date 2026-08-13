@@ -87,6 +87,11 @@ correction and prove a completed result is cleared when the governed review is
 closed and reopened. Installed-host M63 execution and desktop acceptance remain
 required before a release-ready claim.
 
+The current preparation, authorization, concurrent-admission, and availability
+corrections require the uniquely versioned `0.1.0-beta.66` candidate before
+installed-host acceptance. Beta.65 remains immutable prior evidence and must
+not be overwritten.
+
 The candidate procedure is recorded in
 [Testing](TESTING.md#m63-local-runtime-installed-host-acceptance). It requires
 the installed-host operator to retain only content-free package and lifecycle
