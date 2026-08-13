@@ -1440,6 +1440,90 @@ test("governed context review runs one visible local-only model attempt", async 
   ).toHaveCount(0);
 });
 
+test("governed context review keeps a busy local-only review available for a manual retry", async ({
+  page,
+}) => {
+  const bundleId = "019a6300-0000-7000-8000-000000000021";
+  const authorizationId = "019a6300-0000-7000-8000-000000000022";
+  const digest = "e".repeat(64);
+  const prepared = {
+    schemaVersion: 1,
+    fictionalLocalOnly: true,
+    sink: "fictional-local-context-sink-v1",
+    state: "prepared",
+    projectId: "018f0000-0000-7000-8000-000000000001",
+    taskId: null,
+    bundleId,
+    authorizationId,
+    bundleDigest: digest,
+    expiresAtMs: 1_800_000_000_000,
+    items: [],
+    totalBytes: 29,
+    estimatedTokens: 8,
+    exclusions: [],
+    auditState: "prepared; review required; no local runtime started",
+    diagnostic: null,
+  } as const;
+  const busy = {
+    schemaVersion: 1,
+    localOnly: true,
+    state: "failed",
+    output: null,
+    diagnostic: "runtime-busy",
+    inputTokenLimit: 4096,
+    outputTokenLimit: 512,
+    deadlineSeconds: 60,
+    memoryCeilingMib: 6144,
+  } as const;
+  const completed = {
+    ...busy,
+    state: "completed",
+    output: "The later reviewed request was handled locally.",
+    diagnostic: null,
+  } as const;
+  await installNativeFixture(page, {
+    ...nativeResponses,
+    context_assembly_prepare: prepared,
+    context_assembly_review: {
+      ...prepared,
+      state: "awaiting_review",
+      authorizationId: null,
+    },
+    context_assembly_acknowledge_review: {
+      ...prepared,
+      state: "awaiting_confirmation",
+    },
+    context_assembly_run_local_runtime: { sequence: [busy, completed] },
+  });
+  await page.goto("/");
+  await openWorkspace(page, "New task");
+  await page
+    .getByRole("region", { name: "Fictional local mock workflow" })
+    .getByRole("button", { name: "Governed context review" })
+    .click();
+  await page
+    .getByLabel("Explicit user instruction")
+    .fill("Retry this reviewed local request after admission is available");
+  await page.getByRole("button", { name: "Prepare review" }).click();
+  await page.getByRole("button", { name: "Review prepared bundle" }).click();
+  await page.getByRole("button", { name: "Acknowledge exact review" }).click();
+  const run = page.getByRole("button", {
+    name: "Run once with local-only model",
+  });
+  await run.click();
+  const result = page.getByLabel("Local runtime result");
+  await expect(result).toContainText("Local runtime: runtime-busy.");
+  await expect(result).toContainText(
+    "No local attempt started because another one is active.",
+  );
+  await expect(run).toBeEnabled();
+  await run.click();
+  await expect(result).toContainText("Local-only attempt: completed");
+  await expect(result).toContainText(
+    "The later reviewed request was handled locally.",
+  );
+});
+
 test("governed context review cancels only its pending local-only attempt", async ({
   page,
 }) => {

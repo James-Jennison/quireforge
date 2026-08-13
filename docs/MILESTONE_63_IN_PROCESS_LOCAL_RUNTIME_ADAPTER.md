@@ -119,7 +119,9 @@ installed-host governed-review workflow remains pending.
 The beta.68 candidate extends the governed-review browser fixture through an
 application reload after a completed attempt. It proves that the completed
 open-view-only result is absent after relaunch, without observing model input
-or output outside that view. Its clean-tree Debian pair from source commit
+or output outside that view. The governed fixture also proves a visible
+`runtime-busy` result leaves its exact review available for an explicit manual
+retry, which can later complete without an automatic retry. Its clean-tree Debian pair from source commit
 `5c4ca198f94553dd760f20734f765c8abb5a488e` passed the authoritative pinned
 Ubuntu 22.04 package, lifecycle, visible-launch, and release-artifact gates.
 That gate excluded the model and did not start the runtime. Installed-host
