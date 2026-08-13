@@ -61,7 +61,8 @@ execution/desktop acceptance is still required.
 
 The adapter's context-parameter C ABI now mirrors the pinned vendored llama.cpp
 header, and its focused lifecycle test proves a second concurrent local attempt
-is rejected immediately while the completed attempt releases the single slot.
+is rejected immediately before it consumes a second reviewed bundle, while the
+completed attempt releases the single slot.
 The fixed Qwen route formats its two-message system/reviewed-request exchange
 through that model's embedded chat template before tokenization; an unavailable
 or oversized template result is a bounded local failure and never falls back to

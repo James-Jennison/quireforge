@@ -536,8 +536,8 @@ function ContextAssemblyWorkbenchScope({
           {runtimeRunning && (
             <p className="context-note">
               This view remains open until the one bounded result is terminal.
-              Closing it afterward does not retain a result or authorize
-              another attempt.
+              Closing it afterward does not retain a result or authorize another
+              attempt.
             </p>
           )}
           {runtime?.output && <pre>{runtime.output}</pre>}

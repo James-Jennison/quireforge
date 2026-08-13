@@ -2030,6 +2030,24 @@ async fn context_assembly_run_local_runtime(
             deadline_seconds: 60,
         });
     }
+    // Reserve the one shared CPU slot before consuming the durable reviewed
+    // bundle. A concurrent attempt must leave its exact review available
+    // rather than turn it into a failed one-use dispatch.
+    let reservation = match runtime.reserve(&request.bundle_id) {
+        Ok(reservation) => reservation,
+        Err(()) => {
+            return Ok(local_runtime::LocalRuntimeSnapshot {
+                schema_version: 1,
+                local_only: true,
+                state: "failed".into(),
+                output: None,
+                diagnostic: Some("runtime-busy".into()),
+                input_token_limit: 4096,
+                output_token_limit: 512,
+                deadline_seconds: 60,
+            });
+        }
+    };
     if !projects.start_local_runtime_context_bundle(&request.bundle_id) {
         return Ok(local_runtime::LocalRuntimeSnapshot {
             schema_version: 1,
@@ -2066,21 +2084,18 @@ async fn context_assembly_run_local_runtime(
     // Keep the Tauri command executor free while the approved in-process model
     // runs. This leaves the exact-bundle cancellation command responsive; the
     // shared runtime service still enforces M63's one-attempt slot.
-    let runtime = Arc::clone(&runtime);
-    let bundle_id = request.bundle_id.clone();
-    let snapshot =
-        tauri::async_runtime::spawn_blocking(move || runtime.run(&bundle_id, &canonical_bytes))
-            .await
-            .unwrap_or_else(|_| local_runtime::LocalRuntimeSnapshot {
-                schema_version: 1,
-                local_only: true,
-                state: "failed".into(),
-                output: None,
-                diagnostic: Some("runtime-unavailable".into()),
-                input_token_limit: 4096,
-                output_token_limit: 512,
-                deadline_seconds: 60,
-            });
+    let snapshot = tauri::async_runtime::spawn_blocking(move || reservation.run(&canonical_bytes))
+        .await
+        .unwrap_or_else(|_| local_runtime::LocalRuntimeSnapshot {
+            schema_version: 1,
+            local_only: true,
+            state: "failed".into(),
+            output: None,
+            diagnostic: Some("runtime-unavailable".into()),
+            input_token_limit: 4096,
+            output_token_limit: 512,
+            deadline_seconds: 60,
+        });
     let terminal = if snapshot.state == "completed" {
         "closed"
     } else if snapshot.state == "cancelled" {

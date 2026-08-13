@@ -220,16 +220,24 @@ pub(crate) struct LocalRuntimeSnapshot {
 
 #[derive(Default)]
 pub(crate) struct LocalRuntimeService {
-    active: Mutex<Option<ActiveRun>>,
+    active: Arc<Mutex<Option<ActiveRun>>>,
 }
 
-struct ActiveRunGuard<'a> {
-    active: &'a Mutex<Option<ActiveRun>>,
+struct ActiveRunGuard {
+    active: Arc<Mutex<Option<ActiveRun>>>,
 }
 
 struct ActiveRun {
     bundle_id: String,
     control: Arc<RunControl>,
+}
+
+/// An admission held for the exact bundle until its one local attempt returns.
+/// Holding this before durable dispatch ensures a busy runtime cannot consume a
+/// second reviewed bundle merely to reject it.
+pub(crate) struct LocalRuntimeReservation {
+    control: Arc<RunControl>,
+    _active_run: ActiveRunGuard,
 }
 
 /// Temporarily confines model allocation to M63's fixed address-space budget.
@@ -275,7 +283,7 @@ impl Drop for MemoryCeiling {
     }
 }
 
-impl Drop for ActiveRunGuard<'_> {
+impl Drop for ActiveRunGuard {
     fn drop(&mut self) {
         if let Ok(mut active) = self.active.lock() {
             active.take();
@@ -284,11 +292,27 @@ impl Drop for ActiveRunGuard<'_> {
 }
 
 impl LocalRuntimeService {
-    pub(crate) fn run(&self, bundle_id: &str, canonical_bytes: &[u8]) -> LocalRuntimeSnapshot {
-        let Ok((control, _active_run)) = self.claim_slot(bundle_id) else {
-            return failed("runtime-busy");
+    pub(crate) fn reserve(&self, bundle_id: &str) -> Result<LocalRuntimeReservation, ()> {
+        let Ok(mut active) = self.active.lock() else {
+            return Err(());
         };
-        run_once(canonical_bytes, &control)
+        if active.is_some() {
+            return Err(());
+        }
+        let control = Arc::new(RunControl {
+            started: Instant::now(),
+            cancelled: AtomicBool::new(false),
+        });
+        *active = Some(ActiveRun {
+            bundle_id: bundle_id.into(),
+            control: Arc::clone(&control),
+        });
+        Ok(LocalRuntimeReservation {
+            control,
+            _active_run: ActiveRunGuard {
+                active: Arc::clone(&self.active),
+            },
+        })
     }
 
     pub(crate) fn request_cancel(&self, bundle_id: &str) -> bool {
@@ -304,28 +328,11 @@ impl LocalRuntimeService {
         active.control.cancelled.store(true, Ordering::Release);
         true
     }
+}
 
-    fn claim_slot(&self, bundle_id: &str) -> Result<(Arc<RunControl>, ActiveRunGuard<'_>), ()> {
-        let Ok(mut active) = self.active.lock() else {
-            return Err(());
-        };
-        if active.is_some() {
-            return Err(());
-        }
-        let control = Arc::new(RunControl {
-            started: Instant::now(),
-            cancelled: AtomicBool::new(false),
-        });
-        *active = Some(ActiveRun {
-            bundle_id: bundle_id.into(),
-            control: Arc::clone(&control),
-        });
-        Ok((
-            control,
-            ActiveRunGuard {
-                active: &self.active,
-            },
-        ))
+impl LocalRuntimeReservation {
+    pub(crate) fn run(self, canonical_bytes: &[u8]) -> LocalRuntimeSnapshot {
+        run_once(canonical_bytes, &self.control)
     }
 }
 
@@ -598,11 +605,11 @@ mod tests {
     #[test]
     fn local_runtime_rejects_a_second_concurrent_attempt_and_releases_afterward() {
         let runtime = LocalRuntimeService::default();
-        let (_, active) = runtime
-            .claim_slot("bundle-a")
+        let active = runtime
+            .reserve("bundle-a")
             .expect("first attempt claims the slot");
         assert!(
-            runtime.claim_slot("bundle-b").is_err(),
+            runtime.reserve("bundle-b").is_err(),
             "second attempt is rejected"
         );
         assert!(
@@ -615,7 +622,7 @@ mod tests {
         );
         drop(active);
         assert!(
-            runtime.claim_slot("bundle-c").is_ok(),
+            runtime.reserve("bundle-c").is_ok(),
             "terminal attempt releases the slot"
         );
     }

@@ -156,6 +156,8 @@ only by the supervisor-owned runtime environment. The operator must:
 - verify the visible result reports one CPU-only local-only attempt with the
   fixed input/output/deadline limits, or reports a bounded failure without a
   retry;
+- if another local attempt is active, verify this review remains available and
+  reports the bounded busy failure without consuming its reviewed bundle;
 - while an attempt is pending, verify **Request cancellation** affects only
   that reviewed bundle and resolves as `cancelled` without retry; and
 - close the review and relaunch the application, confirming that no result or
