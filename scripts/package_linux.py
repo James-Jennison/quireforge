@@ -153,7 +153,19 @@ def finalize(output_dir: Path, version: str) -> int:
     if candidate_manifest["version"] != version:
         raise RuntimeError("validated candidate version is incoherent")
     archive_root = output_dir.parent / "archive"
-    existing = [path for path in output_dir.iterdir() if path != candidate]
+    entries = list(output_dir.iterdir())
+    stale_candidates = [
+        path
+        for path in entries
+        if path.name.startswith(".candidate-") and path != candidate
+    ]
+    if any(not path.is_dir() or path.is_symlink() for path in stale_candidates):
+        raise RuntimeError("refusing non-directory staged release entry")
+    existing = [
+        path
+        for path in entries
+        if path != candidate and path not in stale_candidates
+    ]
     prior_archive: Path | None = None
     if existing:
         if any(not path.is_file() for path in existing):

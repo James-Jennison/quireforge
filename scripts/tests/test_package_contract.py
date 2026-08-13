@@ -69,6 +69,23 @@ class PackageContractTests(unittest.TestCase):
             self.assertTrue((archived / "release-manifest.json").is_file())
             self.assertTrue((output / "quireforge_0.1.0.beta.51_amd64.deb").is_file())
 
+    def test_finalizer_ignores_a_stale_staged_candidate_when_promoting(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "packages"
+            output.mkdir()
+            self.write_release_set(output, "48")
+            stale = staging_dir(output, "0.1.0-beta.50")
+            stale.mkdir()
+            self.write_release_set(stale, "50")
+            candidate = staging_dir(output, "0.1.0-beta.51")
+            candidate.mkdir()
+            self.write_release_set(candidate, "51")
+
+            self.assertEqual(finalize(output, "0.1.0-beta.51"), 0)
+
+            self.assertTrue((stale / "release-manifest.json").is_file())
+            self.assertTrue((output / "quireforge_0.1.0.beta.51_amd64.deb").is_file())
+
     def test_finalizer_accepts_beta_48_checksum_order_and_preserves_it_verbatim(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary) / "packages"
