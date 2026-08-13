@@ -1576,16 +1576,17 @@ vendors a verified, static, CPU-only llama.cpp source boundary for the one
 approved Qwen2.5-3B descriptor. The beta.64 local candidate binds one confirmed
 reviewed M60 bundle to one in-process attempt with fixed input, output,
 deadline, cancellation, and open-view-only result limits. The fresh clean-tree
-beta.65 package pair from source commit
-`6f77d0c4d73cefe5ed335898830872ca63ad203a` passes the pinned package,
+beta.66 package pair from source commit
+`822b6703968f4cea95ce4828f130739bc56e8a01` passes the pinned package,
 lifecycle, visible-launch, and release-artifact gates; focused native, UI, and
-loopback-only browser-fixture coverage also passes. It includes no model
-artifact, acquisition, provider, credential, network, public runtime route,
-package publication, release, or deployment authority. The governed review
-preflights a typed, content-free local-runtime availability state so an absent
-supervisor-provided model contract cannot consume its one-use authorization.
-End-to-end installed-host local-model execution and desktop acceptance remain
-required before a release-ready claim.
+loopback-only browser-fixture coverage also passes. It excludes the model and
+did not start the runtime. It includes no model artifact, acquisition,
+provider, credential, network, public runtime route, package publication,
+release, or deployment authority. The governed review preflights a typed,
+content-free local-runtime availability state so an absent supervisor-provided
+model contract cannot consume its one-use authorization. End-to-end
+installed-host local-model execution and desktop acceptance remain required
+before a release-ready claim.
 
 **First implementation milestone source-complete:** [Provider Capability
 Registry Contracts](MILESTONE_PROVIDER_CAPABILITY_REGISTRY_CONTRACTS.md)

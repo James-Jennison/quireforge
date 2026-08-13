@@ -98,8 +98,11 @@ workbench tests, repository validation, package-boundary tests, TypeScript
 checks, lint, formatting, and the local desktop/mobile browser fixture passed
 on 2026-08-12. The browser fixture covers one visible local-only attempt and
 its exact-bundle cancellation using deterministic local fixtures; it neither
-loads the model nor supplies installed-host acceptance. Package and
-installed-host local-model evidence remain pending.
+loads the model nor supplies installed-host acceptance. The clean-tree beta.66
+Debian pair from source commit `822b6703968f4cea95ce4828f130739bc56e8a01`
+then passed the authoritative pinned Ubuntu 22.04 package, lifecycle,
+visible-launch, and release-artifact gates. That gate excluded the model and
+did not start the runtime. Installed-host local-model evidence remains pending.
 
 The candidate procedure is recorded in
 [Testing](TESTING.md#m63-local-runtime-installed-host-acceptance). It requires

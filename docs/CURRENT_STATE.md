@@ -156,11 +156,13 @@ The model remains outside the repository and un-packaged. The clean
 validation; its local-only adapter consumes one confirmed reviewed bundle once
 and retains a bounded result only in the open local view. A clean-tree
 `0.1.0-beta.65` Debian pair remains prior package evidence from source commit
-`6f77d0c4d73cefe5ed335898830872ca63ad203a`. The current M63 preparation,
-authorization, concurrent-admission, and runtime-availability corrections
-require the uniquely versioned `0.1.0-beta.66` candidate before installed-host
-local-model execution and desktop acceptance can support any release-ready
-claim.
+`6f77d0c4d73cefe5ed335898830872ca63ad203a`. The clean-tree
+`0.1.0-beta.66` Debian pair from source commit
+`822b6703968f4cea95ce4828f130739bc56e8a01` passed the authoritative pinned
+Ubuntu 22.04 package, lifecycle, visible-launch, and release-artifact gates.
+It excludes the model and did not start the runtime. Installed-host
+local-model execution and desktop acceptance remain required before any
+release-ready claim.
 
 M54 Local Review is complete at package/source commit
 `c4c2752466f36f791fde47edbc5c6b02b0e21320`, tagged
