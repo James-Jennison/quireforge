@@ -93,6 +93,14 @@ corrections require the uniquely versioned `0.1.0-beta.66` candidate before
 installed-host acceptance. Beta.65 remains immutable prior evidence and must
 not be overwritten.
 
+At the beta.66 source candidate, focused native adapter/lifecycle and governed
+workbench tests, repository validation, package-boundary tests, TypeScript
+checks, lint, formatting, and the local desktop/mobile browser fixture passed
+on 2026-08-12. The browser fixture covers one visible local-only attempt and
+its exact-bundle cancellation using deterministic local fixtures; it neither
+loads the model nor supplies installed-host acceptance. Package and
+installed-host local-model evidence remain pending.
+
 The candidate procedure is recorded in
 [Testing](TESTING.md#m63-local-runtime-installed-host-acceptance). It requires
 the installed-host operator to retain only content-free package and lifecycle
