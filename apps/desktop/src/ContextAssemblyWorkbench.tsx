@@ -164,6 +164,11 @@ function ContextAssemblyWorkbenchScope({
     snapshot.bundleId &&
     snapshot.authorizationId &&
     snapshot.bundleDigest;
+  // A busy response is a local admission rejection, not an attempt: native
+  // leaves this exact reviewed bundle awaiting confirmation. Keep that fact
+  // visible and let the user explicitly try again after the active CPU slot is
+  // free; never schedule or imply an automatic retry.
+  const runtimeBusy = runtime?.diagnostic === "runtime-busy";
   const invalidatePreparedBundle = () => {
     setSnapshot(null);
     setRuntime(null);
@@ -172,7 +177,10 @@ function ContextAssemblyWorkbenchScope({
     setNotice("Selection changed. Prepare a new local-only review.");
   };
   const canModifyPreparedBundle =
-    !runtimeRunning && runtime === null && Boolean(snapshot?.bundleId) && !busy;
+    !runtimeRunning &&
+    (runtime === null || runtimeBusy) &&
+    Boolean(snapshot?.bundleId) &&
+    !busy;
   return (
     <section
       className="context-assembly-workbench"
@@ -390,7 +398,12 @@ function ContextAssemblyWorkbenchScope({
           Prepare review
         </button>
         <button
-          disabled={!canConfirm || busy || runtime !== null}
+          disabled={
+            !canConfirm ||
+            busy ||
+            runtimeRunning ||
+            (runtime !== null && !runtimeBusy)
+          }
           onClick={() => {
             const actionProjectId = projectId;
             setRuntime(null);
@@ -545,6 +558,13 @@ function ContextAssemblyWorkbenchScope({
           {runtime?.output && <pre>{runtime.output}</pre>}
           {runtime?.diagnostic && (
             <p role="status">Local runtime: {runtime.diagnostic}.</p>
+          )}
+          {runtimeBusy && (
+            <p className="context-note">
+              No local attempt started because another one is active. This exact
+              reviewed bundle remains available; run it manually after that
+              attempt finishes.
+            </p>
           )}
         </section>
       )}
