@@ -167,6 +167,8 @@ generated output. The clean-tree `0.1.0-beta.67` Debian pair from source commit
 `8f604e3b98394b8ba8d5170c82818f357d5d5a11` subsequently passed the
 authoritative pinned Ubuntu 22.04 package, lifecycle, visible-launch, and
 release-artifact gates. It excludes the model and did not start the runtime.
+The repeated clean-source beta.67 package gate on 2026-08-13 reproduced those
+results, again excluding the model and never starting the runtime.
 Installed Debian desktop acceptance of the explicit governed review flow
 remains required before any release-ready claim.
 

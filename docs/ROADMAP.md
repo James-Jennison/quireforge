@@ -1593,7 +1593,10 @@ The clean-tree beta.67 Debian pair from source commit
 `8f604e3b98394b8ba8d5170c82818f357d5d5a11` passes the authoritative pinned
 Ubuntu 22.04 package, lifecycle, visible-launch, and release-artifact gates;
 it excludes the model and did not start the runtime. Installed-host
-governed-review desktop acceptance remains pending.
+governed-review desktop acceptance remains pending. A repeated clean-source
+beta.67 package gate on 2026-08-13 reproduced the same package/lifecycle/
+visible-launch/release-artifact result while again excluding the model and
+never starting the runtime.
 
 **First implementation milestone source-complete:** [Provider Capability
 Registry Contracts](MILESTONE_PROVIDER_CAPABILITY_REGISTRY_CONTRACTS.md)

@@ -111,7 +111,10 @@ versioned beta.67 source candidate at
 `8f604e3b98394b8ba8d5170c82818f357d5d5a11` subsequently passed the
 authoritative pinned Ubuntu 22.04 package, lifecycle, visible-launch, and
 release-artifact gates. That gate excluded the model and did not start the
-runtime. The explicit installed-host governed-review workflow remains pending.
+runtime. A repeated clean-source package gate on 2026-08-13 reproduced those
+package, lifecycle, visible-launch, and release-artifact results for beta.67;
+it also excluded the model and did not start the runtime. The explicit
+installed-host governed-review workflow remains pending.
 
 The candidate procedure is recorded in
 [Testing](TESTING.md#m63-local-runtime-installed-host-acceptance). It requires
