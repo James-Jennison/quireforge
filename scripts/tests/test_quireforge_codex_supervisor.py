@@ -85,7 +85,7 @@ class SupervisorCompletionStateTests(unittest.TestCase):
         service = SERVICE_UNIT.read_text(encoding="utf-8")
 
         self.assertIn(
-            "Environment=PATH=%h/.local/bin:%h/.cargo/bin:/usr/local/bin:/usr/bin:/bin",
+            "Environment=PATH=%h/.local/bin:%h/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
             service,
         )
 

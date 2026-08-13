@@ -9,7 +9,7 @@ Environment=QUIRE_FORGE_SUPERVISOR_STATE_DIR=%h/.local/state/quireforge-codex-su
 Environment=QUIRE_FORGE_SUPERVISOR_INTERVAL_SECONDS=60
 Environment=QUIRE_FORGE_SUPERVISOR_MAX_TASKS_PER_LAUNCH=3
 Environment=QUIRE_FORGE_M63_MODEL_PATH=%h/.local/share/quireforge/models/qwen2.5-3b-instruct-q4_k_m.gguf
-Environment=PATH=%h/.local/bin:%h/.cargo/bin:/usr/local/bin:/usr/bin:/bin
+Environment=PATH=%h/.local/bin:%h/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 ExecStart=/mnt/faststorage/quireforge/scripts/quireforge-codex-supervisor.sh
 Restart=on-failure
 RestartSec=10s
