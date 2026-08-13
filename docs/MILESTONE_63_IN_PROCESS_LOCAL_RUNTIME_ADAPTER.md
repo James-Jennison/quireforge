@@ -155,8 +155,11 @@ promotion and installed-host acceptance remain pending.
 The beta.73 candidate recovers an acknowledged review when native revalidation
 finds the local model unavailable after a successful availability preflight. It
 reports that no attempt started, preserves the exact review, and requires an
-explicit recheck before a later manual run. Package promotion and installed-host
-acceptance remain pending.
+explicit recheck before a later manual run. Its governed desktop fixture now
+proves that recovery path end to end: the failed revalidation leaves the action
+disabled while cancel/revoke remain available, the explicit recheck preserves
+the acknowledged review, and only the later separate manual action completes.
+Package promotion and installed-host acceptance remain pending.
 
 The candidate procedure is recorded in
 [Testing](TESTING.md#m63-local-runtime-installed-host-acceptance). It requires
