@@ -1597,6 +1597,10 @@ governed-review desktop acceptance remains pending. A repeated clean-source
 beta.67 package gate on 2026-08-13 reproduced the same package/lifecycle/
 visible-launch/release-artifact result while again excluding the model and
 never starting the runtime.
+The beta.68 candidate extends the governed-review browser fixture through an
+application reload, proving that a completed local result is not restored
+outside its open view. Its package and installed Debian desktop acceptance
+remain pending.
 
 **First implementation milestone source-complete:** [Provider Capability
 Registry Contracts](MILESTONE_PROVIDER_CAPABILITY_REGISTRY_CONTRACTS.md)

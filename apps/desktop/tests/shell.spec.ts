@@ -1426,6 +1426,11 @@ test("governed context review runs one visible local-only model attempt", async 
     .getByRole("button", { name: "Close", exact: true })
     .click();
   await expect(result).toHaveCount(0);
+  // M63 results are intentionally open-view-only. Reloading is the browser
+  // fixture's application-relaunch boundary: it must not restore output or a
+  // completed local attempt from the previous view.
+  await page.reload();
+  await openWorkspace(page, "New task");
   await workflow
     .getByRole("button", { name: "Governed context review" })
     .click();

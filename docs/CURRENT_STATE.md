@@ -172,6 +172,11 @@ results, again excluding the model and never starting the runtime.
 Installed Debian desktop acceptance of the explicit governed review flow
 remains required before any release-ready claim.
 
+The beta.68 M63 candidate extends the governed-review browser fixture through
+an application reload, proving that an open-view-only completed result is not
+restored after relaunch. Package and installed Debian desktop acceptance remain
+pending; the model stays external and is never started by package gates.
+
 M54 Local Review is complete at package/source commit
 `c4c2752466f36f791fde47edbc5c6b02b0e21320`, tagged
 `v0.1.0-beta.53`. Its beta.53 Debian pair passed pinned-container package,

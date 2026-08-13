@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.0-beta.68 — M63 relaunch-privacy acceptance candidate
+
+- Extends the governed-review browser fixture through an application reload,
+  proving a completed local-only result is not restored after the open view
+  closes and the desktop application relaunches.
+- Retains the fixed CPU-only local model limits and governed review flow; the
+  model remains external to the package and is never started by package gates.
+- Package, installed Debian desktop, and explicit governed-review acceptance
+  evidence remain pending for beta.68.
+
 ## 0.1.0-beta.67 — M63 governed-review acceptance candidate
 
 - Reissues the credential-free M63 local candidate from the source state that

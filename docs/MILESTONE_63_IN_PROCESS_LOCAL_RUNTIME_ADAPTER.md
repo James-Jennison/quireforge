@@ -116,6 +116,12 @@ package, lifecycle, visible-launch, and release-artifact results for beta.67;
 it also excluded the model and did not start the runtime. The explicit
 installed-host governed-review workflow remains pending.
 
+The beta.68 candidate extends the governed-review browser fixture through an
+application reload after a completed attempt. It proves that the completed
+open-view-only result is absent after relaunch, without observing model input
+or output outside that view. Its package and installed-host acceptance evidence
+remain pending.
+
 The candidate procedure is recorded in
 [Testing](TESTING.md#m63-local-runtime-installed-host-acceptance). It requires
 the installed-host operator to retain only content-free package and lifecycle
