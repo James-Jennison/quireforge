@@ -65,6 +65,9 @@ class SupervisorCompletionStateTests(unittest.TestCase):
         self.assertIn("do not invoke `validate_release_artifacts.py --smoke` directly on the host", script)
         self.assertIn("Resolve a focused Cargo package selector", script)
         self.assertIn("currently unresolved required validation failure", script)
+        self.assertIn("Package promotion requires a clean source tree", script)
+        self.assertIn("do not run the finalizer", script)
+        self.assertIn("Run no broad or unrelated test suite", script)
 
     def test_supervisor_stops_at_a_bounded_task_budget_checkpoint_by_default(self) -> None:
         script = SUPERVISOR.read_text(encoding="utf-8")
