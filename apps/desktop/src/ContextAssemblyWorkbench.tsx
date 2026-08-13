@@ -185,7 +185,12 @@ function ContextAssemblyWorkbenchScope({
           <p className="eyebrow">Credential-free local runtime</p>
           <h2 id={title}>Governed context review</h2>
         </div>
-        <button ref={close} type="button" onClick={onClose}>
+        <button
+          ref={close}
+          type="button"
+          disabled={runtimeRunning}
+          onClick={onClose}
+        >
           Close
         </button>
       </header>
@@ -530,8 +535,9 @@ function ContextAssemblyWorkbenchScope({
           </p>
           {runtimeRunning && (
             <p className="context-note">
-              This view is waiting for the one bounded result. Closing it does
-              not authorize another attempt or retain a result.
+              This view remains open until the one bounded result is terminal.
+              Closing it afterward does not retain a result or authorize
+              another attempt.
             </p>
           )}
           {runtime?.output && <pre>{runtime.output}</pre>}

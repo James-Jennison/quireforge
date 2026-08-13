@@ -1497,11 +1497,21 @@ test("governed context review cancels only its pending local-only attempt", asyn
     .click();
   const result = page.getByLabel("Local runtime result");
   await expect(result).toContainText("Local-only attempt: running");
+  await expect(
+    page
+      .getByRole("dialog", { name: "Governed context review" })
+      .getByRole("button", { name: "Close", exact: true }),
+  ).toBeDisabled();
   await page.getByRole("button", { name: "Request cancellation" }).click();
   await expect(result).toContainText("Local-only attempt: cancelled");
   await expect(result).toContainText("Local runtime: cancelled.");
   await expect(page.getByRole("button", { name: "Cancel" })).toBeDisabled();
   await expect(page.getByRole("button", { name: "Revoke" })).toBeDisabled();
+  await expect(
+    page
+      .getByRole("dialog", { name: "Governed context review" })
+      .getByRole("button", { name: "Close", exact: true }),
+  ).toBeEnabled();
 });
 
 test("mock inference clears a prepared review when its bound input changes", async ({
