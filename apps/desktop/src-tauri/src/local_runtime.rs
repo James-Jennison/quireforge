@@ -677,4 +677,34 @@ mod tests {
             "terminal attempt releases the slot"
         );
     }
+
+    /// This is deliberately opt-in: it loads the supervisor-provided,
+    /// read-only model through the same in-process adapter used by the Tauri
+    /// command. It records no model location or generated output in the test
+    /// result, while giving the local candidate a repeatable real-adapter
+    /// acceptance gate before the separately required installed-host review.
+    #[test]
+    #[ignore = "requires the supervisor-provided M63 local model"]
+    fn approved_model_completes_one_bounded_local_attempt() {
+        let runtime = LocalRuntimeService::default();
+        assert!(
+            runtime.availability().available,
+            "the approved local model contract must be available"
+        );
+        let reservation = runtime
+            .reserve("m63-focused-adapter-acceptance")
+            .expect("the focused attempt claims the only runtime slot");
+        let snapshot = reservation.run(b"Provide a concise offline readiness confirmation.");
+
+        assert_eq!(snapshot.state, "completed");
+        assert!(snapshot.local_only);
+        assert_eq!(snapshot.diagnostic, None);
+        assert!(snapshot
+            .output
+            .is_some_and(|output| output.len() <= 16 * 1024));
+        assert_eq!(snapshot.input_token_limit, 4096);
+        assert_eq!(snapshot.output_token_limit, 512);
+        assert_eq!(snapshot.deadline_seconds, 60);
+        assert_eq!(snapshot.memory_ceiling_mib, 6144);
+    }
 }

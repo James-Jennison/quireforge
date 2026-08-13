@@ -173,6 +173,15 @@ The browser acceptance fixture for the same visible workflow is:
 pnpm test:e2e
 ```
 
+For an explicit, supervisor-owned local-model adapter check before that
+installed-host workflow, run the focused ignored Rust test. It exercises one
+bounded in-process attempt and asserts only its local-only terminal contract;
+it never prints or retains the model location or generated output:
+
+```bash
+cargo test --locked -p quireforge local_runtime::tests::approved_model_completes_one_bounded_local_attempt -- --ignored --exact
+```
+
 This is local candidate evidence only. It does not authorize package
 publication, model packaging, credentials, network access, or a release-ready
 claim.
