@@ -163,10 +163,12 @@ Ubuntu 22.04 package, lifecycle, visible-launch, and release-artifact gates.
 It excludes the model and did not start the runtime. The focused host-native
 adapter gate subsequently completed one bounded local-only attempt through the
 supervisor-owned read-only model contract, retaining no model location or
-generated output. The next uniquely versioned beta.67 candidate carries that
-real-adapter evidence forward; its authoritative package/lifecycle/visible-
-launch gate and installed Debian desktop acceptance of the explicit governed
-review flow remain required before any release-ready claim.
+generated output. The clean-tree `0.1.0-beta.67` Debian pair from source commit
+`8f604e3b98394b8ba8d5170c82818f357d5d5a11` subsequently passed the
+authoritative pinned Ubuntu 22.04 package, lifecycle, visible-launch, and
+release-artifact gates. It excludes the model and did not start the runtime.
+Installed Debian desktop acceptance of the explicit governed review flow
+remains required before any release-ready claim.
 
 M54 Local Review is complete at package/source commit
 `c4c2752466f36f791fde47edbc5c6b02b0e21320`, tagged

@@ -107,9 +107,11 @@ completed one bounded in-process attempt through the supervisor-owned,
 read-only local-model contract. It retained no model location or generated
 output and verified only the local-only bounded terminal contract. This is
 real-adapter evidence, not installed Debian desktop acceptance. The uniquely
-versioned beta.67 source candidate carries that evidence forward for a fresh
-authoritative package/lifecycle/visible-launch gate followed by the explicit
-installed-host governed-review workflow; both remain pending.
+versioned beta.67 source candidate at
+`8f604e3b98394b8ba8d5170c82818f357d5d5a11` subsequently passed the
+authoritative pinned Ubuntu 22.04 package, lifecycle, visible-launch, and
+release-artifact gates. That gate excluded the model and did not start the
+runtime. The explicit installed-host governed-review workflow remains pending.
 
 The candidate procedure is recorded in
 [Testing](TESTING.md#m63-local-runtime-installed-host-acceptance). It requires

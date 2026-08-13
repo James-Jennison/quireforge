@@ -1589,9 +1589,11 @@ installed Debian desktop acceptance remains required before a release-ready
 claim. The focused host-native adapter gate has completed one bounded
 local-only attempt without retaining a model location or generated output; it
 is real-adapter evidence only, not the required governed-review desktop flow.
-The uniquely versioned beta.67 source candidate carries that evidence forward;
-its fresh package/lifecycle/visible-launch and installed-host gates remain
-pending.
+The clean-tree beta.67 Debian pair from source commit
+`8f604e3b98394b8ba8d5170c82818f357d5d5a11` passes the authoritative pinned
+Ubuntu 22.04 package, lifecycle, visible-launch, and release-artifact gates;
+it excludes the model and did not start the runtime. Installed-host
+governed-review desktop acceptance remains pending.
 
 **First implementation milestone source-complete:** [Provider Capability
 Registry Contracts](MILESTONE_PROVIDER_CAPABILITY_REGISTRY_CONTRACTS.md)
