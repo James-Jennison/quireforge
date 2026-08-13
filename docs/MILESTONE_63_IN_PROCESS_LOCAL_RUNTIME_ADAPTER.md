@@ -28,10 +28,11 @@ remain required before any release-ready claim.
 
 Before an acknowledged review can consume its one local attempt, the governed
 view obtains a typed, content-free availability snapshot from the native
-adapter. A missing supervisor-provided local-model contract leaves the exact
-review unconsumed, disables the one-time action, and reports only
-`model-unavailable`; it exposes no path or model observation. This preflight
-does not load or otherwise inspect the model.
+adapter, and the native run command enforces the same check before reservation
+or durable consumption. A missing supervisor-provided local-model contract
+leaves the exact review unconsumed, disables the one-time action, and reports
+only `model-unavailable`; it exposes no path or model observation. This
+preflight does not load or otherwise inspect the model.
 
 Each attempt applies the fixed 6 GiB process address-space ceiling before model
 loading and restores the prior soft limit as the attempt exits. If the ceiling

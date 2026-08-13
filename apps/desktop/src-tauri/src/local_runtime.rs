@@ -317,6 +317,13 @@ impl LocalRuntimeService {
         }
     }
 
+    /// Returns the bounded outcome used when the required supervisor-owned
+    /// runtime input is unavailable. Callers must return this before reserving
+    /// or consuming a reviewed bundle.
+    pub(crate) fn unavailable_snapshot() -> LocalRuntimeSnapshot {
+        failed("model-unavailable")
+    }
+
     pub(crate) fn reserve(&self, bundle_id: &str) -> Result<LocalRuntimeReservation, ()> {
         let Ok(mut active) = self.active.lock() else {
             return Err(());
@@ -367,13 +374,13 @@ impl LocalRuntimeReservation {
 
 fn run_once(canonical_bytes: &[u8], control: &RunControl) -> LocalRuntimeSnapshot {
     let Ok(model_path) = std::env::var(MODEL_PATH_ENV) else {
-        return failed("model-unavailable");
+        return LocalRuntimeService::unavailable_snapshot();
     };
     if model_path.is_empty() || model_path.as_bytes().contains(&0) {
-        return failed("model-unavailable");
+        return LocalRuntimeService::unavailable_snapshot();
     }
     let Ok(path) = CString::new(model_path) else {
-        return failed("model-unavailable");
+        return LocalRuntimeService::unavailable_snapshot();
     };
     let Ok(_memory_ceiling) = MemoryCeiling::apply() else {
         return failed("memory-ceiling-unavailable");
@@ -401,7 +408,7 @@ fn run_once(canonical_bytes: &[u8], control: &RunControl) -> LocalRuntimeSnapsho
             return if attempt_stopped((control as *const RunControl).cast_mut().cast()) {
                 stopped(control)
             } else {
-                failed("model-unavailable")
+                LocalRuntimeService::unavailable_snapshot()
             };
         }
         let prompt = match format_reviewed_chat_prompt(model, &system_prompt, &reviewed_request) {
@@ -641,6 +648,9 @@ mod tests {
         assert!(!model_contract_available(Err(
             std::env::VarError::NotPresent
         )));
+        let unavailable = LocalRuntimeService::unavailable_snapshot();
+        assert_eq!(unavailable.state, "failed");
+        assert_eq!(unavailable.diagnostic.as_deref(), Some("model-unavailable"));
     }
 
     #[test]

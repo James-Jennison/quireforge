@@ -2039,6 +2039,13 @@ async fn context_assembly_run_local_runtime(
             memory_ceiling_mib: 6144,
         });
     }
+    // The browser view preflights this content-free state too, but the native
+    // command remains authoritative: an unavailable supervisor-owned model
+    // must leave this exact one-use review untouched even if the command is
+    // invoked without the view.
+    if !runtime.availability().available {
+        return Ok(local_runtime::LocalRuntimeService::unavailable_snapshot());
+    }
     // Reserve the one shared CPU slot before consuming the durable reviewed
     // bundle. A concurrent attempt must leave its exact review available
     // rather than turn it into a failed one-use dispatch.
