@@ -119,8 +119,11 @@ installed-host governed-review workflow remains pending.
 The beta.68 candidate extends the governed-review browser fixture through an
 application reload after a completed attempt. It proves that the completed
 open-view-only result is absent after relaunch, without observing model input
-or output outside that view. Its package and installed-host acceptance evidence
-remain pending.
+or output outside that view. Its clean-tree Debian pair from source commit
+`5c4ca198f94553dd760f20734f765c8abb5a488e` passed the authoritative pinned
+Ubuntu 22.04 package, lifecycle, visible-launch, and release-artifact gates.
+That gate excluded the model and did not start the runtime. Installed-host
+acceptance remains pending.
 
 The candidate procedure is recorded in
 [Testing](TESTING.md#m63-local-runtime-installed-host-acceptance). It requires

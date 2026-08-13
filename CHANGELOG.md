@@ -7,8 +7,11 @@
   closes and the desktop application relaunches.
 - Retains the fixed CPU-only local model limits and governed review flow; the
   model remains external to the package and is never started by package gates.
-- Package, installed Debian desktop, and explicit governed-review acceptance
-  evidence remain pending for beta.68.
+- The clean-tree beta.68 Debian pair from source commit
+  `5c4ca198f94553dd760f20734f765c8abb5a488e` passed the authoritative pinned
+  Ubuntu 22.04 package, lifecycle, visible-launch, and release-artifact gates.
+  It excludes the model and does not start the runtime; installed Debian
+  desktop governed-review acceptance remains pending.
 
 ## 0.1.0-beta.67 — M63 governed-review acceptance candidate
 

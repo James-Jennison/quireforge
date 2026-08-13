@@ -174,8 +174,11 @@ remains required before any release-ready claim.
 
 The beta.68 M63 candidate extends the governed-review browser fixture through
 an application reload, proving that an open-view-only completed result is not
-restored after relaunch. Package and installed Debian desktop acceptance remain
-pending; the model stays external and is never started by package gates.
+restored after relaunch. Its clean-tree Debian pair from source commit
+`5c4ca198f94553dd760f20734f765c8abb5a488e` passed the authoritative pinned
+Ubuntu 22.04 package, lifecycle, visible-launch, and release-artifact gates;
+the model stays external and is never started by package gates. Installed
+Debian desktop acceptance remains pending.
 
 M54 Local Review is complete at package/source commit
 `c4c2752466f36f791fde47edbc5c6b02b0e21320`, tagged

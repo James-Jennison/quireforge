@@ -1599,8 +1599,11 @@ visible-launch/release-artifact result while again excluding the model and
 never starting the runtime.
 The beta.68 candidate extends the governed-review browser fixture through an
 application reload, proving that a completed local result is not restored
-outside its open view. Its package and installed Debian desktop acceptance
-remain pending.
+outside its open view. Its clean-tree Debian pair from source commit
+`5c4ca198f94553dd760f20734f765c8abb5a488e` passed the authoritative pinned
+Ubuntu 22.04 package, lifecycle, visible-launch, and release-artifact gates;
+it excluded the model and did not start the runtime. Installed Debian desktop
+acceptance remains pending.
 
 **First implementation milestone source-complete:** [Provider Capability
 Registry Contracts](MILESTONE_PROVIDER_CAPABILITY_REGISTRY_CONTRACTS.md)
