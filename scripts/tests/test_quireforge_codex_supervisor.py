@@ -63,6 +63,8 @@ class SupervisorCompletionStateTests(unittest.TestCase):
         self.assertIn("cargo metadata --locked --no-deps --format-version 1", script)
         self.assertIn("./scripts/run_linux_package_container.sh", script)
         self.assertIn("do not invoke `validate_release_artifacts.py --smoke` directly on the host", script)
+        self.assertIn("Resolve a focused Cargo package selector", script)
+        self.assertIn("currently unresolved required validation failure", script)
 
     def test_supervisor_stops_at_a_bounded_task_budget_checkpoint_by_default(self) -> None:
         script = SUPERVISOR.read_text(encoding="utf-8")
