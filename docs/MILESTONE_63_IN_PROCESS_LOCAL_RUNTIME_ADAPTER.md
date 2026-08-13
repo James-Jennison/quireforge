@@ -68,15 +68,14 @@ or oversized template result is a bounded local failure and never falls back to
 an ad-hoc prompt format. This remains local candidate evidence only;
 installed-host acceptance is still required.
 
-The clean-tree `0.1.0-beta.65` package pair at source commit
-`a9a4f219433b57503e84c254548403f6a8fc42d5` is a release-candidate manifest
-with exactly the application and sandbox Debian artifacts and passed the
-release-artifact validator. It captures the earlier preparation/cancellation
-correction, excludes the model, and did not start the runtime. The subsequent
-authorization-lifecycle correction is covered by focused native, workbench,
-and loopback-only browser-fixture tests, but is not represented by that package
-pair. It therefore requires a fresh package candidate before installed-host M63
-execution/desktop acceptance can support a release-ready claim.
+The fresh clean-tree `0.1.0-beta.65` package pair at source commit
+`6f77d0c4d73cefe5ed335898830872ca63ad203a` is a release-candidate manifest
+with exactly the application and sandbox Debian artifacts. It passed the pinned
+Ubuntu 22.04 package, lifecycle, visible-launch, and release-artifact gates;
+it excludes the model and did not start the runtime. Focused native, workbench,
+and loopback-only browser-fixture tests cover the authorization-lifecycle
+correction. Installed-host M63 execution and desktop acceptance remain required
+before a release-ready claim.
 
 The candidate procedure is recorded in
 [Testing](TESTING.md#m63-local-runtime-installed-host-acceptance). It requires

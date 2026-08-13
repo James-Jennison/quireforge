@@ -5,9 +5,10 @@
 - Restores M63 preparation for an explicit instruction without an optional
   durable source, keeps cancellation responsive during the CPU-bound attempt,
   and presents the governed review as a contained local workbench.
-- The clean beta.65 Debian candidate is package-validated only; the later
-  authorization-lifecycle correction requires a fresh candidate and installed-
-  host local-model acceptance before any release-ready claim.
+- The fresh clean-tree beta.65 Debian candidate at source commit
+  `6f77d0c4d73cefe5ed335898830872ca63ad203a` passed the pinned Ubuntu 22.04
+  package, lifecycle, and visible-launch gates. Installed-host local-model
+  acceptance remains required before any release-ready claim.
 
 ## 0.1.0-beta.64 — In-process local runtime candidate
 

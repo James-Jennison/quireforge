@@ -155,12 +155,12 @@ The model remains outside the repository and un-packaged. The clean
 `0.1.0-beta.64` Ubuntu candidate passed package/lifecycle/visible-launch
 validation; its local-only adapter consumes one confirmed reviewed bundle once
 and retains a bounded result only in the open local view. A clean-tree
-`0.1.0-beta.65` Debian pair was subsequently produced for the local-runtime
-acceptance correction and passes the release-artifact validator, but its source
-predates the current authorization-lifecycle correction. The correction has
-focused native, UI, and loopback-only browser-fixture coverage, yet still needs
-a fresh package candidate and installed-host local-model execution before any
-release-ready claim.
+`0.1.0-beta.65` Debian pair was subsequently reproduced from the clean current
+source commit `6f77d0c4d73cefe5ed335898830872ca63ad203a` and passed the pinned
+Ubuntu 22.04 package, lifecycle, visible-launch, and release-artifact gates.
+The correction also has focused native, UI, and loopback-only browser-fixture
+coverage. Installed-host local-model execution and desktop acceptance still
+remain required before any release-ready claim.
 
 M54 Local Review is complete at package/source commit
 `c4c2752466f36f791fde47edbc5c6b02b0e21320`, tagged
