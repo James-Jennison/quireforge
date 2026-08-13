@@ -4,7 +4,10 @@
 
 - Carries forward the completed M63 preparation, authorization, concurrent
   admission, and runtime-availability corrections in a uniquely versioned
-  candidate. Package and installed-host acceptance evidence remains pending.
+  candidate. The focused host-native adapter gate has completed one bounded
+  local-only attempt without retaining model-location or generated-output
+  data. Package and installed Debian desktop acceptance evidence remains
+  pending.
 
 ## 0.1.0-beta.65 — Local-runtime acceptance correction
 

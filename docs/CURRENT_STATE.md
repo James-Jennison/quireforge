@@ -160,9 +160,11 @@ and retains a bounded result only in the open local view. A clean-tree
 `0.1.0-beta.66` Debian pair from source commit
 `822b6703968f4cea95ce4828f130739bc56e8a01` passed the authoritative pinned
 Ubuntu 22.04 package, lifecycle, visible-launch, and release-artifact gates.
-It excludes the model and did not start the runtime. Installed-host
-local-model execution and desktop acceptance remain required before any
-release-ready claim.
+It excludes the model and did not start the runtime. The focused host-native
+adapter gate subsequently completed one bounded local-only attempt through the
+supervisor-owned read-only model contract, retaining no model location or
+generated output. Installed Debian desktop acceptance of the explicit governed
+review flow remains required before any release-ready claim.
 
 M54 Local Review is complete at package/source commit
 `c4c2752466f36f791fde47edbc5c6b02b0e21320`, tagged

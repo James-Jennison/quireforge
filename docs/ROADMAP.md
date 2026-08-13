@@ -1585,8 +1585,10 @@ provider, credential, network, public runtime route, package publication,
 release, or deployment authority. The governed review preflights a typed,
 content-free local-runtime availability state so an absent supervisor-provided
 model contract cannot consume its one-use authorization. End-to-end
-installed-host local-model execution and desktop acceptance remain required
-before a release-ready claim.
+installed Debian desktop acceptance remains required before a release-ready
+claim. The focused host-native adapter gate has completed one bounded
+local-only attempt without retaining a model location or generated output; it
+is real-adapter evidence only, not the required governed-review desktop flow.
 
 **First implementation milestone source-complete:** [Provider Capability
 Registry Contracts](MILESTONE_PROVIDER_CAPABILITY_REGISTRY_CONTRACTS.md)
