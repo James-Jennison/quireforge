@@ -1627,6 +1627,12 @@ availability recovery after a governed recheck, while preserving the separate
 explicit one-time reviewed action. Package promotion and installed Debian
 desktop acceptance remain pending.
 
+The beta.73 candidate handles model unavailability discovered by native
+revalidation after a successful governed-view preflight. It preserves the exact
+acknowledged review, reports that no attempt started, and requires an explicit
+availability recheck before a later manual run. Package promotion and installed
+Debian desktop acceptance remain pending.
+
 **First implementation milestone source-complete:** [Provider Capability
 Registry Contracts](MILESTONE_PROVIDER_CAPABILITY_REGISTRY_CONTRACTS.md)
 implements private static fictional registry contracts and focused safeguards

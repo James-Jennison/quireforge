@@ -201,7 +201,11 @@ function ContextAssemblyWorkbenchScope({
   // leaves this exact reviewed bundle awaiting confirmation. Keep that fact
   // visible and let the user explicitly try again after the active CPU slot is
   // free; never schedule or imply an automatic retry.
+  const runtimeAdmissionRejected =
+    runtime?.diagnostic === "runtime-busy" ||
+    runtime?.diagnostic === "model-unavailable";
   const runtimeBusy = runtime?.diagnostic === "runtime-busy";
+  const runtimeUnavailable = runtime?.diagnostic === "model-unavailable";
   const invalidatePreparedBundle = () => {
     setSnapshot(null);
     setRuntime(null);
@@ -211,7 +215,7 @@ function ContextAssemblyWorkbenchScope({
   };
   const canModifyPreparedBundle =
     !runtimeRunning &&
-    (runtime === null || runtimeBusy) &&
+    (runtime === null || runtimeAdmissionRejected) &&
     Boolean(snapshot?.bundleId) &&
     !busy;
   return (
@@ -436,7 +440,7 @@ function ContextAssemblyWorkbenchScope({
             busy ||
             runtimeRunning ||
             runtimeAvailability?.available !== true ||
-            (runtime !== null && !runtimeBusy)
+            (runtime !== null && !runtimeAdmissionRejected)
           }
           onClick={() => {
             const actionProjectId = projectId;
@@ -458,10 +462,22 @@ function ContextAssemblyWorkbenchScope({
                   projectScope.current === actionProjectId
                 ) {
                   setRuntime(next);
-                  setNotice(
-                    next.diagnostic ??
-                      "Local-only runtime completed. Output stays in this open view.",
-                  );
+                  if (next.diagnostic === "model-unavailable") {
+                    setRuntimeAvailability({
+                      schemaVersion: 1,
+                      localOnly: true,
+                      available: false,
+                      diagnostic: "model-unavailable",
+                    });
+                    setNotice(
+                      "Local runtime became unavailable before an attempt started. This exact review remains available after a recheck.",
+                    );
+                  } else {
+                    setNotice(
+                      next.diagnostic ??
+                        "Local-only runtime completed. Output stays in this open view.",
+                    );
+                  }
                 }
               })
               .catch(() => {
@@ -598,6 +614,13 @@ function ContextAssemblyWorkbenchScope({
               No local attempt started because another one is active. This exact
               reviewed bundle remains available; run it manually after that
               attempt finishes.
+            </p>
+          )}
+          {runtimeUnavailable && (
+            <p className="context-note">
+              No local attempt started because the local model became
+              unavailable. This exact reviewed bundle remains available; recheck
+              availability before running it manually.
             </p>
           )}
         </section>

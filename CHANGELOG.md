@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.0-beta.73 — M63 native-revalidation recovery candidate
+
+- Recovers an acknowledged governed review when native revalidation finds the
+  local model unavailable after an earlier successful preflight. No attempt is
+  consumed; the view requires an explicit availability recheck before a later
+  manual run. The desktop fixture covers the complete recovery flow.
+- The model remains external to the package and is never started by routine
+  package gates. Package promotion and installed Debian desktop
+  governed-review acceptance remain pending.
+
 ## 0.1.0-beta.72 — M63 availability-recovery acceptance candidate
 
 - Shows a content-free, local-only availability confirmation after an explicit

@@ -724,6 +724,122 @@ describe("ContextAssemblyWorkbench", () => {
     expect(bridge.runContextAssemblyLocalRuntime).toHaveBeenCalledTimes(2);
   });
 
+  it("recovers an acknowledged review when native revalidation finds the model unavailable", async () => {
+    bridge.runContextAssemblyLocalRuntime.mockClear();
+    const confirmed = {
+      schemaVersion: 1,
+      fictionalLocalOnly: true,
+      sink: "fictional-local-context-sink-v1",
+      state: "awaiting_confirmation",
+      projectId: "019fbee6-476f-71b0-853c-f067657aa69c",
+      taskId: null,
+      bundleId: "019fbee6-476f-71b0-853c-f067657aa69b",
+      authorizationId: "019fbee6-476f-71b0-853c-f067657aa69a",
+      bundleDigest:
+        "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      expiresAtMs: 1,
+      items: [],
+      totalBytes: 12,
+      estimatedTokens: 3,
+      exclusions: [],
+      auditState: "review acknowledged",
+      diagnostic: null,
+    };
+    bridge.prepareContextAssembly.mockResolvedValueOnce({
+      ...confirmed,
+      state: "prepared",
+      authorizationId: null,
+    });
+    bridge.reviewContextAssembly.mockResolvedValueOnce({
+      ...confirmed,
+      state: "awaiting_review",
+      authorizationId: null,
+    });
+    bridge.acknowledgeContextAssemblyReview.mockResolvedValueOnce(confirmed);
+    bridge.runContextAssemblyLocalRuntime
+      .mockResolvedValueOnce({
+        schemaVersion: 1,
+        localOnly: true,
+        state: "failed",
+        output: null,
+        diagnostic: "model-unavailable",
+        inputTokenLimit: 4096,
+        outputTokenLimit: 512,
+        deadlineSeconds: 60,
+        memoryCeilingMib: 6144,
+      })
+      .mockResolvedValueOnce({
+        schemaVersion: 1,
+        localOnly: true,
+        state: "completed",
+        output: "Local response after availability recovery",
+        diagnostic: null,
+        inputTokenLimit: 4096,
+        outputTokenLimit: 512,
+        deadlineSeconds: 60,
+        memoryCeilingMib: 6144,
+      });
+    bridge.loadContextAssemblyLocalRuntimeAvailability.mockResolvedValueOnce({
+      schemaVersion: 1,
+      localOnly: true,
+      available: true,
+      diagnostic: null,
+    });
+
+    render(
+      <ContextAssemblyWorkbench
+        projectId="019fbee6-476f-71b0-853c-f067657aa69c"
+        onClose={() => undefined}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText(/explicit user instruction/i), {
+      target: { value: "Summarize the reviewed request" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /prepare review/i }));
+    await screen.findByRole("button", { name: /review prepared bundle/i });
+    fireEvent.click(
+      screen.getByRole("button", { name: /review prepared bundle/i }),
+    );
+    await screen.findByRole("button", { name: /acknowledge exact review/i });
+    fireEvent.click(
+      screen.getByRole("button", { name: /acknowledge exact review/i }),
+    );
+    const run = await screen.findByRole("button", {
+      name: /run once with local-only model/i,
+    });
+    fireEvent.click(run);
+
+    await waitFor(() =>
+      expect(
+        screen.getByText(
+          /no local attempt started because the local model became unavailable/i,
+        ),
+      ).toBeInTheDocument(),
+    );
+    expect(
+      screen.getByText(/no reviewed bundle can be consumed/i),
+    ).toBeInTheDocument();
+    expect(run).toBeDisabled();
+    expect(screen.getByRole("button", { name: /cancel/i })).toBeEnabled();
+    expect(screen.getByRole("button", { name: /revoke/i })).toBeEnabled();
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /recheck local runtime availability/i,
+      }),
+    );
+    await waitFor(() => expect(run).toBeEnabled());
+    expect(bridge.runContextAssemblyLocalRuntime).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(run);
+    await waitFor(() =>
+      expect(
+        screen.getByText("Local response after availability recovery"),
+      ).toBeInTheDocument(),
+    );
+    expect(bridge.runContextAssemblyLocalRuntime).toHaveBeenCalledTimes(2);
+  });
+
   it("invalidates a prepared bundle when its selection changes", async () => {
     render(
       <ContextAssemblyWorkbench

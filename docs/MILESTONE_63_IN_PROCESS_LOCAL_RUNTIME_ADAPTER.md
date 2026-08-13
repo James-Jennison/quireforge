@@ -152,6 +152,12 @@ availability recheck while preserving the separate explicit one-time reviewed
 action. Its governed desktop fixture covers that recovery flow; package
 promotion and installed-host acceptance remain pending.
 
+The beta.73 candidate recovers an acknowledged review when native revalidation
+finds the local model unavailable after a successful availability preflight. It
+reports that no attempt started, preserves the exact review, and requires an
+explicit recheck before a later manual run. Package promotion and installed-host
+acceptance remain pending.
+
 The candidate procedure is recorded in
 [Testing](TESTING.md#m63-local-runtime-installed-host-acceptance). It requires
 the installed-host operator to retain only content-free package and lifecycle
