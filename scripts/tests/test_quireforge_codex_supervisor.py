@@ -61,6 +61,8 @@ class SupervisorCompletionStateTests(unittest.TestCase):
         self.assertIn("QUIRE_FORGE_M63_MODEL_PATH", script)
         self.assertIn("connect to an external provider", script)
         self.assertIn("cargo metadata --locked --no-deps --format-version 1", script)
+        self.assertIn("./scripts/run_linux_package_container.sh", script)
+        self.assertIn("do not invoke `validate_release_artifacts.py --smoke` directly on the host", script)
 
     def test_supervisor_stops_at_a_bounded_task_budget_checkpoint_by_default(self) -> None:
         script = SUPERVISOR.read_text(encoding="utf-8")
