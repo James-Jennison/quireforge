@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.0-beta.71 — M63 local-runtime recovery acceptance candidate
+
+- Lets a governed review recheck its content-free local-runtime availability
+  after an unavailable result, without consuming the acknowledged bundle or
+  starting a local attempt. The explicit one-time action remains disabled until
+  native availability succeeds.
+- The model remains external to the package and is never started by routine
+  package gates. Package promotion and installed Debian desktop
+  governed-review acceptance remain pending.
+
 ## 0.1.0-beta.70 — M63 availability-failure acceptance candidate
 
 - Resolves an IPC-level local-runtime availability preflight to a bounded,

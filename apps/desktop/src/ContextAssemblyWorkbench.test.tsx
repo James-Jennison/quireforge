@@ -361,6 +361,12 @@ describe("ContextAssemblyWorkbench", () => {
       available: false,
       diagnostic: "model-unavailable",
     });
+    bridge.loadContextAssemblyLocalRuntimeAvailability.mockResolvedValueOnce({
+      schemaVersion: 1,
+      localOnly: true,
+      available: true,
+      diagnostic: null,
+    });
     const confirmed = {
       schemaVersion: 1,
       fictionalLocalOnly: true,
@@ -418,6 +424,25 @@ describe("ContextAssemblyWorkbench", () => {
     expect(
       screen.getByRole("button", { name: /run once with local-only model/i }),
     ).toBeDisabled();
+    expect(bridge.runContextAssemblyLocalRuntime).not.toHaveBeenCalled();
+
+    const availabilityCalls =
+      bridge.loadContextAssemblyLocalRuntimeAvailability.mock.calls.length;
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /recheck local runtime availability/i,
+      }),
+    );
+    await waitFor(() =>
+      expect(
+        bridge.loadContextAssemblyLocalRuntimeAvailability,
+      ).toHaveBeenCalledTimes(availabilityCalls + 1),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /run once with local-only model/i }),
+      ).toBeEnabled(),
+    );
     expect(bridge.runContextAssemblyLocalRuntime).not.toHaveBeenCalled();
   });
 

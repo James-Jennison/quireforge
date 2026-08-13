@@ -1616,6 +1616,12 @@ a bounded unavailable state, preserving the disabled one-time action and
 unconsumed acknowledged bundle. Package promotion and installed Debian desktop
 acceptance remain pending.
 
+The beta.71 candidate permits an explicit, content-free availability recheck
+from the open governed review after an unavailable result. It preserves the
+acknowledged bundle and cannot start an attempt; the local-only action remains
+disabled until native availability succeeds. Package promotion and installed
+Debian desktop acceptance remain pending.
+
 **First implementation milestone source-complete:** [Provider Capability
 Registry Contracts](MILESTONE_PROVIDER_CAPABILITY_REGISTRY_CONTRACTS.md)
 implements private static fictional registry contracts and focused safeguards

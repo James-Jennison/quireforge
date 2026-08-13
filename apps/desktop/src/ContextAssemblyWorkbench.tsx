@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import {
   cancelContextAssembly,
   cancelContextAssemblyLocalRuntime,
@@ -72,6 +72,7 @@ function ContextAssemblyWorkbenchScope({
     );
   const mounted = useRef(true);
   const projectScope = useRef(projectId);
+  const availabilityRequest = useRef(0);
   useEffect(() => {
     mounted.current = true;
     return () => {
@@ -108,17 +109,19 @@ function ContextAssemblyWorkbenchScope({
       current = false;
     };
   }, [projectId]);
-  useEffect(() => {
-    let current = true;
+  const refreshRuntimeAvailability = useCallback(() => {
+    const request = ++availabilityRequest.current;
+    setRuntimeAvailability(null);
     void loadContextAssemblyLocalRuntimeAvailability()
       .then((value) => {
-        if (current) setRuntimeAvailability(value);
+        if (mounted.current && availabilityRequest.current === request)
+          setRuntimeAvailability(value);
       })
       .catch(() => {
         // An IPC failure has completed the preflight just as decisively as a
         // missing model contract. Keep the one-use action unavailable, but do
         // not leave the governed review indefinitely claiming it is checking.
-        if (current)
+        if (mounted.current && availabilityRequest.current === request)
           setRuntimeAvailability({
             schemaVersion: 1,
             localOnly: true,
@@ -126,10 +129,14 @@ function ContextAssemblyWorkbenchScope({
             diagnostic: "runtime-unavailable",
           });
       });
-    return () => {
-      current = false;
-    };
   }, []);
+
+  useEffect(() => {
+    refreshRuntimeAvailability();
+    return () => {
+      availabilityRequest.current += 1;
+    };
+  }, [refreshRuntimeAvailability]);
   useEffect(() => {
     let current = true;
     if (!taskId) {
@@ -596,11 +603,20 @@ function ContextAssemblyWorkbenchScope({
         </section>
       )}
       {runtimeAvailability?.available === false && (
-        <p className="context-note" role="status">
-          {runtimeAvailability.diagnostic === "runtime-unavailable"
-            ? "Local runtime availability could not be verified. No reviewed bundle can be consumed."
-            : "The supervisor-provided local model is unavailable. No reviewed bundle can be consumed until this local-only runtime input is present."}
-        </p>
+        <section className="context-note" aria-label="Local runtime availability">
+          <p role="status">
+            {runtimeAvailability.diagnostic === "runtime-unavailable"
+              ? "Local runtime availability could not be verified. No reviewed bundle can be consumed."
+              : "The supervisor-provided local model is unavailable. No reviewed bundle can be consumed until this local-only runtime input is present."}
+          </p>
+          <button
+            type="button"
+            disabled={busy || runtimeRunning}
+            onClick={refreshRuntimeAvailability}
+          >
+            Recheck local runtime availability
+          </button>
+        </section>
       )}
       {runtimeAvailability === null && (
         <p className="context-note" role="status">
