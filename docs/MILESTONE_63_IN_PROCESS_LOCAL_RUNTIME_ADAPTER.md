@@ -68,6 +68,16 @@ or oversized template result is a bounded local failure and never falls back to
 an ad-hoc prompt format. This remains local candidate evidence only;
 installed-host acceptance is still required.
 
+The clean-tree `0.1.0-beta.65` package pair at source commit
+`a9a4f219433b57503e84c254548403f6a8fc42d5` is a release-candidate manifest
+with exactly the application and sandbox Debian artifacts and passed the
+release-artifact validator. It captures the earlier preparation/cancellation
+correction, excludes the model, and did not start the runtime. The subsequent
+authorization-lifecycle correction is covered by focused native, workbench,
+and loopback-only browser-fixture tests, but is not represented by that package
+pair. It therefore requires a fresh package candidate before installed-host M63
+execution/desktop acceptance can support a release-ready claim.
+
 The candidate procedure is recorded in
 [Testing](TESTING.md#m63-local-runtime-installed-host-acceptance). It requires
 the installed-host operator to retain only content-free package and lifecycle

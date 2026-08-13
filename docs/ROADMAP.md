@@ -1575,11 +1575,14 @@ credential, or successor milestone.
 vendors a verified, static, CPU-only llama.cpp source boundary for the one
 approved Qwen2.5-3B descriptor. The beta.64 local candidate binds one confirmed
 reviewed M60 bundle to one in-process attempt with fixed input, output,
-deadline, cancellation, and open-view-only result limits. It includes no model
-artifact, acquisition, provider, credential, network, public runtime route,
-package publication, release, or deployment authority. End-to-end installed-host
-local-model execution and desktop acceptance remain required before a
-release-ready claim.
+deadline, cancellation, and open-view-only result limits. A beta.65 package
+pair captures the preceding local-runtime acceptance correction, while the
+current authorization-lifecycle correction has focused native, UI, and
+loopback-only browser-fixture coverage and requires a fresh package candidate.
+It includes no model artifact, acquisition, provider, credential, network,
+public runtime route, package publication, release, or deployment authority.
+End-to-end installed-host local-model execution and desktop acceptance remain
+required before a release-ready claim.
 
 **First implementation milestone source-complete:** [Provider Capability
 Registry Contracts](MILESTONE_PROVIDER_CAPABILITY_REGISTRY_CONTRACTS.md)

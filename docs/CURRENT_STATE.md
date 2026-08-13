@@ -154,8 +154,12 @@ upstream revision and SHA-256 in
 The model remains outside the repository and un-packaged. The clean
 `0.1.0-beta.64` Ubuntu candidate passed package/lifecycle/visible-launch
 validation; its local-only adapter consumes one confirmed reviewed bundle once
-and retains a bounded result only in the open local view. End-to-end model
-execution and installed-host acceptance remain required before any
+and retains a bounded result only in the open local view. A clean-tree
+`0.1.0-beta.65` Debian pair was subsequently produced for the local-runtime
+acceptance correction and passes the release-artifact validator, but its source
+predates the current authorization-lifecycle correction. The correction has
+focused native, UI, and loopback-only browser-fixture coverage, yet still needs
+a fresh package candidate and installed-host local-model execution before any
 release-ready claim.
 
 M54 Local Review is complete at package/source commit

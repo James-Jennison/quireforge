@@ -5,6 +5,9 @@
 - Restores M63 preparation for an explicit instruction without an optional
   durable source, keeps cancellation responsive during the CPU-bound attempt,
   and presents the governed review as a contained local workbench.
+- The clean beta.65 Debian candidate is package-validated only; the later
+  authorization-lifecycle correction requires a fresh candidate and installed-
+  host local-model acceptance before any release-ready claim.
 
 ## 0.1.0-beta.64 — In-process local runtime candidate
 
