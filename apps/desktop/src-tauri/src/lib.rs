@@ -2012,6 +2012,7 @@ async fn context_assembly_run_local_runtime(
             input_token_limit: 4096,
             output_token_limit: 512,
             deadline_seconds: 60,
+            memory_ceiling_mib: 6144,
         });
     }
     if preflight.state == "rejected" {
@@ -2028,6 +2029,7 @@ async fn context_assembly_run_local_runtime(
             input_token_limit: 4096,
             output_token_limit: 512,
             deadline_seconds: 60,
+            memory_ceiling_mib: 6144,
         });
     }
     // Reserve the one shared CPU slot before consuming the durable reviewed
@@ -2045,6 +2047,7 @@ async fn context_assembly_run_local_runtime(
                 input_token_limit: 4096,
                 output_token_limit: 512,
                 deadline_seconds: 60,
+                memory_ceiling_mib: 6144,
             });
         }
     };
@@ -2058,6 +2061,7 @@ async fn context_assembly_run_local_runtime(
             input_token_limit: 4096,
             output_token_limit: 512,
             deadline_seconds: 60,
+            memory_ceiling_mib: 6144,
         });
     }
     let canonical_bytes = match assemblies.claim_for_local_runtime(&request) {
@@ -2078,6 +2082,7 @@ async fn context_assembly_run_local_runtime(
                 input_token_limit: 4096,
                 output_token_limit: 512,
                 deadline_seconds: 60,
+                memory_ceiling_mib: 6144,
             });
         }
     };
@@ -2095,6 +2100,7 @@ async fn context_assembly_run_local_runtime(
             input_token_limit: 4096,
             output_token_limit: 512,
             deadline_seconds: 60,
+            memory_ceiling_mib: 6144,
         });
     let terminal = if snapshot.state == "completed" {
         "closed"
@@ -2113,6 +2119,7 @@ async fn context_assembly_run_local_runtime(
             input_token_limit: 4096,
             output_token_limit: 512,
             deadline_seconds: 60,
+            memory_ceiling_mib: 6144,
         });
     }
     Ok(snapshot)

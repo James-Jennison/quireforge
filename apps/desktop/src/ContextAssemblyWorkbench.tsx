@@ -431,6 +431,7 @@ function ContextAssemblyWorkbenchScope({
                     inputTokenLimit: 4096,
                     outputTokenLimit: 512,
                     deadlineSeconds: 60,
+                    memoryCeilingMib: 6144,
                   });
                   setRuntimeRunning(false);
                   setNotice(
@@ -531,7 +532,8 @@ function ContextAssemblyWorkbenchScope({
             Local-only attempt: {runtimeRunning ? "running" : runtime!.state}.{" "}
             CPU-only; one attempt; maximum {runtime?.inputTokenLimit ?? 4096}{" "}
             input tokens, {runtime?.outputTokenLimit ?? 512} output tokens, and{" "}
-            {runtime?.deadlineSeconds ?? 60} seconds.
+            {runtime?.deadlineSeconds ?? 60} seconds; maximum{" "}
+            {runtime?.memoryCeilingMib ?? 6144} MiB memory.
           </p>
           {runtimeRunning && (
             <p className="context-note">

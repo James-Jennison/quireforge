@@ -47,6 +47,7 @@ describe("ContextAssemblyWorkbench", () => {
       inputTokenLimit: 4096;
       outputTokenLimit: 512;
       deadlineSeconds: 60;
+      memoryCeilingMib: 6144;
     }) => void;
     bridge.runContextAssemblyLocalRuntime.mockImplementationOnce(
       () =>
@@ -114,6 +115,9 @@ describe("ContextAssemblyWorkbench", () => {
       /local-only attempt: running/i,
     );
     expect(screen.getByText(/no automatic retry/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/local runtime result/i)).toHaveTextContent(
+      /maximum 6144 MiB memory/i,
+    );
     expect(screen.getByRole("button", { name: "Close" })).toBeDisabled();
     bridge.cancelContextAssemblyLocalRuntime.mockResolvedValueOnce(false);
     fireEvent.click(
@@ -157,6 +161,7 @@ describe("ContextAssemblyWorkbench", () => {
       inputTokenLimit: 4096,
       outputTokenLimit: 512,
       deadlineSeconds: 60,
+      memoryCeilingMib: 6144,
     });
     await waitFor(() =>
       expect(screen.getByLabelText(/local runtime result/i)).toHaveTextContent(
@@ -234,6 +239,7 @@ describe("ContextAssemblyWorkbench", () => {
       inputTokenLimit: 4096,
       outputTokenLimit: 512,
       deadlineSeconds: 60,
+      memoryCeilingMib: 6144,
     });
 
     render(

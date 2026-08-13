@@ -1378,6 +1378,7 @@ test("governed context review runs one visible local-only model attempt", async 
       inputTokenLimit: 4096,
       outputTokenLimit: 512,
       deadlineSeconds: 60,
+      memoryCeilingMib: 6144,
     },
   });
   await page.goto("/");
@@ -1405,6 +1406,7 @@ test("governed context review runs one visible local-only model attempt", async 
   const result = page.getByLabel("Local runtime result");
   await expect(result).toContainText("Local-only attempt: completed");
   await expect(result).toContainText("CPU-only; one attempt");
+  await expect(result).toContainText("maximum 6144 MiB memory");
   await expect(result).toContainText(
     "The reviewed request was handled locally.",
   );
@@ -1460,6 +1462,7 @@ test("governed context review cancels only its pending local-only attempt", asyn
     inputTokenLimit: 4096,
     outputTokenLimit: 512,
     deadlineSeconds: 60,
+    memoryCeilingMib: 6144,
   } as const;
   await installNativeFixture(page, {
     ...nativeResponses,

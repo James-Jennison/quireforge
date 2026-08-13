@@ -22,6 +22,7 @@ const OUTPUT_BYTE_LIMIT: usize = 16 * 1024;
 const CHAT_PROMPT_BYTE_LIMIT: usize = 2 * (96 * 1024 + 256);
 const DEADLINE: Duration = Duration::from_secs(60);
 const MEMORY_CEILING_BYTES: libc::rlim_t = 6 * 1024 * 1024 * 1024;
+const MEMORY_CEILING_MIB: u16 = 6 * 1024;
 const SYSTEM_PROMPT: &str = "You are a local, offline assistant. Answer the reviewed request only.";
 
 #[repr(C)]
@@ -216,6 +217,7 @@ pub(crate) struct LocalRuntimeSnapshot {
     pub input_token_limit: u16,
     pub output_token_limit: u16,
     pub deadline_seconds: u8,
+    pub memory_ceiling_mib: u16,
 }
 
 #[derive(Default)]
@@ -491,6 +493,7 @@ fn run_once(canonical_bytes: &[u8], control: &RunControl) -> LocalRuntimeSnapsho
             input_token_limit: INPUT_TOKEN_LIMIT as u16,
             output_token_limit: OUTPUT_TOKEN_LIMIT as u16,
             deadline_seconds: 60,
+            memory_ceiling_mib: MEMORY_CEILING_MIB,
         }
     }
 }
@@ -562,6 +565,7 @@ fn failed(diagnostic: &str) -> LocalRuntimeSnapshot {
         input_token_limit: INPUT_TOKEN_LIMIT as u16,
         output_token_limit: OUTPUT_TOKEN_LIMIT as u16,
         deadline_seconds: 60,
+        memory_ceiling_mib: MEMORY_CEILING_MIB,
     }
 }
 
@@ -575,13 +579,15 @@ fn cancelled() -> LocalRuntimeSnapshot {
         input_token_limit: INPUT_TOKEN_LIMIT as u16,
         output_token_limit: OUTPUT_TOKEN_LIMIT as u16,
         deadline_seconds: 60,
+        memory_ceiling_mib: MEMORY_CEILING_MIB,
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::{
-        cancelled, LocalRuntimeService, CHAT_PROMPT_BYTE_LIMIT, MEMORY_CEILING_BYTES, SYSTEM_PROMPT,
+        cancelled, LocalRuntimeService, CHAT_PROMPT_BYTE_LIMIT, MEMORY_CEILING_BYTES,
+        MEMORY_CEILING_MIB, SYSTEM_PROMPT,
     };
 
     #[test]
@@ -594,6 +600,7 @@ mod tests {
     #[test]
     fn local_runtime_memory_ceiling_matches_the_approved_six_gib_limit() {
         assert_eq!(MEMORY_CEILING_BYTES, 6 * 1024 * 1024 * 1024);
+        assert_eq!(MEMORY_CEILING_MIB, 6 * 1024);
     }
 
     #[test]

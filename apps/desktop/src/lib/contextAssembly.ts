@@ -69,6 +69,7 @@ export const localRuntimeSnapshotSchema = z
     inputTokenLimit: z.literal(4096),
     outputTokenLimit: z.literal(512),
     deadlineSeconds: z.literal(60),
+    memoryCeilingMib: z.literal(6144),
   })
   .strict();
 export type LocalRuntimeSnapshot = z.infer<typeof localRuntimeSnapshotSchema>;

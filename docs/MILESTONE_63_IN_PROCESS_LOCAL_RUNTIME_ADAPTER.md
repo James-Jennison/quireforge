@@ -41,9 +41,10 @@ The CPU-bound model call runs on Tauri's blocking worker pool, leaving the
 native command executor available for the exact reviewed-bundle cancellation
 request; the shared local-runtime service still admits only one active attempt.
 The governed local-only view exposes the nonterminal `running` phase while the
-one CPU attempt is pending, including its fixed limits and no-automatic-retry
-posture; its close control remains unavailable until that phase is replaced by
-the bounded returned result or failure. While the attempt is pending, the exact
+one CPU attempt is pending, including its fixed token, deadline, and 6 GiB
+memory limits and no-automatic-retry posture; its close control remains
+unavailable until that phase is replaced by the bounded returned result or
+failure. While the attempt is pending, the exact
 reviewed bundle can request cancellation; the in-process callbacks observe that
 request and finish as the bounded `cancelled` terminal outcome, with no retry.
 The result remains in the open view only.
