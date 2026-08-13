@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.0-beta.67 — M63 governed-review acceptance candidate
+
+- Reissues the credential-free M63 local candidate from the source state that
+  records the completed bounded in-process adapter check.
+- Retains the fixed CPU-only local model limits and governed review flow; the
+  model remains external to the package and is never started by package gates.
+- The authoritative package/lifecycle/visible-launch gate and the explicit
+  installed Debian governed-review acceptance remain pending for beta.67.
+
 ## 0.1.0-beta.66 — M63 installed-host acceptance candidate
 
 - Carries forward the completed M63 preparation, authorization, concurrent

@@ -106,8 +106,10 @@ did not start the runtime. On 2026-08-13, the focused host-native adapter gate
 completed one bounded in-process attempt through the supervisor-owned,
 read-only local-model contract. It retained no model location or generated
 output and verified only the local-only bounded terminal contract. This is
-real-adapter evidence, not installed Debian desktop acceptance; the explicit
-installed-host governed-review workflow remains pending.
+real-adapter evidence, not installed Debian desktop acceptance. The uniquely
+versioned beta.67 source candidate carries that evidence forward for a fresh
+authoritative package/lifecycle/visible-launch gate followed by the explicit
+installed-host governed-review workflow; both remain pending.
 
 The candidate procedure is recorded in
 [Testing](TESTING.md#m63-local-runtime-installed-host-acceptance). It requires
