@@ -1524,6 +1524,54 @@ test("governed context review keeps a busy local-only review available for a man
   );
 });
 
+test("governed context review visibly rechecks unavailable local runtime without dispatch", async ({
+  page,
+}) => {
+  await installNativeFixture(page, {
+    ...nativeResponses,
+    context_assembly_local_runtime_availability: {
+      sequence: [
+        {
+          schemaVersion: 1,
+          localOnly: true,
+          available: false,
+          diagnostic: "model-unavailable",
+        },
+        {
+          schemaVersion: 1,
+          localOnly: true,
+          available: true,
+          diagnostic: null,
+        },
+      ],
+    },
+  });
+  await page.goto("/");
+  await openWorkspace(page, "New task");
+  await page
+    .getByRole("region", { name: "Fictional local mock workflow" })
+    .getByRole("button", { name: "Governed context review" })
+    .click();
+  await expect(
+    page.getByText(
+      /no reviewed bundle can be consumed until this local-only runtime input is present/i,
+    ),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Recheck local runtime availability" })
+    .click();
+  await expect(
+    page.getByText(
+      /local runtime availability is verified for this open local-only view/i,
+    ),
+  ).toBeVisible();
+  await expect(
+    page.getByText(
+      /a reviewed bundle still requires its separate explicit one-time action/i,
+    ),
+  ).toBeVisible();
+});
+
 test("governed context review cancels only its pending local-only attempt", async ({
   page,
 }) => {

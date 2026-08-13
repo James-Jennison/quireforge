@@ -122,6 +122,16 @@ describe("ContextAssemblyWorkbench", () => {
       diagnostic: null,
     });
     await waitFor(() => expect(run).toBeEnabled());
+    expect(
+      screen.getByText(
+        /local runtime availability is verified for this open local-only view/i,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /a reviewed bundle still requires its separate explicit one-time action/i,
+      ),
+    ).toBeInTheDocument();
   });
 
   it("shows a bounded unavailable state when runtime preflight fails", async () => {

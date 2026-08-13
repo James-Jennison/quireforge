@@ -1622,6 +1622,11 @@ acknowledged bundle and cannot start an attempt; the local-only action remains
 disabled until native availability succeeds. Package promotion and installed
 Debian desktop acceptance remain pending.
 
+The beta.72 candidate visibly confirms successful content-free local-runtime
+availability recovery after a governed recheck, while preserving the separate
+explicit one-time reviewed action. Package promotion and installed Debian
+desktop acceptance remain pending.
+
 **First implementation milestone source-complete:** [Provider Capability
 Registry Contracts](MILESTONE_PROVIDER_CAPABILITY_REGISTRY_CONTRACTS.md)
 implements private static fictional registry contracts and focused safeguards

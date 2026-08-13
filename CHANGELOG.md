@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.0-beta.72 — M63 availability-recovery acceptance candidate
+
+- Shows a content-free, local-only availability confirmation after an explicit
+  governed-review recheck, while preserving the separate one-time reviewed
+  action requirement. The desktop fixture covers that recovery flow.
+- The model remains external to the package and is never started by routine
+  package gates. Package promotion and installed Debian desktop
+  governed-review acceptance remain pending.
+
 ## 0.1.0-beta.71 — M63 local-runtime recovery acceptance candidate
 
 - Lets a governed review recheck its content-free local-runtime availability

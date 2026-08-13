@@ -197,6 +197,11 @@ preserves the acknowledged bundle and cannot start an attempt; the one-time
 action stays disabled unless native availability succeeds. Package promotion
 and installed Debian desktop acceptance remain pending.
 
+The beta.72 M63 candidate visibly confirms a successful content-free,
+local-only availability recheck while preserving the separate explicit
+one-time reviewed action. Its governed desktop fixture covers that recovery
+flow. Package promotion and installed Debian desktop acceptance remain pending.
+
 M54 Local Review is complete at package/source commit
 `c4c2752466f36f791fde47edbc5c6b02b0e21320`, tagged
 `v0.1.0-beta.53`. Its beta.53 Debian pair passed pinned-container package,

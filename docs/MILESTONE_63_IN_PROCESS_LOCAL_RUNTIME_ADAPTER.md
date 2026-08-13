@@ -147,6 +147,11 @@ the exact acknowledged bundle and does not start the runtime; only a later
 explicit one-time action can run after native availability succeeds. Package
 promotion and installed-host acceptance remain pending.
 
+The beta.72 candidate visibly confirms a successful content-free local-only
+availability recheck while preserving the separate explicit one-time reviewed
+action. Its governed desktop fixture covers that recovery flow; package
+promotion and installed-host acceptance remain pending.
+
 The candidate procedure is recorded in
 [Testing](TESTING.md#m63-local-runtime-installed-host-acceptance). It requires
 the installed-host operator to retain only content-free package and lifecycle

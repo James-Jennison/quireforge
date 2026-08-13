@@ -132,7 +132,7 @@ function ContextAssemblyWorkbenchScope({
   }, []);
 
   useEffect(() => {
-    refreshRuntimeAvailability();
+    queueMicrotask(refreshRuntimeAvailability);
     return () => {
       availabilityRequest.current += 1;
     };
@@ -603,7 +603,10 @@ function ContextAssemblyWorkbenchScope({
         </section>
       )}
       {runtimeAvailability?.available === false && (
-        <section className="context-note" aria-label="Local runtime availability">
+        <section
+          className="context-note"
+          aria-label="Local runtime availability"
+        >
           <p role="status">
             {runtimeAvailability.diagnostic === "runtime-unavailable"
               ? "Local runtime availability could not be verified. No reviewed bundle can be consumed."
@@ -617,6 +620,13 @@ function ContextAssemblyWorkbenchScope({
             Recheck local runtime availability
           </button>
         </section>
+      )}
+      {runtimeAvailability?.available === true && (
+        <p className="context-note" role="status">
+          Local runtime availability is verified for this open local-only view.
+          A reviewed bundle still requires its separate explicit one-time
+          action.
+        </p>
       )}
       {runtimeAvailability === null && (
         <p className="context-note" role="status">
