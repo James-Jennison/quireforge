@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.0-beta.69 — M63 availability-preflight acceptance candidate
+
+- Keeps the governed-review local-only action disabled until the typed,
+  content-free local-runtime availability preflight completes, and shows that
+  checking state in the open review. This preserves the native authoritative
+  check and prevents a review from being submitted during initial availability
+  resolution.
+- The model remains external to the package and is never started by routine
+  package gates. Installed Debian desktop governed-review acceptance remains
+  pending.
+
 ## 0.1.0-beta.68 — M63 relaunch-privacy acceptance candidate
 
 - Extends the governed-review browser fixture through an application reload,

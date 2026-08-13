@@ -1605,6 +1605,12 @@ Ubuntu 22.04 package, lifecycle, visible-launch, and release-artifact gates;
 it excluded the model and did not start the runtime. Installed Debian desktop
 acceptance remains pending.
 
+The beta.69 candidate keeps the governed-review local-only action disabled
+until its typed content-free runtime-availability preflight completes, with an
+explicit checking state. It preserves native authority, excludes the external
+model from packages, and does not start the runtime in package gates.
+Installed Debian desktop acceptance remains pending.
+
 **First implementation milestone source-complete:** [Provider Capability
 Registry Contracts](MILESTONE_PROVIDER_CAPABILITY_REGISTRY_CONTRACTS.md)
 implements private static fictional registry contracts and focused safeguards

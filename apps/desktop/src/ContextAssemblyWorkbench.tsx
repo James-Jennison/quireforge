@@ -419,7 +419,7 @@ function ContextAssemblyWorkbenchScope({
             !canConfirm ||
             busy ||
             runtimeRunning ||
-            runtimeAvailability?.available === false ||
+            runtimeAvailability?.available !== true ||
             (runtime !== null && !runtimeBusy)
           }
           onClick={() => {
@@ -590,6 +590,12 @@ function ContextAssemblyWorkbenchScope({
         <p className="context-note" role="status">
           The supervisor-provided local model is unavailable. No reviewed bundle
           can be consumed until this local-only runtime input is present.
+        </p>
+      )}
+      {runtimeAvailability === null && (
+        <p className="context-note" role="status">
+          Checking local runtime availability. A reviewed bundle cannot be
+          consumed until this local-only preflight completes.
         </p>
       )}
     </section>

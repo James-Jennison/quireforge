@@ -180,6 +180,12 @@ Ubuntu 22.04 package, lifecycle, visible-launch, and release-artifact gates;
 the model stays external and is never started by package gates. Installed
 Debian desktop acceptance remains pending.
 
+The beta.69 M63 candidate keeps the explicit one-time local action disabled
+until the content-free local-runtime availability preflight completes and
+shows its checking state in the governed review. This preserves native
+authority and leaves the model external; package gates do not start it.
+Installed Debian desktop acceptance remains pending.
+
 M54 Local Review is complete at package/source commit
 `c4c2752466f36f791fde47edbc5c6b02b0e21320`, tagged
 `v0.1.0-beta.53`. Its beta.53 Debian pair passed pinned-container package,

@@ -127,6 +127,14 @@ Ubuntu 22.04 package, lifecycle, visible-launch, and release-artifact gates.
 That gate excluded the model and did not start the runtime. Installed-host
 acceptance remains pending.
 
+The beta.69 candidate keeps **Run once with local-only model** unavailable
+until its typed, content-free availability preflight has completed, showing an
+explicit checking state in the governed review. This preserves the native
+authoritative availability check and avoids submitting an acknowledged review
+while that initial local-only preflight is unresolved. The model remains
+external and package gates do not start the runtime. Installed-host acceptance
+remains pending.
+
 The candidate procedure is recorded in
 [Testing](TESTING.md#m63-local-runtime-installed-host-acceptance). It requires
 the installed-host operator to retain only content-free package and lifecycle

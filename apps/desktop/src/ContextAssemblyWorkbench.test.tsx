@@ -43,6 +43,87 @@ const bridge = vi.hoisted(() => ({
 vi.mock("./lib/bridge", () => bridge);
 
 describe("ContextAssemblyWorkbench", () => {
+  it("keeps the one-time local action unavailable until runtime preflight completes", async () => {
+    let resolveAvailability!: (value: {
+      schemaVersion: 1;
+      localOnly: true;
+      available: true;
+      diagnostic: null;
+    }) => void;
+    bridge.loadContextAssemblyLocalRuntimeAvailability.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveAvailability = resolve;
+        }),
+    );
+    const confirmed = {
+      schemaVersion: 1,
+      fictionalLocalOnly: true,
+      sink: "fictional-local-context-sink-v1",
+      state: "awaiting_confirmation",
+      projectId: "019fbee6-476f-71b0-853c-f067657aa69c",
+      taskId: null,
+      bundleId: "019fbee6-476f-71b0-853c-f067657aa69b",
+      authorizationId: "019fbee6-476f-71b0-853c-f067657aa69a",
+      bundleDigest:
+        "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      expiresAtMs: 1,
+      items: [],
+      totalBytes: 12,
+      estimatedTokens: 3,
+      exclusions: [],
+      auditState: "review acknowledged",
+      diagnostic: null,
+    } as const;
+    bridge.prepareContextAssembly.mockResolvedValueOnce({
+      ...confirmed,
+      state: "prepared",
+      authorizationId: null,
+    });
+    bridge.reviewContextAssembly.mockResolvedValueOnce({
+      ...confirmed,
+      state: "awaiting_review",
+      authorizationId: null,
+    });
+    bridge.acknowledgeContextAssemblyReview.mockResolvedValueOnce(confirmed);
+
+    render(
+      <ContextAssemblyWorkbench
+        projectId="019fbee6-476f-71b0-853c-f067657aa69c"
+        onClose={() => undefined}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText(/explicit user instruction/i), {
+      target: { value: "Summarize the reviewed request" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /prepare review/i }));
+    await screen.findByRole("button", { name: /review prepared bundle/i });
+    fireEvent.click(
+      screen.getByRole("button", { name: /review prepared bundle/i }),
+    );
+    await screen.findByRole("button", { name: /acknowledge exact review/i });
+    fireEvent.click(
+      screen.getByRole("button", { name: /acknowledge exact review/i }),
+    );
+
+    const run = await screen.findByRole("button", {
+      name: /run once with local-only model/i,
+    });
+    expect(run).toBeDisabled();
+    expect(
+      screen.getByText(/checking local runtime availability/i),
+    ).toBeInTheDocument();
+    expect(bridge.runContextAssemblyLocalRuntime).not.toHaveBeenCalled();
+
+    resolveAvailability({
+      schemaVersion: 1,
+      localOnly: true,
+      available: true,
+      diagnostic: null,
+    });
+    await waitFor(() => expect(run).toBeEnabled());
+  });
+
   it("shows the bounded running state until the one local attempt resolves", async () => {
     let complete!: (value: {
       schemaVersion: 1;
