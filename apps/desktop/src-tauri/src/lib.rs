@@ -1995,6 +1995,41 @@ async fn context_assembly_run_local_runtime(
     runtime: tauri::State<'_, Arc<local_runtime::LocalRuntimeService>>,
     projects: tauri::State<'_, ProjectService>,
 ) -> Result<local_runtime::LocalRuntimeSnapshot, ()> {
+    // Validate the exact in-memory review before consuming its durable record.
+    // Otherwise a mismatched authorization could turn a valid reviewed bundle
+    // into a dispatching/failed attempt without ever reaching the local model.
+    let preflight = assemblies.preflight_confirm(&request);
+    if preflight.state == "expired" {
+        if let Some(bundle_id) = preflight.bundle_id.as_deref() {
+            let _ = projects.complete_context_bundle(bundle_id, "expired");
+        }
+        return Ok(local_runtime::LocalRuntimeSnapshot {
+            schema_version: 1,
+            local_only: true,
+            state: "failed".into(),
+            output: None,
+            diagnostic: Some("authorization-expired".into()),
+            input_token_limit: 4096,
+            output_token_limit: 512,
+            deadline_seconds: 60,
+        });
+    }
+    if preflight.state == "rejected" {
+        return Ok(local_runtime::LocalRuntimeSnapshot {
+            schema_version: 1,
+            local_only: true,
+            state: "failed".into(),
+            output: None,
+            diagnostic: Some(
+                preflight
+                    .diagnostic
+                    .unwrap_or_else(|| "authorization-replayed-or-mismatched".into()),
+            ),
+            input_token_limit: 4096,
+            output_token_limit: 512,
+            deadline_seconds: 60,
+        });
+    }
     if !projects.start_local_runtime_context_bundle(&request.bundle_id) {
         return Ok(local_runtime::LocalRuntimeSnapshot {
             schema_version: 1,
@@ -2010,7 +2045,12 @@ async fn context_assembly_run_local_runtime(
     let canonical_bytes = match assemblies.claim_for_local_runtime(&request) {
         Ok(bytes) => bytes,
         Err(snapshot) => {
-            let _ = projects.complete_context_bundle(&request.bundle_id, "failed");
+            let terminal = if snapshot.state == "expired" {
+                "expired"
+            } else {
+                "failed"
+            };
+            let _ = projects.complete_context_bundle(&request.bundle_id, terminal);
             return Ok(local_runtime::LocalRuntimeSnapshot {
                 schema_version: 1,
                 local_only: true,

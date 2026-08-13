@@ -361,7 +361,11 @@ impl ContextAssemblyService {
         let Some(bundle) = bundles.get_mut(&request.bundle_id) else {
             return Err(Box::new(rejected("bundle-unavailable")));
         };
-        if bundle.state != "dispatching"
+        // The durable ledger enters `dispatching` first. The in-memory review
+        // remains awaiting confirmation until this exact authorization claims
+        // its private bytes, which keeps the two stores atomic at the command
+        // boundary without exposing a runnable intermediate UI state.
+        if bundle.state != "awaiting_confirmation"
             || bundle.authorization_id != request.authorization_id
             || bundle.digest != request.bundle_digest
         {
@@ -712,6 +716,49 @@ mod tests {
             assert_eq!(service.confirm(confirm.clone()).state, outcome);
             assert_eq!(service.confirm(confirm).state, "rejected");
         }
+    }
+
+    #[test]
+    fn local_runtime_preflight_keeps_an_exact_review_available_for_one_claim() {
+        let service = ContextAssemblyService::default();
+        let prepared = service.prepare(req(), vec![]);
+        let bundle_id = prepared.bundle_id.clone().expect("bundle");
+        assert_eq!(
+            service
+                .review(ContextAttemptRequest {
+                    bundle_id: bundle_id.clone(),
+                })
+                .state,
+            "awaiting_review"
+        );
+        assert_eq!(
+            service
+                .acknowledge_review(ContextAttemptRequest {
+                    bundle_id: bundle_id.clone(),
+                })
+                .state,
+            "awaiting_confirmation"
+        );
+        let request = ContextConfirmRequest {
+            bundle_id: bundle_id.clone(),
+            authorization_id: prepared.authorization_id.expect("authorization"),
+            bundle_digest: prepared.bundle_digest.expect("digest"),
+        };
+        assert_eq!(
+            service.preflight_confirm(&request).state,
+            "accepted_delivery"
+        );
+        assert!(
+            service
+                .canonical_bytes(&bundle_id)
+                .is_some_and(|bytes| !bytes.is_empty()),
+            "preflight validates without consuming the reviewed bytes"
+        );
+        assert!(!service
+            .claim_for_local_runtime(&request)
+            .expect("exact review remains claimable")
+            .is_empty());
+        assert_eq!(service.canonical_bytes(&bundle_id), Some(Vec::new()));
     }
 
     #[test]
