@@ -8,6 +8,12 @@ const bridge = vi.hoisted(() => ({
   cancelContextAssemblyLocalRuntime: vi.fn(),
   confirmContextAssembly: vi.fn(),
   loadDurableSources: vi.fn().mockResolvedValue({ sources: [] }),
+  loadContextAssemblyLocalRuntimeAvailability: vi.fn().mockResolvedValue({
+    schemaVersion: 1,
+    localOnly: true,
+    available: true,
+    diagnostic: null,
+  }),
   loadLocalReview: vi.fn(),
   loadTaskCatalog: vi.fn().mockResolvedValue({ tasks: [] }),
   prepareContextAssembly: vi.fn().mockResolvedValue({
@@ -197,6 +203,74 @@ describe("ContextAssemblyWorkbench", () => {
     expect(
       screen.getByRole("button", { name: /prepare review/i }),
     ).toBeDisabled();
+  });
+
+  it("does not consume an acknowledged review when the local model is unavailable", async () => {
+    bridge.runContextAssemblyLocalRuntime.mockClear();
+    bridge.loadContextAssemblyLocalRuntimeAvailability.mockResolvedValueOnce({
+      schemaVersion: 1,
+      localOnly: true,
+      available: false,
+      diagnostic: "model-unavailable",
+    });
+    const confirmed = {
+      schemaVersion: 1,
+      fictionalLocalOnly: true,
+      sink: "fictional-local-context-sink-v1",
+      state: "awaiting_confirmation",
+      projectId: "019fbee6-476f-71b0-853c-f067657aa69c",
+      taskId: null,
+      bundleId: "019fbee6-476f-71b0-853c-f067657aa69b",
+      authorizationId: "019fbee6-476f-71b0-853c-f067657aa69a",
+      bundleDigest:
+        "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      expiresAtMs: 1,
+      items: [],
+      totalBytes: 12,
+      estimatedTokens: 3,
+      exclusions: [],
+      auditState: "review acknowledged",
+      diagnostic: null,
+    };
+    bridge.prepareContextAssembly.mockResolvedValueOnce({
+      ...confirmed,
+      state: "prepared",
+      authorizationId: null,
+    });
+    bridge.reviewContextAssembly.mockResolvedValueOnce({
+      ...confirmed,
+      state: "awaiting_review",
+      authorizationId: null,
+    });
+    bridge.acknowledgeContextAssemblyReview.mockResolvedValueOnce(confirmed);
+
+    render(
+      <ContextAssemblyWorkbench
+        projectId="019fbee6-476f-71b0-853c-f067657aa69c"
+        onClose={() => undefined}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText(/explicit user instruction/i), {
+      target: { value: "Summarize the reviewed request" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /prepare review/i }));
+    await screen.findByRole("button", { name: /review prepared bundle/i });
+    fireEvent.click(
+      screen.getByRole("button", { name: /review prepared bundle/i }),
+    );
+    await screen.findByRole("button", { name: /acknowledge exact review/i });
+    fireEvent.click(
+      screen.getByRole("button", { name: /acknowledge exact review/i }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByText(/no reviewed bundle can be consumed/i),
+      ).toBeInTheDocument(),
+    );
+    expect(
+      screen.getByRole("button", { name: /run once with local-only model/i }),
+    ).toBeDisabled();
+    expect(bridge.runContextAssemblyLocalRuntime).not.toHaveBeenCalled();
   });
 
   it("runs one confirmed review in the local-only view and retains only its bounded result", async () => {

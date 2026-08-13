@@ -159,8 +159,11 @@ and retains a bounded result only in the open local view. A clean-tree
 source commit `6f77d0c4d73cefe5ed335898830872ca63ad203a` and passed the pinned
 Ubuntu 22.04 package, lifecycle, visible-launch, and release-artifact gates.
 The correction also has focused native, UI, and loopback-only browser-fixture
-coverage. Installed-host local-model execution and desktop acceptance still
-remain required before any release-ready claim.
+coverage. The governed local-only view now checks a typed content-free runtime
+availability snapshot before it consumes an acknowledged review, preserving
+that exact review when the supervisor-provided model contract is absent.
+Installed-host local-model execution and desktop acceptance still remain
+required before any release-ready claim.
 
 M54 Local Review is complete at package/source commit
 `c4c2752466f36f791fde47edbc5c6b02b0e21320`, tagged

@@ -57,6 +57,7 @@ import {
   contextAssemblyConfirmRequestSchema,
   contextAssemblyPrepareRequestSchema,
   contextAssemblySnapshotSchema,
+  localRuntimeAvailabilitySchema,
   localRuntimeSnapshotSchema,
   type ContextAssemblySnapshot,
 } from "./contextAssembly";
@@ -453,6 +454,8 @@ export const CONTEXT_ASSEMBLY_PREPARE_COMMAND = "context_assembly_prepare";
 export const CONTEXT_ASSEMBLY_CONFIRM_COMMAND = "context_assembly_confirm";
 export const CONTEXT_ASSEMBLY_RUN_LOCAL_RUNTIME_COMMAND =
   "context_assembly_run_local_runtime";
+export const CONTEXT_ASSEMBLY_LOCAL_RUNTIME_AVAILABILITY_COMMAND =
+  "context_assembly_local_runtime_availability";
 export const CONTEXT_ASSEMBLY_CANCEL_LOCAL_RUNTIME_COMMAND =
   "context_assembly_cancel_local_runtime";
 export const CONTEXT_ASSEMBLY_REVIEW_COMMAND = "context_assembly_review";
@@ -1754,6 +1757,12 @@ export const runContextAssemblyLocalRuntime = async (
     await invokeFunction(CONTEXT_ASSEMBLY_RUN_LOCAL_RUNTIME_COMMAND, {
       request: contextAssemblyConfirmRequestSchema.parse(request),
     }),
+  );
+export const loadContextAssemblyLocalRuntimeAvailability = async (
+  invokeFunction: InvokeFunction = invokeTauri,
+) =>
+  localRuntimeAvailabilitySchema.parse(
+    await invokeFunction(CONTEXT_ASSEMBLY_LOCAL_RUNTIME_AVAILABILITY_COMMAND),
   );
 export const cancelContextAssemblyLocalRuntime = async (
   request: unknown,

@@ -73,3 +73,15 @@ export const localRuntimeSnapshotSchema = z
   })
   .strict();
 export type LocalRuntimeSnapshot = z.infer<typeof localRuntimeSnapshotSchema>;
+
+export const localRuntimeAvailabilitySchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    localOnly: z.literal(true),
+    available: z.boolean(),
+    diagnostic: z.literal("model-unavailable").nullable(),
+  })
+  .strict();
+export type LocalRuntimeAvailability = z.infer<
+  typeof localRuntimeAvailabilitySchema
+>;

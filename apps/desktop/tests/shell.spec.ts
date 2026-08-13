@@ -135,6 +135,12 @@ const advisorProjectStateFixture = {
 } as const;
 
 const nativeResponses = {
+  context_assembly_local_runtime_availability: {
+    schemaVersion: 1,
+    localOnly: true,
+    available: true,
+    diagnostic: null,
+  },
   desktop_bootstrap: {
     schemaVersion: 1,
     product: {

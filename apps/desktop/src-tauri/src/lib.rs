@@ -1989,6 +1989,13 @@ fn context_assembly_confirm(
 }
 
 #[tauri::command]
+fn context_assembly_local_runtime_availability(
+    runtime: tauri::State<'_, Arc<local_runtime::LocalRuntimeService>>,
+) -> local_runtime::LocalRuntimeAvailability {
+    runtime.availability()
+}
+
+#[tauri::command]
 async fn context_assembly_run_local_runtime(
     request: context_assembly::ContextConfirmRequest,
     assemblies: tauri::State<'_, context_assembly::ContextAssemblyService>,
@@ -3571,6 +3578,7 @@ pub fn run() {
             context_assembly_status,
             context_assembly_prepare,
             context_assembly_confirm,
+            context_assembly_local_runtime_availability,
             context_assembly_run_local_runtime,
             context_assembly_cancel_local_runtime,
             context_assembly_review,

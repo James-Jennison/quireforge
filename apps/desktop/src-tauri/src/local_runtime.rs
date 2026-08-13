@@ -220,6 +220,19 @@ pub(crate) struct LocalRuntimeSnapshot {
     pub memory_ceiling_mib: u16,
 }
 
+/// Content-free readiness for the supervisor-provided local model contract.
+/// This deliberately reports neither the model location nor any filesystem
+/// observation; it only prevents a one-use reviewed bundle from being
+/// consumed when the required runtime input was not supplied.
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct LocalRuntimeAvailability {
+    pub schema_version: u16,
+    pub local_only: bool,
+    pub available: bool,
+    pub diagnostic: Option<String>,
+}
+
 #[derive(Default)]
 pub(crate) struct LocalRuntimeService {
     active: Arc<Mutex<Option<ActiveRun>>>,
@@ -294,6 +307,16 @@ impl Drop for ActiveRunGuard {
 }
 
 impl LocalRuntimeService {
+    pub(crate) fn availability(&self) -> LocalRuntimeAvailability {
+        let available = model_contract_available(std::env::var(MODEL_PATH_ENV));
+        LocalRuntimeAvailability {
+            schema_version: 1,
+            local_only: true,
+            available,
+            diagnostic: (!available).then_some("model-unavailable".into()),
+        }
+    }
+
     pub(crate) fn reserve(&self, bundle_id: &str) -> Result<LocalRuntimeReservation, ()> {
         let Ok(mut active) = self.active.lock() else {
             return Err(());
@@ -330,6 +353,10 @@ impl LocalRuntimeService {
         active.control.cancelled.store(true, Ordering::Release);
         true
     }
+}
+
+fn model_contract_available(model_path: Result<String, std::env::VarError>) -> bool {
+    model_path.is_ok_and(|value| !value.is_empty() && !value.as_bytes().contains(&0))
 }
 
 impl LocalRuntimeReservation {
@@ -586,8 +613,8 @@ fn cancelled() -> LocalRuntimeSnapshot {
 #[cfg(test)]
 mod tests {
     use super::{
-        cancelled, LocalRuntimeService, CHAT_PROMPT_BYTE_LIMIT, MEMORY_CEILING_BYTES,
-        MEMORY_CEILING_MIB, SYSTEM_PROMPT,
+        cancelled, model_contract_available, LocalRuntimeService, CHAT_PROMPT_BYTE_LIMIT,
+        MEMORY_CEILING_BYTES, MEMORY_CEILING_MIB, SYSTEM_PROMPT,
     };
 
     #[test]
@@ -607,6 +634,13 @@ mod tests {
     fn local_runtime_uses_a_bounded_two_message_chat_prompt() {
         assert!(SYSTEM_PROMPT.contains("local, offline assistant"));
         assert_eq!(CHAT_PROMPT_BYTE_LIMIT, 2 * (96 * 1024 + 256));
+    }
+
+    #[test]
+    fn availability_is_content_free_when_the_model_contract_is_missing() {
+        assert!(!model_contract_available(Err(
+            std::env::VarError::NotPresent
+        )));
     }
 
     #[test]

@@ -8,12 +8,14 @@ import {
   prepareContextAssembly,
   revokeContextAssembly,
   loadDurableSources,
+  loadContextAssemblyLocalRuntimeAvailability,
   loadTaskCatalog,
   loadLocalReview,
 } from "./lib/bridge";
 import type {
   ContextAssemblySnapshot,
   LocalRuntimeSnapshot,
+  LocalRuntimeAvailability,
 } from "./lib/contextAssembly";
 import type { DurableSourceSummary } from "./lib/durableSources";
 import type { TaskCatalogSnapshot } from "./lib/taskRecords";
@@ -60,6 +62,8 @@ function ContextAssemblyWorkbenchScope({
     [selectedSources, setSelectedSources] = useState<string[]>([]),
     [snapshot, setSnapshot] = useState<ContextAssemblySnapshot | null>(null),
     [runtime, setRuntime] = useState<LocalRuntimeSnapshot | null>(null),
+    [runtimeAvailability, setRuntimeAvailability] =
+      useState<LocalRuntimeAvailability | null>(null),
     [runtimeRunning, setRuntimeRunning] = useState(false),
     [cancellationRequested, setCancellationRequested] = useState(false),
     [busy, setBusy] = useState(false),
@@ -104,6 +108,19 @@ function ContextAssemblyWorkbenchScope({
       current = false;
     };
   }, [projectId]);
+  useEffect(() => {
+    let current = true;
+    void loadContextAssemblyLocalRuntimeAvailability()
+      .then((value) => {
+        if (current) setRuntimeAvailability(value);
+      })
+      .catch(() => {
+        if (current) setRuntimeAvailability(null);
+      });
+    return () => {
+      current = false;
+    };
+  }, []);
   useEffect(() => {
     let current = true;
     if (!taskId) {
@@ -402,6 +419,7 @@ function ContextAssemblyWorkbenchScope({
             !canConfirm ||
             busy ||
             runtimeRunning ||
+            runtimeAvailability?.available === false ||
             (runtime !== null && !runtimeBusy)
           }
           onClick={() => {
@@ -567,6 +585,12 @@ function ContextAssemblyWorkbenchScope({
             </p>
           )}
         </section>
+      )}
+      {runtimeAvailability?.available === false && (
+        <p className="context-note" role="status">
+          The supervisor-provided local model is unavailable. No reviewed bundle
+          can be consumed until this local-only runtime input is present.
+        </p>
       )}
     </section>
   );
