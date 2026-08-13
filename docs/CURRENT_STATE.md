@@ -186,6 +186,11 @@ shows its checking state in the governed review. This preserves native
 authority and leaves the model external; package gates do not start it.
 Installed Debian desktop acceptance remains pending.
 
+The beta.70 M63 candidate resolves an IPC-level availability-preflight failure
+to a bounded unavailable state in the governed review. It leaves the one-time
+action disabled and the acknowledged bundle unconsumed; package promotion and
+installed Debian desktop acceptance remain pending.
+
 M54 Local Review is complete at package/source commit
 `c4c2752466f36f791fde47edbc5c6b02b0e21320`, tagged
 `v0.1.0-beta.53`. Its beta.53 Debian pair passed pinned-container package,

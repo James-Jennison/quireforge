@@ -79,7 +79,7 @@ export const localRuntimeAvailabilitySchema = z
     schemaVersion: z.literal(1),
     localOnly: z.literal(true),
     available: z.boolean(),
-    diagnostic: z.literal("model-unavailable").nullable(),
+    diagnostic: z.enum(["model-unavailable", "runtime-unavailable"]).nullable(),
   })
   .strict();
 export type LocalRuntimeAvailability = z.infer<

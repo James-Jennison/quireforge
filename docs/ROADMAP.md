@@ -1611,6 +1611,11 @@ explicit checking state. It preserves native authority, excludes the external
 model from packages, and does not start the runtime in package gates.
 Installed Debian desktop acceptance remains pending.
 
+The beta.70 candidate resolves an IPC-level availability-preflight failure to
+a bounded unavailable state, preserving the disabled one-time action and
+unconsumed acknowledged bundle. Package promotion and installed Debian desktop
+acceptance remain pending.
+
 **First implementation milestone source-complete:** [Provider Capability
 Registry Contracts](MILESTONE_PROVIDER_CAPABILITY_REGISTRY_CONTRACTS.md)
 implements private static fictional registry contracts and focused safeguards

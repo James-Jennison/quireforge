@@ -115,7 +115,16 @@ function ContextAssemblyWorkbenchScope({
         if (current) setRuntimeAvailability(value);
       })
       .catch(() => {
-        if (current) setRuntimeAvailability(null);
+        // An IPC failure has completed the preflight just as decisively as a
+        // missing model contract. Keep the one-use action unavailable, but do
+        // not leave the governed review indefinitely claiming it is checking.
+        if (current)
+          setRuntimeAvailability({
+            schemaVersion: 1,
+            localOnly: true,
+            available: false,
+            diagnostic: "runtime-unavailable",
+          });
       });
     return () => {
       current = false;
@@ -588,8 +597,9 @@ function ContextAssemblyWorkbenchScope({
       )}
       {runtimeAvailability?.available === false && (
         <p className="context-note" role="status">
-          The supervisor-provided local model is unavailable. No reviewed bundle
-          can be consumed until this local-only runtime input is present.
+          {runtimeAvailability.diagnostic === "runtime-unavailable"
+            ? "Local runtime availability could not be verified. No reviewed bundle can be consumed."
+            : "The supervisor-provided local model is unavailable. No reviewed bundle can be consumed until this local-only runtime input is present."}
         </p>
       )}
       {runtimeAvailability === null && (

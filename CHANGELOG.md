@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.0-beta.70 — M63 availability-failure acceptance candidate
+
+- Resolves an IPC-level local-runtime availability preflight to a bounded,
+  visible unavailable state. The governed review leaves its one-time local
+  action disabled and does not consume the acknowledged bundle.
+- The model remains external to the package and is never started by routine
+  package gates. Package promotion and installed Debian desktop
+  governed-review acceptance remain pending.
+
 ## 0.1.0-beta.69 — M63 availability-preflight acceptance candidate
 
 - Keeps the governed-review local-only action disabled until the typed,
