@@ -62,6 +62,15 @@ class SupervisorCompletionStateTests(unittest.TestCase):
         self.assertIn("connect to an external provider", script)
         self.assertIn("cargo metadata --locked --no-deps --format-version 1", script)
 
+    def test_supervisor_stops_at_a_bounded_task_budget_checkpoint_by_default(self) -> None:
+        script = SUPERVISOR.read_text(encoding="utf-8")
+        service = SERVICE_UNIT.read_text(encoding="utf-8")
+
+        self.assertIn('max_tasks_per_launch="${QUIRE_FORGE_SUPERVISOR_MAX_TASKS_PER_LAUNCH:-3}"', script)
+        self.assertIn("This worker task has one bounded-task budget", script)
+        self.assertIn("Weekly budget checkpoint reached", script)
+        self.assertIn("Environment=QUIRE_FORGE_SUPERVISOR_MAX_TASKS_PER_LAUNCH=3", service)
+
     def test_worker_exposes_only_the_approved_model_path_to_tool_shells(self) -> None:
         script = SUPERVISOR.read_text(encoding="utf-8")
 

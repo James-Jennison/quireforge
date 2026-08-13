@@ -1686,6 +1686,14 @@ above; its hard stops remain unchanged.
 
 ### Deferred capability gates
 
+Real in-app browsing for Codex-assisted research and verification is a deferred
+capability gate. It must be designed as an isolated, governed browser surface
+with explicit target/navigation scope, read-only observation and provenance
+capture, and separately approved authentication, interaction, download, upload,
+or external-mutation lanes. It must not reuse ambient browser sessions,
+cookies, or credentials, and it does not follow from M58's fictional local-only
+verification fixture.
+
 New archive, Office, or binary formats; generic upload; executable loading or
 execution beyond the separately installed M39 worker; dynamic loader support;
 browser/provider expansion; direct third-party connectors (including Figma or

@@ -15,6 +15,7 @@ readonly log_path="$state_root/supervisor.log"
 readonly worker_log_path="$state_root/worker.log"
 readonly lock_path="$state_root/run.lock"
 readonly interval_seconds="${QUIRE_FORGE_SUPERVISOR_INTERVAL_SECONDS:-60}"
+readonly max_tasks_per_launch="${QUIRE_FORGE_SUPERVISOR_MAX_TASKS_PER_LAUNCH:-3}"
 readonly started_at="$(date --iso-8601=seconds)"
 readonly worker_sandbox_mode="danger-full-access"
 
@@ -44,6 +45,10 @@ fi
 
 if [[ -z "$state_root" || "$state_root" == "/$supervisor_name" ]]; then
   printf 'XDG_STATE_HOME or QUIRE_FORGE_SUPERVISOR_STATE_DIR must be set.\n' >&2
+  exit 78
+fi
+if ! [[ "$max_tasks_per_launch" =~ ^[1-9][0-9]*$ ]]; then
+  printf 'QUIRE_FORGE_SUPERVISOR_MAX_TASKS_PER_LAUNCH must be a positive integer.\n' >&2
   exit 78
 fi
 if [[ ! -f "$repository_root/AGENTS.md" || ! -d "$repository_root/.git" ]]; then
@@ -302,8 +307,8 @@ recovery_finalize() {
 }
 
 if [[ "$mode" == "dry-run" ]]; then
-  printf 'repository=%s\nstate=%s\nstatus=%s\nlog=%s\nworker_log=%s\nsentinel=%s\n' \
-    "$repository_root" "$state_root" "$status_path" "$log_path" "$worker_log_path" "$sentinel_path"
+  printf 'repository=%s\nstate=%s\nstatus=%s\nlog=%s\nworker_log=%s\nsentinel=%s\nmax_tasks_per_launch=%s\n' \
+    "$repository_root" "$state_root" "$status_path" "$log_path" "$worker_log_path" "$sentinel_path" "$max_tasks_per_launch"
   exit 0
 fi
 if [[ "$mode" == "self-test" ]]; then
@@ -380,7 +385,7 @@ run_task() {
     --config 'shell_environment_policy.inherit="none"' \
     --config 'shell_environment_policy.include_only=["PATH","QUIRE_FORGE_M63_MODEL_PATH"]' \
     --cd "$repository_root" --output-last-message "$result_path" \
-    'Read and obey AGENTS.md first. Inspect docs/CURRENT_STATE.md, docs/ROADMAP.md, relevant ADRs, and git status. Advance the approved M63 credential-free local-runtime vertical slice toward a releasable local candidate: prioritize the missing adapter, bounded lifecycle, user-visible local-only flow, package/installed-host acceptance, and release-candidate evidence. Do not make standalone source-boundary hardening, validator expansion, or adversarial guard changes unless a direct validation failure blocks the vertical slice; do not select M64 or any credentialed provider. You are a supervisor-launched full-access worker. The outer supervisor owns Git operations: never run git add, git commit, or git push. The only permitted runtime is the approved in-process local model at the read-only path in QUIRE_FORGE_M63_MODEL_PATH: do not print, modify, copy, hash, download, or persist that path or model. Do not access credentials or accounts, use browser sessions, connect to an external provider, transmit over the network, deploy, publish, take destructive action, make third-party commitments, or make irreversible product-direction decisions. Preserve the Linux Tauri desktop-app scope. Run focused unit tests, type-check, lint, and formatting checks that are relevant to the task. Before reporting Cargo unavailable, run `cargo metadata --locked --no-deps --format-version 1`; report that failure only if the command itself fails. If host validation is required, emit one exact line per required command before the ready marker: AUTOPILOT_HOST_VALIDATION: pnpm test:e2e. During work, emit concise progress summaries prefixed exactly AUTOPILOT_PROGRESS:. Never expose credentials, signing material, secret-bearing URLs, headers, or secrets in progress or final output. Only after relevant checks pass, requested host validation has been declared, and tracked task changes are ready, end your final response with exactly one machine-readable line: AUTOPILOT_READY_TO_COMMIT: <concise commit subject>. If an ordinary test or validation fails, state AUTOPILOT_VALIDATION_FAILED: <concise reason> and do not emit ready. State HUMAN_ONLY_BLOCKER: <concise reason> only for credentials, production access, public release, destructive action, third-party commitment, browser/account access, or a genuinely irreversible product-direction decision.' \
+    'Read and obey AGENTS.md first. Inspect docs/CURRENT_STATE.md, docs/ROADMAP.md, relevant ADRs, and git status. This worker task has one bounded-task budget: select and complete exactly one coherent, high-value M63 vertical-slice increment, then stop. Do not split a small change from an already-ready coherent increment, make drive-by hardening, or start follow-on work after the ready marker. Advance the approved M63 credential-free local-runtime vertical slice toward a releasable local candidate: prioritize the missing adapter, bounded lifecycle, user-visible local-only flow, package/installed-host acceptance, and release-candidate evidence. Do not make standalone source-boundary hardening, validator expansion, or adversarial guard changes unless a direct validation failure blocks the vertical slice; do not select M64 or any credentialed provider. You are a supervisor-launched full-access worker. The outer supervisor owns Git operations: never run git add, git commit, or git push. The only permitted runtime is the approved in-process local model at the read-only path in QUIRE_FORGE_M63_MODEL_PATH: do not print, modify, copy, hash, download, or persist that path or model. Do not access credentials or accounts, use browser sessions, connect to an external provider, transmit over the network, deploy, publish, take destructive action, make third-party commitments, or make irreversible product-direction decisions. Preserve the Linux Tauri desktop-app scope. Run focused unit tests, type-check, lint, and formatting checks that are relevant to the task. Before reporting Cargo unavailable, run `cargo metadata --locked --no-deps --format-version 1`; report that failure only if the command itself fails. If host validation is required, emit one exact line per required command before the ready marker: AUTOPILOT_HOST_VALIDATION: pnpm test:e2e. During work, emit concise progress summaries prefixed exactly AUTOPILOT_PROGRESS:. Never expose credentials, signing material, secret-bearing URLs, headers, or secrets in progress or final output. Only after relevant checks pass, requested host validation has been declared, and tracked task changes are ready, end your final response with exactly one machine-readable line: AUTOPILOT_READY_TO_COMMIT: <concise commit subject>. If an ordinary test or validation fails, state AUTOPILOT_VALIDATION_FAILED: <concise reason> and do not emit ready. State HUMAN_ONLY_BLOCKER: <concise reason> only for credentials, production access, public release, destructive action, third-party commitment, browser/account access, or a genuinely irreversible product-direction decision.' \
     2>&1 | stream_worker_output | tee -a "$worker_log_path"; then
     :
   else
@@ -440,9 +445,16 @@ run_task() {
   write_status "Task committed and pushed" "idle" "passed; outer Git commit and push verified" "Start the next safe task" "none"
 }
 
+completed_task_count=0
 while [[ $stop_requested -eq 0 ]]; do
   [[ -e "$sentinel_path" ]] && { write_status "Awaiting human-only blocker resolution" "blocked" "not run" "Resolve blocker, remove sentinel, then restart" "$(<"$sentinel_path")"; exit 0; }
   if ! run_task; then
+    exit 0
+  fi
+  completed_task_count=$((completed_task_count + 1))
+  if [[ $completed_task_count -ge $max_tasks_per_launch ]]; then
+    write_status "Weekly budget checkpoint reached" "idle" "passed; bounded task budget completed" "Review usage and start the next bounded task batch when ready" "none"
+    log "task budget reached: $completed_task_count of $max_tasks_per_launch"
     exit 0
   fi
   [[ "$mode" == "once" ]] && exit 0
