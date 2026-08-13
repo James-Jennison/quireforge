@@ -1413,6 +1413,18 @@ test("governed context review runs one visible local-only model attempt", async 
       .getByRole("dialog", { name: "Governed context review" })
       .getByRole("button", { name: "Confirm once" }),
   ).toHaveCount(0);
+  await page
+    .getByRole("dialog", { name: "Governed context review" })
+    .getByRole("button", { name: "Close", exact: true })
+    .click();
+  await expect(result).toHaveCount(0);
+  await workflow
+    .getByRole("button", { name: "Governed context review" })
+    .click();
+  await expect(page.getByLabel("Local runtime result")).toHaveCount(0);
+  await expect(
+    page.getByText("The reviewed request was handled locally."),
+  ).toHaveCount(0);
 });
 
 test("governed context review cancels only its pending local-only attempt", async ({

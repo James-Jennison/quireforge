@@ -74,8 +74,9 @@ with exactly the application and sandbox Debian artifacts. It passed the pinned
 Ubuntu 22.04 package, lifecycle, visible-launch, and release-artifact gates;
 it excludes the model and did not start the runtime. Focused native, workbench,
 and loopback-only browser-fixture tests cover the authorization-lifecycle
-correction. Installed-host M63 execution and desktop acceptance remain required
-before a release-ready claim.
+correction and prove a completed result is cleared when the governed review is
+closed and reopened. Installed-host M63 execution and desktop acceptance remain
+required before a release-ready claim.
 
 The candidate procedure is recorded in
 [Testing](TESTING.md#m63-local-runtime-installed-host-acceptance). It requires
