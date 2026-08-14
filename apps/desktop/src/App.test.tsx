@@ -305,6 +305,7 @@ describe("QuireForge desktop shell", () => {
       ["Overview", "home"],
       ["New task", "conversation"],
       ["Projects", "projects"],
+      ["Studio", "studio"],
       ["Project state", "project-state"],
       ["Threads", "sessions"],
       ["Scheduled", "scheduled"],

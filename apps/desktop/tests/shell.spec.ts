@@ -2267,6 +2267,7 @@ test("every sidebar destination replaces the active workspace without page scrol
     ["Advisor", "advisor"],
     ["New task", "conversation"],
     ["Projects", "projects"],
+    ["Studio", "studio"],
     ["Project state", "project-state"],
     ["Threads", "sessions"],
     ["Scheduled", "scheduled"],

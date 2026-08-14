@@ -1816,6 +1816,11 @@ boundaries, transmit content, invoke an external model, or give Work filesystem,
 Git, terminal, browser, connector, or deployment authority. Any new file type,
 renderer, or export format remains a separately reviewed native boundary.
 
+The first delivery slice places the existing governed Durable Sources surface in
+the Work lane as **Studio**. It reuses M55's typed preparation, confirmation,
+and deletion flow exactly; no new source type, upload, filesystem access,
+provider path, or execution authority is introduced.
+
 ### 66 — Context and Authority Ledger
 
 Expose the existing M55/M59/M60 governance in the product as a clear,

@@ -2032,8 +2032,7 @@ export default function App({
   }
 
   function openDurableSourcesInCode() {
-    setDurableSourcesWorkbenchOpen(true);
-    navigateWorkspace("conversation");
+    navigateWorkspace("studio");
   }
 
   function closeCommandPalette() {
@@ -4174,6 +4173,27 @@ export default function App({
                 }
                 onPreflight={verifyProject}
               />
+            </WorkspaceView>
+
+            <WorkspaceView
+              route="studio"
+              active={workspaceLocation.route === "studio"}
+            >
+              <Suspense
+                fallback={
+                  <section
+                    className="task-template-workbench"
+                    aria-label="Local Work Studio"
+                  >
+                    <p role="status">Loading local Work Studio…</p>
+                  </section>
+                }
+              >
+                <DurableSourcesWorkbench
+                  projectId={currentProject?.id ?? null}
+                  onClose={() => navigateWorkspace("home")}
+                />
+              </Suspense>
             </WorkspaceView>
 
             <WorkspaceView

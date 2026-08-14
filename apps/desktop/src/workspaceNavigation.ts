@@ -3,6 +3,7 @@ export type PrimaryWorkspaceRoute =
   | "advisor"
   | "conversation"
   | "projects"
+  | "studio"
   | "project-state"
   | "sessions"
   | "scheduled"
@@ -67,6 +68,13 @@ export const workspaceNavigation: readonly WorkspaceNavigationItem[] = [
     icon: "folder",
     lane: "work",
     description: "Select and manage local projects",
+  },
+  {
+    route: "studio",
+    label: "Studio",
+    icon: "folder",
+    lane: "work",
+    description: "Organize governed local sources and reviewed artifacts",
   },
   {
     route: "project-state",
