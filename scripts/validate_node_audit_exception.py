@@ -16,8 +16,8 @@ def path_set_sha256(paths: list[str]) -> str:
 def load_exceptions(path: Path = EXCEPTIONS_PATH) -> list[dict[str, Any]]:
     record = json.loads(path.read_text(encoding="utf-8"))
     exceptions = record.get("exceptions")
-    if record.get("schemaVersion") != 1 or not isinstance(exceptions, list) or not exceptions:
-        raise ValueError("node audit exception record must use non-empty schemaVersion 1 exceptions")
+    if record.get("schemaVersion") != 1 or not isinstance(exceptions, list):
+        raise ValueError("node audit exception record must use schemaVersion 1 exceptions")
     for item in exceptions:
         if set(item) != REQUIRED_FIELDS or not isinstance(item["pathCount"], int) or item["pathCount"] < 1 or item["developmentOnly"] is not True:
             raise ValueError("node audit exception fields must match the reviewed schema")
@@ -69,6 +69,8 @@ def main() -> int:
     if errors:
         for error in errors: print(f"node audit exception validation failed: {error}", file=sys.stderr)
         return 1
+    if not exceptions:
+        print("raw node audit is clean; no exceptions are approved"); return 0
     print("node audit exception matched the raw audit exactly"); return 0
 
 if __name__ == "__main__": raise SystemExit(main())

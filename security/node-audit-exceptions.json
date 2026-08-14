@@ -1,11 +1,4 @@
 {
   "schemaVersion": 1,
-  "exceptions": [{
-    "githubAdvisoryId": "GHSA-mh99-v99m-4gvg", "severity": "high", "package": "brace-expansion", "version": "1.1.16",
-    "pathCount": 98, "pathSetSha256": "adf8b4fcf5684f65010aa510e20f4d5d8cdd09feae7ce6f2dd16f6fed90aaaef", "developmentOnly": true,
-    "owner": "QuireForge maintainers", "reviewDate": "2026-08-26", "expiresOn": "2026-10-26",
-    "rationale": "ESLint 9 remains required because eslint-plugin-jsx-a11y supplies Astro's reviewed static accessibility rules. Its published peer range has no supported ESLint 10 release under this workspace's strict peer-dependency policy.",
-    "compensatingControls": "The affected dependency is development-only lint tooling; the raw pnpm audit command remains available; this validator fails closed unless the advisory, severity, package, version, and complete path set match exactly.",
-    "removalTrigger": "Remove this exception when a supported eslint-plugin-jsx-a11y release accepts ESLint 10 and the lint toolchain can be upgraded without relaxing strict peer dependencies or reducing React and Astro accessibility coverage."
-  }]
+  "exceptions": []
 }

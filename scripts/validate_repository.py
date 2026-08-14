@@ -744,12 +744,17 @@ def validate() -> list[str]:
     workspace_path = ROOT / "pnpm-workspace.yaml"
     if workspace_path.is_file():
         workspace_text = workspace_path.read_text(encoding="utf-8")
-        if not re.search(
-            r"(?m)^overrides:\n  fast-uri: 3\.1\.4\n  minimatch@10>brace-expansion: 5\.0\.8$",
-            workspace_text,
-        ):
+        reviewed_overrides = (
+            "fast-uri: 3.1.5",
+            "js-yaml: 4.3.1",
+            "minimatch@3>brace-expansion: 1.1.18",
+            "minimatch@10>brace-expansion: 5.0.9",
+            "nanoid: 3.3.18",
+            "postcss: 8.5.26",
+        )
+        if not all(f"  {override}\n" in workspace_text for override in reviewed_overrides):
             errors.append(
-                "workspace must retain the reviewed minimatch 10 brace-expansion 5.0.8 and fast-uri 3.1.4 overrides"
+                "workspace must retain all reviewed Node security overrides"
             )
 
     exception_check = subprocess.run(

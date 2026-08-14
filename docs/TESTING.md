@@ -646,8 +646,9 @@ no live turn or personal account mutation.
   SHAs, reviewed CSP/header/asset-protocol settings remain exact, and no direct
   active-content/evaluation/network primitive enters production frontend code.
 - Run the Node high-severity audit and warning-denying RustSec audit. Confirm
-  the lock graph uses `fast-uri` 3.1.4 and every ignored RustSec ID matches the
-  reviewed Tauri/GTK3 or `tauri-utils` transitive graph.
+  the raw Node audit is clean, the reviewed workspace overrides remain pinned,
+  and every ignored RustSec ID matches the reviewed Tauri/GTK3 or `tauri-utils`
+  transitive graph.
 - Build the desktop frontend and run `desktop validate:dist`. Confirm the
   startup entry, application shell, and terminal renderer remain separate, the
   per-chunk/total JS/CSS budgets pass, and the generated HTML loads no external
