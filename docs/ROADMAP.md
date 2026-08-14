@@ -1792,6 +1792,9 @@ The second delivery slice adds a Work overview inventory over the existing local
 task-catalogue snapshot and navigation to the existing durable-source and thread
 surfaces. It reads no new data, attaches nothing, and introduces no transfer
 between Chat, Work, and Code.
+The third delivery slice makes the Work overview's thread card reflect the
+already-loaded, current-project session metadata and link back to Threads. It
+does not open, resume, fork, archive, or otherwise mutate a thread.
 
 ### 65 — Local Work Studio and Artifact Library
 

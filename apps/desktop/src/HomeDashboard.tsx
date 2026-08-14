@@ -1,10 +1,12 @@
 import type { ProjectWorkspaceSnapshot } from "./lib/project";
+import type { SessionLifecycleSnapshot } from "./lib/session";
 import type { TaskCatalogSnapshot } from "./lib/taskRecords";
 
 interface HomeDashboardProps {
   projects: ProjectWorkspaceSnapshot;
   currentProject: ProjectWorkspaceSnapshot["projects"][number] | null;
   taskCatalog: TaskCatalogSnapshot;
+  sessions: SessionLifecycleSnapshot;
   onNewTask: () => void;
   onOpenTaskCatalog: () => void;
   onOpenDurableSources: () => void;
@@ -19,6 +21,7 @@ export function HomeDashboard({
   projects,
   currentProject,
   taskCatalog,
+  sessions,
   onNewTask,
   onOpenTaskCatalog,
   onOpenDurableSources,
@@ -40,6 +43,20 @@ export function HomeDashboard({
       : taskCatalog.taskCount === 0
         ? "No local tasks are recorded for this project."
         : `${activeTaskCount} active of ${taskCatalog.taskCount} local task${taskCatalog.taskCount === 1 ? "" : "s"}.`;
+  const projectSessions = currentProject
+    ? sessions.sessions
+        .filter((session) => session.projectId === currentProject.id)
+        .sort((left, right) => right.updatedAtMs - left.updatedAtMs)
+    : [];
+  const latestSession = projectSessions[0];
+  const sessionSummary =
+    sessions.state === "unavailable"
+      ? "Thread metadata is unavailable."
+      : !currentProject
+        ? "Choose a project to view its local threads."
+        : projectSessions.length === 0
+          ? "No local threads are recorded for this project."
+          : `${projectSessions.length} local thread${projectSessions.length === 1 ? "" : "s"} recorded for this project.`;
 
   return (
     <section className="home-dashboard" id="home" aria-labelledby="home-title">
@@ -133,10 +150,10 @@ export function HomeDashboard({
           <section>
             <span aria-hidden="true">◌</span>
             <h3>Thread activity</h3>
-            <p>
-              Continue or inspect existing task history without changing the
-              selected project or starting work.
-            </p>
+            <p>{sessionSummary}</p>
+            {latestSession && (
+              <small>Latest: {latestSession.title ?? "Untitled thread"}</small>
+            )}
             <button type="button" onClick={onOpenSessions}>
               Open threads
             </button>

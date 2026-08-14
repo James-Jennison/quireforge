@@ -568,6 +568,69 @@ describe("QuireForge desktop shell", () => {
     ).toBeVisible();
   });
 
+  it("shows local thread metadata for the current Work project", async () => {
+    const lifecycle = sessionLifecycleSchema.parse({
+      schemaVersion: 3,
+      state: "ready",
+      sessions: [
+        {
+          conversationId: "018f0000-0000-7000-8000-000000000030",
+          projectId,
+          parentConversationId: null,
+          title: "Earlier local thread",
+          modelId: "gpt-5.6-sol",
+          reasoningEffort: "low",
+          modelSelection: modelSelection("low"),
+          sandboxMode: "workspace-write",
+          approvalPolicy: "on-request",
+          state: "completed",
+          createdAtMs: 1,
+          updatedAtMs: 2,
+        },
+        {
+          conversationId: "018f0000-0000-7000-8000-000000000031",
+          projectId,
+          parentConversationId: null,
+          title: "Latest local thread",
+          modelId: "gpt-5.6-sol",
+          reasoningEffort: "low",
+          modelSelection: modelSelection("low"),
+          sandboxMode: "workspace-write",
+          approvalPolicy: "on-request",
+          state: "completed",
+          createdAtMs: 3,
+          updatedAtMs: 4,
+        },
+      ],
+      diagnosticCode: null,
+    });
+    render(
+      <App
+        loadBootstrap={() => Promise.resolve(scaffoldBootstrap)}
+        loadRuntime={() => Promise.resolve(scaffoldCodexRuntime)}
+        loadAuth={() => Promise.resolve(authenticatedAuth)}
+        loadProjects={() => Promise.resolve(attachedProject)}
+        loadSessions={() => Promise.resolve(lifecycle)}
+      />,
+    );
+
+    expect(
+      await screen.findByText("2 local threads recorded for this project."),
+    ).toBeVisible();
+    expect(screen.getByText("Latest: Latest local thread")).toBeVisible();
+
+    fireEvent.click(screen.getByRole("button", { name: "Open threads" }));
+    const workspace = document.querySelector<HTMLElement>(
+      '[data-workspace-view="sessions"]',
+    );
+    expect(workspace).not.toHaveAttribute("hidden");
+    expect(
+      within(workspace as HTMLElement).getByRole("heading", {
+        name: "Return to work without copying its history.",
+      }),
+    ).toBeVisible();
+  });
+
   it("keeps the managed terminal collapsed until the workbench user opens its dock", async () => {
     render(
       <App

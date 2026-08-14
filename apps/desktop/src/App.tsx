@@ -4138,6 +4138,7 @@ export default function App({
                 projects={projects}
                 currentProject={currentProject ?? null}
                 taskCatalog={taskCatalog}
+                sessions={sessions}
                 onNewTask={() => navigateWorkspace("conversation")}
                 onOpenTaskCatalog={openTaskCatalogInCode}
                 onOpenDurableSources={openDurableSourcesInCode}
