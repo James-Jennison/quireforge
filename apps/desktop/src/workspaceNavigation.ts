@@ -35,100 +35,100 @@ export interface WorkspaceNavigationItem {
   route: PrimaryWorkspaceRoute;
   label: string;
   icon: string;
-  group: "main" | "workspace";
+  lane: "chat" | "work" | "code";
   description: string;
 }
 
 export const workspaceNavigation: readonly WorkspaceNavigationItem[] = [
   {
     route: "home",
-    label: "Home",
+    label: "Overview",
     icon: "grid",
-    group: "main",
-    description: "Dashboard and starting workspace",
+    lane: "work",
+    description: "Project overview and starting workspace",
   },
   {
     route: "advisor",
     label: "Advisor",
     icon: "grid",
-    group: "main",
+    lane: "chat",
     description: "Plan with a managed, read-only Advisor",
   },
   {
     route: "conversation",
     label: "New task",
     icon: "plus",
-    group: "main",
+    lane: "code",
     description: "Create a focused QuireForge task",
   },
   {
     route: "projects",
     label: "Projects",
     icon: "folder",
-    group: "main",
+    lane: "work",
     description: "Select and manage local projects",
   },
   {
     route: "project-state",
     label: "Project state",
     icon: "git",
-    group: "workspace",
+    lane: "code",
     description: "Inspect normalized repository evidence",
   },
   {
     route: "sessions",
     label: "Threads",
     icon: "thread",
-    group: "main",
+    lane: "work",
     description: "Review and continue task history",
   },
   {
     route: "scheduled",
     label: "Scheduled",
     icon: "clock",
-    group: "main",
+    lane: "work",
     description: "Review discovered scheduled work",
   },
   {
     route: "integrations",
     label: "Integrations",
     icon: "blocks",
-    group: "main",
+    lane: "work",
     description: "Manage supported tools and connections",
   },
   {
     route: "files",
     label: "Files",
     icon: "folder",
-    group: "workspace",
+    lane: "code",
     description: "Preview files from the active project",
   },
   {
     route: "changes",
     label: "Changes",
     icon: "git",
-    group: "workspace",
+    lane: "code",
     description: "Review source-control changes",
   },
   {
     route: "worktrees",
     label: "Worktrees",
     icon: "git",
-    group: "workspace",
+    lane: "code",
     description: "Create and manage project worktrees",
   },
   {
     route: "terminal",
     label: "Terminal",
     icon: "terminal",
-    group: "workspace",
+    lane: "code",
     description: "Use the integrated project terminal",
   },
   {
     route: "dynamic-analysis",
     label: "Isolated analysis",
     icon: "shield",
-    group: "workspace",
+    lane: "code",
     description: "Run one static ELF in the separately installed worker",
   },
 ] as const;

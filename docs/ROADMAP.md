@@ -154,7 +154,7 @@ discovery; scheduling management and execution remain unsupported.
 |        27 | Unified Conversation Engine                                       | Large        | Complete; managed Chat/Codex boundary and fresh Ubuntu package gate                                          |
 |        28 | Reference-only Advisor foundation                                 | Medium       | Complete; safe shell, confirmed temporary Project State projection, and fresh Ubuntu package gate            |
 |        29 | Managed Advisor conversation foundation                           | Medium       | Complete; managed no-project Advisor turn with transient per-send safe context and fresh Ubuntu package gate |
-|        64 | Unified Project Workspace Foundation                              | Large        | Planned; local Chat, Work, and Code shell with no new provider or external authority                          |
+|        64 | Unified Project Workspace Foundation                              | Large        | In progress; first navigation slice groups existing routes into Chat, Work, and Code with no new authority     |
 |        65 | Local Work Studio and Artifact Library                            | Large        | Planned; reviewed local artifacts and previews within existing source boundaries                              |
 |        66 | Context and Authority Ledger                                     | Large        | Planned; user-visible receipts over existing M55/M60 governance                                               |
 |        67 | Provider-Neutral Work Adapter UX                                  | Large        | Planned; adapter-neutral local UX and fixtures, no credential or live-provider route                          |
@@ -1780,6 +1780,14 @@ silently transfer transcripts, attachments, source content, project paths,
 approvals, Git/terminal state, integration state, credentials, or authority
 between lanes. It introduces no new model/runtime, provider route, network,
 browser, connector, generic upload, external action, or automation.
+
+The first delivery slice reorganizes the existing sidebar only: Advisor remains
+the bounded Chat route; the project overview, projects, threads, scheduled
+catalogue, and integrations remain Work routes; and the existing task,
+repository, file, review, worktree, terminal, and isolated-analysis routes
+remain Code routes. Routes, hash compatibility, native contracts, and
+conversation-boundary confirmation are unchanged. Later M64 slices may add
+shared overview or inventory presentation only under the same no-transfer rule.
 
 ### 65 — Local Work Studio and Artifact Library
 

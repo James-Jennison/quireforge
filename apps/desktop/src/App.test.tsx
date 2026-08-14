@@ -259,7 +259,7 @@ describe("QuireForge desktop shell", () => {
     expect(screen.getByText("99%")).toBeInTheDocument();
     expect(screen.queryByText("planned")).not.toBeInTheDocument();
 
-    expect(screen.getByRole("link", { name: "Home" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Overview" })).toHaveAttribute(
       "aria-current",
       "page",
     );
@@ -302,7 +302,7 @@ describe("QuireForge desktop shell", () => {
     );
 
     const destinations = [
-      ["Home", "home"],
+      ["Overview", "home"],
       ["New task", "conversation"],
       ["Projects", "projects"],
       ["Project state", "project-state"],
@@ -329,7 +329,7 @@ describe("QuireForge desktop shell", () => {
 
     await navigateTo("Files");
     const fileView = document.querySelector('[data-workspace-view="files"]');
-    await navigateTo("Home");
+    await navigateTo("Overview");
     expect(fileView).toBeInTheDocument();
     expect(fileView).toHaveAttribute("hidden");
     await navigateTo("Files");
@@ -353,7 +353,7 @@ describe("QuireForge desktop shell", () => {
 
     await navigateTo("New task");
     const workspaceTrigger = screen.getByRole("button", {
-      name: "QuireForge",
+      name: "Code",
     });
     fireEvent.click(workspaceTrigger);
     fireEvent.click(screen.getByRole("menuitemradio", { name: /Advisor/u }));
@@ -385,7 +385,7 @@ describe("QuireForge desktop shell", () => {
     ).not.toBeInTheDocument();
     expect(workspaceTrigger).toHaveFocus();
 
-    fireEvent.click(screen.getByRole("button", { name: "QuireForge" }));
+    fireEvent.click(screen.getByRole("button", { name: "Code" }));
     fireEvent.click(screen.getByRole("menuitemradio", { name: /Advisor/u }));
     fireEvent.click(screen.getByRole("button", { name: "Confirm Advisor" }));
     expect(
@@ -408,8 +408,8 @@ describe("QuireForge desktop shell", () => {
       acknowledged: true,
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Advisor" }));
-    fireEvent.click(screen.getByRole("menuitemradio", { name: /QuireForge/u }));
+    fireEvent.click(screen.getByRole("button", { name: "Chat" }));
+    fireEvent.click(screen.getByRole("menuitemradio", { name: /Code/u }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     await waitFor(() =>
       expect(
@@ -417,7 +417,7 @@ describe("QuireForge desktop shell", () => {
       ).not.toHaveAttribute("hidden"),
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "QuireForge" }));
+    fireEvent.click(screen.getByRole("button", { name: "Code" }));
     fireEvent.click(screen.getByRole("menuitemradio", { name: /Advisor/u }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(
@@ -571,9 +571,7 @@ describe("QuireForge desktop shell", () => {
     );
 
     await navigateTo("New task");
-    expect(
-      screen.getByRole("button", { name: "QuireForge" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Code" })).toBeInTheDocument();
     expect(window.localStorage.getItem("quireforge-conversation-mode")).toBe(
       "codex",
     );
@@ -595,7 +593,7 @@ describe("QuireForge desktop shell", () => {
       "topbar-button--review-panes",
     );
 
-    await navigateTo("Home");
+    await navigateTo("Overview");
     expect(
       screen.queryByRole("button", { name: "Review panes" }),
     ).not.toBeInTheDocument();
@@ -638,7 +636,7 @@ describe("QuireForge desktop shell", () => {
         />,
       );
       await navigateTo("New task");
-      fireEvent.click(screen.getByRole("button", { name: "QuireForge" }));
+      fireEvent.click(screen.getByRole("button", { name: "Code" }));
       fireEvent.click(screen.getByRole("menuitemradio", { name: /Advisor/u }));
       expect(screen.getByRole("dialog")).toBeInTheDocument();
     },
@@ -778,10 +776,9 @@ describe("QuireForge desktop shell", () => {
         loadProjects={() => Promise.resolve(attachedProject)}
       />,
     );
-    expect(await screen.findByRole("link", { name: "Home" })).toHaveAttribute(
-      "aria-current",
-      "page",
-    );
+    expect(
+      await screen.findByRole("link", { name: "Overview" }),
+    ).toHaveAttribute("aria-current", "page");
     expect(window.location.hash).toBe("#home");
   });
 

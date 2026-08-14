@@ -618,13 +618,13 @@ function WorkspaceSelector({
   }> = [
     {
       id: "advisor",
-      title: "Advisor",
-      subtitle: "Create, learn, and explore",
+      title: "Chat",
+      subtitle: "Advisor · read-only planning",
     },
     {
       id: "quireforge",
-      title: "QuireForge",
-      subtitle: "Build, debug, and ship",
+      title: "Code",
+      subtitle: "Codex task · build, debug, and ship",
     },
   ];
 
@@ -682,7 +682,7 @@ function WorkspaceSelector({
           }
         }}
       >
-        <span>{mode === "advisor" ? "Advisor" : "QuireForge"}</span>
+        <span>{mode === "advisor" ? "Chat" : "Code"}</span>
         <span aria-hidden="true">⌄</span>
       </button>
       {open && (
@@ -3803,94 +3803,79 @@ export default function App({
           onRequestChange={requestWorkspaceSelection}
         />
 
-        <nav className="primary-nav" aria-label="Primary navigation">
-          <p className="nav-label">Main</p>
-          {workspaceNavigation
-            .filter((item) => item.group === "main")
-            .map((item) => (
-              <a
+        <nav className="primary-nav" aria-label="Workspace navigation">
+          {(["chat", "work", "code"] as const).map((lane, laneIndex) => (
+            <div className="navigation-lane" key={lane}>
+              <p
                 className={
-                  workspaceLocation.route === item.route
-                    ? "nav-item nav-item--active"
-                    : "nav-item"
+                  laneIndex === 0
+                    ? "nav-label"
+                    : "nav-label nav-label--secondary"
                 }
-                href={workspaceLocationHash(workspaceLocationFor(item.route))}
-                key={item.route}
-                aria-current={
-                  workspaceLocation.route === item.route ? "page" : undefined
-                }
-                aria-label={item.label}
-                title={item.description}
-                onClick={(event) => {
-                  event.preventDefault();
-                  if (
-                    item.route === "advisor" ||
-                    item.route === "conversation"
-                  ) {
-                    requestConversationWorkspace(item.route);
-                  } else {
-                    navigateWorkspace(item.route);
-                  }
-                }}
               >
-                <Glyph name={item.icon} />
-                <span>{item.label}</span>
-              </a>
-            ))}
-          <p className="nav-label nav-label--secondary">Workspace</p>
-          {workspaceNavigation
-            .filter((item) => item.group === "workspace")
-            .map((item) =>
-              item.route === "dynamic-analysis" ? (
-                <button
-                  className={
-                    workspaceLocation.route === item.route
-                      ? "nav-item nav-item--active"
-                      : "nav-item"
-                  }
-                  type="button"
-                  key={item.route}
-                  aria-current={
-                    workspaceLocation.route === item.route ? "page" : undefined
-                  }
-                  aria-label={item.label}
-                  title={item.description}
-                  onClick={() => navigateWorkspace(item.route)}
-                >
-                  <Glyph name={item.icon} />
-                  <span>{item.label}</span>
-                </button>
-              ) : (
-                <a
-                  className={
-                    workspaceLocation.route === item.route
-                      ? "nav-item nav-item--active"
-                      : "nav-item"
-                  }
-                  href={workspaceLocationHash(workspaceLocationFor(item.route))}
-                  key={item.route}
-                  aria-current={
-                    workspaceLocation.route === item.route ? "page" : undefined
-                  }
-                  aria-label={item.label}
-                  title={item.description}
-                  onClick={(event) => {
-                    event.preventDefault();
-                    if (
-                      item.route === "advisor" ||
-                      item.route === "conversation"
-                    ) {
-                      requestConversationWorkspace(item.route);
-                    } else {
-                      navigateWorkspace(item.route);
-                    }
-                  }}
-                >
-                  <Glyph name={item.icon} />
-                  <span>{item.label}</span>
-                </a>
-              ),
-            )}
+                {lane}
+              </p>
+              {workspaceNavigation
+                .filter((item) => item.lane === lane)
+                .map((item) =>
+                  item.route === "dynamic-analysis" ? (
+                    <button
+                      className={
+                        workspaceLocation.route === item.route
+                          ? "nav-item nav-item--active"
+                          : "nav-item"
+                      }
+                      type="button"
+                      key={item.route}
+                      aria-current={
+                        workspaceLocation.route === item.route
+                          ? "page"
+                          : undefined
+                      }
+                      aria-label={item.label}
+                      title={item.description}
+                      onClick={() => navigateWorkspace(item.route)}
+                    >
+                      <Glyph name={item.icon} />
+                      <span>{item.label}</span>
+                    </button>
+                  ) : (
+                    <a
+                      className={
+                        workspaceLocation.route === item.route
+                          ? "nav-item nav-item--active"
+                          : "nav-item"
+                      }
+                      href={workspaceLocationHash(
+                        workspaceLocationFor(item.route),
+                      )}
+                      key={item.route}
+                      aria-current={
+                        workspaceLocation.route === item.route
+                          ? "page"
+                          : undefined
+                      }
+                      aria-label={item.label}
+                      title={item.description}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        if (
+                          item.route === "advisor" ||
+                          item.route === "conversation"
+                        ) {
+                          requestConversationWorkspace(item.route);
+                        } else {
+                          navigateWorkspace(item.route);
+                        }
+                      }}
+                    >
+                      <Glyph name={item.icon} />
+                      <span>{item.label}</span>
+                    </a>
+                  ),
+                )}
+            </div>
+          ))}
         </nav>
 
         <button

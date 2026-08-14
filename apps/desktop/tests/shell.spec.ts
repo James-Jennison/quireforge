@@ -1132,12 +1132,12 @@ test("Local Review uses the compact overlay in a narrow desktop window", async (
   await page.goto("/");
   expect(await page.evaluate(() => window.innerWidth)).toBe(720);
   await page.getByRole("button", { name: "Open navigation" }).click();
-  await page.getByRole("button", { name: "QuireForge", exact: true }).click();
-  const quireForgeWorkspace = page.getByRole("menuitemradio", {
-    name: /QuireForge/u,
+  await page.getByRole("button", { name: "Code", exact: true }).click();
+  const codeWorkspace = page.getByRole("menuitemradio", {
+    name: /Code/u,
   });
-  await expect(quireForgeWorkspace).toHaveAttribute("aria-checked", "true");
-  await quireForgeWorkspace.click();
+  await expect(codeWorkspace).toHaveAttribute("aria-checked", "true");
+  await codeWorkspace.click();
   await page.keyboard.press("Escape");
   await expect(page.locator(".app-shell--mobile-navigation-open")).toHaveCount(
     0,
@@ -1251,12 +1251,12 @@ test("Local Review remains usable at effective 200% desktop reflow", async ({
   ).toEqual([640, 450]);
 
   await page.getByRole("button", { name: "Open navigation" }).click();
-  await page.getByRole("button", { name: "QuireForge", exact: true }).click();
-  const quireForgeWorkspace = page.getByRole("menuitemradio", {
-    name: /QuireForge/u,
+  await page.getByRole("button", { name: "Code", exact: true }).click();
+  const codeWorkspace = page.getByRole("menuitemradio", {
+    name: /Code/u,
   });
-  await expect(quireForgeWorkspace).toHaveAttribute("aria-checked", "true");
-  await quireForgeWorkspace.click();
+  await expect(codeWorkspace).toHaveAttribute("aria-checked", "true");
+  await codeWorkspace.click();
   await page.keyboard.press("Escape");
   await expect(page.locator(".app-shell--mobile-navigation-open")).toHaveCount(
     0,
@@ -2263,7 +2263,7 @@ test("every sidebar destination replaces the active workspace without page scrol
   await page.goto("/");
 
   const destinations = [
-    ["Home", "home"],
+    ["Overview", "home"],
     ["Advisor", "advisor"],
     ["New task", "conversation"],
     ["Projects", "projects"],
@@ -2340,7 +2340,7 @@ test("Advisor presents a bounded chat-first conversation with safe summaries", a
   ).toContainText("no shell, terminal, Git");
   await details.click();
   const workspaceSelector = page.getByRole("button", {
-    name: "Advisor",
+    name: "Chat",
     exact: true,
   });
   if ((page.viewportSize()?.width ?? 0) <= 760) {
@@ -2349,26 +2349,24 @@ test("Advisor presents a bounded chat-first conversation with safe summaries", a
   await workspaceSelector.click();
   const workspaceMenu = page.getByRole("menu", { name: "Choose workspace" });
   await expect(workspaceMenu.getByRole("menuitemradio")).toHaveText([
-    "AdvisorCreate, learn, and explore✓",
-    "QuireForgeBuild, debug, and ship",
+    "ChatAdvisor · read-only planning✓",
+    "CodeCodex task · build, debug, and ship",
   ]);
-  await workspaceMenu
-    .getByRole("menuitemradio", { name: /QuireForge/u })
-    .click();
+  await workspaceMenu.getByRole("menuitemradio", { name: /Code/u }).click();
   const modeConfirmation = page.getByRole("dialog", {
     name: "Confirm conversation mode change",
   });
   await expect(modeConfirmation).toHaveCount(0);
   await expect(
-    page.getByRole("button", { name: "QuireForge", exact: true }),
+    page.getByRole("button", { name: "Code", exact: true }),
   ).toBeVisible();
   if ((page.viewportSize()?.width ?? 0) <= 760) {
     await page.getByRole("button", { name: "Open navigation" }).click();
   }
-  await page.getByRole("button", { name: "QuireForge", exact: true }).click();
+  await page.getByRole("button", { name: "Code", exact: true }).click();
   await page.getByRole("menuitemradio", { name: /Advisor/u }).click();
   await expect(modeConfirmation).toHaveCount(0);
-  await expect(workspaceSelector).toHaveAccessibleName("Advisor");
+  await expect(workspaceSelector).toHaveAccessibleName("Chat");
   const transcript = advisor.getByRole("log", {
     name: "Active Advisor conversation",
   });
