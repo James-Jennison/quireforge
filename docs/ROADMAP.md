@@ -1820,6 +1820,8 @@ The first delivery slice places the existing governed Durable Sources surface in
 the Work lane as **Studio**. It reuses M55's typed preparation, confirmation,
 and deletion flow exactly; no new source type, upload, filesystem access,
 provider path, or execution authority is introduced.
+The second delivery slice gives that existing surface Work-specific Studio
+language while preserving its durable-source controls and Code overlay.
 
 ### 66 — Context and Authority Ledger
 

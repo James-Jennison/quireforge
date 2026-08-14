@@ -18,9 +18,11 @@ import type {
 export function DurableSourcesWorkbench({
   projectId,
   onClose,
+  surface = "code",
 }: {
   projectId: string | null;
   onClose: () => void;
+  surface?: "code" | "studio";
 }) {
   const closeRef = useRef<HTMLButtonElement>(null);
   const [snapshot, setSnapshot] = useState<DurableSourceSnapshot | null>(null);
@@ -92,21 +94,27 @@ export function DurableSourcesWorkbench({
       setBusy(false);
     }
   };
+  const studio = surface === "studio";
   return (
-    <section className="task-template-workbench" aria-label="Durable Sources">
+    <section
+      className="task-template-workbench"
+      aria-label={studio ? "Local Work Studio" : "Durable Sources"}
+    >
       <header>
         <div>
-          <p className="eyebrow">M55 local admission</p>
-          <h2>Durable Sources</h2>
+          <p className="eyebrow">
+            {studio ? "Local Work Studio" : "M55 local admission"}
+          </p>
+          <h2>{studio ? "Sources and artifacts" : "Durable Sources"}</h2>
         </div>
         <button ref={closeRef} type="button" onClick={onClose}>
-          Close Durable Sources
+          {studio ? "Close Studio" : "Close Durable Sources"}
         </button>
       </header>
       <p>
-        Admission creates a private local copy. It does not send material to a
-        provider, include it in model context, retrieve it, or grant any tool
-        authority.
+        {studio
+          ? "Organize explicitly admitted local material. Durable source admission creates a private copy; it does not send material, include it in model context, retrieve it, or grant tool authority."
+          : "Admission creates a private local copy. It does not send material to a provider, include it in model context, retrieve it, or grant any tool authority."}
       </p>
       {!projectId ? (
         <p role="status">

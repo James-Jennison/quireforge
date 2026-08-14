@@ -4193,6 +4193,7 @@ export default function App({
                   <DurableSourcesWorkbench
                     projectId={currentProject?.id ?? null}
                     onClose={() => navigateWorkspace("home")}
+                    surface="studio"
                   />
                 </Suspense>
               )}
