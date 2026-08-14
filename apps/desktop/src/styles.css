@@ -404,6 +404,12 @@ button:disabled {
   margin-top: 14px;
 }
 
+.navigation-lane:nth-child(2) .nav-label {
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  color: var(--tm);
+}
+
 .nav-item {
   position: relative;
   display: flex;

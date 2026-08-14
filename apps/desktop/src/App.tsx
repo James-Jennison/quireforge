@@ -4179,21 +4179,23 @@ export default function App({
               route="studio"
               active={workspaceLocation.route === "studio"}
             >
-              <Suspense
-                fallback={
-                  <section
-                    className="task-template-workbench"
-                    aria-label="Local Work Studio"
-                  >
-                    <p role="status">Loading local Work Studio…</p>
-                  </section>
-                }
-              >
-                <DurableSourcesWorkbench
-                  projectId={currentProject?.id ?? null}
-                  onClose={() => navigateWorkspace("home")}
-                />
-              </Suspense>
+              {workspaceLocation.route === "studio" && (
+                <Suspense
+                  fallback={
+                    <section
+                      className="task-template-workbench"
+                      aria-label="Local Work Studio"
+                    >
+                      <p role="status">Loading local Work Studio…</p>
+                    </section>
+                  }
+                >
+                  <DurableSourcesWorkbench
+                    projectId={currentProject?.id ?? null}
+                    onClose={() => navigateWorkspace("home")}
+                  />
+                </Suspense>
+              )}
             </WorkspaceView>
 
             <WorkspaceView
