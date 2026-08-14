@@ -154,7 +154,7 @@ discovery; scheduling management and execution remain unsupported.
 |        27 | Unified Conversation Engine                                       | Large        | Complete; managed Chat/Codex boundary and fresh Ubuntu package gate                                          |
 |        28 | Reference-only Advisor foundation                                 | Medium       | Complete; safe shell, confirmed temporary Project State projection, and fresh Ubuntu package gate            |
 |        29 | Managed Advisor conversation foundation                           | Medium       | Complete; managed no-project Advisor turn with transient per-send safe context and fresh Ubuntu package gate |
-|        64 | Unified Project Workspace Foundation                              | Large        | In progress; first navigation slice groups existing routes into Chat, Work, and Code with no new authority     |
+|        64 | Unified Project Workspace Foundation                              | Large        | Complete; local Chat, Work, and Code shell with existing task/source/thread surfaces and no new authority      |
 |        65 | Local Work Studio and Artifact Library                            | Large        | Planned; reviewed local artifacts and previews within existing source boundaries                              |
 |        66 | Context and Authority Ledger                                     | Large        | Planned; user-visible receipts over existing M55/M60 governance                                               |
 |        67 | Provider-Neutral Work Adapter UX                                  | Large        | Planned; adapter-neutral local UX and fixtures, no credential or live-provider route                          |
@@ -1795,6 +1795,11 @@ between Chat, Work, and Code.
 The third delivery slice makes the Work overview's thread card reflect the
 already-loaded, current-project session metadata and link back to Threads. It
 does not open, resume, fork, archive, or otherwise mutate a thread.
+
+M64 is complete with the three local presentation slices above. `pnpm validate`
+and `pnpm test:e2e` passed after the final slice. The milestone adds no native
+contract, provider, credential, network, browser, connector, automation, or
+cross-lane authority.
 
 ### 65 — Local Work Studio and Artifact Library
 
