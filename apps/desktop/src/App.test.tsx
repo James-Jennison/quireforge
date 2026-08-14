@@ -536,6 +536,38 @@ describe("QuireForge desktop shell", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("presents the Work inventory and opens the existing task catalogue", async () => {
+    render(
+      <App
+        loadBootstrap={() => Promise.resolve(scaffoldBootstrap)}
+        loadRuntime={() => Promise.resolve(scaffoldCodexRuntime)}
+        loadAuth={() => Promise.resolve(authenticatedAuth)}
+        loadProjects={() => Promise.resolve(attachedProject)}
+        loadTaskCatalogTask={() => Promise.resolve(durableTaskCatalogFixture)}
+      />,
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: "Work inventory" }),
+    ).toBeVisible();
+    expect(await screen.findByText("1 active of 1 local task.")).toBeVisible();
+    expect(screen.getByText(/Selected: Local durable task/u)).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Review durable sources" }),
+    ).toBeVisible();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Open task catalogue" }),
+    );
+    const workspace = document.querySelector<HTMLElement>(
+      '[data-workspace-view="conversation"]',
+    );
+    expect(workspace).not.toHaveAttribute("hidden");
+    expect(
+      within(workspace as HTMLElement).getByRole("heading", { name: "Tasks" }),
+    ).toBeVisible();
+  });
+
   it("keeps the managed terminal collapsed until the workbench user opens its dock", async () => {
     render(
       <App

@@ -1,9 +1,13 @@
 import type { ProjectWorkspaceSnapshot } from "./lib/project";
+import type { TaskCatalogSnapshot } from "./lib/taskRecords";
 
 interface HomeDashboardProps {
   projects: ProjectWorkspaceSnapshot;
   currentProject: ProjectWorkspaceSnapshot["projects"][number] | null;
+  taskCatalog: TaskCatalogSnapshot;
   onNewTask: () => void;
+  onOpenTaskCatalog: () => void;
+  onOpenDurableSources: () => void;
   onAttachProject: () => void;
   onOpenProjects: () => void;
   onOpenSessions: () => void;
@@ -14,7 +18,10 @@ interface HomeDashboardProps {
 export function HomeDashboard({
   projects,
   currentProject,
+  taskCatalog,
   onNewTask,
+  onOpenTaskCatalog,
+  onOpenDurableSources,
   onAttachProject,
   onOpenProjects,
   onOpenSessions,
@@ -24,6 +31,15 @@ export function HomeDashboard({
   const visibleProjects = projects.projects
     .filter((project) => !project.archived)
     .slice(0, 3);
+  const activeTaskCount = taskCatalog.tasks.filter(
+    (task) => task.status === "active",
+  ).length;
+  const taskSummary =
+    taskCatalog.state === "unavailable"
+      ? "Task metadata is unavailable."
+      : taskCatalog.taskCount === 0
+        ? "No local tasks are recorded for this project."
+        : `${activeTaskCount} active of ${taskCatalog.taskCount} local task${taskCatalog.taskCount === 1 ? "" : "s"}.`;
 
   return (
     <section className="home-dashboard" id="home" aria-labelledby="home-title">
@@ -81,6 +97,50 @@ export function HomeDashboard({
               <em>Native picker</em>
             </button>
           )}
+        </div>
+
+        <div className="home-section-heading">
+          <h2>Work inventory</h2>
+          <span>Local metadata only</span>
+        </div>
+        <div className="home-work-inventory">
+          <section>
+            <span aria-hidden="true">✓</span>
+            <h3>Task catalogue</h3>
+            <p>{taskSummary}</p>
+            {taskCatalog.selectedTask && (
+              <small>
+                Selected: {taskCatalog.selectedTask.title} ·{" "}
+                {taskCatalog.plans.length} plan
+                {taskCatalog.plans.length === 1 ? "" : "s"}
+              </small>
+            )}
+            <button type="button" onClick={onOpenTaskCatalog}>
+              Open task catalogue
+            </button>
+          </section>
+          <section>
+            <span aria-hidden="true">⌑</span>
+            <h3>Sources and artifacts</h3>
+            <p>
+              Review explicitly admitted local source records and artifact
+              references. Nothing is sent or attached automatically.
+            </p>
+            <button type="button" onClick={onOpenDurableSources}>
+              Review durable sources
+            </button>
+          </section>
+          <section>
+            <span aria-hidden="true">◌</span>
+            <h3>Thread activity</h3>
+            <p>
+              Continue or inspect existing task history without changing the
+              selected project or starting work.
+            </p>
+            <button type="button" onClick={onOpenSessions}>
+              Open threads
+            </button>
+          </section>
         </div>
 
         <div className="home-section-heading">

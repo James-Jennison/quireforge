@@ -2026,6 +2026,16 @@ export default function App({
     setReviewPanesOpen(false);
   }
 
+  function openTaskCatalogInCode() {
+    setTaskCatalogOpen(true);
+    navigateWorkspace("conversation");
+  }
+
+  function openDurableSourcesInCode() {
+    setDurableSourcesWorkbenchOpen(true);
+    navigateWorkspace("conversation");
+  }
+
   function closeCommandPalette() {
     setCommandPaletteOpen(false);
     window.requestAnimationFrame(() =>
@@ -4127,7 +4137,10 @@ export default function App({
               <HomeDashboard
                 projects={projects}
                 currentProject={currentProject ?? null}
+                taskCatalog={taskCatalog}
                 onNewTask={() => navigateWorkspace("conversation")}
+                onOpenTaskCatalog={openTaskCatalogInCode}
+                onOpenDurableSources={openDurableSourcesInCode}
                 onAttachProject={() => void applyProjectAction(pickProject)}
                 onOpenProjects={() => navigateWorkspace("projects")}
                 onOpenSessions={() => navigateWorkspace("sessions")}

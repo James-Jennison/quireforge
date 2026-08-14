@@ -1788,6 +1788,10 @@ repository, file, review, worktree, terminal, and isolated-analysis routes
 remain Code routes. Routes, hash compatibility, native contracts, and
 conversation-boundary confirmation are unchanged. Later M64 slices may add
 shared overview or inventory presentation only under the same no-transfer rule.
+The second delivery slice adds a Work overview inventory over the existing local
+task-catalogue snapshot and navigation to the existing durable-source and thread
+surfaces. It reads no new data, attaches nothing, and introduces no transfer
+between Chat, Work, and Code.
 
 ### 65 — Local Work Studio and Artifact Library
 
