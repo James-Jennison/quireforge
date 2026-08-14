@@ -17,6 +17,31 @@ No milestone may merge, access authenticated hosting, change DNS/SSL/provider
 settings, deploy, publish a release, install an integration, or authorize a
 connector without its required approval.
 
+## Adopted post-M63 product direction
+
+QuireForge will evolve into a **local-first, provider-neutral AI workbench**
+with three distinct, project-adjacent lanes:
+
+- **Chat** for bounded exploration, planning, and conversation;
+- **Work** for selected-source research, reviewed local artifacts, and
+  deliberate handoffs; and
+- **Code** for the existing attached-project, managed-Codex, Git, worktree,
+  terminal, and approval workflow.
+
+The lanes share a coherent project shell, not ambient data or authority. A
+source, artifact, instruction, or result crosses between lanes only through a
+user-visible, bounded, destination-aware context receipt. Each receipt records
+the selected projection, exclusions/redactions, destination, scope, expiry,
+and content-free outcome evidence. This direction takes inspiration from
+unified AI workspaces while retaining QuireForge's distinction: local project
+ownership, provider neutrality, explicit authority, and inspectable execution.
+
+This is a roadmap direction, not authorization for a provider, credential,
+browser, connector, network transmission, automated external action, or
+ambient memory. Existing M55--M63 boundaries remain authoritative. Each later
+external capability continues to require its own decision, security, authority,
+transport, retention, and approval gate.
+
 ## Permanent identity migration
 
 The discovery-stage name “Codex Linux Workbench” has been replaced by the
@@ -129,6 +154,11 @@ discovery; scheduling management and execution remain unsupported.
 |        27 | Unified Conversation Engine                                       | Large        | Complete; managed Chat/Codex boundary and fresh Ubuntu package gate                                          |
 |        28 | Reference-only Advisor foundation                                 | Medium       | Complete; safe shell, confirmed temporary Project State projection, and fresh Ubuntu package gate            |
 |        29 | Managed Advisor conversation foundation                           | Medium       | Complete; managed no-project Advisor turn with transient per-send safe context and fresh Ubuntu package gate |
+|        64 | Unified Project Workspace Foundation                              | Large        | Planned; local Chat, Work, and Code shell with no new provider or external authority                          |
+|        65 | Local Work Studio and Artifact Library                            | Large        | Planned; reviewed local artifacts and previews within existing source boundaries                              |
+|        66 | Context and Authority Ledger                                     | Large        | Planned; user-visible receipts over existing M55/M60 governance                                               |
+|        67 | Provider-Neutral Work Adapter UX                                  | Large        | Planned; adapter-neutral local UX and fixtures, no credential or live-provider route                          |
+|        68 | External Capability Decision Portfolio                            | Medium       | Planned; separate decision records only for browser, connector, and automation lanes                          |
 
 ## Milestone definitions
 
@@ -1735,6 +1765,84 @@ retrieval, browser/connectors/MCP, automation, external mutation, runtime/UI
 work, packages, and releases remain excluded from this decision record.
 Routine post-M62 local implementation follows the autonomous operating rule
 above; its hard stops remain unchanged.
+
+### 64 — Unified Project Workspace Foundation
+
+Create one accessible local project shell for the three product lanes:
+**Chat**, **Work**, and **Code**. The shared navigation may expose a project
+overview, task catalogue, source and artifact inventory, activity timeline, and
+the existing Code review surfaces. Chat remains a bounded no-project or
+explicitly scoped conversation route; Work is not a synonym for execution; and
+Code retains the existing attached-directory and managed-Codex boundaries.
+
+This milestone is presentation, local metadata, and routing only. It must not
+silently transfer transcripts, attachments, source content, project paths,
+approvals, Git/terminal state, integration state, credentials, or authority
+between lanes. It introduces no new model/runtime, provider route, network,
+browser, connector, generic upload, external action, or automation.
+
+### 65 — Local Work Studio and Artifact Library
+
+Build the local-first **Work** lane on the existing governed source and artifact
+contracts. It may organize explicitly admitted source projections, reviewed
+drafts, generated-artifact records, local notes, non-Git comparisons, previews,
+annotations, version relationships, and explicit local save/export receipts.
+The surface should make research, analysis, and deliverable refinement useful
+without requiring a live provider.
+
+M65 does not broaden the accepted source types, create a generic file upload or
+Office/binary editor, retain raw paths or source bytes outside their existing
+boundaries, transmit content, invoke an external model, or give Work filesystem,
+Git, terminal, browser, connector, or deployment authority. Any new file type,
+renderer, or export format remains a separately reviewed native boundary.
+
+### 66 — Context and Authority Ledger
+
+Expose the existing M55/M59/M60 governance in the product as a clear,
+cross-lane **Context and Authority Ledger**. Before a user promotes material
+from Chat, Work, or Code, QuireForge must show the source selection and safe
+projection, exclusions and redactions, intended destination, requested
+capability scope, expiry, one-use status, and content-free completion or
+failure evidence. The ledger must distinguish a draft, reviewed artifact,
+prepared bundle, attempted delivery, local result, and verified Code action.
+
+The ledger is not an ambient memory system. Cross-lane transfer remains opt-in,
+destination-bound, and independently revocable; a lane never gains the
+recipient's tools or authority merely by receiving a summary. This milestone
+does not add a provider, credential, browser, connector, network transmission,
+background operation, or automatic dispatch.
+
+### 67 — Provider-Neutral Work Adapter UX
+
+Define and implement the local UI and deterministic fixtures needed for users
+to choose a governed Work destination without making a live connection. The
+surface may display capability descriptors, privacy/retention declarations,
+local-runtime availability, prepared-bundle review, local result handling, and
+clear unavailable or policy-blocked states. It reuses the canonical
+provider-neutral interaction contracts and keeps M63's local-runtime constraints
+intact.
+
+M67 does not select or connect a cloud provider, collect/store credentials,
+perform OAuth, transmit a bundle, enable tools/retrieval, expose a model
+catalogue as a promise of availability, or retain provider transcripts. A live
+adapter still requires the M61/M62 prerequisites plus a separately approved,
+named implementation milestone.
+
+### 68 — External Capability Decision Portfolio
+
+Prepare separate decision records, in dependency order, for the external
+capabilities that a mature unified workspace may eventually offer:
+
+1. isolated read-only browser research and provenance capture;
+2. user-scoped connector read access;
+3. connector mutation, download, upload, and external delivery; and
+4. local or external scheduled/recurring work.
+
+Each decision must define identity and consent, exact authority, data flow,
+prompt-injection and ambiguity handling, retention, revocation, audit,
+recovery, package/dependency implications, and a rollback story. Completion of
+M68 authorizes no runtime implementation, connection, credential handling,
+browser navigation, external mutation, or scheduled execution.
 
 ### Deferred capability gates
 
