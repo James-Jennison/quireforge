@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Root-owned staging boundary for locally built QuireForge Debian packages.
+set -Eeuo pipefail
+
+readonly staging_root=/opt/quireforge/packages
+readonly build_parent=/tmp
+
+reject() {
+  printf '%s\n' "$1" >&2
+  exit 64
+}
+
+[[ ${EUID:-1} -eq 0 ]] || reject 'quireforge-stage-deb must run as root'
+[[ $# -eq 1 ]] || reject 'expected exactly one Debian package path'
+
+readonly requested_path=$1
+[[ "$requested_path" == /* && "$requested_path" == *.deb ]] || reject 'expected an absolute .deb path'
+[[ -f "$requested_path" && -s "$requested_path" && ! -L "$requested_path" ]] || reject 'package must be a non-empty regular file'
+
+readonly resolved_package=$(/usr/bin/readlink -f -- "$requested_path")
+readonly resolved_parent=$(/usr/bin/dirname -- "$resolved_package")
+readonly allowed_parent_pattern='/tmp/quireforge-beta[0-9]+-package/target/ubuntu-22.04/release/packages'
+[[ "$resolved_parent" =~ ^${allowed_parent_pattern}$ ]] || reject 'package is outside the trusted pinned build output directory'
+
+/usr/bin/install -d -o root -g root -m 0755 "$staging_root"
+/usr/bin/install -o root -g root -m 0644 -- "$resolved_package" "$staging_root/$(/usr/bin/basename -- "$resolved_package")"
+printf 'staged %s\n' "$(/usr/bin/basename -- "$resolved_package")"
