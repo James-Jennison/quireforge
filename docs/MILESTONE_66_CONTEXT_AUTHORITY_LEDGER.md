@@ -37,3 +37,8 @@ Strict TypeScript bridge coverage rejects a content-bearing field, and the
 desktop component coverage verifies content-free lifecycle rendering across
 record kinds. Full validation evidence is recorded only after the integrated
 M66--M68 completion gates run.
+
+The beta.79 accessibility candidate preserves this contract while restoring the
+Ledger's route-local H1-to-H2 structure. Desktop and mobile end-to-end Axe
+coverage exercises bounded Ledger metadata and confirms the route remains lazy;
+no receipt content or authority was added.

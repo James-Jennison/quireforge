@@ -1850,6 +1850,14 @@ kind/identity, state, digests, timestamps, expiry, item counts, and audit
 outcome only; M63 remains represented through M60 and M64 adds no record.
 See [M66](MILESTONE_66_CONTEXT_AUTHORITY_LEDGER.md).
 
+The unreleased beta.79 candidate from clean source commit
+`f7c79ea3a53a57dcb09bc2b5cfbea8f5780118b2` restores the Ledger and Adapters
+H1-to-H2 semantics and extends desktop/mobile Axe coverage without mounting
+either lazy Work route outside its selected view or changing any authority
+boundary. Its pinned Ubuntu 22.04 package lifecycle, smoke, and
+release-artifact checks passed; the uninstalled candidate remains immutable
+local evidence rather than a release claim.
+
 ### 67 — Provider-Neutral Work Adapter UX
 
 Define and implement the local UI and deterministic fixtures needed for users

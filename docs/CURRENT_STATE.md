@@ -114,6 +114,17 @@ retain input, or execute. M68 is complete as decision records for isolated
 browser research, connector read, connector mutation/delivery, and scheduled
 work; no external capability was implemented or authorized.
 
+The unreleased `0.1.0-beta.79` accessibility candidate from source commit
+`f7c79ea3a53a57dcb09bc2b5cfbea8f5780118b2` preserves the M66/M67 lazy Work
+routes and their content-free/local-fixture boundaries while restoring the
+complete H1-to-H2 hierarchy. Its local Debian candidate is intentionally
+uninstalled and unreleased. The pinned Ubuntu 22.04 lifecycle, smoke, and
+release-artifact checks passed, alongside `pnpm validate`, 78 desktop E2E
+tests, 441 Rust tests (four ignored), and two sandbox tests. Its manifest is a
+clean-tree `release-candidate` with SHA-256
+`0cf4db1b38c3c9eac2105fed8740cf91033c71d1fd80181a1621f243c4f01303`; it is
+immutable local evidence and must not be overwritten by a later package.
+
 ### Current provider-neutral completion record
 
 This record supersedes the older historical candidate and draft-release

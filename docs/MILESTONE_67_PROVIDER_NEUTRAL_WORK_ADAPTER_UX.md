@@ -28,3 +28,8 @@ digest-bound M60 bundle under its existing local-runtime constraints.
 Component coverage proves a deterministic descriptor can be selected without a
 connect or submit control. TypeScript and Rust checks remain part of the final
 M66--M68 validation matrix.
+
+The beta.79 accessibility candidate preserves this contract while restoring the
+Adapters route's route-local H1-to-H2 structure. Desktop and mobile end-to-end
+Axe coverage confirms fixture selection remains bounded and that no connection
+or submission control is present.
