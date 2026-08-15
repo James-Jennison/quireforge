@@ -179,12 +179,20 @@ availability admission, before acknowledgement, bundle consumption, output, or
 retry. The UI exposed no model location, content, loader output, or filesystem
 observation. Beta.84 is immutable failed acceptance evidence.
 
-The unvalidated `0.1.0-beta.85` source candidate reduces that native preflight
-failure to a fixed content-free loader category (access, format, bounded-memory,
-or generic load failure) and restores the process-global redacting callback
-before the temporary classifier leaves scope. It accepts no reviewed bytes and
-preserves the M48, M55, and M60 contracts. Fresh package, installation, and
-installed-host acceptance evidence is required.
+The `0.1.0-beta.85` candidate from clean source commit
+`5063882820e9094bd3ce4942b1b19711710c9eda` passed the pinned package,
+lifecycle, smoke, final-artifact, local-installation identity, and desktop E2E
+gates. Its supervised installed-host availability admission failed closed
+before review acknowledgement, consumption, output, or retry. The original
+bounded-memory category was not conclusive because it matched routine loader
+status containing the word `memory`; beta.85 is immutable failed acceptance
+evidence.
+
+The unvalidated `0.1.0-beta.86` source candidate limits that category to
+explicit native allocation failures. It continues to expose no model location,
+content, loader output, or filesystem observation and preserves the M48, M55,
+and M60 contracts. Fresh package, installation, and installed-host acceptance
+evidence is required.
 
 ### Current provider-neutral completion record
 

@@ -207,8 +207,18 @@ fn loader_failure_category(bytes: &[u8]) -> u8 {
             .any(|part| part == b"unsupported")
     {
         2
-    } else if bytes.windows(b"alloc".len()).any(|part| part == b"alloc")
-        || bytes.windows(b"memory".len()).any(|part| part == b"memory")
+    } else if bytes
+        .windows(b"failed to allocate".len())
+        .any(|part| part == b"failed to allocate")
+        || bytes
+            .windows(b"allocation failed".len())
+            .any(|part| part == b"allocation failed")
+        || bytes
+            .windows(b"out of memory".len())
+            .any(|part| part == b"out of memory")
+        || bytes
+            .windows(b"cannot allocate".len())
+            .any(|part| part == b"cannot allocate")
     {
         3
     } else {
@@ -802,9 +812,10 @@ mod tests {
             "model-format-invalid"
         );
         assert_eq!(
-            loader_failure_diagnostic(loader_failure_category(b"memory allocation failed")),
+            loader_failure_diagnostic(loader_failure_category(b"allocation failed")),
             "model-memory-unavailable"
         );
+        assert_eq!(loader_failure_category(b"model memory footprint: bounded"), 0);
         assert_eq!(
             loader_failure_diagnostic(loader_failure_category(b"unclassified loader failure")),
             "model-load-failed"

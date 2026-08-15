@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.0-beta.86 — M63 precise loader classification
+
+- Limits the bounded-memory diagnostic to explicit native allocation failures;
+  routine loader status that merely mentions memory is classified as neither
+  memory failure nor retained loader output.
+- Beta.85 is immutable failed acceptance evidence: native admission failed
+  closed before review acknowledgement, consumption, output, or retry. The
+  observed category requires this fresh candidate before a cause is claimed.
+
 ## 0.1.0-beta.85 — M63 content-free loader diagnosis
 
 - Reduces native preflight loader feedback to fixed, non-sensitive categories:

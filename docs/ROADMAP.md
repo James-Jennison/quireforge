@@ -1675,12 +1675,16 @@ package and local-installation gates passed, but supervised installed-host
 admission failed closed before acknowledgement, consumption, output, or retry;
 beta.84 is immutable failed acceptance evidence.
 
-The beta.85 source candidate classifies that preflight failure into fixed,
-content-free access, format, bounded-memory, or generic load categories, then
-restores the redacting native logger before the classifier leaves scope. It
-never exposes a model location, content, loader output, or filesystem
-observation. Fresh package promotion and installed Debian desktop acceptance
-remain pending.
+The beta.85 candidate passed package, installation, and desktop E2E gates, but
+supervised installed-host availability admission failed closed before review
+acknowledgement, consumption, output, or retry. Its initial bounded-memory
+category was inconclusive because it matched routine loader status containing
+the word `memory`; beta.85 is immutable failed acceptance evidence.
+
+The beta.86 source candidate limits the bounded-memory category to explicit
+native allocation failures. It never exposes a model location, content, loader
+output, or filesystem observation. Fresh package promotion and installed Debian
+desktop acceptance remain pending.
 
 The beta.80 installed-host candidate from clean source commit
 `43b655008e506f2f840ebf194e1ba0a10c14e590` passed the pinned Ubuntu 22.04
