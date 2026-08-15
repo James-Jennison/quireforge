@@ -124,6 +124,23 @@ const props = {
 };
 
 describe("AdvisorWorkspace", () => {
+  it("gives the reviewed task brief a dedicated spacious handoff control", () => {
+    render(
+      <AdvisorWorkspace
+        {...props}
+        availability="native"
+        onPrepareTaskHandoff={vi.fn()}
+        onOpenTaskHandoff={vi.fn()}
+      />,
+    );
+
+    const brief = screen.getByRole("textbox", {
+      name: "Reviewed task brief",
+    });
+    expect(brief).toHaveAttribute("rows", "6");
+    expect(brief.closest("section")).toHaveClass("advisor-handoff");
+  });
+
   it.each([
     ["malformed-or-unsupported-document", /malformed or unsupported/i],
     ["encrypted", /encrypted PDFs are not supported/i],

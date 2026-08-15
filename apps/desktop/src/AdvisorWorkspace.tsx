@@ -863,7 +863,7 @@ export function AdvisorWorkspace({
         onPrepareTaskHandoff &&
         onOpenTaskHandoff && (
           <section
-            className="project-card"
+            className="project-card advisor-handoff"
             aria-labelledby="advisor-handoff-title"
           >
             <h2 id="advisor-handoff-title">Continue this task in QuireForge</h2>
@@ -879,7 +879,7 @@ export function AdvisorWorkspace({
                 setHandoffBrief(event.target.value);
                 setHandoffPending(false);
               }}
-              rows={3}
+              rows={6}
             />
             {!handoffPending ? (
               <button
