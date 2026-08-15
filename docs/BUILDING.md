@@ -162,6 +162,10 @@ evidence for every shipped executable,
 plus immutable worker-asset checksums when present; missing or inconsistent
 evidence fails validation. Building candidates does not authorize a GitHub
 release, website edit, deployment, package installation, or signing action.
+When a legacy archive has the same version but different immutable evidence, the
+workflow preserves it and archives the canonical set under
+`<version>-<full-source-commit>` instead. A conflicting provenance-qualified
+archive fails closed; the workflow never overwrites or removes either archive.
 See [Releasing](RELEASING.md) for the guarded handoff.
 
 ### Native-only notification probe

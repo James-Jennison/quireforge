@@ -109,6 +109,22 @@ def staging_dir(output_dir: Path, version: str) -> Path:
     return output_dir / f".candidate-{version}"
 
 
+def archive_dir(archive_root: Path, manifest: dict[str, object], conflict: bool) -> Path:
+    """Return the immutable archive location for a coherent prior release."""
+    version = manifest["version"]
+    source = manifest["source"]
+    if not isinstance(version, str) or not isinstance(source, dict):
+        raise RuntimeError("canonical release manifest is incoherent")
+    commit = source.get("commit")
+    if not isinstance(commit, str) or len(commit) != 40 or any(
+        character not in "0123456789abcdef" for character in commit
+    ):
+        raise RuntimeError("canonical release source provenance is invalid")
+    if conflict:
+        return archive_root / f"{version}-{commit}"
+    return archive_root / version
+
+
 def abi_evidence(debian: Path, sandboxd: Path) -> dict[str, object]:
     """Inspect the shipped executable in each installable artifact."""
     observed = []
@@ -171,12 +187,21 @@ def finalize(output_dir: Path, version: str) -> int:
         if any(not path.is_file() for path in existing):
             raise RuntimeError("refusing non-file canonical release entry")
         prior = coherent_release_set(output_dir)
-        archive = archive_root / prior["version"]
-        prior_archive = archive
         archive_root.mkdir(exist_ok=True)
+        default_archive = archive_dir(archive_root, prior, conflict=False)
+        archive = default_archive
+        if archive.exists() and (
+            not archive.is_dir() or not release_sets_identical(output_dir, archive)
+        ):
+            archive = archive_dir(archive_root, prior, conflict=True)
+            if archive.exists() and (
+                not archive.is_dir()
+                or not release_sets_identical(output_dir, archive)
+            ):
+                raise RuntimeError("provenance-qualified release archive conflicts")
+        prior_archive = archive
         if archive.exists():
-            if not archive.is_dir() or not release_sets_identical(output_dir, archive):
-                raise RuntimeError("existing release archive conflicts")
+            coherent_release_set(archive)
         else:
             archive.mkdir()
             moved = []

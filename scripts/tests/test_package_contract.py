@@ -144,7 +144,7 @@ class PackageContractTests(unittest.TestCase):
             self.assertFalse((output.parent / "archive").exists())
             self.assertTrue((output / "release-manifest.json").is_file())
 
-    def test_finalizer_refuses_a_conflicting_existing_archive(self) -> None:
+    def test_finalizer_preserves_a_conflicting_legacy_archive_with_provenance_name(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary) / "packages"
             output.mkdir()
@@ -156,7 +156,32 @@ class PackageContractTests(unittest.TestCase):
             candidate = staging_dir(output, "0.1.0-beta.51")
             candidate.mkdir()
             self.write_release_set(candidate, "51")
-            with self.assertRaisesRegex(RuntimeError, "archive conflicts"):
+            self.assertEqual(finalize(output, "0.1.0-beta.51"), 0)
+            qualified_archive = output.parent / "archive" / f"0.1.0-beta.48-{'a' * 40}"
+            self.assertEqual(
+                (archive / "quireforge_0.1.0.beta.48_amd64.deb").read_bytes(),
+                b"conflict",
+            )
+            self.assertTrue((qualified_archive / "release-manifest.json").is_file())
+            self.assertTrue((output / "quireforge_0.1.0.beta.51_amd64.deb").is_file())
+
+    def test_finalizer_refuses_a_conflicting_provenance_qualified_archive(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "packages"
+            output.mkdir()
+            self.write_release_set(output, "48")
+            legacy_archive = output.parent / "archive" / "0.1.0-beta.48"
+            legacy_archive.mkdir(parents=True)
+            self.write_release_set(legacy_archive, "48")
+            (legacy_archive / "quireforge_0.1.0.beta.48_amd64.deb").write_bytes(b"legacy")
+            qualified_archive = output.parent / "archive" / f"0.1.0-beta.48-{'a' * 40}"
+            qualified_archive.mkdir()
+            self.write_release_set(qualified_archive, "48")
+            (qualified_archive / "quireforge_0.1.0.beta.48_amd64.deb").write_bytes(b"conflict")
+            candidate = staging_dir(output, "0.1.0-beta.51")
+            candidate.mkdir()
+            self.write_release_set(candidate, "51")
+            with self.assertRaisesRegex(RuntimeError, "provenance-qualified release archive conflicts"):
                 finalize(output, "0.1.0-beta.51")
             self.assertTrue((output / "quireforge_0.1.0.beta.48_amd64.deb").is_file())
 
