@@ -161,6 +161,17 @@ disabled while cancel/revoke remain available, the explicit recheck preserves
 the acknowledged review, and only the later separate manual action completes.
 Package promotion and installed-host acceptance remain pending.
 
+The beta.83 source candidate corrects the observed preflight/run disagreement:
+the successful content-free supervisor contract is held only in process and
+bound to the exact native reservation. The run command therefore enforces that
+verified contract without independently rereading its environment value. No
+path, content, filesystem observation, or contract value crosses IPC, reaches
+storage, or appears in diagnostics. `model-unavailable` now identifies only a
+missing or invalid contract before consumption; a later model-loader failure
+is the distinct bounded `runtime-unavailable` terminal outcome. Beta.82
+remains immutable failed acceptance evidence. Package and installed-host
+acceptance remain pending for beta.83.
+
 The candidate procedure is recorded in
 [Testing](TESTING.md#m63-local-runtime-installed-host-acceptance). It requires
 the installed-host operator to retain only content-free package and lifecycle

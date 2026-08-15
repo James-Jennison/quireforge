@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.1.0-beta.83 — M63 availability-contract binding correction
+
+- Binds a successfully verified, supervisor-provided local-model contract to
+  the exact in-memory native reservation, preventing a second environment read
+  from invalidating the reviewed action before model loading. The contract is
+  never serialized, logged, or persisted.
+- Reserves `model-unavailable` for a missing or invalid supervisor contract;
+  a later in-process loader failure now reports the distinct bounded
+  `runtime-unavailable` outcome.
+- Beta.82 remains immutable failed acceptance evidence. This candidate changes
+  no model, provider, network, package contents, or execution bounds.
+
 ## 0.1.0-beta.82 — M63 acknowledgement response correction
 
 - Returns the existing opaque one-use authorization ID with a successfully

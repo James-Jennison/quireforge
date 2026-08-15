@@ -164,6 +164,16 @@ output or retry occurred. Closing and relaunching restored neither the review,
 instruction, nor result. Beta.82 is immutable failed acceptance evidence and
 not release-ready; a later retry needs a fresh unused beta version.
 
+The unvalidated `0.1.0-beta.83` source candidate narrows that acceptance
+diagnosis without inspecting, exposing, or persisting the external model. A
+successful content-free native preflight now binds its in-memory supervisor
+contract to the exact reservation, so the run command does not independently
+reread the environment before loading. `model-unavailable` is reserved for a
+missing or invalid contract; a later loader failure is bounded separately as
+`runtime-unavailable`. Beta.82 remains immutable failed evidence. Package,
+installed-host, and governed local-attempt acceptance evidence is pending for
+beta.83.
+
 ### Current provider-neutral completion record
 
 This record supersedes the older historical candidate and draft-release

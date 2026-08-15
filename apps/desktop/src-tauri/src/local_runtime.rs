@@ -236,6 +236,17 @@ pub(crate) struct LocalRuntimeAvailability {
 #[derive(Default)]
 pub(crate) struct LocalRuntimeService {
     active: Arc<Mutex<Option<ActiveRun>>>,
+    // A successful content-free availability check retains the supervisor
+    // contract only in this process until the next check or app exit. Binding
+    // it to the reservation prevents an independently re-read environment
+    // from invalidating the exact reviewed action between those two native
+    // commands. It is never serialized, logged, or returned across IPC.
+    model_contract: Arc<Mutex<Option<ModelContract>>>,
+}
+
+#[derive(Clone)]
+struct ModelContract {
+    model_path: String,
 }
 
 struct ActiveRunGuard {
@@ -253,6 +264,7 @@ struct ActiveRun {
 pub(crate) struct LocalRuntimeReservation {
     control: Arc<RunControl>,
     _active_run: ActiveRunGuard,
+    model_contract: Option<ModelContract>,
 }
 
 /// Temporarily confines model allocation to M63's fixed address-space budget.
@@ -308,7 +320,15 @@ impl Drop for ActiveRunGuard {
 
 impl LocalRuntimeService {
     pub(crate) fn availability(&self) -> LocalRuntimeAvailability {
-        let available = model_contract_available(std::env::var(MODEL_PATH_ENV));
+        let contract = model_contract(std::env::var(MODEL_PATH_ENV));
+        let available = self
+            .model_contract
+            .lock()
+            .map(|mut cached| {
+                *cached = contract;
+                cached.is_some()
+            })
+            .unwrap_or(false);
         LocalRuntimeAvailability {
             schema_version: 1,
             local_only: true,
@@ -344,7 +364,27 @@ impl LocalRuntimeService {
             _active_run: ActiveRunGuard {
                 active: Arc::clone(&self.active),
             },
+            model_contract: None,
         })
+    }
+
+    /// Binds the most recently verified supervisor contract to this exact
+    /// reservation. The caller must invoke `availability` immediately before
+    /// this method so native command handling remains authoritative even when
+    /// invoked without the browser view.
+    pub(crate) fn reserve_available_model(
+        &self,
+        bundle_id: &str,
+    ) -> Result<LocalRuntimeReservation, ()> {
+        let contract = self
+            .model_contract
+            .lock()
+            .ok()
+            .and_then(|cached| cached.clone())
+            .ok_or(())?;
+        let mut reservation = self.reserve(bundle_id)?;
+        reservation.model_contract = Some(contract);
+        Ok(reservation)
     }
 
     pub(crate) fn request_cancel(&self, bundle_id: &str) -> bool {
@@ -362,25 +402,29 @@ impl LocalRuntimeService {
     }
 }
 
-fn model_contract_available(model_path: Result<String, std::env::VarError>) -> bool {
-    model_path.is_ok_and(|value| !value.is_empty() && !value.as_bytes().contains(&0))
+fn model_contract(model_path: Result<String, std::env::VarError>) -> Option<ModelContract> {
+    model_path.ok().and_then(|model_path| {
+        (!model_path.is_empty() && !model_path.as_bytes().contains(&0))
+            .then_some(ModelContract { model_path })
+    })
 }
 
 impl LocalRuntimeReservation {
     pub(crate) fn run(self, canonical_bytes: &[u8]) -> LocalRuntimeSnapshot {
-        run_once(canonical_bytes, &self.control)
+        let Some(contract) = self.model_contract.as_ref() else {
+            return LocalRuntimeService::unavailable_snapshot();
+        };
+        run_once(canonical_bytes, &self.control, &contract.model_path)
     }
 }
 
-fn run_once(canonical_bytes: &[u8], control: &RunControl) -> LocalRuntimeSnapshot {
-    let Ok(model_path) = std::env::var(MODEL_PATH_ENV) else {
-        return LocalRuntimeService::unavailable_snapshot();
-    };
-    if model_path.is_empty() || model_path.as_bytes().contains(&0) {
-        return LocalRuntimeService::unavailable_snapshot();
-    }
+fn run_once(
+    canonical_bytes: &[u8],
+    control: &RunControl,
+    model_path: &str,
+) -> LocalRuntimeSnapshot {
     let Ok(path) = CString::new(model_path) else {
-        return LocalRuntimeService::unavailable_snapshot();
+        return failed("runtime-unavailable");
     };
     let Ok(_memory_ceiling) = MemoryCeiling::apply() else {
         return failed("memory-ceiling-unavailable");
@@ -408,7 +452,7 @@ fn run_once(canonical_bytes: &[u8], control: &RunControl) -> LocalRuntimeSnapsho
             return if attempt_stopped((control as *const RunControl).cast_mut().cast()) {
                 stopped(control)
             } else {
-                LocalRuntimeService::unavailable_snapshot()
+                failed("runtime-unavailable")
             };
         }
         let prompt = match format_reviewed_chat_prompt(model, &system_prompt, &reviewed_request) {
@@ -620,7 +664,7 @@ fn cancelled() -> LocalRuntimeSnapshot {
 #[cfg(test)]
 mod tests {
     use super::{
-        cancelled, model_contract_available, LocalRuntimeService, CHAT_PROMPT_BYTE_LIMIT,
+        cancelled, model_contract, LocalRuntimeService, CHAT_PROMPT_BYTE_LIMIT,
         MEMORY_CEILING_BYTES, MEMORY_CEILING_MIB, SYSTEM_PROMPT,
     };
 
@@ -645,9 +689,7 @@ mod tests {
 
     #[test]
     fn availability_is_content_free_when_the_model_contract_is_missing() {
-        assert!(!model_contract_available(Err(
-            std::env::VarError::NotPresent
-        )));
+        assert!(model_contract(Err(std::env::VarError::NotPresent)).is_none());
         let unavailable = LocalRuntimeService::unavailable_snapshot();
         assert_eq!(unavailable.state, "failed");
         assert_eq!(unavailable.diagnostic.as_deref(), Some("model-unavailable"));
@@ -676,6 +718,19 @@ mod tests {
             runtime.reserve("bundle-c").is_ok(),
             "terminal attempt releases the slot"
         );
+    }
+
+    #[test]
+    fn availability_binds_a_verified_contract_to_the_exact_reservation() {
+        let runtime = LocalRuntimeService::default();
+        {
+            let mut cached = runtime.model_contract.lock().expect("contract lock");
+            *cached = model_contract(Ok("supervisor-contract".into()));
+        }
+        let reservation = runtime
+            .reserve_available_model("bundle-a")
+            .expect("verified contract reserves the only slot");
+        assert!(reservation.model_contract.is_some());
     }
 
     /// This is deliberately opt-in: it loads the supervisor-provided,

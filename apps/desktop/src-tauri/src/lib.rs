@@ -2100,7 +2100,7 @@ async fn context_assembly_run_local_runtime(
     // Reserve the one shared CPU slot before consuming the durable reviewed
     // bundle. A concurrent attempt must leave its exact review available
     // rather than turn it into a failed one-use dispatch.
-    let reservation = match runtime.reserve(&request.bundle_id) {
+    let reservation = match runtime.reserve_available_model(&request.bundle_id) {
         Ok(reservation) => reservation,
         Err(()) => {
             return Ok(local_runtime::LocalRuntimeSnapshot {
