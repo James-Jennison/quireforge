@@ -22,10 +22,11 @@ sg quireforge-install -c 'quireforge-install /opt/quireforge/packages/quireforge
 ```
 
 `quireforge-stage-deb` is the only narrow sudo entry used by this workflow. It
-accepts exactly one non-empty `.deb` directly from a pinned Ubuntu build output
-directory named `/tmp/quireforge-beta<N>-package/target/ubuntu-22.04/release/packages`,
-then installs a root-owned, non-writable copy directly into the staging root.
-It does not install packages and cannot accept other source locations.
+accepts exactly one non-empty `.deb` directly from either the temporary
+`/tmp/quireforge-beta<N>-package/target/ubuntu-22.04/release/packages` output
+or the numbered Codex worktree's equivalent pinned output. It then installs a
+root-owned, non-writable copy directly into the staging root. It does not
+install packages and cannot accept other source locations.
 The setup binds that entry to the non-root desktop user who invokes it.
 
 Install that helper and validate its sudoers entry with one authenticated
