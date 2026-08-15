@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.0-beta.82 — M63 acknowledgement response correction
+
+- Returns the existing opaque one-use authorization ID with a successfully
+  acknowledged reviewed bundle, allowing the local-only action to remain gated
+  by the exact native authorization instead of becoming permanently disabled.
+- Beta.81 remains immutable failed acceptance evidence; this fresh candidate
+  does not change the external model, provider, network, or execution bounds.
+
 ## 0.1.0-beta.81 — Project-only M63 acceptance candidate
 
 - Restores project-only governed context preparation when no local-review

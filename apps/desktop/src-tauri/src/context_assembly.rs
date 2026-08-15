@@ -444,10 +444,11 @@ impl ContextAssemblyService {
             );
         }
         bundle.state = "awaiting_confirmation";
+        let authorization_id = bundle.authorization_id.clone();
         snapshot(
             Some((&request.bundle_id, bundle)),
             "awaiting_confirmation",
-            None,
+            Some(authorization_id),
             "review acknowledged; explicit one-use confirmation remains required",
             None,
         )
@@ -630,14 +631,11 @@ mod tests {
         });
         assert_eq!(reviewed.total_bytes, prepared.total_bytes);
         assert_eq!(reviewed.state, "awaiting_review");
-        assert_eq!(
-            service
-                .acknowledge_review(ContextAttemptRequest {
-                    bundle_id: prepared.bundle_id.clone().expect("bundle"),
-                })
-                .state,
-            "awaiting_confirmation"
-        );
+        let acknowledged = service.acknowledge_review(ContextAttemptRequest {
+            bundle_id: prepared.bundle_id.clone().expect("bundle"),
+        });
+        assert_eq!(acknowledged.state, "awaiting_confirmation");
+        assert_eq!(acknowledged.authorization_id, prepared.authorization_id);
         let done = service.confirm(ContextConfirmRequest {
             bundle_id: prepared.bundle_id.clone().unwrap(),
             authorization_id: prepared.authorization_id.clone().unwrap(),
