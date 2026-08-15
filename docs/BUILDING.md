@@ -124,6 +124,13 @@ The authoritative package build uses Docker, not the newer discovery host:
 ./scripts/run_linux_package_container.sh
 ```
 
+The host entrypoint first requires a clean working tree, resolves the exact
+full commit SHA and its timestamp, validates both, and passes them explicitly
+to the container. The container does not inspect `.git` or invoke Git, so a
+detached worktree packages without mounting its external Git directory. Direct
+container packaging without the supplied revision and `SOURCE_DATE_EPOCH`
+fails closed.
+
 The script builds the digest-pinned Ubuntu 22.04 image, uses isolated ignored
 caches, and reuses only checksum-verified immutable Linux-kernel and
 Firecracker source archives for the separately installed worker. It verifies

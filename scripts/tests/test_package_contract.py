@@ -24,6 +24,8 @@ from scripts.release_contract import (
     package_output_dir,
     replace_control_field,
     source_version,
+    source_date_epoch,
+    source_record,
 )
 sys.path.insert(0, str(ROOT / "scripts"))
 from package_linux import finalize, staging_dir
@@ -307,6 +309,33 @@ class PackageContractTests(unittest.TestCase):
         with patch.dict("os.environ", {}, clear=False):
             with self.assertRaisesRegex(RuntimeError, "container"):
                 assert_authoritative_release_builder()
+
+    def test_container_provenance_is_explicit_and_does_not_require_git(self) -> None:
+        revision = "b" * 40
+        with patch.dict("os.environ", {
+            RELEASE_BUILDER_ENV: RELEASE_BUILDER_VALUE,
+            "QUIRE_FORGE_SOURCE_REVISION": revision,
+            "SOURCE_DATE_EPOCH": "1786752436",
+        }, clear=False):
+            self.assertEqual(source_record(), (revision, "clean", None))
+            self.assertEqual(source_date_epoch(), 1786752436)
+        for environment in (
+            {RELEASE_BUILDER_ENV: RELEASE_BUILDER_VALUE, "SOURCE_DATE_EPOCH": "1"},
+            {RELEASE_BUILDER_ENV: RELEASE_BUILDER_VALUE, "QUIRE_FORGE_SOURCE_REVISION": "B" * 40, "SOURCE_DATE_EPOCH": "1"},
+            {RELEASE_BUILDER_ENV: RELEASE_BUILDER_VALUE, "QUIRE_FORGE_SOURCE_REVISION": revision},
+        ):
+            with patch.dict("os.environ", environment, clear=True):
+                with self.assertRaisesRegex(RuntimeError, "QUIRE_FORGE_SOURCE_REVISION|SOURCE_DATE_EPOCH"):
+                    source_record() if "QUIRE_FORGE_SOURCE_REVISION" not in environment or "SOURCE_DATE_EPOCH" in environment else source_date_epoch()
+
+    def test_container_packaging_path_does_not_inspect_git_metadata(self) -> None:
+        builder = (ROOT / "scripts/run_linux_package_container.sh").read_text(encoding="utf-8")
+        release_contract = (ROOT / "scripts/release_contract.py").read_text(encoding="utf-8")
+        guest_assets = (ROOT / "packaging/sandbox/build_guest_assets.sh").read_text(encoding="utf-8")
+        self.assertIn('QUIRE_FORGE_SOURCE_REVISION="$source_revision"', builder)
+        self.assertIn('return supplied_source_revision(), "clean", None', release_contract)
+        self.assertNotIn("git rev-parse", guest_assets)
+        self.assertNotIn(".git", guest_assets)
 
     def test_authoritative_builder_uses_only_the_verified_sandbox_source_cache(self) -> None:
         builder = (ROOT / "scripts/run_linux_package_container.sh").read_text(

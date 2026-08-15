@@ -10,7 +10,20 @@ fi
 builder_image="quireforge-packaging:ubuntu-22.04"
 builder_source="ubuntu:22.04@sha256:0e0a0fc6d18feda9db1590da249ac93e8d5abfea8f4c3c0c849ce512b5ef8982"
 cache_root="$repository_root/.cache/packaging"
-source_epoch="$(git log -1 --format=%ct)"
+source_revision="$(git rev-parse HEAD)"
+if [[ ! "$source_revision" =~ ^[0-9a-f]{40}$ ]]; then
+  echo "Could not resolve a full lowercase source revision." >&2
+  exit 1
+fi
+if [[ -n "$(git status --short --untracked-files=all)" ]]; then
+  echo "Authoritative Linux release artifacts require a clean working tree." >&2
+  exit 1
+fi
+source_epoch="$(git show -s --format=%ct "$source_revision")"
+if [[ ! "$source_epoch" =~ ^[0-9]+$ ]]; then
+  echo "Could not resolve SOURCE_DATE_EPOCH from the source revision." >&2
+  exit 1
+fi
 
 mkdir -p \
   "$cache_root/cargo" \
@@ -44,6 +57,7 @@ docker run \
   --env QUIRE_FORGE_BUILD_IMAGE="$builder_source" \
   --env QUIRE_FORGE_BUILD_VERSION=22.04 \
   --env QUIRE_FORGE_RELEASE_BUILDER=pinned-ubuntu-22.04 \
+  --env QUIRE_FORGE_SOURCE_REVISION="$source_revision" \
   --env QUIRE_FORGE_SANDBOX_SOURCE_CACHE=/cache/sandbox-sources \
   --env QUIRE_FORGE_TAURI_CACHE_DIR=/cache/home/.cache/tauri \
   --env SOURCE_DATE_EPOCH="$source_epoch" \

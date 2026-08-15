@@ -32,6 +32,7 @@ EXPECTED_IMAGE = (
 )
 RELEASE_BUILDER_ENV = "QUIRE_FORGE_RELEASE_BUILDER"
 RELEASE_BUILDER_VALUE = "pinned-ubuntu-22.04"
+SOURCE_REVISION_ENV = "QUIRE_FORGE_SOURCE_REVISION"
 RELEASE_WORKFLOW_COMMAND = "scripts/run_linux_package_container.sh"
 RELEASE_OUTPUT_DIR = ROOT / "target/ubuntu-22.04/release/packages"
 HOST_DEVELOPMENT_TARGET_DIR = ROOT / "target/host-development"
@@ -40,6 +41,14 @@ SEMVER_RE = re.compile(
     r"^(?P<major>0|[1-9]\d*)\.(?P<minor>0|[1-9]\d*)\."
     r"(?P<patch>0|[1-9]\d*)(?:-(?P<prerelease>[0-9A-Za-z.-]+))?$"
 )
+SOURCE_REVISION_RE = re.compile(r"[0-9a-f]{40}")
+
+
+def supplied_source_revision() -> str:
+    value = os.environ.get(SOURCE_REVISION_ENV, "")
+    if not SOURCE_REVISION_RE.fullmatch(value):
+        raise RuntimeError(f"{SOURCE_REVISION_ENV} must be a full lowercase SHA-1 commit")
+    return value
 
 
 def run(
@@ -200,8 +209,10 @@ def source_date_epoch() -> int:
     configured = os.environ.get("SOURCE_DATE_EPOCH")
     if configured:
         if not configured.isdigit():
-            raise RuntimeError("SOURCE_DATE_EPOCH must be a positive integer")
+            raise RuntimeError("SOURCE_DATE_EPOCH must be a non-negative integer")
         return int(configured)
+    if release_builder_active():
+        raise RuntimeError("authoritative container builds require SOURCE_DATE_EPOCH")
     result = run(
         ["git", "log", "-1", "--format=%ct"],
         cwd=ROOT,
@@ -214,6 +225,8 @@ def source_date_epoch() -> int:
 
 
 def source_record() -> tuple[str, str, str | None]:
+    if release_builder_active():
+        return supplied_source_revision(), "clean", None
     commit = run(
         ["git", "rev-parse", "HEAD"],
         cwd=ROOT,
