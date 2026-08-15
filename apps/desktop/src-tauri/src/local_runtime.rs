@@ -320,7 +320,8 @@ impl Drop for ActiveRunGuard {
 
 impl LocalRuntimeService {
     pub(crate) fn availability(&self) -> LocalRuntimeAvailability {
-        let contract = model_contract(std::env::var(MODEL_PATH_ENV));
+        let contract = model_contract(std::env::var(MODEL_PATH_ENV))
+            .filter(|contract| verify_model_load(&contract.model_path));
         let available = self
             .model_contract
             .lock()
@@ -409,6 +410,38 @@ fn model_contract(model_path: Result<String, std::env::VarError>) -> Option<Mode
     })
 }
 
+/// Performs the same CPU-only model admission used by an attempt, without
+/// accepting reviewed bytes or returning any model-derived data. This closes
+/// the gap where an environment string could pass preflight but native loading
+/// would fail only after a one-use bundle had been consumed.
+fn verify_model_load(model_path: &str) -> bool {
+    let Ok(path) = CString::new(model_path) else {
+        return false;
+    };
+    let Ok(_memory_ceiling) = MemoryCeiling::apply() else {
+        return false;
+    };
+    let control = RunControl {
+        started: Instant::now(),
+        cancelled: AtomicBool::new(false),
+    };
+    unsafe {
+        llama_log_set(discard_runtime_log, std::ptr::null_mut());
+        let _backend = Backend::initialize();
+        let mut model_params = llama_model_default_params();
+        model_params.n_gpu_layers = 0;
+        model_params.split_mode = 0;
+        model_params.progress_callback = continue_before_deadline as *const c_void;
+        model_params.progress_callback_user_data = (&control as *const RunControl).cast_mut().cast();
+        let model = llama_model_load_from_file(path.as_ptr(), model_params);
+        if model.is_null() {
+            return false;
+        }
+        llama_model_free(model);
+        true
+    }
+}
+
 impl LocalRuntimeReservation {
     pub(crate) fn run(self, canonical_bytes: &[u8]) -> LocalRuntimeSnapshot {
         let Some(contract) = self.model_contract.as_ref() else {
@@ -452,7 +485,7 @@ fn run_once(
             return if attempt_stopped((control as *const RunControl).cast_mut().cast()) {
                 stopped(control)
             } else {
-                failed("runtime-unavailable")
+                failed("model-load-failed")
             };
         }
         let prompt = match format_reviewed_chat_prompt(model, &system_prompt, &reviewed_request) {
@@ -478,7 +511,7 @@ fn run_once(
         let context = llama_init_from_model(model, context_params);
         if context.is_null() {
             llama_model_free(model);
-            return failed("runtime-unavailable");
+            return failed("context-init-failed");
         }
         let vocab = llama_model_get_vocab(model);
         let mut tokens = vec![0_i32; INPUT_TOKEN_LIMIT + 1];
@@ -514,7 +547,7 @@ fn run_once(
         if sampler.is_null() {
             llama_free(context);
             llama_model_free(model);
-            return failed("runtime-unavailable");
+            return failed("sampler-init-failed");
         }
         llama_sampler_chain_add(sampler, llama_sampler_init_greedy());
         let mut output = String::new();
@@ -747,7 +780,7 @@ mod tests {
             "the approved local model contract must be available"
         );
         let reservation = runtime
-            .reserve("m63-focused-adapter-acceptance")
+            .reserve_available_model("m63-focused-adapter-acceptance")
             .expect("the focused attempt claims the only runtime slot");
         let snapshot = reservation.run(b"Provide a concise offline readiness confirmation.");
 

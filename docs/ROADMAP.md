@@ -1663,14 +1663,17 @@ acknowledged review, reports that no attempt started, and requires an explicit
 availability recheck before a later manual run. Package promotion and installed
 Debian desktop acceptance remain pending.
 
-The beta.83 source candidate binds a successful content-free native
-availability contract to its exact in-memory reservation, preventing a second
-environment read from changing the run admission after preflight. It neither
-exposes nor persists the model location or content. The bounded
-`model-unavailable` outcome now identifies only a missing or invalid contract;
-an in-process loader failure is `runtime-unavailable`. Beta.82 remains
-immutable failed acceptance evidence. Package promotion and installed Debian
-desktop acceptance remain pending.
+The beta.83 candidate bound a successful content-free native availability
+contract to its exact in-memory reservation, preventing a second environment
+read from changing run admission after preflight. Its package and installation
+gates passed, but the supervised installed attempt reached native loading and
+failed before output or retry; beta.83 is immutable failed acceptance evidence.
+
+The beta.84 source candidate makes availability admission perform the same
+CPU-only native model load and immediate release before accepting reviewed
+bytes. It reports only bounded component diagnostics, never a model location,
+content, loader output, or filesystem observation. Package promotion and
+installed Debian desktop acceptance remain pending.
 
 The beta.80 installed-host candidate from clean source commit
 `43b655008e506f2f840ebf194e1ba0a10c14e590` passed the pinned Ubuntu 22.04

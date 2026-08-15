@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.1.0-beta.84 — M63 native-load admission correction
+
+- Makes native availability prove a CPU-only, in-process model load and
+  immediate release before a reviewed bundle may be consumed. The preflight
+  accepts no reviewed bytes and returns no model-derived data.
+- Separates model-load, context-initialization, and sampler-initialization
+  failures without exposing a model location, content, loader output, or
+  filesystem observation.
+- Beta.83 is immutable failed installed-host acceptance evidence: its bound
+  contract reached the native loader, which failed before output and without a
+  retry. This candidate preserves all M48, M55, and M60 contracts.
+
 ## 0.1.0-beta.83 — M63 availability-contract binding correction
 
 - Binds a successfully verified, supervisor-provided local-model contract to

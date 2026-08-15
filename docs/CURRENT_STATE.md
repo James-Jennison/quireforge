@@ -164,15 +164,20 @@ output or retry occurred. Closing and relaunching restored neither the review,
 instruction, nor result. Beta.82 is immutable failed acceptance evidence and
 not release-ready; a later retry needs a fresh unused beta version.
 
-The unvalidated `0.1.0-beta.83` source candidate narrows that acceptance
-diagnosis without inspecting, exposing, or persisting the external model. A
-successful content-free native preflight now binds its in-memory supervisor
-contract to the exact reservation, so the run command does not independently
-reread the environment before loading. `model-unavailable` is reserved for a
-missing or invalid contract; a later loader failure is bounded separately as
-`runtime-unavailable`. Beta.82 remains immutable failed evidence. Package,
+The `0.1.0-beta.83` candidate from clean source commit
+`625638fa36aa698ca3c7709659a2b02944d34639` passed the pinned package,
+lifecycle, smoke, final-artifact, and local installation identity gates. Its
+dedicated supervised installed-host launcher carried the bound in-memory
+contract through native revalidation, then the native loader failed before
+output and without retry. Beta.83 is immutable failed acceptance evidence.
+
+The unvalidated `0.1.0-beta.84` source candidate moves native model loading
+into the content-free availability admission before any reviewed bytes are
+accepted or one-use bundle is consumed. It immediately releases that probe and
+reports only bounded component diagnostics; no model path, content, loader
+output, or filesystem observation is exposed or retained. Package,
 installed-host, and governed local-attempt acceptance evidence is pending for
-beta.83.
+beta.84.
 
 ### Current provider-neutral completion record
 

@@ -42,6 +42,11 @@ with the status/log fallback. The supervisor never installs packages or uses
 `sudo`. Its installed default interval between completed tasks is 60 seconds.
 
 The source unit is `packaging/systemd-user/quireforge-codex-supervisor.service`.
+
+For M63 installed-host acceptance, launch the installed desktop app through a
+dedicated user-service context that already owns the supervisor local-model
+contract. It must not read, log, persist, or pass that contract through the UI.
+A normal terminal launch is not valid M63 acceptance evidence.
 Install it for the current user with:
 
 ```bash

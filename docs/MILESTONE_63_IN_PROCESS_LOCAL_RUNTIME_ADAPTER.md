@@ -29,10 +29,12 @@ remain required before any release-ready claim.
 Before an acknowledged review can consume its one local attempt, the governed
 view obtains a typed, content-free availability snapshot from the native
 adapter, and the native run command enforces the same check before reservation
-or durable consumption. A missing supervisor-provided local-model contract
-leaves the exact review unconsumed, disables the one-time action, and reports
-only `model-unavailable`; it exposes no path or model observation. This
-preflight does not load or otherwise inspect the model.
+or durable consumption. The preflight performs the same CPU-only native model
+load and immediate release as an attempt, but accepts no reviewed bytes and
+returns no model-derived data. A missing or unloadable supervisor-provided
+local-model contract leaves the exact review unconsumed, disables the one-time
+action, and reports only `model-unavailable`; it exposes no path or model
+observation.
 
 Each attempt applies the fixed 6 GiB process address-space ceiling before model
 loading and restores the prior soft limit as the attempt exits. If the ceiling
@@ -161,16 +163,19 @@ disabled while cancel/revoke remain available, the explicit recheck preserves
 the acknowledged review, and only the later separate manual action completes.
 Package promotion and installed-host acceptance remain pending.
 
-The beta.83 source candidate corrects the observed preflight/run disagreement:
-the successful content-free supervisor contract is held only in process and
-bound to the exact native reservation. The run command therefore enforces that
-verified contract without independently rereading its environment value. No
-path, content, filesystem observation, or contract value crosses IPC, reaches
-storage, or appears in diagnostics. `model-unavailable` now identifies only a
-missing or invalid contract before consumption; a later model-loader failure
-is the distinct bounded `runtime-unavailable` terminal outcome. Beta.82
-remains immutable failed acceptance evidence. Package and installed-host
-acceptance remain pending for beta.83.
+The beta.83 candidate corrected the observed preflight/run disagreement: the
+successful content-free supervisor contract was held only in process and bound
+to the exact native reservation. Its package and installation gates passed,
+but the supervised installed-host attempt reached native loading and failed
+before output or retry. Beta.83 is immutable failed acceptance evidence.
+
+The beta.84 source candidate makes availability admission perform the same
+CPU-only native model load and immediate release before accepting reviewed
+bytes. No path, content, loader output, filesystem observation, or contract
+value crosses IPC, reaches storage, or appears in diagnostics. The bounded
+outcomes distinguish an unavailable contract, model-load failure,
+context-initialization failure, and sampler-initialization failure. Package and
+installed-host acceptance remain pending for beta.84.
 
 The candidate procedure is recorded in
 [Testing](TESTING.md#m63-local-runtime-installed-host-acceptance). It requires
