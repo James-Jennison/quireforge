@@ -840,6 +840,7 @@ function WorkspaceView({
   return (
     <div
       className="workspace-view"
+      id={route}
       data-workspace-view={route}
       hidden={!active}
       aria-hidden={!active}

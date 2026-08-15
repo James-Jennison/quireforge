@@ -2069,7 +2069,11 @@ test("production New task creates one durable task for the fictional mock select
   await page.getByRole("button", { name: "New task" }).click();
   await page.getByRole("textbox", { name: "Task title" }).fill("Mock task");
   await page.getByRole("button", { name: "Create task" }).click();
-  await expect(page.getByText("Mock task")).toBeVisible();
+  await expect(
+    page.getByRole("navigation", { name: "Task list" }).getByRole("button", {
+      name: "Mock task, active, not archived, 1 plan",
+    }),
+  ).toBeVisible();
   await page
     .getByRole("region", { name: "Fictional local mock workflow" })
     .getByRole("button", { name: "Fictional mock inference" })
@@ -3080,6 +3084,18 @@ test("keyboard users can bypass navigation and use semantic workspace links", as
       name: "A real shell, rooted where you work.",
     }),
   ).toBeVisible();
+});
+
+test("Studio navigation has a focusable hash destination", async ({ page }) => {
+  await installNativeFixture(page);
+  await page.goto("/");
+
+  await openWorkspace(page, "Studio");
+
+  const studioDestination = page.locator("#studio");
+  await expect(studioDestination).toBeVisible();
+  await expect(studioDestination).toHaveAttribute("tabindex", "-1");
+  await expect(studioDestination).toBeFocused();
 });
 
 test("reduced-motion preference disables animation and scripted smooth scrolling", async ({
