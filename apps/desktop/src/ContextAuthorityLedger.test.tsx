@@ -46,9 +46,9 @@ describe("ContextAuthorityLedger", () => {
       <ContextAuthorityLedger projectId="019fbee6-476f-71b0-853c-f067657aa69c" />,
     );
     await waitFor(() =>
-      expect(screen.getByText(/2 selected items/)).toBeInTheDocument(),
+      expect(screen.getByText("2 items")).toBeInTheDocument(),
     );
     expect(screen.getByText(/cannot transfer content/i)).toBeInTheDocument();
-    expect(screen.getByText("artifact-reference: active")).toBeInTheDocument();
+    expect(screen.getByText("Artifact reference")).toBeInTheDocument();
   });
 });

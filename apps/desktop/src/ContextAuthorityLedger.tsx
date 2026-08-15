@@ -2,6 +2,25 @@ import { useEffect, useState } from "react";
 import { loadContextAuthorityLedger } from "./lib/bridge";
 import type { ContextLedgerSnapshot } from "./lib/contextLedger";
 
+const recordLabels: Record<
+  ContextLedgerSnapshot["entries"][number]["recordKind"],
+  string
+> = {
+  "artifact-reference": "Artifact reference",
+  "browser-verification": "Browser verification",
+  "connector-operation": "Connector operation",
+  "context-bundle": "Context bundle",
+  "durable-source": "Durable source",
+};
+
+function shortDigest(digest: string) {
+  return `${digest.slice(0, 12)}…${digest.slice(-8)}`;
+}
+
+function timestamp(value: number) {
+  return value === 0 ? "No expiry" : new Date(value).toLocaleString();
+}
+
 export function ContextAuthorityLedger({
   projectId,
 }: {
@@ -50,16 +69,33 @@ export function ContextAuthorityLedger({
       ) : (
         <ol className="context-ledger__entries">
           {snapshot.entries.map((entry) => (
-            <li key={entry.recordId}>
-              <strong>
-                {entry.recordKind}: {entry.state}
-              </strong>
-              <span>
-                {" "}
-                · {entry.itemCount} selected item
-                {entry.itemCount === 1 ? "" : "s"} · audit: {entry.auditOutcome}
-              </span>
-              <code>{entry.bundleDigest}</code>
+            <li key={entry.recordId} className="context-ledger__entry">
+              <div className="context-ledger__entry-heading">
+                <strong>{recordLabels[entry.recordKind]}</strong>
+                <span className="context-ledger__state">{entry.state}</span>
+              </div>
+              <dl className="context-ledger__facts">
+                <div>
+                  <dt>Outcome</dt>
+                  <dd>{entry.auditOutcome}</dd>
+                </div>
+                <div>
+                  <dt>Selected</dt>
+                  <dd>
+                    {entry.itemCount} item{entry.itemCount === 1 ? "" : "s"}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Expiry</dt>
+                  <dd>{timestamp(entry.expiresAtMs)}</dd>
+                </div>
+              </dl>
+              <code
+                title={entry.bundleDigest}
+                aria-label={`Digest ${entry.bundleDigest}`}
+              >
+                {shortDigest(entry.bundleDigest)}
+              </code>
             </li>
           ))}
         </ol>

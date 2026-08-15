@@ -9,6 +9,8 @@ export function WorkAdapterCatalog({
 }) {
   const [catalog, setCatalog] = useState<MockInferenceCatalog | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selected =
+    catalog?.profiles.find((profile) => profile.id === selectedId) ?? null;
 
   useEffect(() => {
     let active = true;
@@ -42,28 +44,49 @@ export function WorkAdapterCatalog({
           Local adapter fixtures are unavailable; no connection was attempted.
         </p>
       ) : (
-        <fieldset className="work-adapter-catalog">
-          <legend>Available deterministic fixtures</legend>
-          {catalog.profiles.map((profile) => (
-            <div key={profile.id} className="work-adapter-catalog__item">
-              <input
-                id={`work-adapter-${profile.id}`}
-                type="radio"
-                name="work-adapter"
-                checked={selectedId === profile.id}
-                onChange={() => setSelectedId(profile.id)}
-              />
-              <label htmlFor={`work-adapter-${profile.id}`}>
-                <strong>{profile.adapterLabel}</strong>
-                <span>
-                  {profile.providerLabel} · {profile.modelLabel} ·{" "}
-                  {profile.scenario}
-                </span>
-                <code>descriptor {profile.descriptorSha256}</code>
-              </label>
-            </div>
-          ))}
-        </fieldset>
+        <div className="work-adapter-catalog">
+          <label htmlFor="work-adapter">Deterministic fixture</label>
+          <select
+            id="work-adapter"
+            value={selectedId ?? ""}
+            onChange={(event) => setSelectedId(event.target.value)}
+          >
+            {catalog.profiles.map((profile) => (
+              <option key={profile.id} value={profile.id}>
+                {profile.providerLabel} · {profile.modelLabel} ·{" "}
+                {profile.scenario}
+              </option>
+            ))}
+          </select>
+          {selected && (
+            <section
+              className="work-adapter-catalog__detail"
+              aria-label="Selected fixture details"
+            >
+              <p className="eyebrow">Selected local fixture</p>
+              <h3>{selected.adapterLabel}</h3>
+              <dl>
+                <div>
+                  <dt>Scenario</dt>
+                  <dd>{selected.scenario}</dd>
+                </div>
+                <div>
+                  <dt>Retention</dt>
+                  <dd>Transient local fixture</dd>
+                </div>
+                <div>
+                  <dt>Descriptor</dt>
+                  <dd>
+                    <code title={selected.descriptorSha256}>
+                      {selected.descriptorSha256.slice(0, 12)}…
+                      {selected.descriptorSha256.slice(-8)}
+                    </code>
+                  </dd>
+                </div>
+              </dl>
+            </section>
+          )}
+        </div>
       )}
       <p className="context-note">
         Privacy and retention: no live provider exists here. Any later attempt

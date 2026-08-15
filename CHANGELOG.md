@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.0-beta.78 — Work surface clarity candidate
+
+- Refined Ledger receipt cards to prioritize lifecycle facts over raw digests.
+- Consolidated the Adapter fixture list into a compact selector and selected
+  fixture detail panel.
+
 ## 0.1.0-beta.77 — M66–M68 local-governance candidate
 
 - Added the read-only, content-free Context and Authority Ledger over existing

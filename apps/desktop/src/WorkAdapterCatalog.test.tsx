@@ -30,9 +30,12 @@ describe("WorkAdapterCatalog", () => {
     );
     await waitFor(() =>
       expect(
-        screen.getByRole("radio", { name: /fixture adapter/i }),
-      ).toBeChecked(),
+        screen.getByRole("combobox", { name: /deterministic fixture/i }),
+      ).toHaveValue("fixture"),
     );
+    expect(
+      screen.getByRole("heading", { name: /fixture adapter/i }),
+    ).toBeInTheDocument();
     expect(screen.getByText(/does not connect, transmit/i)).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /connect|submit/i }),
