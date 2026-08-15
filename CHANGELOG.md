@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.0-beta.80 — M63 installed-host acceptance candidate
+
+- Reserves a fresh, unreleased candidate version for the documented M63
+  installed-host governed-review acceptance workflow.
+- Beta.79 remains immutable accessibility and package evidence; this candidate
+  does not change its Work-lane authority boundaries or package provenance.
+
 ## 0.1.0-beta.79 — Accessibility semantics candidate
 
 - Restored a complete H1-to-H2 hierarchy for the Ledger and Adapter Work
