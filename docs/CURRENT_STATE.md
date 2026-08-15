@@ -94,6 +94,12 @@ portability work has started.
 
 ## Reuse and boundary
 
+M65's metadata-only artifact-reference vertical slice is implemented in the
+unreleased `0.1.0-beta.75` candidate. Migration 27 persists only a confirmed
+project/task association to an opaque M48 artifact UUID, digest, closed class,
+and bounded label. The Studio shows whether the independently transient
+original is currently available, without retaining or recovering it.
+
 ### Current provider-neutral completion record
 
 This record supersedes the older historical candidate and draft-release

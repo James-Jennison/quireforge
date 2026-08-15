@@ -514,7 +514,7 @@ impl Drop for DurableSourceController {
     }
 }
 
-fn binding(
+pub(crate) fn binding(
     repository: &ProjectRepository,
     project_id: &str,
     task_id: Option<&str>,

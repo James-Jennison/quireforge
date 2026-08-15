@@ -1419,3 +1419,139 @@ pub struct DurableSourceSnapshot {
     pub sources: Vec<DurableSourceSummary>,
     pub diagnostic_code: Option<DurableSourceDiagnosticCode>,
 }
+
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum ArtifactReferenceState {
+    Active,
+    Deleted,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum ArtifactReferenceAvailability {
+    Live,
+    Unavailable,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum ArtifactReferenceDiagnosticCode {
+    ProjectUnavailable,
+    TaskUnavailable,
+    ProjectTaskMismatch,
+    ArtifactUnavailable,
+    ArtifactMismatch,
+    PreparationExpired,
+    PreparationMissing,
+    ConfirmationMismatch,
+    ReferenceUnavailable,
+    ReferenceAlreadyDeleted,
+    PrivateStorageFailure,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ArtifactReferenceProjectRequest {
+    pub project_id: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ArtifactReferencePrepareRequest {
+    pub project_id: String,
+    pub task_id: Option<String>,
+    pub artifact_id: String,
+    pub artifact_sha256: String,
+}
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ArtifactReferenceConfirmRequest {
+    pub preparation_id: String,
+    pub nonce: String,
+    pub artifact_sha256: String,
+}
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ArtifactReferenceDeletePrepareRequest {
+    pub reference_id: String,
+}
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ArtifactReferenceDeleteConfirmRequest {
+    pub preparation_id: String,
+    pub nonce: String,
+    pub reference_id: String,
+}
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ArtifactReferencePreparation {
+    pub schema_version: u16,
+    pub preparation_id: String,
+    pub nonce: String,
+    pub expires_at_ms: i64,
+    pub reference_id: Option<String>,
+    pub project_id: String,
+    pub task_id: Option<String>,
+    pub artifact_id: String,
+    pub artifact_sha256: String,
+    pub artifact_class: String,
+    pub display_label: String,
+    pub diagnostic_code: Option<ArtifactReferenceDiagnosticCode>,
+}
+impl ArtifactReferencePreparation {
+    pub fn unavailable(code: ArtifactReferenceDiagnosticCode) -> Self {
+        Self {
+            schema_version: 1,
+            preparation_id: String::new(),
+            nonce: String::new(),
+            expires_at_ms: 0,
+            reference_id: None,
+            project_id: String::new(),
+            task_id: None,
+            artifact_id: String::new(),
+            artifact_sha256: String::new(),
+            artifact_class: String::new(),
+            display_label: String::new(),
+            diagnostic_code: Some(code),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ArtifactReferenceSummary {
+    pub reference_id: String,
+    pub project_id: String,
+    pub task_id: Option<String>,
+    pub artifact_id: String,
+    pub artifact_sha256: String,
+    pub artifact_class: String,
+    pub display_label: String,
+    pub state: ArtifactReferenceState,
+    pub availability: ArtifactReferenceAvailability,
+    pub created_at_ms: i64,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ArtifactReferenceSnapshot {
+    pub schema_version: u16,
+    pub references: Vec<ArtifactReferenceSummary>,
+    pub diagnostic_code: Option<ArtifactReferenceDiagnosticCode>,
+}
+impl ArtifactReferenceSnapshot {
+    pub fn unavailable() -> Self {
+        Self {
+            schema_version: 1,
+            references: Vec::new(),
+            diagnostic_code: Some(ArtifactReferenceDiagnosticCode::ProjectUnavailable),
+        }
+    }
+}
+impl ArtifactReferenceSummary {
+    pub fn unavailable(mut value: Self) -> Self {
+        value.availability = ArtifactReferenceAvailability::Unavailable;
+        value
+    }
+}

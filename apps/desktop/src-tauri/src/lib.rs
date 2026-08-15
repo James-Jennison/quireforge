@@ -219,6 +219,9 @@ use preview::{
 };
 use project::{
     types::{
+        ArtifactReferenceConfirmRequest, ArtifactReferenceDeleteConfirmRequest,
+        ArtifactReferenceDeletePrepareRequest, ArtifactReferencePreparation,
+        ArtifactReferencePrepareRequest, ArtifactReferenceProjectRequest,
         DurableSourceArtifactPrepareRequest, DurableSourceConfirmRequest,
         DurableSourceDeleteConfirmRequest, DurableSourceFilePrepareRequest,
         DurableSourceManualPrepareRequest, DurableSourcePreparation, DurableSourceProjectRequest,
@@ -1530,6 +1533,46 @@ fn durable_source_confirm_deletion(
     service: tauri::State<'_, ProjectService>,
 ) -> Result<(), project::types::DurableSourceDiagnosticCode> {
     service.durable_source_confirm_delete(request)
+}
+
+#[tauri::command]
+fn artifact_reference_prepare(
+    request: ArtifactReferencePrepareRequest,
+    service: tauri::State<'_, ProjectService>,
+    artifacts: tauri::State<'_, AdvisorGeneratedArtifactService>,
+) -> ArtifactReferencePreparation {
+    service.artifact_reference_prepare(request, &artifacts)
+}
+#[tauri::command]
+fn artifact_reference_confirm(
+    request: ArtifactReferenceConfirmRequest,
+    service: tauri::State<'_, ProjectService>,
+    artifacts: tauri::State<'_, AdvisorGeneratedArtifactService>,
+) -> Result<project::types::ArtifactReferenceSummary, project::types::ArtifactReferenceDiagnosticCode>
+{
+    service.artifact_reference_confirm(request, &artifacts)
+}
+#[tauri::command]
+fn artifact_reference_list(
+    request: ArtifactReferenceProjectRequest,
+    service: tauri::State<'_, ProjectService>,
+    artifacts: tauri::State<'_, AdvisorGeneratedArtifactService>,
+) -> project::types::ArtifactReferenceSnapshot {
+    service.artifact_references(request, &artifacts)
+}
+#[tauri::command]
+fn artifact_reference_prepare_deletion(
+    request: ArtifactReferenceDeletePrepareRequest,
+    service: tauri::State<'_, ProjectService>,
+) -> ArtifactReferencePreparation {
+    service.artifact_reference_prepare_delete(request)
+}
+#[tauri::command]
+fn artifact_reference_confirm_deletion(
+    request: ArtifactReferenceDeleteConfirmRequest,
+    service: tauri::State<'_, ProjectService>,
+) -> Result<(), project::types::ArtifactReferenceDiagnosticCode> {
+    service.artifact_reference_confirm_delete(request)
 }
 
 #[tauri::command]
@@ -3560,6 +3603,11 @@ pub fn run() {
             durable_source_read_details,
             durable_source_prepare_deletion,
             durable_source_confirm_deletion,
+            artifact_reference_prepare,
+            artifact_reference_confirm,
+            artifact_reference_list,
+            artifact_reference_prepare_deletion,
+            artifact_reference_confirm_deletion,
             task_template_catalog,
             task_template_inspect,
             task_template_create,

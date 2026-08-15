@@ -2,14 +2,23 @@ import { useEffect, useRef, useState } from "react";
 
 import {
   cancelDurableSource,
+  confirmArtifactReference,
+  confirmArtifactReferenceDeletion,
   confirmDurableSource,
   confirmDurableSourceDeletion,
   loadDurableSources,
+  loadArtifactReferences,
+  prepareArtifactReference,
+  prepareArtifactReferenceDeletion,
   prepareDurableSourceArtifact,
   prepareDurableSourceDeletion,
   prepareDurableSourceFile,
   prepareDurableSourceManual,
 } from "./lib/bridge";
+import type {
+  ArtifactReferencePreparation,
+  ArtifactReferenceSnapshot,
+} from "./lib/artifactReferences";
 import type {
   DurableSourcePreparation,
   DurableSourceSnapshot,
@@ -26,21 +35,32 @@ export function DurableSourcesWorkbench({
 }) {
   const closeRef = useRef<HTMLButtonElement>(null);
   const [snapshot, setSnapshot] = useState<DurableSourceSnapshot | null>(null);
+  const [references, setReferences] =
+    useState<ArtifactReferenceSnapshot | null>(null);
   const [title, setTitle] = useState("");
   const [text, setText] = useState("");
   const [artifactId, setArtifactId] = useState("");
   const [artifactSha256, setArtifactSha256] = useState("");
   const [preparation, setPreparation] =
     useState<DurableSourcePreparation | null>(null);
+  const [referencePreparation, setReferencePreparation] =
+    useState<ArtifactReferencePreparation | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const refresh = async () => {
     if (!projectId) return;
     setSnapshot(await loadDurableSources({ projectId }));
+    setReferences(await loadArtifactReferences({ projectId }));
   };
   useEffect(() => {
     if (!projectId) return;
-    void loadDurableSources({ projectId }).then(setSnapshot);
+    void Promise.all([
+      loadDurableSources({ projectId }),
+      loadArtifactReferences({ projectId }),
+    ]).then(([sources, artifactReferences]) => {
+      setSnapshot(sources);
+      setReferences(artifactReferences);
+    });
   }, [projectId]);
   const prepare = async (kind: "manual" | "file" | "artifact") => {
     if (!projectId || busy) return;
@@ -68,6 +88,25 @@ export function DurableSourcesWorkbench({
       else setPreparation(result);
     } catch {
       setError("Admission preparation is unavailable.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const prepareReference = async () => {
+    if (!projectId || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await prepareArtifactReference({
+        projectId,
+        taskId: null,
+        artifactId,
+        artifactSha256,
+      });
+      if (result.diagnosticCode) setError(result.diagnosticCode);
+      else setReferencePreparation(result);
+    } catch {
+      setError("Artifact reference preparation is unavailable.");
     } finally {
       setBusy(false);
     }
@@ -177,6 +216,13 @@ export function DurableSourcesWorkbench({
               >
                 Review selected artifact admission
               </button>
+              <button
+                type="button"
+                disabled={busy || !artifactId || !artifactSha256}
+                onClick={() => void prepareReference()}
+              >
+                Review artifact reference
+              </button>
             </div>
           </div>
           {error && <p role="alert">{error}</p>}
@@ -236,6 +282,116 @@ export function DurableSourcesWorkbench({
               </button>
             </dialog>
           )}
+          {referencePreparation && (
+            <dialog open aria-labelledby="artifact-reference-review-title">
+              <h3 id="artifact-reference-review-title">
+                Review artifact reference
+              </h3>
+              <dl>
+                <dt>Label</dt>
+                <dd>{referencePreparation.displayLabel}</dd>
+                <dt>Class</dt>
+                <dd>{referencePreparation.artifactClass}</dd>
+                <dt>SHA-256</dt>
+                <dd>
+                  <code>{referencePreparation.artifactSha256}</code>
+                </dd>
+              </dl>
+              <p>
+                This records only an opaque ID, digest, class, label, and
+                project/task binding. It retains no artifact content, path,
+                filename, or preview. The original can expire independently.
+              </p>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() =>
+                  void (async () => {
+                    setBusy(true);
+                    try {
+                      await confirmArtifactReference({
+                        preparationId: referencePreparation.preparationId,
+                        nonce: referencePreparation.nonce,
+                        artifactSha256: referencePreparation.artifactSha256,
+                      });
+                      setReferencePreparation(null);
+                      await refresh();
+                    } catch {
+                      setError(
+                        "The artifact reference could not be confirmed. Refresh before trying again.",
+                      );
+                      setReferencePreparation(null);
+                    } finally {
+                      setBusy(false);
+                    }
+                  })()
+                }
+              >
+                Confirm reference
+              </button>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => setReferencePreparation(null)}
+              >
+                Cancel
+              </button>
+            </dialog>
+          )}
+          <h3>Artifact references</h3>
+          <div className="task-catalog__list" role="list">
+            {references?.references.length ? (
+              references.references.map((reference) => (
+                <article key={reference.referenceId} role="listitem">
+                  <strong>{reference.displayLabel}</strong>
+                  <p>
+                    {reference.artifactClass} · original{" "}
+                    {reference.availability === "live"
+                      ? "available"
+                      : "unavailable"}
+                  </p>
+                  <code title={reference.artifactSha256}>
+                    {reference.artifactSha256}
+                  </code>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() =>
+                      void (async () => {
+                        try {
+                          const deletion =
+                            await prepareArtifactReferenceDeletion({
+                              referenceId: reference.referenceId,
+                            });
+                          if (
+                            !deletion.diagnosticCode &&
+                            window.confirm(
+                              `Delete reference to ${reference.displayLabel}? The original artifact is unchanged.`,
+                            )
+                          ) {
+                            await confirmArtifactReferenceDeletion({
+                              preparationId: deletion.preparationId,
+                              nonce: deletion.nonce,
+                              referenceId: reference.referenceId,
+                            });
+                            await refresh();
+                          }
+                        } catch {
+                          setError("Reference deletion is unavailable.");
+                        }
+                      })()
+                    }
+                  >
+                    Delete reference
+                  </button>
+                </article>
+              ))
+            ) : (
+              <p role="status">
+                No artifact references are recorded for this project.
+              </p>
+            )}
+          </div>
           <h3>Active sources</h3>
           <div className="task-catalog__list" role="list">
             {snapshot?.sources.length ? (

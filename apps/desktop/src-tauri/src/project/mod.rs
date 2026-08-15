@@ -1,3 +1,4 @@
+mod artifact_reference;
 mod durable_source;
 mod identity;
 mod package_validation;
@@ -15,6 +16,7 @@ use std::{
     time::{Duration, Instant},
 };
 
+use artifact_reference::ArtifactReferenceController;
 use durable_source::DurableSourceController;
 use package_validation::{
     InstalledHostValidationOutcome, PackageValidationController, PackageValidationControllerError,
@@ -25,8 +27,12 @@ use storage::{
 };
 pub(crate) use storage::{StoredConversationReference, StoredTerminalSession};
 use types::{
-    DirectoryAccessibilityState, DirectorySummary, DurableSourceArtifactPrepareRequest,
-    DurableSourceConfirmRequest, DurableSourceDeleteConfirmRequest, DurableSourceDiagnosticCode,
+    ArtifactReferenceConfirmRequest, ArtifactReferenceDeleteConfirmRequest,
+    ArtifactReferenceDeletePrepareRequest, ArtifactReferenceDiagnosticCode,
+    ArtifactReferencePreparation, ArtifactReferencePrepareRequest, ArtifactReferenceProjectRequest,
+    ArtifactReferenceSnapshot, ArtifactReferenceSummary, DirectoryAccessibilityState,
+    DirectorySummary, DurableSourceArtifactPrepareRequest, DurableSourceConfirmRequest,
+    DurableSourceDeleteConfirmRequest, DurableSourceDiagnosticCode,
     DurableSourceFilePrepareRequest, DurableSourceManualPrepareRequest, DurableSourcePreparation,
     DurableSourceProjectRequest, DurableSourceReadRequest, DurableSourceSnapshot,
     DurableSourceSummary, GitSummary, LocalReviewActivityPresentationEvidencePreview,
@@ -102,6 +108,7 @@ struct PendingAttachment {
 pub struct ProjectService {
     repository: Mutex<Option<ProjectRepository>>,
     durable_sources: Mutex<Option<DurableSourceController>>,
+    artifact_references: Mutex<ArtifactReferenceController>,
     pending: Mutex<Option<PendingAttachment>>,
     active_executions: Mutex<HashSet<String>>,
     active_terminals: Mutex<HashMap<String, usize>>,
@@ -2121,6 +2128,119 @@ impl ProjectService {
         }
     }
 
+    pub fn artifact_references(
+        &self,
+        request: ArtifactReferenceProjectRequest,
+        artifacts: &AdvisorGeneratedArtifactService,
+    ) -> ArtifactReferenceSnapshot {
+        let repository = match self.repository.lock() {
+            Ok(value) => value,
+            Err(_) => return ArtifactReferenceSnapshot::unavailable(),
+        };
+        let Some(repository) = repository.as_ref() else {
+            return ArtifactReferenceSnapshot::unavailable();
+        };
+        ArtifactReferenceSnapshot {
+            schema_version: 1,
+            references: repository
+                .artifact_references_for_project(&request.project_id)
+                .unwrap_or_default()
+                .into_iter()
+                .map(|reference| match self.artifact_references.lock() {
+                    Ok(controller) => controller.observe(reference, artifacts),
+                    Err(_) => ArtifactReferenceSummary::unavailable(reference),
+                })
+                .collect(),
+            diagnostic_code: None,
+        }
+    }
+
+    pub fn artifact_reference_prepare(
+        &self,
+        request: ArtifactReferencePrepareRequest,
+        artifacts: &AdvisorGeneratedArtifactService,
+    ) -> ArtifactReferencePreparation {
+        let repository = match self.repository.lock() {
+            Ok(value) => value,
+            Err(_) => {
+                return ArtifactReferencePreparation::unavailable(
+                    ArtifactReferenceDiagnosticCode::ProjectUnavailable,
+                )
+            }
+        };
+        let Some(repository) = repository.as_ref() else {
+            return ArtifactReferencePreparation::unavailable(
+                ArtifactReferenceDiagnosticCode::ProjectUnavailable,
+            );
+        };
+        match self.artifact_references.lock() {
+            Ok(mut controller) => controller.prepare(repository, request, artifacts),
+            Err(_) => ArtifactReferencePreparation::unavailable(
+                ArtifactReferenceDiagnosticCode::PrivateStorageFailure,
+            ),
+        }
+    }
+
+    pub fn artifact_reference_confirm(
+        &self,
+        request: ArtifactReferenceConfirmRequest,
+        artifacts: &AdvisorGeneratedArtifactService,
+    ) -> Result<ArtifactReferenceSummary, ArtifactReferenceDiagnosticCode> {
+        let mut repository = self
+            .repository
+            .lock()
+            .map_err(|_| ArtifactReferenceDiagnosticCode::ProjectUnavailable)?;
+        let repository = repository
+            .as_mut()
+            .ok_or(ArtifactReferenceDiagnosticCode::ProjectUnavailable)?;
+        self.artifact_references
+            .lock()
+            .map_err(|_| ArtifactReferenceDiagnosticCode::PrivateStorageFailure)?
+            .confirm(repository, request, artifacts)
+    }
+
+    pub fn artifact_reference_prepare_delete(
+        &self,
+        request: ArtifactReferenceDeletePrepareRequest,
+    ) -> ArtifactReferencePreparation {
+        let repository = match self.repository.lock() {
+            Ok(value) => value,
+            Err(_) => {
+                return ArtifactReferencePreparation::unavailable(
+                    ArtifactReferenceDiagnosticCode::ProjectUnavailable,
+                )
+            }
+        };
+        let Some(repository) = repository.as_ref() else {
+            return ArtifactReferencePreparation::unavailable(
+                ArtifactReferenceDiagnosticCode::ProjectUnavailable,
+            );
+        };
+        match self.artifact_references.lock() {
+            Ok(mut controller) => controller.prepare_delete(repository, request),
+            Err(_) => ArtifactReferencePreparation::unavailable(
+                ArtifactReferenceDiagnosticCode::PrivateStorageFailure,
+            ),
+        }
+    }
+
+    pub fn artifact_reference_confirm_delete(
+        &self,
+        request: ArtifactReferenceDeleteConfirmRequest,
+    ) -> Result<(), ArtifactReferenceDiagnosticCode> {
+        let mut repository = self
+            .repository
+            .lock()
+            .map_err(|_| ArtifactReferenceDiagnosticCode::ProjectUnavailable)?;
+        let repository = repository
+            .as_mut()
+            .ok_or(ArtifactReferenceDiagnosticCode::ProjectUnavailable)?;
+        self.artifact_references
+            .lock()
+            .map_err(|_| ArtifactReferenceDiagnosticCode::PrivateStorageFailure)?
+            .confirm_delete(repository, request)
+    }
+
     pub fn durable_source_read(
         &self,
         request: DurableSourceReadRequest,
@@ -2352,6 +2472,7 @@ impl ProjectService {
         Self {
             repository: Mutex::new(None),
             durable_sources: Mutex::new(None),
+            artifact_references: Mutex::new(ArtifactReferenceController::default()),
             pending: Mutex::new(None),
             active_executions: Mutex::new(HashSet::new()),
             active_terminals: Mutex::new(HashMap::new()),
@@ -2364,6 +2485,7 @@ impl ProjectService {
         Self {
             repository: Mutex::new(ProjectRepository::open(database_path).ok()),
             durable_sources: Mutex::new(DurableSourceController::open(database_path).ok()),
+            artifact_references: Mutex::new(ArtifactReferenceController::default()),
             pending: Mutex::new(None),
             active_executions: Mutex::new(HashSet::new()),
             active_terminals: Mutex::new(HashMap::new()),
@@ -2439,6 +2561,7 @@ impl ProjectService {
         Self {
             repository: Mutex::new(ProjectRepository::in_memory().ok()),
             durable_sources: Mutex::new(Some(DurableSourceController::temporary())),
+            artifact_references: Mutex::new(ArtifactReferenceController::default()),
             pending: Mutex::new(None),
             active_executions: Mutex::new(HashSet::new()),
             active_terminals: Mutex::new(HashMap::new()),

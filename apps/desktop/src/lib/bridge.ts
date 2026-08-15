@@ -252,6 +252,18 @@ import {
   type DurableSourceSummary,
 } from "./durableSources";
 import {
+  artifactReferenceConfirmRequestSchema,
+  artifactReferenceDeleteConfirmRequestSchema,
+  artifactReferenceDeletePrepareRequestSchema,
+  artifactReferencePreparationSchema,
+  artifactReferencePrepareRequestSchema,
+  artifactReferenceProjectRequestSchema,
+  artifactReferenceSnapshotSchema,
+  artifactReferenceSummarySchema,
+  type ArtifactReferencePreparation,
+  type ArtifactReferenceSnapshot,
+} from "./artifactReferences";
+import {
   mockInferenceAttemptRequestSchema,
   mockInferenceAuthorizationRequestSchema,
   mockInferenceCatalogSchema,
@@ -423,6 +435,13 @@ export const DURABLE_SOURCE_PREPARE_DELETE_COMMAND =
   "durable_source_prepare_deletion";
 export const DURABLE_SOURCE_CONFIRM_DELETE_COMMAND =
   "durable_source_confirm_deletion";
+export const ARTIFACT_REFERENCE_PREPARE_COMMAND = "artifact_reference_prepare";
+export const ARTIFACT_REFERENCE_CONFIRM_COMMAND = "artifact_reference_confirm";
+export const ARTIFACT_REFERENCE_LIST_COMMAND = "artifact_reference_list";
+export const ARTIFACT_REFERENCE_PREPARE_DELETE_COMMAND =
+  "artifact_reference_prepare_deletion";
+export const ARTIFACT_REFERENCE_CONFIRM_DELETE_COMMAND =
+  "artifact_reference_confirm_deletion";
 export const MOCK_INFERENCE_CATALOG_COMMAND = "mock_inference_catalog";
 export const MOCK_INFERENCE_PREPARE_COMMAND = "mock_inference_prepare";
 export const MOCK_INFERENCE_AUTHORIZE_COMMAND = "mock_inference_authorize";
@@ -1526,6 +1545,62 @@ export const confirmDurableSourceDeletion = (
     DURABLE_SOURCE_CONFIRM_DELETE_COMMAND,
     request,
     durableSourceDeleteConfirmRequestSchema,
+    z.void(),
+    invokeFunction,
+  );
+
+export const prepareArtifactReference = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+): Promise<ArtifactReferencePreparation> =>
+  durableSourceInvoke(
+    ARTIFACT_REFERENCE_PREPARE_COMMAND,
+    request,
+    artifactReferencePrepareRequestSchema,
+    artifactReferencePreparationSchema,
+    invokeFunction,
+  );
+export const confirmArtifactReference = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+) =>
+  durableSourceInvoke(
+    ARTIFACT_REFERENCE_CONFIRM_COMMAND,
+    request,
+    artifactReferenceConfirmRequestSchema,
+    artifactReferenceSummarySchema,
+    invokeFunction,
+  );
+export const loadArtifactReferences = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+): Promise<ArtifactReferenceSnapshot> =>
+  durableSourceInvoke(
+    ARTIFACT_REFERENCE_LIST_COMMAND,
+    request,
+    artifactReferenceProjectRequestSchema,
+    artifactReferenceSnapshotSchema,
+    invokeFunction,
+  );
+export const prepareArtifactReferenceDeletion = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+): Promise<ArtifactReferencePreparation> =>
+  durableSourceInvoke(
+    ARTIFACT_REFERENCE_PREPARE_DELETE_COMMAND,
+    request,
+    artifactReferenceDeletePrepareRequestSchema,
+    artifactReferencePreparationSchema,
+    invokeFunction,
+  );
+export const confirmArtifactReferenceDeletion = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+): Promise<void> =>
+  durableSourceInvoke(
+    ARTIFACT_REFERENCE_CONFIRM_DELETE_COMMAND,
+    request,
+    artifactReferenceDeleteConfirmRequestSchema,
     z.void(),
     invokeFunction,
   );

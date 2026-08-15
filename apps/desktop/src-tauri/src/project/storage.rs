@@ -27,7 +27,8 @@ use super::task_template::{
     TEMPLATE_SCHEMA_VERSION,
 };
 use super::types::{
-    DurableSourceClass, DurableSourceLifecycleState, DurableSourceSummary, EvidenceEnvelopeV1,
+    ArtifactReferenceState, ArtifactReferenceSummary, DurableSourceClass,
+    DurableSourceLifecycleState, DurableSourceSummary, EvidenceEnvelopeV1,
     LocalReviewActivityPresentationDetails, LocalReviewActivityPresentationEvidencePreview,
     LocalReviewActivityScope, LocalReviewAnnotationState, LocalReviewAnnotationSummary,
     LocalReviewApprovalPresentationDetails, LocalReviewApprovalPresentationEvidencePreview,
@@ -936,6 +937,30 @@ CREATE TRIGGER context_bundle_identity_immutable BEFORE UPDATE OF id, schema_ver
 CREATE INDEX context_bundles_project_recent ON context_bundles(project_id, created_at_ms DESC);
 "#;
 
+// M65 records only a user-confirmed relationship to a transient artifact. It
+// deliberately contains no artifact bytes, path, preview, transcript, or
+// provider data; expiry of the original artifact is observed separately.
+const ARTIFACT_REFERENCES_MIGRATION: &str = r#"
+CREATE TABLE artifact_references (
+ id TEXT PRIMARY KEY NOT NULL CHECK(length(id) = 36),
+ schema_version INTEGER NOT NULL CHECK(schema_version = 1),
+ project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE RESTRICT,
+ task_id TEXT REFERENCES task_records(id) ON DELETE RESTRICT,
+ artifact_id TEXT NOT NULL CHECK(length(artifact_id) = 36),
+ artifact_sha256 TEXT NOT NULL CHECK(length(artifact_sha256) = 64),
+ artifact_class TEXT NOT NULL CHECK(artifact_class IN ('text','markdown','json','csv','python')),
+ display_label TEXT NOT NULL CHECK(length(display_label) BETWEEN 1 AND 120),
+ state TEXT NOT NULL CHECK(state IN ('active','deleted')),
+ created_at_ms INTEGER NOT NULL CHECK(created_at_ms >= 0),
+ deleted_at_ms INTEGER CHECK(deleted_at_ms >= created_at_ms),
+ CHECK((state = 'active' AND deleted_at_ms IS NULL) OR (state = 'deleted' AND deleted_at_ms IS NOT NULL))
+);
+CREATE INDEX artifact_references_project_active ON artifact_references(project_id, state, created_at_ms DESC, id);
+CREATE INDEX artifact_references_task_active ON artifact_references(task_id, state, created_at_ms DESC, id) WHERE task_id IS NOT NULL;
+CREATE TRIGGER artifact_references_identity_immutable BEFORE UPDATE OF id, schema_version, project_id, task_id, artifact_id, artifact_sha256, artifact_class, display_label, created_at_ms ON artifact_references BEGIN SELECT RAISE(ABORT, 'artifact reference identity is immutable'); END;
+CREATE TRIGGER artifact_references_lifecycle_transition BEFORE UPDATE OF state ON artifact_references WHEN NOT ((OLD.state = 'active' AND NEW.state = 'deleted') OR OLD.state = NEW.state) BEGIN SELECT RAISE(ABORT, 'artifact reference lifecycle transition is invalid'); END;
+"#;
+
 const MIGRATIONS: &[(i64, &str, &str)] = &[
     (1, "projects-and-directory-associations", INITIAL_MIGRATION),
     (
@@ -1039,6 +1064,7 @@ const MIGRATIONS: &[(i64, &str, &str)] = &[
         CONTROLLED_BROWSER_VERIFICATION_MIGRATION,
     ),
     (26, "context-assembly-v1", CONTEXT_ASSEMBLY_MIGRATION),
+    (27, "artifact-references-v1", ARTIFACT_REFERENCES_MIGRATION),
 ];
 
 #[derive(Debug, Error)]
@@ -1081,6 +1107,16 @@ pub(crate) struct DurableSourceInsert<'a> {
     pub byte_size: u64,
     pub line_count: u32,
     pub sha256: &'a str,
+}
+
+pub(crate) struct ArtifactReferenceInsert<'a> {
+    pub id: &'a str,
+    pub project_id: &'a str,
+    pub task_id: Option<&'a str>,
+    pub artifact_id: &'a str,
+    pub artifact_sha256: &'a str,
+    pub artifact_class: &'a str,
+    pub display_label: &'a str,
 }
 
 const PACKAGE_VALIDATION_RECORD_LIMIT: usize = 32;
@@ -1207,6 +1243,26 @@ fn durable_source_from_row(row: &Row<'_>) -> Result<DurableSourceSummary, rusqli
         sha256: row.get(8)?,
         state: durable_source_state(&state)?,
         created_at_ms: row.get(10)?,
+    })
+}
+
+fn artifact_reference_from_row(row: &Row<'_>) -> Result<ArtifactReferenceSummary, rusqlite::Error> {
+    let state: String = row.get(7)?;
+    Ok(ArtifactReferenceSummary {
+        reference_id: row.get(0)?,
+        project_id: row.get(1)?,
+        task_id: row.get(2)?,
+        artifact_id: row.get(3)?,
+        artifact_sha256: row.get(4)?,
+        artifact_class: row.get(5)?,
+        display_label: row.get(6)?,
+        state: match state.as_str() {
+            "active" => ArtifactReferenceState::Active,
+            "deleted" => ArtifactReferenceState::Deleted,
+            _ => return Err(rusqlite::Error::InvalidQuery),
+        },
+        availability: super::types::ArtifactReferenceAvailability::Unavailable,
+        created_at_ms: row.get(8)?,
     })
 }
 
@@ -5224,6 +5280,85 @@ impl ProjectRepository {
             .query_map([project_id], durable_source_from_row)?
             .collect::<Result<Vec<_>, _>>()?;
         Ok(rows)
+    }
+
+    pub(crate) fn artifact_references_for_project(
+        &self,
+        project_id: &str,
+    ) -> Result<Vec<ArtifactReferenceSummary>, StorageError> {
+        if !valid_task_id(project_id) {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let mut statement = self.connection.prepare("SELECT id, project_id, task_id, artifact_id, artifact_sha256, artifact_class, display_label, state, created_at_ms FROM artifact_references WHERE project_id = ?1 AND state = 'active' ORDER BY created_at_ms DESC, id DESC LIMIT 100")?;
+        let rows = statement
+            .query_map([project_id], artifact_reference_from_row)?
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(rows)
+    }
+
+    pub(crate) fn artifact_reference(
+        &self,
+        reference_id: &str,
+    ) -> Result<Option<ArtifactReferenceSummary>, StorageError> {
+        if !valid_task_id(reference_id) {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        Ok(self.connection.query_row(
+            "SELECT id, project_id, task_id, artifact_id, artifact_sha256, artifact_class, display_label, state, created_at_ms FROM artifact_references WHERE id = ?1",
+            [reference_id], artifact_reference_from_row,
+        ).optional()?)
+    }
+
+    pub(crate) fn artifact_reference_insert(
+        &mut self,
+        source: ArtifactReferenceInsert<'_>,
+    ) -> Result<ArtifactReferenceSummary, StorageError> {
+        if !valid_task_id(source.id)
+            || !valid_task_id(source.project_id)
+            || source.task_id.is_some_and(|value| !valid_task_id(value))
+            || !valid_task_id(source.artifact_id)
+            || source.artifact_sha256.len() != 64
+            || !matches!(
+                source.artifact_class,
+                "text" | "markdown" | "json" | "csv" | "python"
+            )
+            || source.display_label.is_empty()
+            || source.display_label.chars().count() > 120
+        {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let created_at_ms = now_millis();
+        self.connection.execute(
+            "INSERT INTO artifact_references (id, schema_version, project_id, task_id, artifact_id, artifact_sha256, artifact_class, display_label, state, created_at_ms, deleted_at_ms) VALUES (?1, 1, ?2, ?3, ?4, ?5, ?6, ?7, 'active', ?8, NULL)",
+            params![source.id, source.project_id, source.task_id, source.artifact_id, source.artifact_sha256, source.artifact_class, source.display_label, created_at_ms],
+        )?;
+        Ok(ArtifactReferenceSummary {
+            reference_id: source.id.into(),
+            project_id: source.project_id.into(),
+            task_id: source.task_id.map(str::to_owned),
+            artifact_id: source.artifact_id.into(),
+            artifact_sha256: source.artifact_sha256.into(),
+            artifact_class: source.artifact_class.into(),
+            display_label: source.display_label.into(),
+            state: ArtifactReferenceState::Active,
+            availability: super::types::ArtifactReferenceAvailability::Unavailable,
+            created_at_ms,
+        })
+    }
+
+    pub(crate) fn artifact_reference_delete(
+        &mut self,
+        reference_id: &str,
+    ) -> Result<(), StorageError> {
+        if !valid_task_id(reference_id) {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let changed = self.connection.execute("UPDATE artifact_references SET state = 'deleted', deleted_at_ms = ?2 WHERE id = ?1 AND state = 'active'", params![reference_id, now_millis()])?;
+        if changed == 1 {
+            Ok(())
+        } else {
+            Err(StorageError::InvalidStoredValue)
+        }
     }
 
     pub(crate) fn durable_source(
@@ -9356,7 +9491,7 @@ mod tests {
                     0
                 ))
                 .expect("version"),
-            26
+            27
         );
     }
 
@@ -9515,6 +9650,7 @@ mod tests {
                 "advisor_context_references".to_owned(),
                 "advisor_conversations".to_owned(),
                 "advisor_dispatch_records".to_owned(),
+                "artifact_references".to_owned(),
                 "context_bundle_audit".to_owned(),
                 "context_bundle_items".to_owned(),
                 "context_bundles".to_owned(),
@@ -9952,7 +10088,7 @@ mod tests {
                     0
                 ),)
                 .expect("version"),
-            26
+            27
         );
         assert_eq!(
             repository.connection.query_row(
@@ -10420,7 +10556,7 @@ mod tests {
                     0
                 ))
                 .expect("migration version"),
-            26
+            27
         );
     }
 
@@ -10592,7 +10728,7 @@ mod tests {
                     0
                 ))
                 .expect("version"),
-            26
+            27
         );
 
         let mut failed = Connection::open_in_memory().expect("database opens");
@@ -11178,7 +11314,7 @@ mod tests {
                 1
             );
         }
-        assert_eq!(MIGRATIONS.len(), 26);
+        assert_eq!(MIGRATIONS.len(), 27);
 
         let connection = Connection::open_in_memory().expect("database");
         connection
@@ -11226,7 +11362,7 @@ mod tests {
                     0
                 ))
                 .expect("version"),
-            26
+            27
         );
         assert_eq!(
             repository
@@ -11283,7 +11419,7 @@ mod tests {
                     0
                 ))
                 .expect("version"),
-            26
+            27
         );
     }
 

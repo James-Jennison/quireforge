@@ -1822,6 +1822,11 @@ and deletion flow exactly; no new source type, upload, filesystem access,
 provider path, or execution authority is introduced.
 The second delivery slice gives that existing surface Work-specific Studio
 language while preserving its durable-source controls and Code overlay.
+The third delivery slice is implemented in the beta.75 candidate. It adds the
+native-bound project/task-scoped Studio artifact inventory with a reviewed,
+digest-bound confirmation and reference-only deletion. It stores metadata only
+and keeps M48 artifacts transient and independently expiring; Studio explicitly
+reports an unavailable original without retaining or recovering it.
 
 ### 66 — Context and Authority Ledger
 
