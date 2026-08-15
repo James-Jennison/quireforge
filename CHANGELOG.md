@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.0-beta.79 — Accessibility semantics candidate
+
+- Restored a complete H1-to-H2 hierarchy for the Ledger and Adapter Work
+  routes without changing their local-only authority boundaries.
+- Added desktop and mobile end-to-end coverage for bounded Ledger metadata,
+  fixture-only Adapters behavior, and route accessibility.
+
 ## 0.1.0-beta.78 — Work surface clarity candidate
 
 - Refined Ledger receipt cards to prioritize lifecycle facts over raw digests.
