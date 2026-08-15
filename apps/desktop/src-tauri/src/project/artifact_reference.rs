@@ -37,15 +37,9 @@ struct Pending {
     expires: Instant,
     kind: PendingKind,
 }
+#[derive(Default)]
 pub(crate) struct ArtifactReferenceController {
     pending: HashMap<String, Pending>,
-}
-impl Default for ArtifactReferenceController {
-    fn default() -> Self {
-        Self {
-            pending: HashMap::new(),
-        }
-    }
 }
 impl ArtifactReferenceController {
     fn expire(&mut self) {
