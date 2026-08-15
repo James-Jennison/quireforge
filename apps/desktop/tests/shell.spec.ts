@@ -2299,6 +2299,77 @@ test("every sidebar destination replaces the active workspace without page scrol
   }
 });
 
+test("Ledger and Adapters keep local governance metadata and fixtures bounded", async ({
+  page,
+}) => {
+  await installNativeFixture(page, {
+    ...nativeResponses,
+    context_authority_ledger: {
+      schemaVersion: 1,
+      projectId: "018f0000-0000-7000-8000-000000000001",
+      diagnostic: null,
+      entries: [
+        {
+          recordKind: "artifact-reference",
+          recordId: "018f0000-0000-7000-8000-000000000099",
+          projectId: "018f0000-0000-7000-8000-000000000001",
+          taskId: null,
+          state: "active",
+          bundleDigest: "a".repeat(64),
+          itemCount: 0,
+          expiresAtMs: 0,
+          createdAtMs: 1,
+          completedAtMs: null,
+          auditOutcome: "active",
+        },
+      ],
+    },
+    mock_inference_catalog: {
+      schemaVersion: 1,
+      profiles: [
+        {
+          id: "fixture-structured",
+          providerLabel: "Fictional local",
+          endpointLabel: "Local fixture endpoint",
+          modelLabel: "Fixture model",
+          adapterLabel: "Fixture adapter",
+          scenario: "structured",
+          descriptorSha256: "b".repeat(64),
+          capabilityProfileSha256: "c".repeat(64),
+        },
+      ],
+    },
+  });
+  await page.goto("/");
+
+  await openWorkspace(page, "Ledger");
+  const ledger = page.locator('[data-workspace-view="ledger"]');
+  await expect(
+    ledger.getByRole("heading", { name: "Context and Authority Ledger" }),
+  ).toBeVisible();
+  await expect(
+    ledger.getByText("Artifact reference", { exact: true }),
+  ).toBeVisible();
+  await expect(ledger.getByText(/No expiry/)).toBeVisible();
+  await expect(ledger.getByText("a".repeat(64))).toHaveCount(0);
+
+  await openWorkspace(page, "Adapters");
+  const adapters = page.locator('[data-workspace-view="adapters"]');
+  await expect(
+    adapters.getByRole("heading", { name: "Provider-neutral Work adapters" }),
+  ).toBeVisible();
+  await expect(
+    adapters.getByRole("combobox", { name: "Deterministic fixture" }),
+  ).toHaveValue("fixture-structured");
+  await expect(adapters.getByText("Transient local fixture")).toBeVisible();
+  await expect(
+    adapters.getByRole("button", { name: /connect|submit/i }),
+  ).toHaveCount(0);
+
+  const accessibility = await new AxeBuilder({ page }).analyze();
+  expect(accessibility.violations).toEqual([]);
+});
+
 test("Advisor presents a bounded chat-first conversation with safe summaries", async ({
   page,
 }, testInfo) => {

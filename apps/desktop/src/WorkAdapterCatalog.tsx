@@ -31,7 +31,7 @@ export function WorkAdapterCatalog({
       <header className="task-template-workbench__header">
         <div>
           <p className="eyebrow">Local fixture catalogue</p>
-          <h2>Provider-neutral Work adapters</h2>
+          <h1 className="work-route-title">Provider-neutral Work adapters</h1>
         </div>
       </header>
       <p>
@@ -64,7 +64,7 @@ export function WorkAdapterCatalog({
               aria-label="Selected fixture details"
             >
               <p className="eyebrow">Selected local fixture</p>
-              <h3>{selected.adapterLabel}</h3>
+              <h2>{selected.adapterLabel}</h2>
               <dl>
                 <div>
                   <dt>Scenario</dt>

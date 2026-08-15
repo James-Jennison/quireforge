@@ -51,7 +51,7 @@ export function ContextAuthorityLedger({
       <header className="task-template-workbench__header">
         <div>
           <p className="eyebrow">Read-only governance receipts</p>
-          <h2>Context and Authority Ledger</h2>
+          <h1 className="work-route-title">Context and Authority Ledger</h1>
         </div>
       </header>
       <p>
