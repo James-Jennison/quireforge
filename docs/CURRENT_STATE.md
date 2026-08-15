@@ -142,13 +142,17 @@ project-only preparation path: an empty review-evidence selection no longer
 depends on optional repository storage, while every non-empty selection still
 fails closed if that storage is unavailable. From clean source commit
 `513a7806e01a8bfe4dd7cac4e901fe83a2267c08`, the pinned Ubuntu 22.04 package,
-lifecycle, smoke, and final artifact gates passed. Its intentionally
-uninstalled desktop Debian artifact has SHA-256
+lifecycle, smoke, and final artifact gates passed. Its desktop Debian artifact
+has SHA-256
 `5dddfc36874ecd5d4b97e0ad3245bbfac603b03bf28ef3184ff4984dc55542bc`; the
 matching sandbox package has SHA-256
 `b6fce951b6849316239aaa6026c82f87ca797ee496e86a774d6bbfdcef215480`.
-Installed-host governed-review acceptance remains required; beta.81 is not a
-release-ready claim.
+Both were installed locally with verified matching identities. The attached
+project-only, no-evidence review prepared, opened for review without sink
+dispatch, and remained unacknowledged; after closing and relaunching, neither
+that prepared state nor its synthetic instruction was restored. Full
+installed-host governed-review acceptance, including a separately authorized
+local-model attempt, remains required; beta.81 is not a release-ready claim.
 
 ### Current provider-neutral completion record
 

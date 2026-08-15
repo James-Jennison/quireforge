@@ -1677,8 +1677,11 @@ project-only preparation defect: no selected review evidence bypasses optional
 repository access, while a non-empty selection remains fail-closed when that
 storage is unavailable. Its pinned Ubuntu 22.04 package/lifecycle/smoke/final-
 artifact gate passed with a clean release-candidate manifest. The model remains
-external and was not started. Installed Debian governed-review acceptance is
-still pending, so beta.81 is unreleased and intentionally uninstalled.
+external and was not started. The matching local Debian pair was installed and
+its project-only, no-evidence review prepared and opened without sink dispatch;
+closing and relaunching restored neither the prepared state nor its synthetic
+instruction. Full installed Debian governed-review acceptance remains pending,
+so beta.81 is unreleased.
 
 **First implementation milestone source-complete:** [Provider Capability
 Registry Contracts](MILESTONE_PROVIDER_CAPABILITY_REGISTRY_CONTRACTS.md)

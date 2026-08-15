@@ -186,9 +186,12 @@ release-candidate Debian application artifact is SHA-256
 `5dddfc36874ecd5d4b97e0ad3245bbfac603b03bf28ef3184ff4984dc55542bc`; the
 matching sandbox package is SHA-256
 `b6fce951b6849316239aaa6026c82f87ca797ee496e86a774d6bbfdcef215480`.
-The candidate is unreleased and intentionally uninstalled. Its installed-host
-governed-review acceptance remains pending, and its package gates excluded the
-model and did not start the runtime.
+The matching local pair was installed with verified package identities. Its
+attached project-only, no-evidence review prepared and opened without sink
+dispatch; it was left unacknowledged, then closing and relaunching restored
+neither the prepared state nor the synthetic instruction. The candidate is
+unreleased. Its full installed-host governed-review acceptance remains pending,
+and its package gates excluded the model and did not start the runtime.
 
 ## Approved offline acquisition record
 
