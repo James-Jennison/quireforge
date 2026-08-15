@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.0-beta.81 — Project-only M63 acceptance candidate
+
+- Restores project-only governed context preparation when no local-review
+  evidence was selected and optional review storage is unavailable.
+- Preserves fail-closed behavior for any non-empty review-evidence selection.
+
 ## 0.1.0-beta.80 — M63 installed-host acceptance candidate
 
 - Reserves a fresh, unreleased candidate version for the documented M63

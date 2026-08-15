@@ -2348,6 +2348,12 @@ impl ProjectService {
         task_id: Option<&str>,
         item_ids: &[String],
     ) -> Result<Vec<crate::context_assembly::Material>, DurableSourceDiagnosticCode> {
+        // Review evidence is optional. A project-only user instruction must
+        // not require the local-review repository when no evidence was
+        // selected, just as the no-source path does not require M55 storage.
+        if item_ids.is_empty() {
+            return Ok(Vec::new());
+        }
         let repository = self
             .repository
             .lock()
@@ -4803,6 +4809,24 @@ mod tests {
             .context_review_evidence_materials(&project_id, None, &[item_id])
             .is_err());
         let _ = collection_id;
+    }
+
+    #[test]
+    fn empty_context_review_evidence_does_not_require_optional_repository_storage() {
+        let service = ProjectService::in_memory();
+        *service.repository.lock().expect("repository") = None;
+
+        assert!(service
+            .context_review_evidence_materials("not-read-for-empty-selection", None, &[])
+            .expect("empty evidence selection must not access repository")
+            .is_empty());
+        assert!(service
+            .context_review_evidence_materials(
+                "not-read-for-empty-selection",
+                None,
+                &[Uuid::now_v7().to_string()],
+            )
+            .is_err());
     }
 
     #[test]
