@@ -1671,6 +1671,15 @@ zero-byte snapshot. It did not create a reviewed bundle or run availability,
 model, output, or retry paths. It is immutable failed acceptance evidence; a
 future candidate must use a new beta version.
 
+The fresh beta.81 candidate from clean source commit
+`513a7806e01a8bfe4dd7cac4e901fe83a2267c08` corrects the diagnosed
+project-only preparation defect: no selected review evidence bypasses optional
+repository access, while a non-empty selection remains fail-closed when that
+storage is unavailable. Its pinned Ubuntu 22.04 package/lifecycle/smoke/final-
+artifact gate passed with a clean release-candidate manifest. The model remains
+external and was not started. Installed Debian governed-review acceptance is
+still pending, so beta.81 is unreleased and intentionally uninstalled.
+
 **First implementation milestone source-complete:** [Provider Capability
 Registry Contracts](MILESTONE_PROVIDER_CAPABILITY_REGISTRY_CONTRACTS.md)
 implements private static fictional registry contracts and focused safeguards

@@ -175,6 +175,21 @@ package provenance, successful pinned-package gates, and installed package
 identity remain failed acceptance evidence only; beta.80 must not be rebuilt or
 promoted.
 
+The beta.81 replacement candidate fixes the pre-review context-assembly
+failure without broadening authority. A project-only review with no selected
+evidence now returns its empty evidence set before optional repository storage
+is accessed; a non-empty selection still fails closed if that storage is
+unavailable. Clean source commit `513a7806e01a8bfe4dd7cac4e901fe83a2267c08`
+passed `pnpm validate`, the 78 desktop and eight website E2E scenarios, and
+the pinned Ubuntu 22.04 package/lifecycle/smoke/final-artifact gate. The
+release-candidate Debian application artifact is SHA-256
+`5dddfc36874ecd5d4b97e0ad3245bbfac603b03bf28ef3184ff4984dc55542bc`; the
+matching sandbox package is SHA-256
+`b6fce951b6849316239aaa6026c82f87ca797ee496e86a774d6bbfdcef215480`.
+The candidate is unreleased and intentionally uninstalled. Its installed-host
+governed-review acceptance remains pending, and its package gates excluded the
+model and did not start the runtime.
+
 ## Approved offline acquisition record
 
 The separately approved offline acquisition completed on
