@@ -1931,6 +1931,14 @@ fn context_assembly_status(
 }
 
 #[tauri::command]
+fn context_authority_ledger(
+    project_id: String,
+    service: tauri::State<'_, ProjectService>,
+) -> project::types::ContextLedgerSnapshot {
+    service.context_ledger(project_id)
+}
+
+#[tauri::command]
 fn context_assembly_prepare(
     request: context_assembly::ContextPrepareRequest,
     service: tauri::State<'_, context_assembly::ContextAssemblyService>,
@@ -3631,6 +3639,7 @@ pub fn run() {
             controlled_browser_verification_cancel,
             controlled_browser_verification_revoke,
             context_assembly_status,
+            context_authority_ledger,
             context_assembly_prepare,
             context_assembly_confirm,
             context_assembly_local_runtime_availability,

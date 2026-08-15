@@ -6611,6 +6611,62 @@ body,
   overflow-wrap: anywhere;
 }
 
+.context-ledger__entries {
+  display: grid;
+  gap: 10px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.context-ledger__entries li {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-raised);
+}
+
+.context-ledger__entries span,
+.context-ledger__entries code {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.work-adapter-catalog {
+  display: grid;
+  gap: 10px;
+  margin: 16px 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.work-adapter-catalog__item {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px;
+  border-radius: 6px;
+}
+
+.work-adapter-catalog__item:has(input:focus-visible) {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.work-adapter-catalog__item label {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.work-adapter-catalog__item code {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
 .mock-inference-workbench {
   display: grid;
   box-sizing: border-box;

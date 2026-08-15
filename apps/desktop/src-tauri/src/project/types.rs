@@ -1555,3 +1555,29 @@ impl ArtifactReferenceSummary {
         value
     }
 }
+
+/// M66's UI-safe, content-free projection of existing governance records.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ContextLedgerEntry {
+    pub record_kind: String,
+    pub record_id: String,
+    pub project_id: String,
+    pub task_id: Option<String>,
+    pub state: String,
+    pub bundle_digest: String,
+    pub item_count: u8,
+    pub expires_at_ms: i64,
+    pub created_at_ms: i64,
+    pub completed_at_ms: Option<i64>,
+    pub audit_outcome: String,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ContextLedgerSnapshot {
+    pub schema_version: u16,
+    pub project_id: String,
+    pub entries: Vec<ContextLedgerEntry>,
+    pub diagnostic: Option<String>,
+}

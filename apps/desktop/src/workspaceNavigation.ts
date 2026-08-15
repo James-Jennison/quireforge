@@ -4,6 +4,8 @@ export type PrimaryWorkspaceRoute =
   | "conversation"
   | "projects"
   | "studio"
+  | "ledger"
+  | "adapters"
   | "project-state"
   | "sessions"
   | "scheduled"
@@ -75,6 +77,20 @@ export const workspaceNavigation: readonly WorkspaceNavigationItem[] = [
     icon: "folder",
     lane: "work",
     description: "Organize governed local sources and reviewed artifacts",
+  },
+  {
+    route: "ledger",
+    label: "Ledger",
+    icon: "grid",
+    lane: "work",
+    description: "Inspect local context and authority receipts",
+  },
+  {
+    route: "adapters",
+    label: "Adapters",
+    icon: "blocks",
+    lane: "work",
+    description: "Compare deterministic local Work destination fixtures",
   },
   {
     route: "project-state",

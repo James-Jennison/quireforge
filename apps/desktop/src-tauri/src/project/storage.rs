@@ -27,7 +27,7 @@ use super::task_template::{
     TEMPLATE_SCHEMA_VERSION,
 };
 use super::types::{
-    ArtifactReferenceState, ArtifactReferenceSummary, DurableSourceClass,
+    ArtifactReferenceState, ArtifactReferenceSummary, ContextLedgerEntry, DurableSourceClass,
     DurableSourceLifecycleState, DurableSourceSummary, EvidenceEnvelopeV1,
     LocalReviewActivityPresentationDetails, LocalReviewActivityPresentationEvidencePreview,
     LocalReviewActivityScope, LocalReviewAnnotationState, LocalReviewAnnotationSummary,
@@ -2656,6 +2656,56 @@ pub(crate) struct LocalReviewPromotionSource {
 }
 
 impl ProjectRepository {
+    pub(crate) fn context_ledger(
+        &self,
+        project_id: &str,
+    ) -> Result<Vec<ContextLedgerEntry>, StorageError> {
+        let mut statement = self.connection.prepare(
+            r#"SELECT * FROM (
+                SELECT 'context-bundle', b.id, b.project_id, b.task_id, b.state, b.bundle_digest,
+                    (SELECT count(*) FROM context_bundle_items i WHERE i.bundle_id = b.id),
+                    b.expires_at_ms, b.created_at_ms, b.completed_at_ms,
+                    COALESCE((SELECT a.outcome FROM context_bundle_audit a
+                      WHERE a.bundle_id = b.id ORDER BY a.created_at_ms DESC, a.id DESC LIMIT 1), 'none')
+                FROM context_bundles b WHERE b.project_id = ?1
+                UNION ALL SELECT 'durable-source', d.id, d.project_id, d.task_id, d.state, d.sha256,
+                    0, 0, d.created_at_ms, d.deleted_at_ms, d.state
+                FROM durable_sources d WHERE d.project_id = ?1
+                UNION ALL SELECT 'artifact-reference', r.id, r.project_id, r.task_id, r.state, r.artifact_sha256,
+                    0, 0, r.created_at_ms, r.deleted_at_ms, r.state
+                FROM artifact_references r WHERE r.project_id = ?1
+                UNION ALL SELECT 'connector-operation', o.id, o.project_id, o.task_id, o.state, o.request_digest,
+                    0, o.expires_at_ms, o.created_at_ms, o.completed_at_ms,
+                    COALESCE((SELECT a.outcome FROM fictional_connector_audit a
+                      WHERE a.operation_id = o.id ORDER BY a.created_at_ms DESC, a.id DESC LIMIT 1), o.state)
+                FROM fictional_connector_operations o WHERE o.project_id = ?1
+                UNION ALL SELECT 'browser-verification', v.id, v.project_id, v.task_id, v.state, v.request_digest,
+                    0, v.expires_at_ms, v.created_at_ms, v.completed_at_ms,
+                    COALESCE((SELECT a.outcome FROM controlled_browser_verification_audit a
+                      WHERE a.attempt_id = v.id ORDER BY a.created_at_ms DESC, a.id DESC LIMIT 1), v.state)
+                FROM controlled_browser_verification_attempts v WHERE v.project_id = ?1
+             ) ORDER BY 9 DESC, 2 DESC LIMIT 64"#,
+        )?;
+        let entries = statement
+            .query_map([project_id], |row| {
+                Ok(ContextLedgerEntry {
+                    record_kind: row.get(0)?,
+                    record_id: row.get(1)?,
+                    project_id: row.get(2)?,
+                    task_id: row.get(3)?,
+                    state: row.get(4)?,
+                    bundle_digest: row.get(5)?,
+                    item_count: row.get::<_, i64>(6)? as u8,
+                    expires_at_ms: row.get(7)?,
+                    created_at_ms: row.get(8)?,
+                    completed_at_ms: row.get(9)?,
+                    audit_outcome: row.get(10)?,
+                })
+            })?
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(StorageError::from)?;
+        Ok(entries)
+    }
     pub(crate) fn create_task_template_application_reservation(
         &mut self,
         reservation: &TaskTemplateApplicationReservation,
@@ -11200,6 +11250,60 @@ mod tests {
             )
             .expect("audit");
         assert_eq!(audit_count, 2);
+    }
+
+    #[test]
+    fn context_ledger_projects_only_content_free_receipt_metadata() {
+        let repository = ProjectRepository::in_memory().expect("fresh schema");
+        let project_id = Uuid::now_v7().to_string();
+        insert_active_project(&repository, &project_id, &Uuid::now_v7().to_string());
+        let bundle_id = Uuid::now_v7().to_string();
+        repository.connection.execute(
+            "INSERT INTO context_bundles (id,schema_version,project_id,task_id,bundle_digest,canonical_bytes,policy_version,assembly_version,state,expires_at_ms,created_at_ms,completed_at_ms,authorization_id) VALUES (?1,1,?2,NULL,?3,?4,1,1,'closed',9,3,4,?5)",
+            params![bundle_id, project_id, "e".repeat(64), b"never project these bytes".as_slice(), Uuid::now_v7().to_string()],
+        ).expect("receipt");
+        repository.connection.execute(
+            "INSERT INTO context_bundle_audit (id,bundle_id,event_kind,outcome,evidence_digest,created_at_ms) VALUES (?1,?2,'terminal','closed',?3,4)",
+            params![Uuid::now_v7().to_string(), bundle_id, "e".repeat(64)],
+        ).expect("audit");
+        let durable_id = Uuid::now_v7().to_string();
+        repository.connection.execute(
+            "INSERT INTO durable_sources (id,schema_version,project_id,task_id,source_class,title,origin_display,byte_size,line_count,sha256,content_locator,state,created_at_ms,updated_at_ms,deleted_at_ms) VALUES (?1,1,?2,NULL,'manual-text','Safe local source',NULL,0,0,?3,?4,'active',5,5,NULL)",
+            params![durable_id, project_id, "d".repeat(64), Uuid::now_v7().to_string()],
+        ).expect("durable source");
+        let artifact_id = Uuid::now_v7().to_string();
+        repository.connection.execute(
+            "INSERT INTO artifact_references (id,schema_version,project_id,task_id,artifact_id,artifact_sha256,artifact_class,display_label,state,created_at_ms,deleted_at_ms) VALUES (?1,1,?2,NULL,?3,?4,'text','Safe artifact','active',6,NULL)",
+            params![artifact_id, project_id, Uuid::now_v7().to_string(), "a".repeat(64)],
+        ).expect("artifact reference");
+        let browser_id = Uuid::now_v7().to_string();
+        repository.connection.execute(
+            "INSERT INTO controlled_browser_verification_attempts (id,schema_version,project_id,task_id,fixture_id,target_digest,request_digest,authorization_id,state,expires_at_ms,created_at_ms,completed_at_ms,evidence_digest) VALUES (?1,1,?2,NULL,'fictional-webkitgtk-local-v1',?3,?4,?5,'prepared',9,7,NULL,NULL)",
+            params![browser_id, project_id, "b".repeat(64), "c".repeat(64), Uuid::now_v7().to_string()],
+        ).expect("browser verification");
+        let entries = repository.context_ledger(&project_id).expect("ledger");
+        assert_eq!(entries.len(), 4);
+        let context_bundle = entries
+            .iter()
+            .find(|entry| entry.record_kind == "context-bundle")
+            .expect("context bundle");
+        assert_eq!(context_bundle.record_id, bundle_id);
+        assert_eq!(context_bundle.state, "closed");
+        assert_eq!(context_bundle.audit_outcome, "closed");
+        assert_eq!(context_bundle.bundle_digest, "e".repeat(64));
+        let durable_source = entries
+            .iter()
+            .find(|entry| entry.record_kind == "durable-source")
+            .expect("durable source");
+        assert_eq!(durable_source.record_id, durable_id);
+        assert_eq!(durable_source.bundle_digest, "d".repeat(64));
+        assert!(entries.iter().any(
+            |entry| entry.record_kind == "artifact-reference" && entry.record_id == artifact_id
+        ));
+        assert!(entries
+            .iter()
+            .any(|entry| entry.record_kind == "browser-verification"
+                && entry.record_id == browser_id));
     }
 
     #[test]

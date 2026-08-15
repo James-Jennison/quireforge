@@ -62,6 +62,10 @@ import {
   type ContextAssemblySnapshot,
 } from "./contextAssembly";
 import {
+  contextLedgerSnapshotSchema,
+  type ContextLedgerSnapshot,
+} from "./contextLedger";
+import {
   filePreviewHandoffRequestSchema,
   filePreviewSchema,
   type FilePreviewHandoffRequest,
@@ -469,6 +473,7 @@ export const CONTROLLED_BROWSER_VERIFICATION_CANCEL_COMMAND =
 export const CONTROLLED_BROWSER_VERIFICATION_REVOKE_COMMAND =
   "controlled_browser_verification_revoke";
 export const CONTEXT_ASSEMBLY_STATUS_COMMAND = "context_assembly_status";
+export const CONTEXT_AUTHORITY_LEDGER_COMMAND = "context_authority_ledger";
 export const CONTEXT_ASSEMBLY_PREPARE_COMMAND = "context_assembly_prepare";
 export const CONTEXT_ASSEMBLY_CONFIRM_COMMAND = "context_assembly_confirm";
 export const CONTEXT_ASSEMBLY_RUN_LOCAL_RUNTIME_COMMAND =
@@ -1803,6 +1808,13 @@ export const loadContextAssembly = async (
 ) =>
   contextAssemblySnapshotSchema.parse(
     await invokeFunction(CONTEXT_ASSEMBLY_STATUS_COMMAND),
+  );
+export const loadContextAuthorityLedger = async (
+  projectId: string,
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<ContextLedgerSnapshot> =>
+  contextLedgerSnapshotSchema.parse(
+    await invokeFunction(CONTEXT_AUTHORITY_LEDGER_COMMAND, { projectId }),
   );
 export const prepareContextAssembly = (
   request: unknown,

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.0-beta.77 — M66–M68 local-governance candidate
+
+- Added the read-only, content-free Context and Authority Ledger over existing
+  governed local records.
+- Added the deterministic local-fixture Work adapter catalogue with no
+  connection, credential, or execution authority.
+- Recorded external browser, connector, delivery, and scheduled-work decisions
+  without implementing any external capability.
+
 ## 0.1.0-beta.73 — M63 native-revalidation recovery candidate
 
 - Recovers an acknowledged governed review when native revalidation finds the

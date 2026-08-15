@@ -30,9 +30,9 @@ use types::{
     ArtifactReferenceConfirmRequest, ArtifactReferenceDeleteConfirmRequest,
     ArtifactReferenceDeletePrepareRequest, ArtifactReferenceDiagnosticCode,
     ArtifactReferencePreparation, ArtifactReferencePrepareRequest, ArtifactReferenceProjectRequest,
-    ArtifactReferenceSnapshot, ArtifactReferenceSummary, DirectoryAccessibilityState,
-    DirectorySummary, DurableSourceArtifactPrepareRequest, DurableSourceConfirmRequest,
-    DurableSourceDeleteConfirmRequest, DurableSourceDiagnosticCode,
+    ArtifactReferenceSnapshot, ArtifactReferenceSummary, ContextLedgerSnapshot,
+    DirectoryAccessibilityState, DirectorySummary, DurableSourceArtifactPrepareRequest,
+    DurableSourceConfirmRequest, DurableSourceDeleteConfirmRequest, DurableSourceDiagnosticCode,
     DurableSourceFilePrepareRequest, DurableSourceManualPrepareRequest, DurableSourcePreparation,
     DurableSourceProjectRequest, DurableSourceReadRequest, DurableSourceSnapshot,
     DurableSourceSummary, GitSummary, LocalReviewActivityPresentationEvidencePreview,
@@ -301,6 +301,20 @@ pub(crate) struct ConversationPendingSelection<'a> {
 }
 
 impl ProjectService {
+    pub fn context_ledger(&self, project_id: String) -> ContextLedgerSnapshot {
+        let entries = self.repository.lock().ok().and_then(|repository| {
+            repository
+                .as_ref()
+                .and_then(|value| value.context_ledger(&project_id).ok())
+        });
+        let diagnostic = entries.is_none().then(|| "ledger-unavailable".into());
+        ContextLedgerSnapshot {
+            schema_version: 1,
+            project_id,
+            entries: entries.unwrap_or_default(),
+            diagnostic,
+        }
+    }
     pub(crate) fn record_controlled_browser_verification(
         &self,
         record: ControlledBrowserVerificationRecord<'_>,

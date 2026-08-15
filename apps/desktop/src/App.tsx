@@ -309,6 +309,16 @@ const ContextAssemblyWorkbench = lazy(() =>
     ({ ContextAssemblyWorkbench: workspace }) => ({ default: workspace }),
   ),
 );
+const ContextAuthorityLedger = lazy(() =>
+  import("./ContextAuthorityLedger").then(
+    ({ ContextAuthorityLedger: workspace }) => ({ default: workspace }),
+  ),
+);
+const WorkAdapterCatalog = lazy(() =>
+  import("./WorkAdapterCatalog").then(({ WorkAdapterCatalog: workspace }) => ({
+    default: workspace,
+  })),
+);
 const DurableSourcesWorkbench = lazy(() =>
   import("./DurableSourcesWorkbench").then(
     ({ DurableSourcesWorkbench: workspace }) => ({
@@ -4148,6 +4158,32 @@ export default function App({
                 onOpenIntegrations={() => navigateWorkspace("integrations")}
                 onOpenTerminal={() => navigateWorkspace("terminal")}
               />
+            </WorkspaceView>
+
+            <WorkspaceView
+              route="ledger"
+              active={workspaceLocation.route === "ledger"}
+            >
+              {workspaceLocation.route === "ledger" && (
+                <Suspense fallback={<p role="status">Loading local ledger…</p>}>
+                  <ContextAuthorityLedger
+                    projectId={currentProject?.id ?? null}
+                  />
+                </Suspense>
+              )}
+            </WorkspaceView>
+
+            <WorkspaceView
+              route="adapters"
+              active={workspaceLocation.route === "adapters"}
+            >
+              {workspaceLocation.route === "adapters" && (
+                <Suspense
+                  fallback={<p role="status">Loading local adapters…</p>}
+                >
+                  <WorkAdapterCatalog />
+                </Suspense>
+              )}
             </WorkspaceView>
 
             <WorkspaceView

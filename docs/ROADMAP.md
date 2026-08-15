@@ -155,10 +155,10 @@ discovery; scheduling management and execution remain unsupported.
 |        28 | Reference-only Advisor foundation                                 | Medium       | Complete; safe shell, confirmed temporary Project State projection, and fresh Ubuntu package gate            |
 |        29 | Managed Advisor conversation foundation                           | Medium       | Complete; managed no-project Advisor turn with transient per-send safe context and fresh Ubuntu package gate |
 |        64 | Unified Project Workspace Foundation                              | Large        | Complete; local Chat, Work, and Code shell with existing task/source/thread surfaces and no new authority      |
-|        65 | Local Work Studio and Artifact Library                            | Large        | Planned; reviewed local artifacts and previews within existing source boundaries                              |
-|        66 | Context and Authority Ledger                                     | Large        | Planned; user-visible receipts over existing M55/M60 governance                                               |
-|        67 | Provider-Neutral Work Adapter UX                                  | Large        | Planned; adapter-neutral local UX and fixtures, no credential or live-provider route                          |
-|        68 | External Capability Decision Portfolio                            | Medium       | Planned; separate decision records only for browser, connector, and automation lanes                          |
+|        65 | Local Work Studio and Artifact Library                            | Large        | Complete; beta.75 metadata-only artifact-reference slice preserves M48 transience                             |
+|        66 | Context and Authority Ledger                                     | Large        | Complete; bounded read-only local governance projection, no transfer or authority                              |
+|        67 | Provider-Neutral Work Adapter UX                                  | Large        | Complete; deterministic local fixture catalogue, no live-provider route                                       |
+|        68 | External Capability Decision Portfolio                            | Medium       | Complete; decision records only, no runtime capability                                                         |
 
 ## Milestone definitions
 
@@ -1844,6 +1844,12 @@ recipient's tools or authority merely by receiving a summary. This milestone
 does not add a provider, credential, browser, connector, network transmission,
 background operation, or automatic dispatch.
 
+M66 is complete as a lazy Work-lane, project-scoped projection of the existing
+M55/M57/M58/M60/M65 governance records. It exposes bounded content-free record
+kind/identity, state, digests, timestamps, expiry, item counts, and audit
+outcome only; M63 remains represented through M60 and M64 adds no record.
+See [M66](MILESTONE_66_CONTEXT_AUTHORITY_LEDGER.md).
+
 ### 67 — Provider-Neutral Work Adapter UX
 
 Define and implement the local UI and deterministic fixtures needed for users
@@ -1860,6 +1866,10 @@ catalogue as a promise of availability, or retain provider transcripts. A live
 adapter still requires the M61/M62 prerequisites plus a separately approved,
 named implementation milestone.
 
+M67 is complete with a lazy Work-lane deterministic fixture catalogue. Its
+local radio selection neither persists nor authorizes a destination. See
+[M67](MILESTONE_67_PROVIDER_NEUTRAL_WORK_ADAPTER_UX.md).
+
 ### 68 — External Capability Decision Portfolio
 
 Prepare separate decision records, in dependency order, for the external
@@ -1875,6 +1885,12 @@ prompt-injection and ambiguity handling, retention, revocation, audit,
 recovery, package/dependency implications, and a rollback story. Completion of
 M68 authorizes no runtime implementation, connection, credential handling,
 browser navigation, external mutation, or scheduled execution.
+
+M68 is complete as four decision records: [isolated browser research](MILESTONE_68_BROWSER_RESEARCH_DECISION.md),
+[connector read](MILESTONE_68_CONNECTOR_READ_DECISION.md),
+[connector mutation and delivery](MILESTONE_68_CONNECTOR_MUTATION_DECISION.md),
+and [scheduled work](MILESTONE_68_SCHEDULED_WORK_DECISION.md). They authorize
+no implementation, credentials, connection, navigation, or execution.
 
 ### Deferred capability gates
 

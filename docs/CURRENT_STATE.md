@@ -100,6 +100,20 @@ project/task association to an opaque M48 artifact UUID, digest, closed class,
 and bounded label. The Studio shows whether the independently transient
 original is currently available, without retaining or recovering it.
 
+M66 is complete as a project-scoped, read-only Work-lane ledger over existing
+M55 durable-source, M57 fictional-connector, M58 controlled-browser, M60
+context-bundle, and M65 artifact-reference governance metadata. Its native and
+TypeScript contracts expose only bounded content-free identity, lifecycle,
+digest, timestamp, expiry, item-count, and audit-outcome fields. It cannot
+transfer content or authority. M63 activity remains represented by its M60
+receipt; M64 introduces no separate ledger record.
+
+M67 is complete as a deterministic local-fixture Work adapter catalogue. A
+choice is ephemeral UI state only and cannot connect, authenticate, transmit,
+retain input, or execute. M68 is complete as decision records for isolated
+browser research, connector read, connector mutation/delivery, and scheduled
+work; no external capability was implemented or authorized.
+
 ### Current provider-neutral completion record
 
 This record supersedes the older historical candidate and draft-release

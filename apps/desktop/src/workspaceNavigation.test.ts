@@ -15,6 +15,8 @@ describe("workspace navigation", () => {
       "conversation",
       "projects",
       "studio",
+      "ledger",
+      "adapters",
       "project-state",
       "sessions",
       "scheduled",
