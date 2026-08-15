@@ -456,6 +456,29 @@ describe("ContextAssemblyWorkbench", () => {
     expect(bridge.runContextAssemblyLocalRuntime).not.toHaveBeenCalled();
   });
 
+  it("keeps Run disabled when the native loader cannot read the supervised model", async () => {
+    bridge.loadContextAssemblyLocalRuntimeAvailability.mockResolvedValueOnce({
+      schemaVersion: 1,
+      localOnly: true,
+      available: false,
+      diagnostic: "model-access-failed",
+    });
+    render(
+      <ContextAssemblyWorkbench
+        projectId="019fbee6-476f-71b0-853c-f067657aa69c"
+        onClose={() => undefined}
+      />,
+    );
+    expect(
+      await screen.findByText(
+        /supervised local model could not be read by the native loader/i,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /run once with local-only model/i }),
+    ).toBeDisabled();
+  });
+
   it("runs one confirmed review in the local-only view and retains only its bounded result", async () => {
     const confirmed = {
       schemaVersion: 1,

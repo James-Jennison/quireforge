@@ -169,13 +169,18 @@ to the exact native reservation. Its package and installation gates passed,
 but the supervised installed-host attempt reached native loading and failed
 before output or retry. Beta.83 is immutable failed acceptance evidence.
 
-The beta.84 source candidate makes availability admission perform the same
-CPU-only native model load and immediate release before accepting reviewed
-bytes. No path, content, loader output, filesystem observation, or contract
-value crosses IPC, reaches storage, or appears in diagnostics. The bounded
-outcomes distinguish an unavailable contract, model-load failure,
-context-initialization failure, and sampler-initialization failure. Package and
-installed-host acceptance remain pending for beta.84.
+The beta.84 candidate made availability admission perform the same CPU-only
+native model load and immediate release before accepting reviewed bytes. Its
+package and installation gates passed, but supervised installed-host admission
+failed closed before acknowledgement, consumption, output, or retry. Beta.84
+is immutable failed acceptance evidence.
+
+The beta.85 source candidate maps only fixed loader classes—access, format,
+bounded memory, or generic load failure—into content-free diagnostics. No path,
+content, loader output, filesystem observation, or contract value crosses IPC,
+reaches storage, or appears in diagnostics. The native redacting callback is
+restored before the temporary classifier leaves scope. Package and
+installed-host acceptance remain pending for beta.85.
 
 The candidate procedure is recorded in
 [Testing](TESTING.md#m63-local-runtime-installed-host-acceptance). It requires

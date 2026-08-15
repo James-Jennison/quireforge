@@ -20,6 +20,28 @@ import type {
 import type { DurableSourceSummary } from "./lib/durableSources";
 import type { TaskCatalogSnapshot } from "./lib/taskRecords";
 import type { LocalReviewSnapshot } from "./lib/localReview";
+
+const availabilityMessage: Record<
+  NonNullable<LocalRuntimeAvailability["diagnostic"]>,
+  string
+> = {
+  "model-unavailable":
+    "The supervisor-provided local model is unavailable. No reviewed bundle can be consumed until this local-only runtime input is present.",
+  "model-contract-invalid":
+    "The supervised local model contract is invalid. No reviewed bundle can be consumed.",
+  "memory-ceiling-unavailable":
+    "The fixed local-runtime memory boundary could not be applied. No reviewed bundle can be consumed.",
+  "model-access-failed":
+    "The supervised local model could not be read by the native loader. No reviewed bundle can be consumed.",
+  "model-format-invalid":
+    "The supervised local model was rejected by the native loader. No reviewed bundle can be consumed.",
+  "model-memory-unavailable":
+    "The native loader could not reserve its bounded local memory. No reviewed bundle can be consumed.",
+  "model-load-failed":
+    "The native loader could not start the supervised local model. No reviewed bundle can be consumed.",
+  "runtime-unavailable":
+    "Local runtime availability could not be verified. No reviewed bundle can be consumed.",
+};
 export function ContextAssemblyWorkbench({
   projectId,
   projectLabel,
@@ -203,9 +225,18 @@ function ContextAssemblyWorkbenchScope({
   // free; never schedule or imply an automatic retry.
   const runtimeAdmissionRejected =
     runtime?.diagnostic === "runtime-busy" ||
-    runtime?.diagnostic === "model-unavailable";
+    runtime?.diagnostic === "model-unavailable" ||
+    runtime?.diagnostic === "model-contract-invalid" ||
+    runtime?.diagnostic === "memory-ceiling-unavailable" ||
+    runtime?.diagnostic === "model-access-failed" ||
+    runtime?.diagnostic === "model-format-invalid" ||
+    runtime?.diagnostic === "model-memory-unavailable" ||
+    runtime?.diagnostic === "model-load-failed";
   const runtimeBusy = runtime?.diagnostic === "runtime-busy";
-  const runtimeUnavailable = runtime?.diagnostic === "model-unavailable";
+  const runtimeUnavailable =
+    runtime?.diagnostic !== null &&
+    runtime?.diagnostic !== undefined &&
+    runtime?.diagnostic !== "runtime-busy";
   const invalidatePreparedBundle = () => {
     setSnapshot(null);
     setRuntime(null);
@@ -631,9 +662,11 @@ function ContextAssemblyWorkbenchScope({
           aria-label="Local runtime availability"
         >
           <p role="status">
-            {runtimeAvailability.diagnostic === "runtime-unavailable"
-              ? "Local runtime availability could not be verified. No reviewed bundle can be consumed."
-              : "The supervisor-provided local model is unavailable. No reviewed bundle can be consumed until this local-only runtime input is present."}
+            {
+              availabilityMessage[
+                runtimeAvailability.diagnostic ?? "runtime-unavailable"
+              ]
+            }
           </p>
           <button
             type="button"

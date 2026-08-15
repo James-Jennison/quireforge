@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.0-beta.85 — M63 content-free loader diagnosis
+
+- Reduces native preflight loader feedback to fixed, non-sensitive categories:
+  access, format, bounded-memory, or generic load failure. It never returns,
+  retains, or logs a loader message, model location, or model content.
+- Restores llama.cpp's process-global redacting callback immediately after the
+  preflight load, before the temporary classifier leaves scope.
+- Beta.84 is immutable failed acceptance evidence: native admission failed
+  closed before acknowledgement, consumption, output, or retry. This candidate
+  preserves all M48, M55, and M60 contracts.
+
 ## 0.1.0-beta.84 — M63 native-load admission correction
 
 - Makes native availability prove a CPU-only, in-process model load and

@@ -6,9 +6,9 @@
 
 use serde::Serialize;
 use std::{
-    ffi::{c_char, c_void, CString},
+    ffi::{c_char, c_void, CStr, CString},
     sync::{
-        atomic::{AtomicBool, Ordering},
+        atomic::{AtomicBool, AtomicU8, Ordering},
         Arc, Mutex,
     },
     time::{Duration, Instant},
@@ -188,6 +188,56 @@ unsafe extern "C" fn continue_before_deadline(_: f32, data: *mut c_void) -> bool
 // local runtime boundary, so the adapter deliberately discards those details.
 unsafe extern "C" fn discard_runtime_log(_: i32, _: *const c_char, _: *mut c_void) {}
 
+struct LoaderProbe {
+    category: AtomicU8,
+}
+
+fn loader_failure_category(bytes: &[u8]) -> u8 {
+    // Match only a fixed, non-sensitive error class. The raw loader message is
+    // intentionally neither retained nor returned because it can contain the
+    // supervisor-owned model location.
+    if bytes
+        .windows(b"failed to open".len())
+        .any(|part| part == b"failed to open")
+    {
+        1
+    } else if bytes.windows(b"invalid".len()).any(|part| part == b"invalid")
+        || bytes
+            .windows(b"unsupported".len())
+            .any(|part| part == b"unsupported")
+    {
+        2
+    } else if bytes.windows(b"alloc".len()).any(|part| part == b"alloc")
+        || bytes.windows(b"memory".len()).any(|part| part == b"memory")
+    {
+        3
+    } else {
+        0
+    }
+}
+
+fn loader_failure_diagnostic(category: u8) -> &'static str {
+    match category {
+        1 => "model-access-failed",
+        2 => "model-format-invalid",
+        3 => "model-memory-unavailable",
+        _ => "model-load-failed",
+    }
+}
+
+unsafe extern "C" fn classify_loader_log(_: i32, text: *const c_char, data: *mut c_void) {
+    let Some(probe) = data.cast::<LoaderProbe>().as_ref() else {
+        return;
+    };
+    if text.is_null() {
+        return;
+    }
+    let bytes = CStr::from_ptr(text).to_bytes();
+    probe
+        .category
+        .fetch_max(loader_failure_category(bytes), Ordering::Relaxed);
+}
+
 unsafe extern "C" fn abort_at_deadline(data: *mut c_void) -> bool {
     attempt_stopped(data)
 }
@@ -320,8 +370,13 @@ impl Drop for ActiveRunGuard {
 
 impl LocalRuntimeService {
     pub(crate) fn availability(&self) -> LocalRuntimeAvailability {
-        let contract = model_contract(std::env::var(MODEL_PATH_ENV))
-            .filter(|contract| verify_model_load(&contract.model_path));
+        let (contract, diagnostic) = match model_contract(std::env::var(MODEL_PATH_ENV)) {
+            Some(contract) => match verify_model_load(&contract.model_path) {
+                Ok(()) => (Some(contract), None),
+                Err(diagnostic) => (None, Some(diagnostic)),
+            },
+            None => (None, Some("model-unavailable")),
+        };
         let available = self
             .model_contract
             .lock()
@@ -334,7 +389,7 @@ impl LocalRuntimeService {
             schema_version: 1,
             local_only: true,
             available,
-            diagnostic: (!available).then_some("model-unavailable".into()),
+            diagnostic: (!available).then(|| diagnostic.unwrap_or("model-unavailable").into()),
         }
     }
 
@@ -414,19 +469,20 @@ fn model_contract(model_path: Result<String, std::env::VarError>) -> Option<Mode
 /// accepting reviewed bytes or returning any model-derived data. This closes
 /// the gap where an environment string could pass preflight but native loading
 /// would fail only after a one-use bundle had been consumed.
-fn verify_model_load(model_path: &str) -> bool {
+fn verify_model_load(model_path: &str) -> Result<(), &'static str> {
     let Ok(path) = CString::new(model_path) else {
-        return false;
+        return Err("model-contract-invalid");
     };
     let Ok(_memory_ceiling) = MemoryCeiling::apply() else {
-        return false;
+        return Err("memory-ceiling-unavailable");
     };
     let control = RunControl {
         started: Instant::now(),
         cancelled: AtomicBool::new(false),
     };
     unsafe {
-        llama_log_set(discard_runtime_log, std::ptr::null_mut());
+        let probe = LoaderProbe { category: AtomicU8::new(0) };
+        llama_log_set(classify_loader_log, (&probe as *const LoaderProbe).cast_mut().cast());
         let _backend = Backend::initialize();
         let mut model_params = llama_model_default_params();
         model_params.n_gpu_layers = 0;
@@ -434,11 +490,17 @@ fn verify_model_load(model_path: &str) -> bool {
         model_params.progress_callback = continue_before_deadline as *const c_void;
         model_params.progress_callback_user_data = (&control as *const RunControl).cast_mut().cast();
         let model = llama_model_load_from_file(path.as_ptr(), model_params);
-        if model.is_null() {
-            return false;
-        }
-        llama_model_free(model);
-        true
+        let result = if model.is_null() {
+            Err(loader_failure_diagnostic(probe.category.load(Ordering::Relaxed)))
+        } else {
+            llama_model_free(model);
+            Ok(())
+        };
+        // llama.cpp owns a process-global callback. Restore the redacting
+        // callback before `probe` goes out of scope so no future log can touch
+        // a stale pointer.
+        llama_log_set(discard_runtime_log, std::ptr::null_mut());
+        result
     }
 }
 
@@ -697,7 +759,8 @@ fn cancelled() -> LocalRuntimeSnapshot {
 #[cfg(test)]
 mod tests {
     use super::{
-        cancelled, model_contract, LocalRuntimeService, CHAT_PROMPT_BYTE_LIMIT,
+        cancelled, loader_failure_category, loader_failure_diagnostic, model_contract,
+        LocalRuntimeService, CHAT_PROMPT_BYTE_LIMIT,
         MEMORY_CEILING_BYTES, MEMORY_CEILING_MIB, SYSTEM_PROMPT,
     };
 
@@ -726,6 +789,26 @@ mod tests {
         let unavailable = LocalRuntimeService::unavailable_snapshot();
         assert_eq!(unavailable.state, "failed");
         assert_eq!(unavailable.diagnostic.as_deref(), Some("model-unavailable"));
+    }
+
+    #[test]
+    fn loader_failures_are_reduced_to_fixed_content_free_categories() {
+        assert_eq!(
+            loader_failure_diagnostic(loader_failure_category(b"failed to open model")),
+            "model-access-failed"
+        );
+        assert_eq!(
+            loader_failure_diagnostic(loader_failure_category(b"invalid model header")),
+            "model-format-invalid"
+        );
+        assert_eq!(
+            loader_failure_diagnostic(loader_failure_category(b"memory allocation failed")),
+            "model-memory-unavailable"
+        );
+        assert_eq!(
+            loader_failure_diagnostic(loader_failure_category(b"unclassified loader failure")),
+            "model-load-failed"
+        );
     }
 
     #[test]

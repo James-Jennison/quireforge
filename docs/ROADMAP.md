@@ -1669,11 +1669,18 @@ read from changing run admission after preflight. Its package and installation
 gates passed, but the supervised installed attempt reached native loading and
 failed before output or retry; beta.83 is immutable failed acceptance evidence.
 
-The beta.84 source candidate makes availability admission perform the same
-CPU-only native model load and immediate release before accepting reviewed
-bytes. It reports only bounded component diagnostics, never a model location,
-content, loader output, or filesystem observation. Package promotion and
-installed Debian desktop acceptance remain pending.
+The beta.84 candidate made availability admission perform the same CPU-only
+native model load and immediate release before accepting reviewed bytes. Its
+package and local-installation gates passed, but supervised installed-host
+admission failed closed before acknowledgement, consumption, output, or retry;
+beta.84 is immutable failed acceptance evidence.
+
+The beta.85 source candidate classifies that preflight failure into fixed,
+content-free access, format, bounded-memory, or generic load categories, then
+restores the redacting native logger before the classifier leaves scope. It
+never exposes a model location, content, loader output, or filesystem
+observation. Fresh package promotion and installed Debian desktop acceptance
+remain pending.
 
 The beta.80 installed-host candidate from clean source commit
 `43b655008e506f2f840ebf194e1ba0a10c14e590` passed the pinned Ubuntu 22.04

@@ -171,13 +171,20 @@ dedicated supervised installed-host launcher carried the bound in-memory
 contract through native revalidation, then the native loader failed before
 output and without retry. Beta.83 is immutable failed acceptance evidence.
 
-The unvalidated `0.1.0-beta.84` source candidate moves native model loading
-into the content-free availability admission before any reviewed bytes are
-accepted or one-use bundle is consumed. It immediately releases that probe and
-reports only bounded component diagnostics; no model path, content, loader
-output, or filesystem observation is exposed or retained. Package,
-installed-host, and governed local-attempt acceptance evidence is pending for
-beta.84.
+The `0.1.0-beta.84` candidate from clean source commit
+`815385b8396b0bb14507d9d21a35655e5fd52bdc` passed the pinned package,
+lifecycle, smoke, final-artifact, and local-installation identity gates. Its
+dedicated supervised installed-host launcher failed closed during native
+availability admission, before acknowledgement, bundle consumption, output, or
+retry. The UI exposed no model location, content, loader output, or filesystem
+observation. Beta.84 is immutable failed acceptance evidence.
+
+The unvalidated `0.1.0-beta.85` source candidate reduces that native preflight
+failure to a fixed content-free loader category (access, format, bounded-memory,
+or generic load failure) and restores the process-global redacting callback
+before the temporary classifier leaves scope. It accepts no reviewed bytes and
+preserves the M48, M55, and M60 contracts. Fresh package, installation, and
+installed-host acceptance evidence is required.
 
 ### Current provider-neutral completion record
 
