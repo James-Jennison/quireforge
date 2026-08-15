@@ -1663,6 +1663,14 @@ acknowledged review, reports that no attempt started, and requires an explicit
 availability recheck before a later manual run. Package promotion and installed
 Debian desktop acceptance remain pending.
 
+The beta.80 installed-host candidate from clean source commit
+`43b655008e506f2f840ebf194e1ba0a10c14e590` passed the pinned Ubuntu 22.04
+package/lifecycle/smoke/final-artifact gates and installed identity check, but
+its governed project-only preparation failed closed with a zero-item,
+zero-byte snapshot. It did not create a reviewed bundle or run availability,
+model, output, or retry paths. It is immutable failed acceptance evidence; a
+future candidate must use a new beta version.
+
 **First implementation milestone source-complete:** [Provider Capability
 Registry Contracts](MILESTONE_PROVIDER_CAPABILITY_REGISTRY_CONTRACTS.md)
 implements private static fictional registry contracts and focused safeguards

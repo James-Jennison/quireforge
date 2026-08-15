@@ -167,6 +167,14 @@ the installed-host operator to retain only content-free package and lifecycle
 evidence after one explicit reviewed local attempt. The normal package gate
 must still exclude the model and never starts the runtime.
 
+The beta.80 installed-host candidate reached the governed-review preparation
+gate, but that project-only preparation returned a bounded zero-item,
+zero-byte snapshot before review. The view was closed without a reviewed
+bundle, availability recheck, local attempt, output, or retry. Its clean-tree
+package provenance, successful pinned-package gates, and installed package
+identity remain failed acceptance evidence only; beta.80 must not be rebuilt or
+promoted.
+
 ## Approved offline acquisition record
 
 The separately approved offline acquisition completed on

@@ -6,6 +6,11 @@
   installed-host governed-review acceptance workflow.
 - Beta.79 remains immutable accessibility and package evidence; this candidate
   does not change its Work-lane authority boundaries or package provenance.
+- The pinned Ubuntu 22.04 package/lifecycle/smoke/artifact gate and installed
+  package identity checks passed. The governed review then failed closed before
+  review: its project-only preparation returned a zero-item, zero-byte snapshot,
+  so no bundle, availability recheck, model attempt, output, or retry occurred.
+  Beta.80 is immutable failed acceptance evidence, not a release claim.
 
 ## 0.1.0-beta.79 — Accessibility semantics candidate
 

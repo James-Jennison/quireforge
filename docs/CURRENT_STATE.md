@@ -125,6 +125,18 @@ clean-tree `release-candidate` with SHA-256
 `0cf4db1b38c3c9eac2105fed8740cf91033c71d1fd80181a1621f243c4f01303`; it is
 immutable local evidence and must not be overwritten by a later package.
 
+The unreleased `0.1.0-beta.80` M63 installed-host acceptance candidate from
+source commit `43b655008e506f2f840ebf194e1ba0a10c14e590` passed the pinned
+Ubuntu 22.04 package, lifecycle, smoke, and final artifact gates. Its desktop
+Debian artifact has SHA-256
+`edf17af3fb688136cc98caf1701f0532e5d46eb9556314d1993cdfe1178e37c7` and was
+installed with the matching sandbox package. The governed local review then
+failed closed before review: project-only preparation returned a zero-item,
+zero-byte snapshot. No reviewed bundle, availability recheck, model attempt,
+output, or retry occurred. This is immutable failed acceptance evidence and
+does not support a release-ready claim; any later package requires a new unused
+beta version.
+
 ### Current provider-neutral completion record
 
 This record supersedes the older historical candidate and draft-release
