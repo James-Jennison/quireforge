@@ -154,6 +154,16 @@ that prepared state nor its synthetic instruction was restored. Full
 installed-host governed-review acceptance, including a separately authorized
 local-model attempt, remains required; beta.81 is not a release-ready claim.
 
+The unreleased `0.1.0-beta.82` replacement candidate from clean source commit
+`a02f4d47cd8914be7c9b49713f0a93890a19fbe8` restores the opaque authorization
+ID required to enable the exact one-use action after review acknowledgement.
+Its pinned Ubuntu 22.04 package, lifecycle, smoke, and final artifact gates
+passed, and the matching local pair was installed. One explicit project-only,
+no-evidence local attempt then failed boundedly as `model-unavailable`; no
+output or retry occurred. Closing and relaunching restored neither the review,
+instruction, nor result. Beta.82 is immutable failed acceptance evidence and
+not release-ready; a later retry needs a fresh unused beta version.
+
 ### Current provider-neutral completion record
 
 This record supersedes the older historical candidate and draft-release
