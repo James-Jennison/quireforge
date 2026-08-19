@@ -4592,6 +4592,7 @@ button:disabled {
   min-width: 0;
   min-height: 24rem;
   height: min(52rem, calc(100dvh - 8.5rem));
+  overflow: clip;
   flex-direction: column;
   gap: 0.75rem;
   order: 2;
