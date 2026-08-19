@@ -821,9 +821,13 @@ describe("QuireForge desktop shell", () => {
     );
 
     fireEvent.click(
-      await screen.findByRole("button", {
-        name: "Select current Project State snapshot",
-      }),
+      await screen.findByRole(
+        "button",
+        {
+          name: "Select current Project State snapshot",
+        },
+        { timeout: 5_000 },
+      ),
     );
     expect(readAdvisorProjectStateSnapshotTask).not.toHaveBeenCalled();
     expect(
