@@ -1335,7 +1335,7 @@ describe("local review image pane", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "Save annotation" }));
     const error = await screen.findByRole("alert");
-    expect(error).toHaveFocus();
+    await waitFor(() => expect(error).toHaveFocus());
     expect(screen.getByLabelText("Edit annotation")).toHaveValue("retain this");
     expect(screen.queryByText(/tmp\/annotation/)).toBeNull();
     expect(
