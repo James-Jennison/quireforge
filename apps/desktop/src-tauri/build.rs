@@ -373,7 +373,10 @@ fn build_llama_cpp() {
         .arg("--config")
         .arg("Release")
         .arg("--target")
-        .arg("llama");
+        .arg("llama")
+        // Permit CMake's native build tool to use the available local CPUs.
+        // The closed source, target, compiler, and environment remain fixed.
+        .arg("--parallel");
     build.env_clear();
     for variable in CLOSED_CMAKE_ENVIRONMENT {
         build.env_remove(variable);

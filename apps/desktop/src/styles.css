@@ -4591,7 +4591,6 @@ button:disabled {
   position: relative;
   min-width: 0;
   min-height: 24rem;
-  height: min(52rem, calc(100dvh - 8.5rem));
   flex-direction: column;
   gap: 0.75rem;
   order: 2;
@@ -4601,7 +4600,10 @@ button:disabled {
   padding-inline: 0;
 }
 
-#advisor .advisor-context-panel,
+#advisor .advisor-context-panel {
+  order: 1;
+}
+
 #advisor .advisor-approval-panel {
   order: 3;
 }
@@ -4609,7 +4611,7 @@ button:disabled {
 #advisor .conversation-events--advisor {
   min-width: 0;
   min-height: 10rem;
-  max-height: none;
+  max-height: min(32rem, 52dvh);
   flex: 1 1 auto;
   overscroll-behavior: contain;
   scroll-padding-block-end: 1rem;

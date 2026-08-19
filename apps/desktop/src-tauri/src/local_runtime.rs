@@ -201,7 +201,9 @@ fn loader_failure_category(bytes: &[u8]) -> u8 {
         .any(|part| part == b"failed to open")
     {
         1
-    } else if bytes.windows(b"invalid".len()).any(|part| part == b"invalid")
+    } else if bytes
+        .windows(b"invalid".len())
+        .any(|part| part == b"invalid")
         || bytes
             .windows(b"unsupported".len())
             .any(|part| part == b"unsupported")
@@ -491,17 +493,25 @@ fn verify_model_load(model_path: &str) -> Result<(), &'static str> {
         cancelled: AtomicBool::new(false),
     };
     unsafe {
-        let probe = LoaderProbe { category: AtomicU8::new(0) };
-        llama_log_set(classify_loader_log, (&probe as *const LoaderProbe).cast_mut().cast());
+        let probe = LoaderProbe {
+            category: AtomicU8::new(0),
+        };
+        llama_log_set(
+            classify_loader_log,
+            (&probe as *const LoaderProbe).cast_mut().cast(),
+        );
         let _backend = Backend::initialize();
         let mut model_params = llama_model_default_params();
         model_params.n_gpu_layers = 0;
         model_params.split_mode = 0;
         model_params.progress_callback = continue_before_deadline as *const c_void;
-        model_params.progress_callback_user_data = (&control as *const RunControl).cast_mut().cast();
+        model_params.progress_callback_user_data =
+            (&control as *const RunControl).cast_mut().cast();
         let model = llama_model_load_from_file(path.as_ptr(), model_params);
         let result = if model.is_null() {
-            Err(loader_failure_diagnostic(probe.category.load(Ordering::Relaxed)))
+            Err(loader_failure_diagnostic(
+                probe.category.load(Ordering::Relaxed),
+            ))
         } else {
             llama_model_free(model);
             Ok(())
@@ -770,8 +780,8 @@ fn cancelled() -> LocalRuntimeSnapshot {
 mod tests {
     use super::{
         cancelled, loader_failure_category, loader_failure_diagnostic, model_contract,
-        LocalRuntimeService, CHAT_PROMPT_BYTE_LIMIT,
-        MEMORY_CEILING_BYTES, MEMORY_CEILING_MIB, SYSTEM_PROMPT,
+        LocalRuntimeService, CHAT_PROMPT_BYTE_LIMIT, MEMORY_CEILING_BYTES, MEMORY_CEILING_MIB,
+        SYSTEM_PROMPT,
     };
 
     #[test]
@@ -815,7 +825,10 @@ mod tests {
             loader_failure_diagnostic(loader_failure_category(b"allocation failed")),
             "model-memory-unavailable"
         );
-        assert_eq!(loader_failure_category(b"model memory footprint: bounded"), 0);
+        assert_eq!(
+            loader_failure_category(b"model memory footprint: bounded"),
+            0
+        );
         assert_eq!(
             loader_failure_diagnostic(loader_failure_category(b"unclassified loader failure")),
             "model-load-failed"
