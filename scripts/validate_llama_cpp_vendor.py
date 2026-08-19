@@ -877,8 +877,16 @@ def require_closed_cmake_build_invocation(build: str) -> None:
     build_arguments = command_arguments(build_body)
     require(
         build_arguments
-        == ["--build", "&build_dir", "--config", "Release", "--target", "llama"],
-        "closed CMake build must use the Release configuration and target only the static llama library",
+        == [
+            "--build",
+            "&build_dir",
+            "--config",
+            "Release",
+            "--target",
+            "llama",
+            "--parallel",
+        ],
+        "closed CMake build must use the Release configuration, target only the static llama library, and approved native parallelism",
     )
 
 

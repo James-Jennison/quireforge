@@ -1486,16 +1486,23 @@ class CmakeOptionsTests(unittest.TestCase):
 
     def test_rejects_a_cmake_build_with_an_extra_target(self) -> None:
         build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
-        build = build.replace('.arg("llama");', '.arg("all");', 1)
+        build = build.replace('.arg("llama")\n', '.arg("all")\n', 1)
 
         with self.assertRaisesRegex(SystemExit, "target only"):
+            VALIDATOR.require_closed_cmake_build_invocation(build)
+
+    def test_rejects_a_cmake_build_without_native_parallelism(self) -> None:
+        build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
+        build = build.replace('        .arg("--parallel");\n', "", 1)
+
+        with self.assertRaisesRegex(SystemExit, "approved native parallelism"):
             VALIDATOR.require_closed_cmake_build_invocation(build)
 
     def test_rejects_batched_cmake_build_arguments(self) -> None:
         build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
         build = build.replace(
-            '        .arg("llama");',
-            '        .arg("llama");\n    build.args(["--parallel", "8"]);',
+            '        .arg("--parallel");',
+            '        .arg("--parallel");\n    build.args(["--parallel", "8"]);',
             1,
         )
 
@@ -1505,8 +1512,8 @@ class CmakeOptionsTests(unittest.TestCase):
     def test_rejects_an_unrecognized_cmake_build_argument_expression(self) -> None:
         build = (ROOT / "apps" / "desktop" / "src-tauri" / "build.rs").read_text(encoding="utf-8")
         build = build.replace(
-            '        .arg("llama");',
-            '        .arg("llama")\n        .arg(unapproved_target);',
+            '        .arg("--parallel");',
+            '        .arg(unapproved_target);',
             1,
         )
 
