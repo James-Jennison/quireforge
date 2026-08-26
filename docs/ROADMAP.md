@@ -1966,6 +1966,11 @@ the prerequisite local-chat execution is
 [M69A — Threads-First Local Chat](MILESTONE_69A_LOCAL_CHAT_IMPLEMENTATION.md),
 and M69C remains a later authority-gateway slice.
 
+Across all M69 work, an authorized implementation request remains active from
+inspection through validation and approved local acceptance. Inspection is
+evidence of progress, not a completion state; the agent stops only at proven
+completion or a named external blocker/human-only decision.
+
 ### Deferred capability gates
 
 Real in-app browsing for Codex-assisted research and verification is a deferred

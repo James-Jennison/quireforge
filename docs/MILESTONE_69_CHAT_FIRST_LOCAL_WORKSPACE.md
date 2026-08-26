@@ -13,6 +13,12 @@ and inspectable authority boundaries. The conversation carries intent,
 narration, decisions, and compact evidence; it is the substrate for both casual
 talk and project work.
 
+An authorized implementation request remains active through inspection,
+diagnosis, change, validation, and its approved local acceptance path.
+Inspection is progress evidence, never a terminal state. The agent may stop
+only after the requested outcome is proven, or when it names a specific
+external blocker or human-only decision that prevents the next action.
+
 Work and Code are capability states of a thread, not peer top-level product
 lanes. A thread may begin as local-only chat and later attach an approved
 project, source, artifact, or coding capability through a visible boundary
