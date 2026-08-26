@@ -89,6 +89,9 @@ project memory uses an explicit Chat-to-Project Action Card and receipt.
 4. Only after those flows are stable, add optional per-thread provider
    destinations through their individual approved capability gates.
 
+The thread-first information-architecture implementation is separately scoped
+as [M69B — Thread-First Agent Workspace Shell](MILESTONE_69B_THREAD_FIRST_IMPLEMENTATION.md).
+
 ## Completion evidence
 
 The first slice requires native and UI tests for no-project conversation, fixed

@@ -1960,7 +1960,10 @@ providers remain explicit conversational actions rather than hidden context.
 The first slice is [M69 — Chat-First Local Workspace](MILESTONE_69_CHAT_FIRST_LOCAL_WORKSPACE.md).
 It preserves M48, M55, M60, and M63: no ambient transfer, provider connection,
 credential, browser, connector, tool, filesystem, Git, terminal, or external
-authority is added.
+authority is added. Its first available implementation directive is
+[M69B — Thread-First Agent Workspace Shell](MILESTONE_69B_THREAD_FIRST_IMPLEMENTATION.md);
+M69A local-chat execution remains a preceding runtime slice and M69C remains a
+later authority-gateway slice.
 
 ### Deferred capability gates
 
