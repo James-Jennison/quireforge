@@ -7,6 +7,9 @@
 - Beta.87 failed closed before review acknowledgement, consumption, output, or
   retry because its cgroup admission lookup used that mount root. It remains
   immutable failed acceptance evidence.
+- The fresh beta.88 package passed the pinned release-artifact gate, trusted
+  root-owned staging, daemon installation, supervised launch, and the explicit
+  governed local-only attempt. The acceptance record remains content-free.
 
 ## 0.1.0-beta.87 — M63 cgroup memory admission
 

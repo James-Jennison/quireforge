@@ -189,9 +189,11 @@ consumption, output, or retry. It is immutable failed acceptance evidence.
 The beta.87 candidate passed package, installation, and supervised-launch
 gates, but its cgroup admission lookup failed closed before review
 acknowledgement, consumption, output, or retry. The beta.88 candidate resolves
-the fixed 6 GiB limit from the process's exact cgroup v2 path. No path, content,
-loader output, filesystem observation, or contract value crosses IPC, reaches
-storage, or appears in diagnostics. Fresh acceptance remains pending.
+the fixed 6 GiB limit from the process's exact cgroup v2 path and passed its
+fresh package, release-artifact, trusted-staging, daemon-installation,
+supervised-launch, and one explicit installed-host governed local-only attempt
+gates. No path, content, loader output, filesystem observation, contract value,
+or generated response crosses IPC, reaches storage, or appears in diagnostics.
 
 The candidate procedure is recorded in
 [Testing](TESTING.md#m63-local-runtime-installed-host-acceptance). It requires

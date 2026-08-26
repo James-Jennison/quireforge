@@ -7,11 +7,11 @@
 use serde::Serialize;
 use std::{
     ffi::{c_char, c_void, CStr, CString},
+    path::{Component, Path, PathBuf},
     sync::{
         atomic::{AtomicBool, AtomicU8, Ordering},
         Arc, Mutex,
     },
-    path::{Component, Path, PathBuf},
     time::{Duration, Instant},
 };
 
@@ -336,7 +336,10 @@ pub(crate) struct LocalRuntimeReservation {
 fn cgroup_memory_max_path(cgroup: &str) -> Option<PathBuf> {
     let relative = cgroup.strip_prefix('/')?;
     let path = Path::new(relative);
-    if path.components().all(|component| matches!(component, Component::Normal(_))) {
+    if path
+        .components()
+        .all(|component| matches!(component, Component::Normal(_)))
+    {
         Some(Path::new("/sys/fs/cgroup").join(path).join("memory.max"))
     } else {
         None

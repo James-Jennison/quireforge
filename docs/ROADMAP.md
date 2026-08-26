@@ -1688,8 +1688,10 @@ consumption, output, or retry; it is immutable failed acceptance evidence.
 The beta.87 candidate passed package, installation, and supervised-launch
 gates, but its cgroup admission lookup failed closed before review
 acknowledgement, consumption, output, or retry. The beta.88 candidate resolves
-the limit from the exact process cgroup path; fresh installed-host acceptance
-remains pending.
+the limit from the exact process cgroup path and passed the fresh pinned
+package, release-artifact, trusted-staging, daemon-installation,
+supervised-launch, and one explicit installed-host governed local-only attempt
+gates. Its acceptance evidence is content-free.
 
 The beta.80 installed-host candidate from clean source commit
 `43b655008e506f2f840ebf194e1ba0a10c14e590` passed the pinned Ubuntu 22.04
