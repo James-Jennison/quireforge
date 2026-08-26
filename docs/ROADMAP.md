@@ -1950,6 +1950,17 @@ M68 is complete as four decision records: [isolated browser research](MILESTONE_
 and [scheduled work](MILESTONE_68_SCHEDULED_WORK_DECISION.md). They authorize
 no implementation, credentials, connection, navigation, or execution.
 
+### 69 — Chat-First Local Workspace
+
+M69 makes Chat the primary QuireForge interaction: a normal, no-project,
+local-only conversation whose first destination is the approved bounded local
+runtime. Files, projects, Work artifacts, Code, tools, and optional providers
+remain explicit conversational actions rather than hidden context. The first
+slice is [M69 — Chat-First Local Workspace](MILESTONE_69_CHAT_FIRST_LOCAL_WORKSPACE.md).
+It preserves M48, M55, M60, and M63: no ambient transfer, provider connection,
+credential, browser, connector, tool, filesystem, Git, terminal, or external
+authority is added.
+
 ### Deferred capability gates
 
 Real in-app browsing for Codex-assisted research and verification is a deferred
