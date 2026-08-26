@@ -346,8 +346,13 @@ fn cgroup_memory_max_path(cgroup: &str) -> Option<PathBuf> {
 fn memory_ceiling_is_enforced() -> bool {
     let cgroup = std::fs::read_to_string("/proc/self/cgroup")
         .ok()
-        .and_then(|contents| contents.lines().find_map(|line| line.strip_prefix("0::")));
+        .and_then(|contents| {
+            contents
+                .lines()
+                .find_map(|line| line.strip_prefix("0::").map(str::to_owned))
+        });
     cgroup
+        .as_deref()
         .and_then(cgroup_memory_max_path)
         .and_then(|path| std::fs::read_to_string(path).ok())
         .and_then(|value| value.trim().parse::<u64>().ok())
