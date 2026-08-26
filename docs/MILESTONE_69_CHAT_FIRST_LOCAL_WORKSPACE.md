@@ -91,6 +91,8 @@ project memory uses an explicit Chat-to-Project Action Card and receipt.
 
 The thread-first information-architecture implementation is separately scoped
 as [M69B — Thread-First Agent Workspace Shell](MILESTONE_69B_THREAD_FIRST_IMPLEMENTATION.md).
+The prerequisite local-chat implementation is separately scoped as
+[M69A — Threads-First Local Chat](MILESTONE_69A_LOCAL_CHAT_IMPLEMENTATION.md).
 
 ## Completion evidence
 

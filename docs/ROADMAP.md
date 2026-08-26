@@ -1962,8 +1962,9 @@ It preserves M48, M55, M60, and M63: no ambient transfer, provider connection,
 credential, browser, connector, tool, filesystem, Git, terminal, or external
 authority is added. Its first available implementation directive is
 [M69B — Thread-First Agent Workspace Shell](MILESTONE_69B_THREAD_FIRST_IMPLEMENTATION.md);
-M69A local-chat execution remains a preceding runtime slice and M69C remains a
-later authority-gateway slice.
+the prerequisite local-chat execution is
+[M69A — Threads-First Local Chat](MILESTONE_69A_LOCAL_CHAT_IMPLEMENTATION.md),
+and M69C remains a later authority-gateway slice.
 
 ### Deferred capability gates
 
