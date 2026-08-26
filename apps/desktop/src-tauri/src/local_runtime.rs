@@ -24,7 +24,10 @@ const CHAT_PROMPT_BYTE_LIMIT: usize = 2 * (96 * 1024 + 256);
 const DEADLINE: Duration = Duration::from_secs(60);
 const MEMORY_CEILING_BYTES: u64 = 6 * 1024 * 1024 * 1024;
 const MEMORY_CEILING_MIB: u16 = 6 * 1024;
-const SYSTEM_PROMPT: &str = "You are a local, offline assistant. Answer the reviewed request only.";
+const REVIEW_SYSTEM_PROMPT: &str =
+    "You are a local, offline assistant. Answer the reviewed request only.";
+const LOCAL_CHAT_SYSTEM_PROMPT: &str =
+    "You are a local, offline assistant. Answer the user's message directly and concisely.";
 
 #[repr(C)]
 struct ModelParams {
@@ -445,6 +448,12 @@ impl LocalRuntimeService {
         Ok(reservation)
     }
 
+    /// Reserves the same bounded CPU-only runtime for an M69A local-chat turn.
+    /// The caller supplies no project, source, or reviewed-context identifier.
+    pub(crate) fn reserve_local_chat(&self) -> Result<LocalRuntimeReservation, ()> {
+        self.reserve_available_model("local-chat")
+    }
+
     pub(crate) fn request_cancel(&self, bundle_id: &str) -> bool {
         let Ok(active) = self.active.lock() else {
             return false;
@@ -457,6 +466,10 @@ impl LocalRuntimeService {
         }
         active.control.cancelled.store(true, Ordering::Release);
         true
+    }
+
+    pub(crate) fn request_cancel_local_chat(&self) -> bool {
+        self.request_cancel("local-chat")
     }
 }
 
@@ -519,7 +532,31 @@ impl LocalRuntimeReservation {
         let Some(contract) = self.model_contract.as_ref() else {
             return LocalRuntimeService::unavailable_snapshot();
         };
-        run_once(canonical_bytes, &self.control, &contract.model_path)
+        run_once(
+            canonical_bytes,
+            &self.control,
+            &contract.model_path,
+            REVIEW_SYSTEM_PROMPT,
+            "reviewed-input-invalid",
+            "reviewed-input-too-large",
+        )
+    }
+
+    /// M69A's typed service owns validation and presents the resulting text
+    /// only in the ephemeral chat view. This method deliberately accepts bytes
+    /// alone, so no project/source/review authority can enter the runtime.
+    pub(crate) fn run_local_chat(self, text: &[u8]) -> LocalRuntimeSnapshot {
+        let Some(contract) = self.model_contract.as_ref() else {
+            return LocalRuntimeService::unavailable_snapshot();
+        };
+        run_once(
+            text,
+            &self.control,
+            &contract.model_path,
+            LOCAL_CHAT_SYSTEM_PROMPT,
+            "local-chat-invalid",
+            "local-chat-too-large",
+        )
     }
 }
 
@@ -527,6 +564,9 @@ fn run_once(
     canonical_bytes: &[u8],
     control: &RunControl,
     model_path: &str,
+    system_prompt_text: &str,
+    invalid_input_diagnostic: &'static str,
+    oversized_input_diagnostic: &'static str,
 ) -> LocalRuntimeSnapshot {
     let Ok(path) = CString::new(model_path) else {
         return failed("runtime-unavailable");
@@ -534,15 +574,15 @@ fn run_once(
     if !memory_ceiling_is_enforced() {
         return failed("memory-ceiling-unavailable");
     }
-    let reviewed_request = match std::str::from_utf8(canonical_bytes) {
+    let user_message = match std::str::from_utf8(canonical_bytes) {
         Ok(value) => value,
-        Err(_) => return failed("reviewed-input-invalid"),
+        Err(_) => return failed(invalid_input_diagnostic),
     };
-    let Ok(system_prompt) = CString::new(SYSTEM_PROMPT) else {
+    let Ok(system_prompt) = CString::new(system_prompt_text) else {
         return failed("runtime-unavailable");
     };
-    let Ok(reviewed_request) = CString::new(reviewed_request) else {
-        return failed("reviewed-input-invalid");
+    let Ok(user_message) = CString::new(user_message) else {
+        return failed(invalid_input_diagnostic);
     };
     unsafe {
         llama_log_set(discard_runtime_log, std::ptr::null_mut());
@@ -560,11 +600,15 @@ fn run_once(
                 failed("model-load-failed")
             };
         }
-        let prompt = match format_reviewed_chat_prompt(model, &system_prompt, &reviewed_request) {
+        let prompt = match format_chat_prompt(model, &system_prompt, &user_message) {
             Ok(prompt) => prompt,
             Err(diagnostic) => {
                 llama_model_free(model);
-                return failed(diagnostic);
+                return if diagnostic == "chat-input-too-large" {
+                    failed(oversized_input_diagnostic)
+                } else {
+                    failed(diagnostic)
+                };
             }
         };
         let mut context_params = llama_context_default_params();
@@ -599,7 +643,7 @@ fn run_once(
         if token_count <= 0 || token_count as usize > INPUT_TOKEN_LIMIT {
             llama_free(context);
             llama_model_free(model);
-            return failed("reviewed-input-too-large");
+            return failed(oversized_input_diagnostic);
         }
         tokens.truncate(token_count as usize);
         if llama_decode(
@@ -681,14 +725,14 @@ fn run_once(
     }
 }
 
-/// Formats the fixed reviewed request through the model's embedded chat
+/// Formats the fixed local message through the model's embedded chat
 /// template. The selected Qwen descriptor supplies that template; guessing a
 /// prompt wire format here would make the adapter model-dependent in an
 /// unreviewed way.
-unsafe fn format_reviewed_chat_prompt(
+unsafe fn format_chat_prompt(
     model: *mut c_void,
     system_prompt: &CString,
-    reviewed_request: &CString,
+    user_message: &CString,
 ) -> Result<CString, &'static str> {
     let template = llama_model_chat_template(model, std::ptr::null());
     if template.is_null() {
@@ -703,7 +747,7 @@ unsafe fn format_reviewed_chat_prompt(
         },
         ChatMessage {
             role: user_role.as_ptr(),
-            content: reviewed_request.as_ptr(),
+            content: user_message.as_ptr(),
         },
     ];
     let required = llama_chat_apply_template(
@@ -715,7 +759,7 @@ unsafe fn format_reviewed_chat_prompt(
         0,
     );
     if required <= 0 || required as usize > CHAT_PROMPT_BYTE_LIMIT {
-        return Err("reviewed-input-too-large");
+        return Err("chat-input-too-large");
     }
     let mut formatted = vec![0_i8; required as usize + 1];
     let written = llama_chat_apply_template(
@@ -735,7 +779,7 @@ unsafe fn format_reviewed_chat_prompt(
             .map(|byte| *byte as u8)
             .collect::<Vec<_>>(),
     )
-    .map_err(|_| "reviewed-input-invalid")
+    .map_err(|_| "chat-template-unavailable")
 }
 
 fn failed(diagnostic: &str) -> LocalRuntimeSnapshot {
@@ -771,7 +815,7 @@ mod tests {
     use super::{
         cancelled, cgroup_memory_max_path, loader_failure_category, loader_failure_diagnostic,
         memory_ceiling_is_enforced, model_contract, LocalRuntimeService, CHAT_PROMPT_BYTE_LIMIT,
-        MEMORY_CEILING_BYTES, MEMORY_CEILING_MIB, SYSTEM_PROMPT,
+        LOCAL_CHAT_SYSTEM_PROMPT, MEMORY_CEILING_BYTES, MEMORY_CEILING_MIB, REVIEW_SYSTEM_PROMPT,
     };
 
     #[test]
@@ -809,7 +853,8 @@ mod tests {
 
     #[test]
     fn local_runtime_uses_a_bounded_two_message_chat_prompt() {
-        assert!(SYSTEM_PROMPT.contains("local, offline assistant"));
+        assert!(REVIEW_SYSTEM_PROMPT.contains("reviewed request"));
+        assert!(LOCAL_CHAT_SYSTEM_PROMPT.contains("user's message"));
         assert_eq!(CHAT_PROMPT_BYTE_LIMIT, 2 * (96 * 1024 + 256));
     }
 

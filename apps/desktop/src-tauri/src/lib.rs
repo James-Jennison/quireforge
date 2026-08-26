@@ -15,6 +15,7 @@ mod controlled_browser_verification;
 mod desktop;
 mod dynamic_analysis;
 mod git;
+mod local_chat;
 mod local_runtime;
 mod mock_inference;
 mod preview;
@@ -2199,6 +2200,22 @@ fn context_assembly_cancel_local_runtime(
 }
 
 #[tauri::command]
+async fn local_chat_run(
+    request: local_chat::LocalChatRequest,
+    service: tauri::State<'_, Arc<local_chat::LocalChatService>>,
+) -> Result<local_runtime::LocalRuntimeSnapshot, ()> {
+    let service = Arc::clone(&service);
+    tauri::async_runtime::spawn_blocking(move || service.run(request))
+        .await
+        .map_err(|_| ())
+}
+
+#[tauri::command]
+fn local_chat_cancel(service: tauri::State<'_, Arc<local_chat::LocalChatService>>) -> bool {
+    service.cancel()
+}
+
+#[tauri::command]
 fn context_assembly_review(
     request: context_assembly::ContextAttemptRequest,
     service: tauri::State<'_, context_assembly::ContextAssemblyService>,
@@ -3463,6 +3480,10 @@ async fn terminal_close(
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let local_runtime = Arc::new(local_runtime::LocalRuntimeService::default());
+    let local_chat = Arc::new(local_chat::LocalChatService::new(Arc::clone(
+        &local_runtime,
+    )));
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
@@ -3493,7 +3514,8 @@ pub fn run() {
         .manage(connector_foundation::ConnectorGovernanceService::default())
         .manage(controlled_browser_verification::ControlledBrowserVerificationService::default())
         .manage(context_assembly::ContextAssemblyService::default())
-        .manage(Arc::new(local_runtime::LocalRuntimeService::default()))
+        .manage(local_runtime)
+        .manage(local_chat)
         .setup(|app| {
             match app.path().app_data_dir() {
                 Ok(directory) => {
@@ -3645,6 +3667,8 @@ pub fn run() {
             context_assembly_local_runtime_availability,
             context_assembly_run_local_runtime,
             context_assembly_cancel_local_runtime,
+            local_chat_run,
+            local_chat_cancel,
             context_assembly_review,
             context_assembly_acknowledge_review,
             context_assembly_cancel,

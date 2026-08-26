@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.1.0-beta.89 — M69A local chat candidate
+
+- Adds the first ordinary local-only Chat turn: bounded typed user text enters
+  a dedicated native `LocalChatService` and renders an ephemeral inline result.
+- Keeps M60 governed review separate: local chat has no project, source,
+  artifact, ledger, provider, tool, filesystem, or credential capability.
+- Preserves M63 CPU-only, one-attempt, 4,096-input-token, 512-output-token,
+  60-second, and 6 GiB limits; loader/model details remain unavailable to the
+  renderer.
+- Beta.89 is a fresh candidate. Package, installed-host, and supervised local
+  acceptance evidence is recorded only after those gates complete.
+
 ## 0.1.0-beta.88 — M63 service-cgroup lookup
 
 - Resolves the fixed 6 GiB memory limit from the process's exact cgroup v2

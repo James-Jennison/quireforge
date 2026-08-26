@@ -88,3 +88,13 @@ and fresh supervised installed-host acceptance. Update M69 status only after a
 new packaged candidate completes those gates. No cloud, connector, browser,
 tool, provider, project, persistence, or Action Card capability may be claimed
 as part of M69A.
+
+## Candidate implementation
+
+The beta.89 candidate implements the typed `LocalChatService`, dedicated
+`local_chat_run`/`local_chat_cancel` IPC, and the ephemeral Chat composer. Its
+native request is only a bounded message string; it uses a local-chat-specific
+runtime reservation and prompt, preserving the M60 reviewed-request prompt and
+contract. Desktop and narrow/mobile E2E cover a normal no-project chat turn.
+The candidate remains incomplete until the package, installation, and
+supervised installed-host acceptance gates have fresh evidence.

@@ -344,7 +344,7 @@ describe("QuireForge desktop shell", () => {
     );
   });
 
-  it("requires confirmation before switching to the separate Advisor mode", async () => {
+  it("requires confirmation before switching to the separate local Chat mode", async () => {
     const { unmount } = render(
       <App
         loadBootstrap={() => Promise.resolve(scaffoldBootstrap)}
@@ -393,7 +393,7 @@ describe("QuireForge desktop shell", () => {
     fireEvent.click(screen.getByRole("button", { name: "Confirm Advisor" }));
     expect(
       await screen.findByRole("heading", {
-        name: "Advisor",
+        name: "Start a conversation.",
       }),
     ).toBeInTheDocument();
     expect(window.localStorage.getItem("quireforge-conversation-mode")).toBe(
@@ -424,7 +424,7 @@ describe("QuireForge desktop shell", () => {
     fireEvent.click(screen.getByRole("menuitemradio", { name: /Advisor/u }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(
-      await screen.findByRole("heading", { name: "Advisor" }),
+      await screen.findByRole("heading", { name: "Start a conversation." }),
     ).toBeInTheDocument();
 
     unmount();
@@ -439,7 +439,7 @@ describe("QuireForge desktop shell", () => {
     await navigateTo("Advisor");
     expect(
       await screen.findByRole("heading", {
-        name: "Advisor",
+        name: "Start a conversation.",
       }),
     ).toBeInTheDocument();
   }, 10_000);
@@ -778,6 +778,7 @@ describe("QuireForge desktop shell", () => {
 
   it("loads safe Advisor metadata alongside the managed bounded composer", async () => {
     window.history.replaceState(null, "", "#advisor");
+    window.localStorage.setItem("quireforge-conversation-mode", "codex");
     const loadAdvisorSnapshotTask = vi
       .fn()
       .mockResolvedValue(advisorWorkspaceFixture);
@@ -804,6 +805,7 @@ describe("QuireForge desktop shell", () => {
 
   it("requires confirmation before reading an ephemeral Advisor Project State snapshot", async () => {
     window.history.replaceState(null, "", "#advisor");
+    window.localStorage.setItem("quireforge-conversation-mode", "codex");
     const readAdvisorProjectStateSnapshotTask = vi
       .fn()
       .mockResolvedValue(advisorProjectStateFixture);

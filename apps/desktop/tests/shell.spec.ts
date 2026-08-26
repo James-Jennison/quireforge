@@ -2370,28 +2370,52 @@ test("Ledger and Adapters keep local governance metadata and fixtures bounded", 
   expect(accessibility.violations).toEqual([]);
 });
 
+test("Local Chat completes an ordinary no-project local-only turn", async ({
+  page,
+}) => {
+  await installNativeFixture(page, {
+    ...nativeResponses,
+    local_chat_run: {
+      schemaVersion: 1,
+      localOnly: true,
+      state: "completed",
+      output: "A bounded local answer.",
+      diagnostic: null,
+      inputTokenLimit: 4096,
+      outputTokenLimit: 512,
+      deadlineSeconds: 60,
+      memoryCeilingMib: 6144,
+    },
+    local_chat_cancel: false,
+  });
+  await page.goto("/");
+
+  await openWorkspace(page, "Advisor");
+  const chat = page.locator('[data-workspace-view="advisor"]');
+  await expect(
+    chat.getByRole("heading", { name: "Start a conversation." }),
+  ).toBeVisible();
+  await expect(
+    chat.getByText("Local runtime · No project · Ephemeral"),
+  ).toBeVisible();
+  await expect(
+    chat.getByRole("button", { name: /attach|settings|tools/i }),
+  ).toHaveCount(0);
+  await chat
+    .getByRole("textbox", { name: "Local chat message" })
+    .fill("Hello.");
+  await chat.getByRole("button", { name: "Send" }).click();
+  await expect(chat.getByText("A bounded local answer.")).toBeVisible();
+});
+
 test("Advisor presents a bounded chat-first conversation with safe summaries", async ({
   page,
 }, testInfo) => {
   await installNativeFixture(page);
-  await page.goto("/");
-
-  await openWorkspace(page, "Advisor");
-  await expect
-    .poll(() =>
-      page.evaluate(() =>
-        window.localStorage.getItem(
-          "quireforge-workspace-boundary-acknowledgment",
-        ),
-      ),
-    )
-    .toBe(
-      JSON.stringify({
-        schemaVersion: 1,
-        boundaryPolicyVersion: "advisor-quireforge-boundary-v1",
-        acknowledged: true,
-      }),
-    );
+  await page.addInitScript(() => {
+    window.localStorage.setItem("quireforge-conversation-mode", "codex");
+  });
+  await page.goto("/#advisor");
   const advisor = page.locator('[data-workspace-view="advisor"]');
   await expect(
     advisor.getByRole("heading", {
@@ -2415,34 +2439,6 @@ test("Advisor presents a bounded chat-first conversation with safe summaries", a
     advisor.getByRole("complementary", { name: "Advisor details" }),
   ).toContainText("no shell, terminal, Git");
   await details.click();
-  const workspaceSelector = page.getByRole("button", {
-    name: "Chat",
-    exact: true,
-  });
-  if ((page.viewportSize()?.width ?? 0) <= 760) {
-    await page.getByRole("button", { name: "Open navigation" }).click();
-  }
-  await workspaceSelector.click();
-  const workspaceMenu = page.getByRole("menu", { name: "Choose workspace" });
-  await expect(workspaceMenu.getByRole("menuitemradio")).toHaveText([
-    "ChatAdvisor · read-only planning✓",
-    "CodeCodex task · build, debug, and ship",
-  ]);
-  await workspaceMenu.getByRole("menuitemradio", { name: /Code/u }).click();
-  const modeConfirmation = page.getByRole("dialog", {
-    name: "Confirm conversation mode change",
-  });
-  await expect(modeConfirmation).toHaveCount(0);
-  await expect(
-    page.getByRole("button", { name: "Code", exact: true }),
-  ).toBeVisible();
-  if ((page.viewportSize()?.width ?? 0) <= 760) {
-    await page.getByRole("button", { name: "Open navigation" }).click();
-  }
-  await page.getByRole("button", { name: "Code", exact: true }).click();
-  await page.getByRole("menuitemradio", { name: /Advisor/u }).click();
-  await expect(modeConfirmation).toHaveCount(0);
-  await expect(workspaceSelector).toHaveAccessibleName("Chat");
   const transcript = advisor.getByRole("log", {
     name: "Active Advisor conversation",
   });
@@ -2536,8 +2532,10 @@ test("Advisor keeps a long transient reply reachable without forcing a reader to
       diagnosticCode: null,
     },
   });
-  await page.goto("/");
-  await openWorkspace(page, "Advisor");
+  await page.addInitScript(() => {
+    window.localStorage.setItem("quireforge-conversation-mode", "codex");
+  });
+  await page.goto("/#advisor");
 
   const advisor = page.locator('[data-workspace-view="advisor"]');
   await advisor

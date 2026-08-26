@@ -205,6 +205,13 @@ explicit governed local-only attempt. The evidence record remains content-free:
 no model location, content, loader output, filesystem observation, or generated
 response is retained. M48, M55, and M60 remain preserved.
 
+The `0.1.0-beta.89` M69A local-chat candidate is in validation. It adds a
+dedicated local-only IPC service and an ephemeral Chat composer with no project,
+source, artifact, ledger, provider, tool, filesystem, or credential input.
+It reuses only the bounded M63 primitive and does not alter M60 governed review.
+No package, installation, or supervised installed-host acceptance claim is made
+until its fresh candidate completes those gates.
+
 ### Current provider-neutral completion record
 
 This record supersedes the older historical candidate and draft-release

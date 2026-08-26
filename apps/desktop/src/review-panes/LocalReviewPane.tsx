@@ -863,7 +863,10 @@ export default function LocalReviewPane({
           status: "success",
         });
       })
-      .catch(() => setError("Annotation could not be added."))
+      .catch(() => {
+        focusAnnotationsRequested.current = false;
+        setError("Annotation could not be added.");
+      })
       .finally(() => setBusy(false));
   };
   const mutateAnnotation = (

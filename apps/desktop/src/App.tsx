@@ -28,6 +28,7 @@ import { DynamicAnalysisWorkspace } from "./DynamicAnalysisWorkspace";
 import { GitWorkspace } from "./GitWorkspace";
 import { HomeDashboard } from "./HomeDashboard";
 import { IntegrationCenter } from "./IntegrationCenter";
+import { LocalChatWorkspace } from "./LocalChatWorkspace";
 import { ProjectWorkspace } from "./ProjectWorkspace";
 import { ProjectStateWorkspace } from "./ProjectStateWorkspace";
 import { ScheduledWorkspace } from "./ScheduledWorkspace";
@@ -52,6 +53,7 @@ import {
   cancelFilePreview,
   cancelConversationAttachments,
   cancelCodexAuth,
+  cancelLocalChat,
   acceptTaskHandoff,
   cancelProjectAttachment,
   confirmProjectAttachment,
@@ -82,6 +84,7 @@ import {
   openIntegrationControlBrowser,
   loadProjectWorkspace,
   readRepositoryState,
+  runLocalChat,
   logoutCodexAuth,
   openGitFile,
   pickConversationAttachments,
@@ -4255,38 +4258,45 @@ export default function App({
               route="advisor"
               active={workspaceLocation.route === "advisor"}
             >
-              <AdvisorWorkspace
-                resetToken={advisorResetToken}
-                availability={advisorViewState}
-                snapshot={advisorSnapshot}
-                selectedProjectState={advisorProjectStateSnapshot}
-                selectionState={advisorProjectStateSelection}
-                canSelectProjectState={
-                  bridgeState === "native" && currentProject !== undefined
-                }
-                onRequestProjectState={requestAdvisorProjectState}
-                onConfirmProjectState={confirmAdvisorProjectState}
-                onCancelProjectState={cancelAdvisorProjectState}
-                onRemoveProjectState={removeAdvisorProjectState}
-                auth={auth}
-                runtime={runtime}
-                conversation={advisorConversation}
-                conversationBusy={advisorConversationBusy}
-                selectedProjectId={advisorProjectStateProjectId}
-                targetProjectId={currentProject?.id ?? null}
-                onConversationStart={beginAdvisorConversation}
-                onConversationPoll={pollAdvisorConversationById}
-                onConversationInterrupt={stopAdvisorConversation}
-                onDispatch={dispatchApprovedAdvisorRequest}
-                onOpenExecution={() => navigateWorkspace("conversation")}
-                onPrepareTaskHandoff={prepareAdvisorTaskHandoff}
-                onOpenTaskHandoff={openTaskHandoffInQuireforge}
-                returnedTaskReceipt={
-                  acceptedTaskHandoff?.direction === "quireforge-to-advisor"
-                    ? acceptedTaskHandoff.brief
-                    : null
-                }
-              />
+              {conversationMode === "chat" ? (
+                <LocalChatWorkspace
+                  onRun={runLocalChat}
+                  onCancel={cancelLocalChat}
+                />
+              ) : (
+                <AdvisorWorkspace
+                  resetToken={advisorResetToken}
+                  availability={advisorViewState}
+                  snapshot={advisorSnapshot}
+                  selectedProjectState={advisorProjectStateSnapshot}
+                  selectionState={advisorProjectStateSelection}
+                  canSelectProjectState={
+                    bridgeState === "native" && currentProject !== undefined
+                  }
+                  onRequestProjectState={requestAdvisorProjectState}
+                  onConfirmProjectState={confirmAdvisorProjectState}
+                  onCancelProjectState={cancelAdvisorProjectState}
+                  onRemoveProjectState={removeAdvisorProjectState}
+                  auth={auth}
+                  runtime={runtime}
+                  conversation={advisorConversation}
+                  conversationBusy={advisorConversationBusy}
+                  selectedProjectId={advisorProjectStateProjectId}
+                  targetProjectId={currentProject?.id ?? null}
+                  onConversationStart={beginAdvisorConversation}
+                  onConversationPoll={pollAdvisorConversationById}
+                  onConversationInterrupt={stopAdvisorConversation}
+                  onDispatch={dispatchApprovedAdvisorRequest}
+                  onOpenExecution={() => navigateWorkspace("conversation")}
+                  onPrepareTaskHandoff={prepareAdvisorTaskHandoff}
+                  onOpenTaskHandoff={openTaskHandoffInQuireforge}
+                  returnedTaskReceipt={
+                    acceptedTaskHandoff?.direction === "quireforge-to-advisor"
+                      ? acceptedTaskHandoff.brief
+                      : null
+                  }
+                />
+              )}
             </WorkspaceView>
 
             <WorkspaceView
@@ -4457,271 +4467,254 @@ export default function App({
               active={workspaceLocation.route === "conversation"}
             >
               <section className="conversation-mode-workspace">
-                {conversationMode === "chat" ? (
-                  <p className="conversation-boundary-note" role="status">
-                    Advisor is selected. Use the Advisor workspace to create,
-                    learn, and explore without execution authority.
-                  </p>
-                ) : (
-                  <>
-                    <section
-                      className="mock-inference-launcher"
-                      aria-label="Durable task catalog"
+                <>
+                  <section
+                    className="mock-inference-launcher"
+                    aria-label="Durable task catalog"
+                  >
+                    <button
+                      type="button"
+                      aria-expanded={taskCatalogOpen}
+                      onClick={() => setTaskCatalogOpen((current) => !current)}
                     >
-                      <button
-                        type="button"
-                        aria-expanded={taskCatalogOpen}
-                        onClick={() =>
-                          setTaskCatalogOpen((current) => !current)
-                        }
-                      >
-                        {taskCatalogOpen ? "Hide Task Catalog" : "Task Catalog"}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setDurableSourcesWorkbenchOpen(true)}
-                      >
-                        Durable Sources
-                      </button>
-                    </section>
-                    {taskCatalogOpen && (
-                      <TaskCatalog
-                        snapshot={taskCatalog}
-                        busy={taskCatalogBusy}
+                      {taskCatalogOpen ? "Hide Task Catalog" : "Task Catalog"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDurableSourcesWorkbenchOpen(true)}
+                    >
+                      Durable Sources
+                    </button>
+                  </section>
+                  {taskCatalogOpen && (
+                    <TaskCatalog
+                      snapshot={taskCatalog}
+                      busy={taskCatalogBusy}
+                      projectId={currentProject?.id ?? null}
+                      onLoad={refreshTaskCatalog}
+                      onCreate={(title) =>
+                        applyTaskCatalogMutation(() =>
+                          createTaskRecord({
+                            projectId: currentProject?.id ?? "",
+                            title,
+                          }),
+                        )
+                      }
+                      onRename={(taskId, title) => () =>
+                        applyTaskCatalogMutation(() =>
+                          renameTaskRecord({ taskId, title }),
+                        )
+                      }
+                      onStatus={(taskId, status) => () =>
+                        applyTaskCatalogMutation(() =>
+                          setTaskRecordStatus({ taskId, status }),
+                        )
+                      }
+                      onArchive={(taskId) => () =>
+                        applyTaskCatalogMutation(() =>
+                          archiveTaskRecord({ taskId }),
+                        )
+                      }
+                      onRestore={(taskId) => () =>
+                        applyTaskCatalogMutation(() =>
+                          restoreTaskRecord({ taskId }),
+                        )
+                      }
+                      onDelete={(taskId) => () =>
+                        applyTaskCatalogMutation(() =>
+                          deleteTaskRecord({ taskId }),
+                        )
+                      }
+                      onPlanCreate={(taskId, copyPrimaryBody) => () =>
+                        applyTaskCatalogMutation(() =>
+                          createTaskPlan({ taskId, copyPrimaryBody }),
+                        )
+                      }
+                      onPlanSelect={(taskId, planId) => () =>
+                        selectDurableTaskPlan(taskId, planId)
+                      }
+                      onPlanEdit={(taskId, planId, label, body) => () =>
+                        applyTaskCatalogMutation(() =>
+                          editTaskPlan({ taskId, planId, label, body }),
+                        )
+                      }
+                      onPlanDelete={(taskId, planId) => () =>
+                        applyTaskCatalogMutation(() =>
+                          deleteTaskPlan({ taskId, planId }),
+                        )
+                      }
+                      onOpenTemplates={() => setTaskTemplateWorkbenchOpen(true)}
+                      onOpenMockInference={() =>
+                        setMockInferenceWorkbenchOpen(true)
+                      }
+                    />
+                  )}
+                  {taskTemplateWorkbenchOpen && (
+                    <Suspense
+                      fallback={
+                        <section
+                          className="task-template-workbench"
+                          aria-label="Task Templates"
+                        >
+                          <p role="status">Loading task templates…</p>
+                        </section>
+                      }
+                    >
+                      <TaskTemplateWorkbench
                         projectId={currentProject?.id ?? null}
-                        onLoad={refreshTaskCatalog}
-                        onCreate={(title) =>
-                          applyTaskCatalogMutation(() =>
-                            createTaskRecord({
-                              projectId: currentProject?.id ?? "",
-                              title,
-                            }),
-                          )
-                        }
-                        onRename={(taskId, title) => () =>
-                          applyTaskCatalogMutation(() =>
-                            renameTaskRecord({ taskId, title }),
-                          )
-                        }
-                        onStatus={(taskId, status) => () =>
-                          applyTaskCatalogMutation(() =>
-                            setTaskRecordStatus({ taskId, status }),
-                          )
-                        }
-                        onArchive={(taskId) => () =>
-                          applyTaskCatalogMutation(() =>
-                            archiveTaskRecord({ taskId }),
-                          )
-                        }
-                        onRestore={(taskId) => () =>
-                          applyTaskCatalogMutation(() =>
-                            restoreTaskRecord({ taskId }),
-                          )
-                        }
-                        onDelete={(taskId) => () =>
-                          applyTaskCatalogMutation(() =>
-                            deleteTaskRecord({ taskId }),
-                          )
-                        }
-                        onPlanCreate={(taskId, copyPrimaryBody) => () =>
-                          applyTaskCatalogMutation(() =>
-                            createTaskPlan({ taskId, copyPrimaryBody }),
-                          )
-                        }
-                        onPlanSelect={(taskId, planId) => () =>
-                          selectDurableTaskPlan(taskId, planId)
-                        }
-                        onPlanEdit={(taskId, planId, label, body) => () =>
-                          applyTaskCatalogMutation(() =>
-                            editTaskPlan({ taskId, planId, label, body }),
-                          )
-                        }
-                        onPlanDelete={(taskId, planId) => () =>
-                          applyTaskCatalogMutation(() =>
-                            deleteTaskPlan({ taskId, planId }),
-                          )
-                        }
-                        onOpenTemplates={() =>
-                          setTaskTemplateWorkbenchOpen(true)
-                        }
-                        onOpenMockInference={() =>
-                          setMockInferenceWorkbenchOpen(true)
+                        onClose={() => setTaskTemplateWorkbenchOpen(false)}
+                      />
+                    </Suspense>
+                  )}
+                  {mockInferenceWorkbenchOpen && (
+                    <Suspense
+                      fallback={
+                        <section
+                          className="mock-inference-workbench"
+                          aria-label="Fictional mock inference"
+                        >
+                          <p role="status">Loading local mock inference…</p>
+                        </section>
+                      }
+                    >
+                      <MockInferenceWorkbench
+                        projectId={currentProject?.id ?? null}
+                        onClose={() => {
+                          setMockInferenceWorkbenchOpen(false);
+                          window.requestAnimationFrame(() =>
+                            mockInferenceLauncherRef.current?.focus(),
+                          );
+                        }}
+                      />
+                    </Suspense>
+                  )}
+                  {connectorGovernanceWorkbenchOpen && (
+                    <Suspense
+                      fallback={
+                        <section
+                          className="mock-inference-workbench"
+                          aria-label="Fictional connector governance"
+                        >
+                          <p role="status">
+                            Loading fictional connector governance…
+                          </p>
+                        </section>
+                      }
+                    >
+                      <ConnectorGovernanceWorkbench
+                        projectId={currentProject?.id ?? null}
+                        onClose={() =>
+                          setConnectorGovernanceWorkbenchOpen(false)
                         }
                       />
-                    )}
-                    {taskTemplateWorkbenchOpen && (
-                      <Suspense
-                        fallback={
-                          <section
-                            className="task-template-workbench"
-                            aria-label="Task Templates"
-                          >
-                            <p role="status">Loading task templates…</p>
-                          </section>
-                        }
-                      >
-                        <TaskTemplateWorkbench
-                          projectId={currentProject?.id ?? null}
-                          onClose={() => setTaskTemplateWorkbenchOpen(false)}
-                        />
-                      </Suspense>
-                    )}
-                    {mockInferenceWorkbenchOpen && (
-                      <Suspense
-                        fallback={
-                          <section
-                            className="mock-inference-workbench"
-                            aria-label="Fictional mock inference"
-                          >
-                            <p role="status">Loading local mock inference…</p>
-                          </section>
-                        }
-                      >
-                        <MockInferenceWorkbench
-                          projectId={currentProject?.id ?? null}
-                          onClose={() => {
-                            setMockInferenceWorkbenchOpen(false);
-                            window.requestAnimationFrame(() =>
-                              mockInferenceLauncherRef.current?.focus(),
-                            );
-                          }}
-                        />
-                      </Suspense>
-                    )}
-                    {connectorGovernanceWorkbenchOpen && (
-                      <Suspense
-                        fallback={
-                          <section
-                            className="mock-inference-workbench"
-                            aria-label="Fictional connector governance"
-                          >
-                            <p role="status">
-                              Loading fictional connector governance…
-                            </p>
-                          </section>
-                        }
-                      >
-                        <ConnectorGovernanceWorkbench
-                          projectId={currentProject?.id ?? null}
-                          onClose={() =>
-                            setConnectorGovernanceWorkbenchOpen(false)
-                          }
-                        />
-                      </Suspense>
-                    )}
-                    {controlledBrowserVerificationOpen && (
-                      <Suspense
-                        fallback={
-                          <section
-                            className="mock-inference-workbench"
-                            aria-label="Fictional controlled browser verification"
-                          >
-                            <p role="status">Loading local verification…</p>
-                          </section>
-                        }
-                      >
-                        <ControlledBrowserVerificationWorkbench
-                          projectId={currentProject?.id ?? null}
-                          onClose={() =>
-                            setControlledBrowserVerificationOpen(false)
-                          }
-                        />
-                      </Suspense>
-                    )}
-                    {contextAssemblyWorkbenchOpen && (
-                      <Suspense
-                        fallback={
-                          <section className="mock-inference-workbench">
-                            <p role="status">
-                              Loading governed context review…
-                            </p>
-                          </section>
-                        }
-                      >
-                        <ContextAssemblyWorkbench
-                          key={currentProject?.id ?? "no-project"}
-                          projectId={currentProject?.id ?? null}
-                          projectLabel={currentProject?.displayName ?? null}
-                          onClose={() => setContextAssemblyWorkbenchOpen(false)}
-                        />
-                      </Suspense>
-                    )}
-                    {durableSourcesWorkbenchOpen && (
-                      <Suspense
-                        fallback={
-                          <section
-                            className="task-template-workbench"
-                            aria-label="Durable Sources"
-                          >
-                            <p role="status">Loading durable sources…</p>
-                          </section>
-                        }
-                      >
-                        <DurableSourcesWorkbench
-                          projectId={currentProject?.id ?? null}
-                          onClose={() => setDurableSourcesWorkbenchOpen(false)}
-                        />
-                      </Suspense>
-                    )}
-                    <ConversationWorkspace
-                      key={acceptedTaskHandoff?.taskId ?? "ordinary-task"}
-                      availability={conversationState}
-                      snapshot={conversation}
-                      events={conversationEvents}
-                      runtime={runtime}
-                      project={currentProject}
-                      integrations={integrationCatalog}
-                      attachments={conversationAttachments}
-                      busy={conversationBusy}
-                      attachmentBusy={conversationAttachmentBusy}
-                      actionError={conversationActionError}
-                      attachmentActionError={conversationAttachmentActionError}
-                      onStart={beginConversation}
-                      onInterrupt={stopConversation}
-                      onDecideApproval={applyConversationApproval}
-                      onUpdateModelSelection={applyModelSelection}
-                      onAttachmentPick={chooseConversationAttachments}
-                      onAttachmentDrop={stageConversationAttachmentDrop}
-                      onAttachmentCancel={removeConversationAttachment}
-                      handoffBrief={acceptedTaskHandoff?.brief ?? null}
-                      onReturnTaskReceipt={returnTaskHandoffToAdvisor}
-                    />
-                    <section
-                      className="mock-inference-launcher"
-                      aria-label="Fictional local mock workflow"
+                    </Suspense>
+                  )}
+                  {controlledBrowserVerificationOpen && (
+                    <Suspense
+                      fallback={
+                        <section
+                          className="mock-inference-workbench"
+                          aria-label="Fictional controlled browser verification"
+                        >
+                          <p role="status">Loading local verification…</p>
+                        </section>
+                      }
                     >
-                      <button
-                        ref={mockInferenceLauncherRef}
-                        type="button"
-                        onClick={() => setMockInferenceWorkbenchOpen(true)}
-                      >
-                        Fictional mock inference
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setConnectorGovernanceWorkbenchOpen(true)
+                      <ControlledBrowserVerificationWorkbench
+                        projectId={currentProject?.id ?? null}
+                        onClose={() =>
+                          setControlledBrowserVerificationOpen(false)
                         }
-                      >
-                        Fictional connector governance
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setControlledBrowserVerificationOpen(true)
-                        }
-                      >
-                        Fictional browser verification
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setContextAssemblyWorkbenchOpen(true)}
-                      >
-                        Governed context review
-                      </button>
-                    </section>
-                  </>
-                )}
+                      />
+                    </Suspense>
+                  )}
+                  {contextAssemblyWorkbenchOpen && (
+                    <Suspense
+                      fallback={
+                        <section className="mock-inference-workbench">
+                          <p role="status">Loading governed context review…</p>
+                        </section>
+                      }
+                    >
+                      <ContextAssemblyWorkbench
+                        key={currentProject?.id ?? "no-project"}
+                        projectId={currentProject?.id ?? null}
+                        projectLabel={currentProject?.displayName ?? null}
+                        onClose={() => setContextAssemblyWorkbenchOpen(false)}
+                      />
+                    </Suspense>
+                  )}
+                  {durableSourcesWorkbenchOpen && (
+                    <Suspense
+                      fallback={
+                        <section
+                          className="task-template-workbench"
+                          aria-label="Durable Sources"
+                        >
+                          <p role="status">Loading durable sources…</p>
+                        </section>
+                      }
+                    >
+                      <DurableSourcesWorkbench
+                        projectId={currentProject?.id ?? null}
+                        onClose={() => setDurableSourcesWorkbenchOpen(false)}
+                      />
+                    </Suspense>
+                  )}
+                  <ConversationWorkspace
+                    key={acceptedTaskHandoff?.taskId ?? "ordinary-task"}
+                    availability={conversationState}
+                    snapshot={conversation}
+                    events={conversationEvents}
+                    runtime={runtime}
+                    project={currentProject}
+                    integrations={integrationCatalog}
+                    attachments={conversationAttachments}
+                    busy={conversationBusy}
+                    attachmentBusy={conversationAttachmentBusy}
+                    actionError={conversationActionError}
+                    attachmentActionError={conversationAttachmentActionError}
+                    onStart={beginConversation}
+                    onInterrupt={stopConversation}
+                    onDecideApproval={applyConversationApproval}
+                    onUpdateModelSelection={applyModelSelection}
+                    onAttachmentPick={chooseConversationAttachments}
+                    onAttachmentDrop={stageConversationAttachmentDrop}
+                    onAttachmentCancel={removeConversationAttachment}
+                    handoffBrief={acceptedTaskHandoff?.brief ?? null}
+                    onReturnTaskReceipt={returnTaskHandoffToAdvisor}
+                  />
+                  <section
+                    className="mock-inference-launcher"
+                    aria-label="Fictional local mock workflow"
+                  >
+                    <button
+                      ref={mockInferenceLauncherRef}
+                      type="button"
+                      onClick={() => setMockInferenceWorkbenchOpen(true)}
+                    >
+                      Fictional mock inference
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConnectorGovernanceWorkbenchOpen(true)}
+                    >
+                      Fictional connector governance
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setControlledBrowserVerificationOpen(true)}
+                    >
+                      Fictional browser verification
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setContextAssemblyWorkbenchOpen(true)}
+                    >
+                      Governed context review
+                    </button>
+                  </section>
+                </>
                 {conversationMode === "codex" && (
                   <section
                     className="workbench-terminal-dock"

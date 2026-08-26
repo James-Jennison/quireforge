@@ -62,6 +62,11 @@ import {
   type ContextAssemblySnapshot,
 } from "./contextAssembly";
 import {
+  localChatRequestSchema,
+  localChatSnapshotSchema,
+  type LocalChatSnapshot,
+} from "./localChat";
+import {
   contextLedgerSnapshotSchema,
   type ContextLedgerSnapshot,
 } from "./contextLedger";
@@ -482,6 +487,8 @@ export const CONTEXT_ASSEMBLY_LOCAL_RUNTIME_AVAILABILITY_COMMAND =
   "context_assembly_local_runtime_availability";
 export const CONTEXT_ASSEMBLY_CANCEL_LOCAL_RUNTIME_COMMAND =
   "context_assembly_cancel_local_runtime";
+export const LOCAL_CHAT_RUN_COMMAND = "local_chat_run";
+export const LOCAL_CHAT_CANCEL_COMMAND = "local_chat_cancel";
 export const CONTEXT_ASSEMBLY_REVIEW_COMMAND = "context_assembly_review";
 export const CONTEXT_ASSEMBLY_ACKNOWLEDGE_REVIEW_COMMAND =
   "context_assembly_acknowledge_review";
@@ -1860,6 +1867,21 @@ export const cancelContextAssemblyLocalRuntime = async (
       request: contextAssemblyAttemptRequestSchema.parse(request),
     }),
   );
+
+export const runLocalChat = async (
+  request: unknown,
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<LocalChatSnapshot> =>
+  localChatSnapshotSchema.parse(
+    await invokeFunction(LOCAL_CHAT_RUN_COMMAND, {
+      request: localChatRequestSchema.parse(request),
+    }),
+  );
+
+export const cancelLocalChat = async (
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<boolean> =>
+  z.boolean().parse(await invokeFunction(LOCAL_CHAT_CANCEL_COMMAND));
 export const reviewContextAssembly = (
   request: unknown,
   invokeFunction?: InvokeFunction,
