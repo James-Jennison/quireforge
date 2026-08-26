@@ -130,5 +130,10 @@ thread title, optional project label, and the closed `none`, `unread`, or
 `needsDecision` status. Existing thread references are unread until opened in
 this app session. The candidate has no native pending-decision source, so it
 never synthesizes `needsDecision`; unknown status values fail closed to no dot.
-No native command or additional authority is introduced. The candidate remains
-incomplete until the required fresh validation and acceptance evidence exists.
+No native command or additional authority is introduced. `pnpm validate` and
+desktop/mobile E2E passed. The beta.90 package also passed its pinned package
+and release-artifact gates, trusted staging, daemon installation, and
+supervised launch because its M69A clock refinement changed native code. The
+canonical installed-host receipt remains unavailable until the live attached
+project is non-destructively relinked to the beta.90 candidate; no record was
+fabricated, so the candidate remains incomplete.
