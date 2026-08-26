@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.0-beta.87 — M63 cgroup memory admission
+
+- Replaces the unsuitable `RLIMIT_AS` address-space limit with a required
+  supervisor cgroup memory limit at the fixed 6 GiB M63 ceiling. File-backed
+  model mappings no longer consume the admission budget merely by being mapped.
+- Beta.86 passed package, local installation, and supervised-launch gates, but
+  native availability failed closed before review acknowledgement, consumption,
+  output, or retry. It remains immutable failed acceptance evidence.
+
 ## 0.1.0-beta.86 — M63 precise loader classification
 
 - Limits the bounded-memory diagnostic to explicit native allocation failures;

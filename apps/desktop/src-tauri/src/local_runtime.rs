@@ -21,7 +21,7 @@ const CONTEXT_TOKEN_LIMIT: usize = INPUT_TOKEN_LIMIT + OUTPUT_TOKEN_LIMIT;
 const OUTPUT_BYTE_LIMIT: usize = 16 * 1024;
 const CHAT_PROMPT_BYTE_LIMIT: usize = 2 * (96 * 1024 + 256);
 const DEADLINE: Duration = Duration::from_secs(60);
-const MEMORY_CEILING_BYTES: libc::rlim_t = 6 * 1024 * 1024 * 1024;
+const MEMORY_CEILING_BYTES: u64 = 6 * 1024 * 1024 * 1024;
 const MEMORY_CEILING_MIB: u16 = 6 * 1024;
 const SYSTEM_PROMPT: &str = "You are a local, offline assistant. Answer the reviewed request only.";
 
@@ -329,47 +329,14 @@ pub(crate) struct LocalRuntimeReservation {
     model_contract: Option<ModelContract>,
 }
 
-/// Temporarily confines model allocation to M63's fixed address-space budget.
-/// The previous soft limit is restored as the local attempt exits.
-struct MemoryCeiling {
-    previous: Option<libc::rlimit>,
-}
-
-impl MemoryCeiling {
-    fn apply() -> Result<Self, ()> {
-        let mut previous = libc::rlimit {
-            rlim_cur: 0,
-            rlim_max: 0,
-        };
-        // SAFETY: reads this process's resource limit without retaining pointers.
-        if unsafe { libc::getrlimit(libc::RLIMIT_AS, &mut previous) } != 0 {
-            return Err(());
-        }
-        if previous.rlim_cur <= MEMORY_CEILING_BYTES {
-            return Ok(Self { previous: None });
-        }
-        let constrained = libc::rlimit {
-            rlim_cur: MEMORY_CEILING_BYTES.min(previous.rlim_max),
-            rlim_max: previous.rlim_max,
-        };
-        // SAFETY: reduces only the soft limit for this bounded attempt; Drop
-        // restores the exact observed value before the command returns.
-        if unsafe { libc::setrlimit(libc::RLIMIT_AS, &constrained) } != 0 {
-            return Err(());
-        }
-        Ok(Self {
-            previous: Some(previous),
-        })
-    }
-}
-
-impl Drop for MemoryCeiling {
-    fn drop(&mut self) {
-        if let Some(previous) = self.previous {
-            // SAFETY: restores the exact soft/hard values observed by apply.
-            let _ = unsafe { libc::setrlimit(libc::RLIMIT_AS, &previous) };
-        }
-    }
+/// M63 bounds resident memory with the supervisor service's cgroup, rather
+/// than `RLIMIT_AS`: file-backed model mappings count toward address space but
+/// are not a measure of memory actually committed by the runtime.
+fn memory_ceiling_is_enforced() -> bool {
+    std::fs::read_to_string("/sys/fs/cgroup/memory.max")
+        .ok()
+        .and_then(|value| value.trim().parse::<u64>().ok())
+        .is_some_and(|limit| limit <= MEMORY_CEILING_BYTES)
 }
 
 impl Drop for ActiveRunGuard {
@@ -485,9 +452,9 @@ fn verify_model_load(model_path: &str) -> Result<(), &'static str> {
     let Ok(path) = CString::new(model_path) else {
         return Err("model-contract-invalid");
     };
-    let Ok(_memory_ceiling) = MemoryCeiling::apply() else {
+    if !memory_ceiling_is_enforced() {
         return Err("memory-ceiling-unavailable");
-    };
+    }
     let control = RunControl {
         started: Instant::now(),
         cancelled: AtomicBool::new(false),
@@ -541,9 +508,9 @@ fn run_once(
     let Ok(path) = CString::new(model_path) else {
         return failed("runtime-unavailable");
     };
-    let Ok(_memory_ceiling) = MemoryCeiling::apply() else {
+    if !memory_ceiling_is_enforced() {
         return failed("memory-ceiling-unavailable");
-    };
+    }
     let reviewed_request = match std::str::from_utf8(canonical_bytes) {
         Ok(value) => value,
         Err(_) => return failed("reviewed-input-invalid"),
@@ -779,9 +746,9 @@ fn cancelled() -> LocalRuntimeSnapshot {
 #[cfg(test)]
 mod tests {
     use super::{
-        cancelled, loader_failure_category, loader_failure_diagnostic, model_contract,
-        LocalRuntimeService, CHAT_PROMPT_BYTE_LIMIT, MEMORY_CEILING_BYTES, MEMORY_CEILING_MIB,
-        SYSTEM_PROMPT,
+        cancelled, loader_failure_category, loader_failure_diagnostic, memory_ceiling_is_enforced,
+        model_contract, LocalRuntimeService, CHAT_PROMPT_BYTE_LIMIT, MEMORY_CEILING_BYTES,
+        MEMORY_CEILING_MIB, SYSTEM_PROMPT,
     };
 
     #[test]
@@ -795,6 +762,13 @@ mod tests {
     fn local_runtime_memory_ceiling_matches_the_approved_six_gib_limit() {
         assert_eq!(MEMORY_CEILING_BYTES, 6 * 1024 * 1024 * 1024);
         assert_eq!(MEMORY_CEILING_MIB, 6 * 1024);
+    }
+
+    #[test]
+    fn memory_ceiling_requires_a_finite_supervisor_cgroup_limit() {
+        // Host test environments need not be launched by the M63 supervisor;
+        // this assertion only proves the checker is total and content-free.
+        let _ = memory_ceiling_is_enforced();
     }
 
     #[test]

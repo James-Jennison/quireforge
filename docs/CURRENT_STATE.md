@@ -188,11 +188,16 @@ bounded-memory category was not conclusive because it matched routine loader
 status containing the word `memory`; beta.85 is immutable failed acceptance
 evidence.
 
-The unvalidated `0.1.0-beta.86` source candidate limits that category to
-explicit native allocation failures. It continues to expose no model location,
-content, loader output, or filesystem observation and preserves the M48, M55,
-and M60 contracts. Fresh package, installation, and installed-host acceptance
-evidence is required.
+The `0.1.0-beta.86` candidate passed the pinned package, final-artifact,
+staging, local-installation identity, and supervised-launch gates, but native
+availability failed closed before review acknowledgement, consumption, output,
+or retry. It is immutable failed acceptance evidence.
+
+The unvalidated `0.1.0-beta.87` source candidate replaces the unsuitable
+address-space limit with the supervisor cgroup's fixed 6 GiB memory ceiling.
+It continues to expose no model location, content, loader output, or filesystem
+observation and preserves the M48, M55, and M60 contracts. Fresh package,
+installation, and installed-host acceptance evidence is required.
 
 ### Current provider-neutral completion record
 

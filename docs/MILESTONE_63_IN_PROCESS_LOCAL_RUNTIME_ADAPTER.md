@@ -36,9 +36,10 @@ local-model contract leaves the exact review unconsumed, disables the one-time
 action, and reports only `model-unavailable`; it exposes no path or model
 observation.
 
-Each attempt applies the fixed 6 GiB process address-space ceiling before model
-loading and restores the prior soft limit as the attempt exits. If the ceiling
-cannot be applied, the attempt fails locally before model loading with a
+Each attempt requires the supervisor service's fixed 6 GiB cgroup memory
+ceiling before model loading. This bounds actual runtime memory without using
+an address-space limit that rejects valid file-backed model mappings. If the
+ceiling is unavailable, the attempt fails locally before model loading with a
 bounded diagnostic and no retry.
 
 ## Local candidate evidence
@@ -181,11 +182,14 @@ acknowledgement, consumption, output, or retry. Its initial bounded-memory
 category was inconclusive because it matched routine loader status containing
 the word `memory`; beta.85 is immutable failed acceptance evidence.
 
-The beta.86 source candidate maps bounded memory only from explicit native
-allocation failures. No path, content, loader output, filesystem observation,
-or contract value crosses IPC, reaches storage, or appears in diagnostics. The
-native redacting callback remains restored before the temporary classifier
-leaves scope. Package and installed-host acceptance remain pending for beta.86.
+The beta.86 candidate passed package, installation, and supervised-launch
+gates, but native availability failed closed before review acknowledgement,
+consumption, output, or retry. It is immutable failed acceptance evidence.
+
+The beta.87 source candidate requires the fixed 6 GiB supervisor cgroup limit
+instead of applying `RLIMIT_AS`. No path, content, loader output, filesystem
+observation, or contract value crosses IPC, reaches storage, or appears in
+diagnostics. Package and installed-host acceptance remain pending for beta.87.
 
 The candidate procedure is recorded in
 [Testing](TESTING.md#m63-local-runtime-installed-host-acceptance). It requires

@@ -1681,10 +1681,14 @@ acknowledgement, consumption, output, or retry. Its initial bounded-memory
 category was inconclusive because it matched routine loader status containing
 the word `memory`; beta.85 is immutable failed acceptance evidence.
 
-The beta.86 source candidate limits the bounded-memory category to explicit
-native allocation failures. It never exposes a model location, content, loader
-output, or filesystem observation. Fresh package promotion and installed Debian
-desktop acceptance remain pending.
+The beta.86 candidate passed package, installation, and supervised-launch
+gates, but native availability failed closed before review acknowledgement,
+consumption, output, or retry; it is immutable failed acceptance evidence.
+
+The beta.87 source candidate enforces M63's fixed 6 GiB ceiling through the
+supervisor cgroup instead of `RLIMIT_AS`, which can reject a file-backed model
+mapping before that runtime commits the equivalent memory. Fresh package
+promotion and installed Debian desktop acceptance remain pending.
 
 The beta.80 installed-host candidate from clean source commit
 `43b655008e506f2f840ebf194e1ba0a10c14e590` passed the pinned Ubuntu 22.04
