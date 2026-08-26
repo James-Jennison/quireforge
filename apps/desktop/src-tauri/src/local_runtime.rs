@@ -11,6 +11,7 @@ use std::{
         atomic::{AtomicBool, AtomicU8, Ordering},
         Arc, Mutex,
     },
+    path::{Component, Path, PathBuf},
     time::{Duration, Instant},
 };
 
@@ -332,9 +333,23 @@ pub(crate) struct LocalRuntimeReservation {
 /// M63 bounds resident memory with the supervisor service's cgroup, rather
 /// than `RLIMIT_AS`: file-backed model mappings count toward address space but
 /// are not a measure of memory actually committed by the runtime.
+fn cgroup_memory_max_path(cgroup: &str) -> Option<PathBuf> {
+    let relative = cgroup.strip_prefix('/')?;
+    let path = Path::new(relative);
+    if path.components().all(|component| matches!(component, Component::Normal(_))) {
+        Some(Path::new("/sys/fs/cgroup").join(path).join("memory.max"))
+    } else {
+        None
+    }
+}
+
 fn memory_ceiling_is_enforced() -> bool {
-    std::fs::read_to_string("/sys/fs/cgroup/memory.max")
+    let cgroup = std::fs::read_to_string("/proc/self/cgroup")
         .ok()
+        .and_then(|contents| contents.lines().find_map(|line| line.strip_prefix("0::")));
+    cgroup
+        .and_then(cgroup_memory_max_path)
+        .and_then(|path| std::fs::read_to_string(path).ok())
         .and_then(|value| value.trim().parse::<u64>().ok())
         .is_some_and(|limit| limit <= MEMORY_CEILING_BYTES)
 }
@@ -746,9 +761,9 @@ fn cancelled() -> LocalRuntimeSnapshot {
 #[cfg(test)]
 mod tests {
     use super::{
-        cancelled, loader_failure_category, loader_failure_diagnostic, memory_ceiling_is_enforced,
-        model_contract, LocalRuntimeService, CHAT_PROMPT_BYTE_LIMIT, MEMORY_CEILING_BYTES,
-        MEMORY_CEILING_MIB, SYSTEM_PROMPT,
+        cancelled, cgroup_memory_max_path, loader_failure_category, loader_failure_diagnostic,
+        memory_ceiling_is_enforced, model_contract, LocalRuntimeService, CHAT_PROMPT_BYTE_LIMIT,
+        MEMORY_CEILING_BYTES, MEMORY_CEILING_MIB, SYSTEM_PROMPT,
     };
 
     #[test]
@@ -769,6 +784,19 @@ mod tests {
         // Host test environments need not be launched by the M63 supervisor;
         // this assertion only proves the checker is total and content-free.
         let _ = memory_ceiling_is_enforced();
+    }
+
+    #[test]
+    fn memory_ceiling_uses_only_the_process_cgroup_memory_file() {
+        assert_eq!(
+            cgroup_memory_max_path("/user.slice/user-1000.slice/app.slice/quireforge.service")
+                .as_deref(),
+            Some(std::path::Path::new(
+                "/sys/fs/cgroup/user.slice/user-1000.slice/app.slice/quireforge.service/memory.max"
+            ))
+        );
+        assert!(cgroup_memory_max_path("relative").is_none());
+        assert!(cgroup_memory_max_path("/user.slice/../escape").is_none());
     }
 
     #[test]

@@ -1685,10 +1685,11 @@ The beta.86 candidate passed package, installation, and supervised-launch
 gates, but native availability failed closed before review acknowledgement,
 consumption, output, or retry; it is immutable failed acceptance evidence.
 
-The beta.87 source candidate enforces M63's fixed 6 GiB ceiling through the
-supervisor cgroup instead of `RLIMIT_AS`, which can reject a file-backed model
-mapping before that runtime commits the equivalent memory. Fresh package
-promotion and installed Debian desktop acceptance remain pending.
+The beta.87 candidate passed package, installation, and supervised-launch
+gates, but its cgroup admission lookup failed closed before review
+acknowledgement, consumption, output, or retry. The beta.88 candidate resolves
+the limit from the exact process cgroup path; fresh installed-host acceptance
+remains pending.
 
 The beta.80 installed-host candidate from clean source commit
 `43b655008e506f2f840ebf194e1ba0a10c14e590` passed the pinned Ubuntu 22.04

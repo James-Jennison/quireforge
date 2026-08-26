@@ -193,11 +193,15 @@ staging, local-installation identity, and supervised-launch gates, but native
 availability failed closed before review acknowledgement, consumption, output,
 or retry. It is immutable failed acceptance evidence.
 
-The unvalidated `0.1.0-beta.87` source candidate replaces the unsuitable
-address-space limit with the supervisor cgroup's fixed 6 GiB memory ceiling.
-It continues to expose no model location, content, loader output, or filesystem
-observation and preserves the M48, M55, and M60 contracts. Fresh package,
-installation, and installed-host acceptance evidence is required.
+The beta.87 candidate passed package, installation, and supervised-launch
+gates, but its cgroup admission lookup read the mount root and failed closed
+before review acknowledgement, consumption, output, or retry. It is immutable
+failed acceptance evidence.
+
+The unvalidated beta.88 candidate resolves the memory limit from the process's
+exact cgroup v2 path. It exposes no model location, content, loader output, or
+filesystem observation and preserves M48, M55, and M60. Fresh acceptance is
+required.
 
 ### Current provider-neutral completion record
 

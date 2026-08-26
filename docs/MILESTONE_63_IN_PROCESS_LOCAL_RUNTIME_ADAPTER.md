@@ -186,10 +186,12 @@ The beta.86 candidate passed package, installation, and supervised-launch
 gates, but native availability failed closed before review acknowledgement,
 consumption, output, or retry. It is immutable failed acceptance evidence.
 
-The beta.87 source candidate requires the fixed 6 GiB supervisor cgroup limit
-instead of applying `RLIMIT_AS`. No path, content, loader output, filesystem
-observation, or contract value crosses IPC, reaches storage, or appears in
-diagnostics. Package and installed-host acceptance remain pending for beta.87.
+The beta.87 candidate passed package, installation, and supervised-launch
+gates, but its cgroup admission lookup failed closed before review
+acknowledgement, consumption, output, or retry. The beta.88 candidate resolves
+the fixed 6 GiB limit from the process's exact cgroup v2 path. No path, content,
+loader output, filesystem observation, or contract value crosses IPC, reaches
+storage, or appears in diagnostics. Fresh acceptance remains pending.
 
 The candidate procedure is recorded in
 [Testing](TESTING.md#m63-local-runtime-installed-host-acceptance). It requires

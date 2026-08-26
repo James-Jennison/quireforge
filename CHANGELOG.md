@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.0-beta.88 — M63 service-cgroup lookup
+
+- Resolves the fixed 6 GiB memory limit from the process's exact cgroup v2
+  path, rather than the unconstrained cgroup mount root.
+- Beta.87 failed closed before review acknowledgement, consumption, output, or
+  retry because its cgroup admission lookup used that mount root. It remains
+  immutable failed acceptance evidence.
+
 ## 0.1.0-beta.87 — M63 cgroup memory admission
 
 - Replaces the unsuitable `RLIMIT_AS` address-space limit with a required
