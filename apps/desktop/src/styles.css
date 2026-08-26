@@ -410,6 +410,12 @@ button:disabled {
   color: var(--tm);
 }
 
+.navigation-lane--top-level .nav-label {
+  padding-top: 0;
+  border-top: 0;
+  color: var(--ts);
+}
+
 .nav-item {
   position: relative;
   display: flex;
@@ -1783,6 +1789,35 @@ button:disabled {
   line-height: 1.65;
 }
 
+.thread-status-dot {
+  display: inline-block;
+  width: 0.6rem;
+  height: 0.6rem;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--accent-strong);
+}
+
+.thread-status-dot--needsDecision {
+  border: 2px solid var(--accent-strong);
+  background: transparent;
+}
+
+.workspace-migration-note {
+  display: flex;
+  gap: 0.5rem;
+  align-items: baseline;
+  padding: 0.55rem 1rem;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--panel) 90%, var(--accent) 10%);
+  color: var(--ts);
+  font-size: 0.8rem;
+}
+
+.workspace-migration-note strong {
+  color: var(--tp);
+}
+
 .session-search {
   margin-top: 24px;
 }
@@ -2805,6 +2840,35 @@ button:disabled {
   min-height: 88px;
   overscroll-behavior: contain;
   scroll-behavior: smooth;
+}
+
+.conversation-events--local-chat {
+  min-height: 0;
+  gap: 12px;
+}
+
+.local-chat-turn {
+  align-self: flex-start;
+  max-width: min(52rem, 88%);
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px 14px 14px 4px;
+  background: var(--surface-raised);
+}
+
+.local-chat-turn--user {
+  align-self: flex-end;
+  border-radius: 14px 14px 4px;
+  background: color-mix(in srgb, var(--accent) 16%, var(--surface-raised));
+}
+
+.local-chat-turn__role {
+  margin: 0 0 5px;
+  color: var(--tm);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
 .workspace-selector {

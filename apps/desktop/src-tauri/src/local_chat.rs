@@ -4,7 +4,7 @@
 //! result. It has no project, source, artifact, review, provider, or tool
 //! types in its public interface.
 
-use crate::local_runtime::{LocalRuntimeService, LocalRuntimeSnapshot};
+use crate::local_runtime::{local_clock, LocalRuntimeService, LocalRuntimeSnapshot};
 use serde::Deserialize;
 use std::sync::Arc;
 
@@ -32,6 +32,9 @@ impl LocalChatService {
         if request.message.len() > CHAT_TEXT_BYTE_LIMIT {
             return failed("input-too-large");
         }
+        if asks_for_local_clock(&request.message) {
+            return local_clock_snapshot();
+        }
         if !self.runtime.availability().available {
             return LocalRuntimeService::unavailable_snapshot();
         }
@@ -43,6 +46,53 @@ impl LocalChatService {
 
     pub(crate) fn cancel(&self) -> bool {
         self.runtime.request_cancel_local_chat()
+    }
+}
+
+fn asks_for_local_clock(message: &str) -> bool {
+    let normalized = message
+        .bytes()
+        .map(|byte| {
+            if byte.is_ascii_alphanumeric() {
+                byte.to_ascii_lowercase()
+            } else {
+                b' '
+            }
+        })
+        .collect::<Vec<_>>();
+    let text = String::from_utf8_lossy(&normalized)
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ");
+    [
+        "what time is it",
+        "what s the time",
+        "current time",
+        "tell me the time",
+        "what is the date",
+        "what s the date",
+        "what date is it",
+        "today s date",
+        "what day is it",
+    ]
+    .iter()
+    .any(|phrase| text.contains(phrase))
+}
+
+fn local_clock_snapshot() -> LocalRuntimeSnapshot {
+    match local_clock() {
+        Some(clock) => LocalRuntimeSnapshot {
+            schema_version: 1,
+            local_only: true,
+            state: "completed".into(),
+            output: Some(format!("The local date and time is {clock}.")),
+            diagnostic: None,
+            input_token_limit: 4096,
+            output_token_limit: 512,
+            deadline_seconds: 60,
+            memory_ceiling_mib: 6144,
+        },
+        None => failed("clock-unavailable"),
     }
 }
 
@@ -91,5 +141,28 @@ mod tests {
     #[test]
     fn local_chat_cancellation_is_scoped_to_its_own_absent_turn() {
         assert!(!service().cancel());
+    }
+
+    #[test]
+    fn local_clock_questions_complete_without_a_model_attempt() {
+        for message in ["What time is it?", "What's the date today?"] {
+            let snapshot = service().run(LocalChatRequest {
+                message: message.into(),
+            });
+            assert_eq!(snapshot.state, "completed");
+            assert!(snapshot
+                .output
+                .as_deref()
+                .is_some_and(|output| output.contains("local date and time")));
+        }
+    }
+
+    #[test]
+    fn ordinary_mentions_of_time_do_not_bypass_the_bounded_runtime() {
+        let snapshot = service().run(LocalChatRequest {
+            message: "Explain time complexity in one sentence.".into(),
+        });
+        assert_eq!(snapshot.state, "failed");
+        assert_eq!(snapshot.diagnostic.as_deref(), Some("model-unavailable"));
     }
 }

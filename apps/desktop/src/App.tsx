@@ -3355,6 +3355,10 @@ export default function App({
       ? "Local preferences and supported connections"
       : (activeNavigationItem?.description ??
         "Dashboard and starting workspace");
+  const legacyLaneMigrationVisible =
+    activeNavigationItem !== null &&
+    (activeNavigationItem.lane === "work" ||
+      activeNavigationItem.lane === "code");
   const recentSessions = [...sessions.sessions]
     .sort((left, right) => right.updatedAtMs - left.updatedAtMs)
     .slice(0, 5);
@@ -3827,6 +3831,66 @@ export default function App({
         />
 
         <nav className="primary-nav" aria-label="Workspace navigation">
+          <div className="navigation-lane navigation-lane--top-level">
+            <p className="nav-label">Workspace</p>
+            {[
+              {
+                route: "sessions" as const,
+                label: "Threads",
+                icon: "thread",
+                description:
+                  "Browse and continue bounded local thread references",
+              },
+              {
+                route: "projects" as const,
+                label: "Projects",
+                icon: "folder",
+                description: "Select and manage local projects",
+              },
+            ].map((item) => (
+              <a
+                className={
+                  workspaceLocation.route === item.route
+                    ? "nav-item nav-item--active"
+                    : "nav-item"
+                }
+                href={workspaceLocationHash(workspaceLocationFor(item.route))}
+                key={item.route}
+                aria-current={
+                  workspaceLocation.route === item.route ? "page" : undefined
+                }
+                aria-label={item.label}
+                title={item.description}
+                onClick={(event) => {
+                  event.preventDefault();
+                  navigateWorkspace(item.route);
+                }}
+              >
+                <Glyph name={item.icon} />
+                <span>{item.label}</span>
+              </a>
+            ))}
+            <button
+              className={
+                workspaceLocation.route === "settings"
+                  ? "nav-item nav-item--active"
+                  : "nav-item"
+              }
+              type="button"
+              aria-current={
+                workspaceLocation.route === "settings" ? "page" : undefined
+              }
+              aria-label="Settings"
+              title="Application preferences and existing account settings"
+              onClick={(event) => {
+                event.preventDefault();
+                navigateWorkspace("settings", "general");
+              }}
+            >
+              <Glyph name="grid" />
+              <span>Settings</span>
+            </button>
+          </div>
           {(["chat", "work", "code"] as const).map((lane, laneIndex) => (
             <div className="navigation-lane" key={lane}>
               <p
@@ -3839,7 +3903,12 @@ export default function App({
                 {lane}
               </p>
               {workspaceNavigation
-                .filter((item) => item.lane === lane)
+                .filter(
+                  (item) =>
+                    item.lane === lane &&
+                    item.route !== "sessions" &&
+                    item.route !== "projects",
+                )
                 .map((item) =>
                   item.route === "dynamic-analysis" ? (
                     <button
@@ -4096,6 +4165,19 @@ export default function App({
             </button>
           </div>
         </header>
+
+        {legacyLaneMigrationVisible && (
+          <aside
+            className="workspace-migration-note"
+            aria-label="Threads migration"
+          >
+            <strong>Threads are now the starting point.</strong>
+            <span>
+              This Work or Code capability remains available here while it
+              becomes thread-scoped. Nothing was removed or granted.
+            </span>
+          </aside>
+        )}
 
         <WorkbenchActionPalette
           open={commandPaletteOpen}

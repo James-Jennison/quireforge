@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.1.0-beta.90 — M69B Threads-first candidate
+
+- Makes Threads the default workspace and adds a top-level Threads, Projects,
+  and Settings navigation layer while retaining every legacy Chat, Work, and
+  Code hash route as a migration entry point.
+- Adds a bounded, presentation-only thread tree with session-local unread
+  state, a closed status enum, and fail-closed folder aggregation. No pending
+  decision is fabricated because M69C has not introduced a native
+  pending-decision event.
+- Refines the M69A local composer: Enter sends, Shift+Enter remains multiline,
+  turns render as a natural local transcript, and direct local date/time
+  questions use the host clock without exposing model details.
+- This is a fresh candidate. Package, daemon installation, and supervised
+  installed-host acceptance evidence is recorded only after those gates
+  complete.
+
 ## 0.1.0-beta.89 — M69A local chat candidate
 
 - Adds the first ordinary local-only Chat turn: bounded typed user text enters

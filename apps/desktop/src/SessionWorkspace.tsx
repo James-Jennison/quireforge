@@ -14,6 +14,11 @@ import type {
 } from "./lib/modelSelection";
 import type { ProjectWorkspaceSnapshot } from "./lib/project";
 import {
+  groupThreadTree,
+  projectThreadTree,
+  type ThreadStatus,
+} from "./lib/threadTree";
+import {
   conversationContinueRequestSchema,
   sessionListRequestSchema,
   type ConversationContinueRequest,
@@ -70,6 +75,8 @@ const stateLabels: Record<Session["state"], string> = {
   missing: "Missing in Codex",
 };
 
+const threadsMigrationDismissalKey = "quireforge-m69b-threads-migration";
+
 function titleFor(session: Session): string {
   return session.title ?? "Untitled session";
 }
@@ -81,6 +88,12 @@ function formatUpdated(timestamp: number): string {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(date);
+}
+
+function threadStatusLabel(status: ThreadStatus): string | null {
+  if (status === "unread") return "Unread";
+  if (status === "needsDecision") return "Needs decision";
+  return null;
 }
 
 export function SessionWorkspace({
@@ -111,6 +124,13 @@ export function SessionWorkspace({
   const [openIds, setOpenIds] = useState<string[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [prompt, setPrompt] = useState("");
+  const [viewedThreadIds, setViewedThreadIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const [migrationVisible, setMigrationVisible] = useState(
+    () =>
+      window.localStorage.getItem(threadsMigrationDismissalKey) !== "dismissed",
+  );
 
   const sessionsById = useMemo(
     () =>
@@ -123,15 +143,20 @@ export function SessionWorkspace({
     () => new Map(projects.map((project) => [project.id, project.displayName])),
     [projects],
   );
-  const groupedSessions = useMemo(() => {
-    const groups = new Map<string, Session[]>();
-    for (const session of snapshot.sessions) {
-      const group = groups.get(session.projectId) ?? [];
-      group.push(session);
-      groups.set(session.projectId, group);
-    }
-    return [...groups.entries()];
-  }, [snapshot.sessions]);
+  const threadGroups = useMemo(
+    () =>
+      groupThreadTree(
+        projectThreadTree(
+          snapshot.sessions.map((session) => ({
+            conversationId: session.conversationId,
+            title: session.title,
+            projectLabel: projectNames.get(session.projectId) ?? null,
+          })),
+          viewedThreadIds,
+        ),
+      ),
+    [projectNames, snapshot.sessions, viewedThreadIds],
+  );
 
   const visibleOpenIds = openIds.filter((id) => sessionsById.has(id));
   const effectiveSelectedId =
@@ -164,6 +189,9 @@ export function SessionWorkspace({
     !busy;
 
   function openSession(session: Session) {
+    setViewedThreadIds((current) =>
+      new Set(current).add(session.conversationId),
+    );
     setOpenIds((current) => {
       if (current.includes(session.conversationId)) return current;
       return [...current.slice(-7), session.conversationId];
@@ -246,17 +274,42 @@ export function SessionWorkspace({
     >
       <div className="session-workspace__intro">
         <div>
-          <p className="eyebrow">Session history</p>
+          <p className="eyebrow">Threads</p>
           <h1 id="sessions-title" data-workspace-heading tabIndex={-1}>
-            Return to work without copying its history.
+            Pick up any conversation from one place.
           </h1>
         </div>
         <p>
-          Codex remains authoritative. QuireForge shows bounded titles and
-          app-owned references only; transcripts, native IDs, and paths stay
-          outside React.
+          QuireForge shows bounded local references only. Codex remains
+          authoritative; transcripts, native IDs, and paths stay outside React.
         </p>
       </div>
+      {migrationVisible && (
+        <aside
+          className="conversation-boundary-note"
+          aria-label="Threads migration"
+        >
+          <div>
+            <strong>Threads are now the starting point.</strong>
+            <p>
+              Work and Code remain available while they become capabilities of a
+              conversation. Nothing was removed or granted.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              window.localStorage.setItem(
+                threadsMigrationDismissalKey,
+                "dismissed",
+              );
+              setMigrationVisible(false);
+            }}
+          >
+            Dismiss Threads migration
+          </button>
+        </aside>
+      )}
 
       <form
         className="session-search"
@@ -325,24 +378,29 @@ export function SessionWorkspace({
 
       {snapshot.state === "ready" && (
         <div className="session-layout">
-          <div
-            className="session-history"
-            aria-label="App-owned session history"
-          >
-            {groupedSessions.map(([projectId, sessions]) => (
+          <div className="session-history" aria-label="Thread tree">
+            {threadGroups.map((group) => (
               <section
                 className="session-group"
-                aria-labelledby={`session-group-${projectId}`}
-                key={projectId}
+                aria-labelledby={`thread-group-${group.label}`}
+                key={group.label}
               >
                 <div className="session-group__heading">
-                  <h2 id={`session-group-${projectId}`}>
-                    {projectNames.get(projectId) ?? "Unavailable project"}
-                  </h2>
-                  <span>{sessions.length}</span>
+                  <h2 id={`thread-group-${group.label}`}>{group.label}</h2>
+                  <span>{group.threads.length}</span>
+                  {threadStatusLabel(group.status) && (
+                    <span
+                      className={`thread-status-dot thread-status-dot--${group.status}`}
+                      role="img"
+                      aria-label={`${threadStatusLabel(group.status)} threads in ${group.label}`}
+                    />
+                  )}
                 </div>
                 <ul>
-                  {sessions.map((session) => {
+                  {group.threads.map((thread) => {
+                    const session = sessionsById.get(thread.id);
+                    if (!session) return null;
+                    const statusLabel = threadStatusLabel(thread.status);
                     const parent = session.parentConversationId
                       ? sessionsById.get(session.parentConversationId)
                       : undefined;
@@ -356,7 +414,7 @@ export function SessionWorkspace({
                           onClick={() => openSession(session)}
                         >
                           <span className="session-row__title">
-                            {titleFor(session)}
+                            {thread.title}
                           </span>
                           <span className="session-row__meta">
                             {parent ? `Fork of ${titleFor(parent)} · ` : ""}
@@ -367,6 +425,13 @@ export function SessionWorkspace({
                           >
                             {stateLabels[session.state]}
                           </span>
+                          {statusLabel && (
+                            <span
+                              className={`thread-status-dot thread-status-dot--${thread.status}`}
+                              role="img"
+                              aria-label={statusLabel}
+                            />
+                          )}
                         </button>
                       </li>
                     );

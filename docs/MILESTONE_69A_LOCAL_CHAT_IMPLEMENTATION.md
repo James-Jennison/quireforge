@@ -91,10 +91,15 @@ as part of M69A.
 
 ## Candidate implementation
 
-The beta.89 candidate implements the typed `LocalChatService`, dedicated
+The beta.90 candidate retains the typed `LocalChatService`, dedicated
 `local_chat_run`/`local_chat_cancel` IPC, and the ephemeral Chat composer. Its
 native request is only a bounded message string; it uses a local-chat-specific
 runtime reservation and prompt, preserving the M60 reviewed-request prompt and
-contract. Desktop and narrow/mobile E2E cover a normal no-project chat turn.
-The candidate remains incomplete until the package, installation, and
-supervised installed-host acceptance gates have fresh evidence.
+contract. Enter submits a normal turn while Shift+Enter remains multiline; the
+visible transcript retains only the typed message and bounded result for the
+open renderer session. Direct date/time questions return the host local clock
+without a model attempt, while ordinary references to time remain ordinary
+bounded local-runtime requests. Desktop and narrow/mobile E2E cover a normal
+no-project chat turn. The candidate remains incomplete until the package,
+installation, and supervised installed-host acceptance gates have fresh
+evidence.

@@ -7,6 +7,11 @@ interface LocalChatWorkspaceProps {
   onCancel: () => Promise<boolean>;
 }
 
+interface LocalChatTurn {
+  role: "user" | "assistant";
+  text: string;
+}
+
 const diagnosticMessage: Record<string, string> = {
   "invalid-request": "Enter a message to start a local chat turn.",
   "input-too-large": "That message is too large for this local runtime.",
@@ -24,16 +29,28 @@ export function LocalChatWorkspace({
 }: LocalChatWorkspaceProps) {
   const [message, setMessage] = useState("");
   const [snapshot, setSnapshot] = useState<LocalChatSnapshot | null>(null);
+  const [turns, setTurns] = useState<LocalChatTurn[]>([]);
   const [busy, setBusy] = useState(false);
 
   async function run() {
     if (busy || !message.trim()) return;
+    const submittedMessage = message;
     setBusy(true);
     setSnapshot(null);
+    setTurns((current) => [
+      ...current,
+      { role: "user", text: submittedMessage },
+    ]);
+    setMessage("");
     try {
-      const result = await onRun({ message });
+      const result = await onRun({ message: submittedMessage });
       setSnapshot(result);
-      if (result.state === "completed") setMessage("");
+      if (result.state === "completed" && result.output) {
+        setTurns((current) => [
+          ...current,
+          { role: "assistant", text: result.output ?? "" },
+        ]);
+      }
     } catch {
       setSnapshot({
         schemaVersion: 1,
@@ -63,9 +80,23 @@ export function LocalChatWorkspace({
           <p>Local runtime · No project · Ephemeral</p>
         </div>
       </header>
-      {snapshot?.output && (
-        <div className="conversation-events" aria-live="polite">
-          <p className="conversation-event__message">{snapshot.output}</p>
+      {turns.length > 0 && (
+        <div
+          className="conversation-events conversation-events--local-chat"
+          aria-live="polite"
+          aria-relevant="additions"
+        >
+          {turns.map((turn, index) => (
+            <article
+              className={`local-chat-turn local-chat-turn--${turn.role}`}
+              key={`${turn.role}-${index}`}
+            >
+              <p className="local-chat-turn__role">
+                {turn.role === "user" ? "You" : "QuireForge"}
+              </p>
+              <p className="conversation-event__message">{turn.text}</p>
+            </article>
+          ))}
         </div>
       )}
       {snapshot?.diagnostic && (
@@ -83,13 +114,21 @@ export function LocalChatWorkspace({
           aria-label="Local chat message"
           value={message}
           onChange={(event) => setMessage(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && !event.shiftKey) {
+              event.preventDefault();
+              void run();
+            }
+          }}
           disabled={busy}
           placeholder="Ask QuireForge anything…"
           rows={4}
         />
         <div className="conversation-composer__actions">
           <span>
-            {busy ? "Local runtime is responding" : "No project context"}
+            {busy
+              ? "QuireForge is responding"
+              : "Enter to send · Shift+Enter for a new line"}
           </span>
           {busy ? (
             <button type="button" onClick={() => void onCancel()}>

@@ -553,10 +553,44 @@ impl LocalRuntimeReservation {
             text,
             &self.control,
             &contract.model_path,
-            LOCAL_CHAT_SYSTEM_PROMPT,
+            &local_chat_system_prompt(),
             "local-chat-invalid",
             "local-chat-too-large",
         )
+    }
+}
+
+fn local_chat_system_prompt() -> String {
+    match local_clock() {
+        Some(clock) => format!(
+            "{LOCAL_CHAT_SYSTEM_PROMPT} The current local date and time is {clock}; use it for date or time questions. Never emit placeholder text or claim that you lack real-time capability."
+        ),
+        None => format!(
+            "{LOCAL_CHAT_SYSTEM_PROMPT} Do not invent a date or emit placeholder text when the calendar is unavailable."
+        ),
+    }
+}
+
+pub(crate) fn local_clock() -> Option<String> {
+    let mut now: libc::time_t = 0;
+    let mut local: libc::tm = unsafe { std::mem::zeroed() };
+    unsafe {
+        if libc::time(&mut now).is_negative() || libc::localtime_r(&now, &mut local).is_null() {
+            None
+        } else {
+            let mut formatted = [0_i8; 64];
+            let written = libc::strftime(
+                formatted.as_mut_ptr(),
+                formatted.len(),
+                c"%Y-%m-%d %H:%M %Z".as_ptr(),
+                &local,
+            );
+            (written > 0).then(|| {
+                CStr::from_ptr(formatted.as_ptr())
+                    .to_string_lossy()
+                    .into_owned()
+            })
+        }
     }
 }
 
@@ -814,8 +848,9 @@ fn cancelled() -> LocalRuntimeSnapshot {
 mod tests {
     use super::{
         cancelled, cgroup_memory_max_path, loader_failure_category, loader_failure_diagnostic,
-        memory_ceiling_is_enforced, model_contract, LocalRuntimeService, CHAT_PROMPT_BYTE_LIMIT,
-        LOCAL_CHAT_SYSTEM_PROMPT, MEMORY_CEILING_BYTES, MEMORY_CEILING_MIB, REVIEW_SYSTEM_PROMPT,
+        local_chat_system_prompt, memory_ceiling_is_enforced, model_contract, LocalRuntimeService,
+        CHAT_PROMPT_BYTE_LIMIT, LOCAL_CHAT_SYSTEM_PROMPT, MEMORY_CEILING_BYTES, MEMORY_CEILING_MIB,
+        REVIEW_SYSTEM_PROMPT,
     };
 
     #[test]
@@ -856,6 +891,17 @@ mod tests {
         assert!(REVIEW_SYSTEM_PROMPT.contains("reviewed request"));
         assert!(LOCAL_CHAT_SYSTEM_PROMPT.contains("user's message"));
         assert_eq!(CHAT_PROMPT_BYTE_LIMIT, 2 * (96 * 1024 + 256));
+    }
+
+    #[test]
+    fn local_chat_prompt_has_no_date_placeholder() {
+        let prompt = local_chat_system_prompt();
+        assert!(!prompt.contains("[insert current date]"));
+        assert!(
+            prompt.contains("Never emit placeholder text")
+                || prompt.contains("Do not invent a date")
+        );
+        assert!(prompt.contains("current local date and time"));
     }
 
     #[test]

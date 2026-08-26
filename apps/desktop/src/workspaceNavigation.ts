@@ -44,6 +44,13 @@ export interface WorkspaceNavigationItem {
 
 export const workspaceNavigation: readonly WorkspaceNavigationItem[] = [
   {
+    route: "sessions",
+    label: "Threads",
+    icon: "thread",
+    lane: "chat",
+    description: "Browse and continue bounded local thread references",
+  },
+  {
     route: "home",
     label: "Overview",
     icon: "grid",
@@ -98,13 +105,6 @@ export const workspaceNavigation: readonly WorkspaceNavigationItem[] = [
     icon: "git",
     lane: "code",
     description: "Inspect normalized repository evidence",
-  },
-  {
-    route: "sessions",
-    label: "Threads",
-    icon: "thread",
-    lane: "work",
-    description: "Review and continue task history",
   },
   {
     route: "scheduled",
@@ -174,7 +174,7 @@ const settingsSections = new Set<SettingsSection>([
 ]);
 
 export const defaultWorkspaceLocation: WorkspaceLocation = {
-  route: "home",
+  route: "sessions",
   settingsSection: null,
 };
 

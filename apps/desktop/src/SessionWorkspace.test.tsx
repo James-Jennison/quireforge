@@ -155,6 +155,22 @@ describe("SessionWorkspace", () => {
     );
   });
 
+  it("shows local-only unread state and dismisses the migration explanation", () => {
+    renderWorkspace();
+
+    expect(screen.getAllByLabelText("Unread")).toHaveLength(2);
+    expect(screen.getByLabelText("Threads migration")).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Dismiss Threads migration" }),
+    );
+    expect(
+      screen.queryByLabelText("Threads migration"),
+    ).not.toBeInTheDocument();
+    expect(
+      window.localStorage.getItem("quireforge-m69b-threads-migration"),
+    ).toBe("dismissed");
+  });
+
   it("opens keyboard-accessible tabs and resumes or forks only the app ID", async () => {
     const props = renderWorkspace();
 
@@ -224,7 +240,7 @@ describe("SessionWorkspace", () => {
       diagnosticCode: null,
     });
     renderWorkspace({ snapshot: missing });
-    fireEvent.click(screen.getByRole("button", { name: /Untitled session/u }));
+    fireEvent.click(screen.getByRole("button", { name: /Untitled thread/u }));
     expect(
       screen.getByText(/No substitute session will be opened/u),
     ).toBeInTheDocument();

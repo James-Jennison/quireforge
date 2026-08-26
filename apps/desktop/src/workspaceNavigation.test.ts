@@ -10,6 +10,7 @@ import {
 describe("workspace navigation", () => {
   it("defines every visible sidebar destination once", () => {
     expect(workspaceNavigation.map(({ route }) => route)).toEqual([
+      "sessions",
       "home",
       "advisor",
       "conversation",
@@ -18,7 +19,6 @@ describe("workspace navigation", () => {
       "ledger",
       "adapters",
       "project-state",
-      "sessions",
       "scheduled",
       "integrations",
       "files",

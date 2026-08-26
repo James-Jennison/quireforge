@@ -2234,7 +2234,7 @@ test("authenticated home shows real usage without milestone labels", async ({
   page,
 }) => {
   await installNativeFixture(page);
-  await page.goto("/");
+  await page.goto("/#home");
 
   await expect(
     page.getByRole("heading", { name: "What should we build today?" }),
@@ -2264,7 +2264,7 @@ test("every sidebar destination replaces the active workspace without page scrol
   page,
 }) => {
   await installNativeFixture(page);
-  await page.goto("/");
+  await page.goto("/#home");
 
   const destinations = [
     ["Overview", "home"],
@@ -2611,7 +2611,7 @@ test("visual polish keeps the branded shell and composer accessible", async ({
   isMobile,
 }, testInfo) => {
   await installNativeFixture(page);
-  await page.goto("/");
+  await page.goto("/#home");
 
   const homeComposer = page.locator('[data-visual-region="home-composer"]');
   await expect(homeComposer).toBeVisible();
@@ -2744,7 +2744,7 @@ test("native session fixture renders grouping, tabs, and bounded controls", asyn
   await expect(
     page.getByText("Recommendation — never automatic"),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Dismiss" }).click();
+  await page.getByRole("button", { name: "Dismiss", exact: true }).click();
   await expect(page.getByText("No change")).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Resume", exact: true }),
@@ -3185,7 +3185,7 @@ test("reduced-motion preference disables animation and scripted smooth scrolling
     };
   });
   await installNativeFixture(page, nativeResponses);
-  await page.goto("/");
+  await page.goto("/#home");
 
   await page.evaluate(() => {
     const probe = document.createElement("span");
@@ -3364,7 +3364,9 @@ test("captures routed desktop workspace evidence", async ({
   if (isMobile) {
     await page.goto("/");
     await expect(
-      page.getByRole("heading", { name: "What should we build today?" }),
+      page.getByRole("heading", {
+        name: "Pick up any conversation from one place.",
+      }),
     ).toBeVisible();
     await page.screenshot({
       path: testInfo.outputPath("after-responsive-home.png"),
@@ -3404,7 +3406,9 @@ test("captures routed desktop workspace evidence", async ({
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto("/");
   await expect(
-    page.getByRole("heading", { name: "What should we build today?" }),
+    page.getByRole("heading", {
+      name: "Pick up any conversation from one place.",
+    }),
   ).toBeVisible();
   await page.screenshot({
     path: testInfo.outputPath("after-home-three-pane-1920x1080.png"),

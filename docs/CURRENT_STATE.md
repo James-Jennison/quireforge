@@ -205,12 +205,16 @@ explicit governed local-only attempt. The evidence record remains content-free:
 no model location, content, loader output, filesystem observation, or generated
 response is retained. M48, M55, and M60 remain preserved.
 
-The `0.1.0-beta.89` M69A local-chat candidate is in validation. It adds a
-dedicated local-only IPC service and an ephemeral Chat composer with no project,
-source, artifact, ledger, provider, tool, filesystem, or credential input.
-It reuses only the bounded M63 primitive and does not alter M60 governed review.
-No package, installation, or supervised installed-host acceptance claim is made
-until its fresh candidate completes those gates.
+The `0.1.0-beta.90` M69B Threads-first candidate is in validation. It combines
+the M69A dedicated local-only IPC service and ephemeral Chat composer with a
+presentation-only Threads-first shell. The thread tree uses existing bounded
+thread/project labels, session-local unread state, and a closed fail-closed
+status model; it does not fabricate pending decisions. Local Chat remains
+no-project, source, artifact, ledger, provider, tool, filesystem, or credential
+free, and direct local date/time questions use only the host clock. It reuses
+only the bounded M63 primitive and does not alter M48, M55, or M60 governed
+review. No package, installation, or supervised installed-host acceptance claim
+is made until this fresh candidate completes those gates.
 
 ### Current provider-neutral completion record
 

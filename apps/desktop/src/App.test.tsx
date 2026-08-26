@@ -629,7 +629,7 @@ describe("QuireForge desktop shell", () => {
     expect(workspace).not.toHaveAttribute("hidden");
     expect(
       within(workspace as HTMLElement).getByRole("heading", {
-        name: "Return to work without copying its history.",
+        name: "Pick up any conversation from one place.",
       }),
     ).toBeVisible();
   });
@@ -881,9 +881,9 @@ describe("QuireForge desktop shell", () => {
       />,
     );
     expect(
-      await screen.findByRole("link", { name: "Overview" }),
+      await screen.findByRole("link", { name: "Threads" }),
     ).toHaveAttribute("aria-current", "page");
-    expect(window.location.hash).toBe("#home");
+    expect(window.location.hash).toBe("#sessions");
   });
 
   it("labels a browser-only render without simulating native success", async () => {
@@ -1886,7 +1886,7 @@ describe("QuireForge desktop shell", () => {
 
     const sessionWorkspace = screen
       .getByRole("heading", {
-        name: "Return to work without copying its history.",
+        name: "Pick up any conversation from one place.",
       })
       .closest("section");
     fireEvent.click(

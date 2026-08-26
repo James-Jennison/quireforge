@@ -116,3 +116,19 @@ are required only if M69B changes native package behavior. The milestone report
 must state explicitly that M69B introduced no local-runtime turn, Action Card,
 project attachment, provider, source, tool, terminal, Git, browser, connector,
 or automation capability.
+
+## Candidate implementation
+
+The beta.90 candidate makes Threads the default route and gives the sidebar a
+top-level Threads, Projects, and Settings layer. Existing Chat, Work, and Code
+hash routes remain reachable and display a migration explanation; the Threads
+explanation is local presentation state and can be dismissed without changing a
+thread or project record.
+
+The thread tree is a strict TypeScript projection containing only a bounded
+thread title, optional project label, and the closed `none`, `unread`, or
+`needsDecision` status. Existing thread references are unread until opened in
+this app session. The candidate has no native pending-decision source, so it
+never synthesizes `needsDecision`; unknown status values fail closed to no dot.
+No native command or additional authority is introduced. The candidate remains
+incomplete until the required fresh validation and acceptance evidence exists.
