@@ -1,7 +1,8 @@
 # M70 -- Typed Project Knowledge Foundation
 
-Status: source validation complete in the `0.1.0-beta.97` candidate; desktop
-E2E and package/installed-host acceptance remain required. M70 is the first
+Status: implementation, full source validation, and desktop E2E are complete
+in the `0.1.0-beta.98` candidate; package/installed-host acceptance remains
+required. M70 is the first
 continuity slice; it creates no agent read/write path, context assembly,
 provider transmission, execution authority, or external capability.
 

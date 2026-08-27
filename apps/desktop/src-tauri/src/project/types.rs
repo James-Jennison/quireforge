@@ -1629,6 +1629,12 @@ pub struct KnowledgeRecordProjectRequest {
 pub struct KnowledgeRecordBindingRequest {
     pub record_id: String,
 }
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct KnowledgeRecordTransitionRequest {
+    pub record_id: String,
+    pub status: KnowledgeRecordStatus,
+}
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct KnowledgeRecordSummary {

@@ -81,6 +81,7 @@ import {
   knowledgeLedgerCreateRequestSchema,
   knowledgeLedgerProjectRequestSchema,
   knowledgeLedgerSnapshotSchema,
+  knowledgeLedgerTransitionRequestSchema,
   type KnowledgeLedgerSnapshot,
 } from "./knowledgeLedger";
 import {
@@ -495,6 +496,8 @@ export const CONTEXT_AUTHORITY_LEDGER_COMMAND = "context_authority_ledger";
 export const KNOWLEDGE_LEDGER_STATUS_COMMAND = "knowledge_ledger_status";
 export const KNOWLEDGE_LEDGER_CREATE_COMMAND = "knowledge_ledger_create";
 export const KNOWLEDGE_LEDGER_BIND_COMMAND = "knowledge_ledger_bind";
+export const KNOWLEDGE_LEDGER_TRANSITION_COMMAND =
+  "knowledge_ledger_transition";
 export const CONTEXT_ASSEMBLY_PREPARE_COMMAND = "context_assembly_prepare";
 export const CONTEXT_ASSEMBLY_CONFIRM_COMMAND = "context_assembly_confirm";
 export const CONTEXT_ASSEMBLY_RUN_LOCAL_RUNTIME_COMMAND =
@@ -1867,6 +1870,15 @@ export const bindKnowledgeRecord = async (
   knowledgeLedgerSnapshotSchema.parse(
     await invokeFunction(KNOWLEDGE_LEDGER_BIND_COMMAND, {
       request: knowledgeLedgerBindingRequestSchema.parse(request),
+    }),
+  );
+export const transitionKnowledgeRecord = async (
+  request: unknown,
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<KnowledgeLedgerSnapshot> =>
+  knowledgeLedgerSnapshotSchema.parse(
+    await invokeFunction(KNOWLEDGE_LEDGER_TRANSITION_COMMAND, {
+      request: knowledgeLedgerTransitionRequestSchema.parse(request),
     }),
   );
 export const prepareContextAssembly = (

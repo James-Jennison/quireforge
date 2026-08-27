@@ -42,6 +42,9 @@ export const knowledgeLedgerCreateRequestSchema = z
 export const knowledgeLedgerBindingRequestSchema = z
   .object({ recordId: id })
   .strict();
+export const knowledgeLedgerTransitionRequestSchema = z
+  .object({ recordId: id, status })
+  .strict();
 export const knowledgeLedgerSnapshotSchema = z
   .object({
     schemaVersion: z.literal(1),

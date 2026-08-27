@@ -229,20 +229,21 @@ use project::{
         DurableSourceManualPrepareRequest, DurableSourcePreparation, DurableSourceProjectRequest,
         DurableSourceReadRequest, DurableSourceSnapshot, KnowledgeLedgerSnapshot,
         KnowledgeRecordBindingRequest, KnowledgeRecordCreateRequest, KnowledgeRecordProjectRequest,
-        LocalReviewAnnotationCreateRequest, LocalReviewAnnotationEditRequest,
-        LocalReviewAnnotationMutationRequest, LocalReviewCollectionCreateRequest,
-        LocalReviewCollectionMutationRequest, LocalReviewComparisonCreateRequest,
-        LocalReviewComparisonDiscardRequest, LocalReviewComparisonReadRequest,
-        LocalReviewImagePickOutcome, LocalReviewImagePickRequest, LocalReviewImagePreview,
-        LocalReviewImagePreviewRequest, LocalReviewItemDiscardRequest, LocalReviewListRequest,
-        LocalReviewM48ArtifactCopyRequest, LocalReviewManualEvidenceCreateRequest,
-        LocalReviewManualEvidenceCreateResult, LocalReviewManualEvidencePreview,
-        LocalReviewPromotionPrepareRequest, LocalReviewPromotionReservationRequest,
-        LocalReviewSnapshot, LocalReviewTextItemCreateRequest, LocalReviewTextPreview,
-        LocalReviewTextPreviewRequest, PlanCreateRequest, PlanEditRequest, PlanIdRequest,
-        ProjectPreflightSnapshot, ProjectWorkspaceSnapshot, TaskCatalogContextCreateRequest,
-        TaskCatalogCreateRequest, TaskCatalogListRequest, TaskCatalogSnapshot, TaskIdRequest,
-        TaskStatusRequest, TaskTitleRequest,
+        KnowledgeRecordTransitionRequest, LocalReviewAnnotationCreateRequest,
+        LocalReviewAnnotationEditRequest, LocalReviewAnnotationMutationRequest,
+        LocalReviewCollectionCreateRequest, LocalReviewCollectionMutationRequest,
+        LocalReviewComparisonCreateRequest, LocalReviewComparisonDiscardRequest,
+        LocalReviewComparisonReadRequest, LocalReviewImagePickOutcome, LocalReviewImagePickRequest,
+        LocalReviewImagePreview, LocalReviewImagePreviewRequest, LocalReviewItemDiscardRequest,
+        LocalReviewListRequest, LocalReviewM48ArtifactCopyRequest,
+        LocalReviewManualEvidenceCreateRequest, LocalReviewManualEvidenceCreateResult,
+        LocalReviewManualEvidencePreview, LocalReviewPromotionPrepareRequest,
+        LocalReviewPromotionReservationRequest, LocalReviewSnapshot,
+        LocalReviewTextItemCreateRequest, LocalReviewTextPreview, LocalReviewTextPreviewRequest,
+        PlanCreateRequest, PlanEditRequest, PlanIdRequest, ProjectPreflightSnapshot,
+        ProjectWorkspaceSnapshot, TaskCatalogContextCreateRequest, TaskCatalogCreateRequest,
+        TaskCatalogListRequest, TaskCatalogSnapshot, TaskIdRequest, TaskStatusRequest,
+        TaskTitleRequest,
     },
     FictionalConnectorOperationRecord, ProjectService,
 };
@@ -1402,6 +1403,13 @@ fn knowledge_ledger_bind(
     service: tauri::State<'_, ProjectService>,
 ) -> KnowledgeLedgerSnapshot {
     service.bind_knowledge_record(request)
+}
+#[tauri::command]
+fn knowledge_ledger_transition(
+    request: KnowledgeRecordTransitionRequest,
+    service: tauri::State<'_, ProjectService>,
+) -> KnowledgeLedgerSnapshot {
+    service.transition_knowledge_record(request)
 }
 
 #[tauri::command]
@@ -3669,6 +3677,7 @@ pub fn run() {
             knowledge_ledger_status,
             knowledge_ledger_create,
             knowledge_ledger_bind,
+            knowledge_ledger_transition,
             task_catalog_create,
             task_catalog_create_from_conversation,
             task_catalog_rename,

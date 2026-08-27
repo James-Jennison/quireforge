@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   knowledgeLedgerCreateRequestSchema,
   knowledgeLedgerSnapshotSchema,
+  knowledgeLedgerTransitionRequestSchema,
 } from "./knowledgeLedger";
 
 const projectId = "019fbee6-476f-71b0-853c-f067657aa69c";
@@ -46,6 +47,22 @@ describe("knowledge ledger contracts", () => {
         kind: "assumption",
         title: "Bounded",
         body: "x".repeat(8193),
+      }),
+    ).toThrow();
+  });
+
+  it("accepts only a strict lifecycle transition request", () => {
+    expect(
+      knowledgeLedgerTransitionRequestSchema.parse({
+        recordId: "019fbee6-476f-71b0-853c-f067657aa69b",
+        status: "pending-owner-binding",
+      }).status,
+    ).toBe("pending-owner-binding");
+    expect(() =>
+      knowledgeLedgerTransitionRequestSchema.parse({
+        recordId: "019fbee6-476f-71b0-853c-f067657aa69b",
+        status: "active",
+        bypass: true,
       }),
     ).toThrow();
   });

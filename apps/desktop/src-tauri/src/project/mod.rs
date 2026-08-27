@@ -36,7 +36,7 @@ use types::{
     DurableSourceFilePrepareRequest, DurableSourceManualPrepareRequest, DurableSourcePreparation,
     DurableSourceProjectRequest, DurableSourceReadRequest, DurableSourceSnapshot,
     DurableSourceSummary, GitSummary, KnowledgeLedgerSnapshot, KnowledgeRecordBindingRequest,
-    KnowledgeRecordCreateRequest, KnowledgeRecordProjectRequest,
+    KnowledgeRecordCreateRequest, KnowledgeRecordProjectRequest, KnowledgeRecordTransitionRequest,
     LocalReviewActivityPresentationEvidencePreview, LocalReviewActivityPresentationEvidenceRequest,
     LocalReviewAnnotationCreateRequest, LocalReviewAnnotationEditRequest,
     LocalReviewAnnotationMutationRequest, LocalReviewApprovalPresentationEvidencePreview,
@@ -371,6 +371,38 @@ impl ProjectService {
         let mut snapshot = self.knowledge_ledger(KnowledgeRecordProjectRequest { project_id });
         if !ok {
             snapshot.diagnostic_code = Some("knowledge-binding-rejected".into());
+        }
+        snapshot
+    }
+    pub fn transition_knowledge_record(
+        &self,
+        request: KnowledgeRecordTransitionRequest,
+    ) -> KnowledgeLedgerSnapshot {
+        let project_id = self.repository.lock().ok().and_then(|r| {
+            r.as_ref()
+                .and_then(|repo| repo.knowledge_records_for_record(&request.record_id).ok())
+        });
+        let Some(project_id) = project_id else {
+            return KnowledgeLedgerSnapshot {
+                schema_version: KNOWLEDGE_LEDGER_SCHEMA_VERSION,
+                records: Vec::new(),
+                diagnostic_code: Some("knowledge-record-unavailable".into()),
+            };
+        };
+        let ok = self
+            .repository
+            .lock()
+            .ok()
+            .and_then(|mut r| {
+                r.as_mut().and_then(|repo| {
+                    repo.transition_knowledge_record(&request.record_id, request.status)
+                        .ok()
+                })
+            })
+            .is_some();
+        let mut snapshot = self.knowledge_ledger(KnowledgeRecordProjectRequest { project_id });
+        if !ok {
+            snapshot.diagnostic_code = Some("knowledge-transition-rejected".into());
         }
         snapshot
     }

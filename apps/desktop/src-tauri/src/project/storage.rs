@@ -1128,6 +1128,19 @@ fn knowledge_kind(value: &str) -> Result<KnowledgeRecordKind, rusqlite::Error> {
     serde_json::from_value(serde_json::Value::String(value.into()))
         .map_err(|_| rusqlite::Error::InvalidQuery)
 }
+fn knowledge_status_value(value: KnowledgeRecordStatus) -> &'static str {
+    match value {
+        KnowledgeRecordStatus::Proposed => "proposed",
+        KnowledgeRecordStatus::PendingOwnerBinding => "pending-owner-binding",
+        KnowledgeRecordStatus::Recorded => "recorded",
+        KnowledgeRecordStatus::Active => "active",
+        KnowledgeRecordStatus::Validated => "validated",
+        KnowledgeRecordStatus::Disproven => "disproven",
+        KnowledgeRecordStatus::Resolved => "resolved",
+        KnowledgeRecordStatus::Superseded => "superseded",
+        KnowledgeRecordStatus::Retired => "retired",
+    }
+}
 fn knowledge_status(value: &str) -> Result<KnowledgeRecordStatus, rusqlite::Error> {
     serde_json::from_value(serde_json::Value::String(value.into()))
         .map_err(|_| rusqlite::Error::InvalidQuery)
@@ -2753,6 +2766,16 @@ impl ProjectRepository {
         let tx = self
             .connection
             .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        if let Some(predecessor) = supersedes_id {
+            let predecessor_project: String = tx.query_row(
+                "SELECT project_id FROM knowledge_records WHERE id=?1",
+                [predecessor],
+                |row| row.get(0),
+            )?;
+            if predecessor_project != project_id {
+                return Err(StorageError::InvalidStoredValue);
+            }
+        }
         tx.execute("INSERT INTO knowledge_records(id,project_id,task_id,kind,status,title,body,supersedes_id,created_at_ms,updated_at_ms) VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9,?9)", params![id,project_id,task_id,knowledge_kind_value(kind),status,title.trim(),body.trim(),supersedes_id,now])?;
         tx.execute("INSERT INTO knowledge_record_events(id,record_id,event_kind,created_at_ms) VALUES(?1,?2,'created',?3)", params![Uuid::now_v7().to_string(),id,now])?;
         tx.commit()?;
@@ -2767,7 +2790,9 @@ impl ProjectRepository {
             [id],
             |r| Ok((r.get(0)?, r.get(1)?)),
         )?;
-        if !matches!(kind.as_str(), "owner-decision" | "constraint") || status != "proposed" {
+        if !matches!(kind.as_str(), "owner-decision" | "constraint")
+            || status != "pending-owner-binding"
+        {
             return Err(StorageError::InvalidStatusTransition);
         }
         let now = now_millis();
@@ -2776,6 +2801,54 @@ impl ProjectRepository {
             params![id, now],
         )?;
         tx.execute("INSERT INTO knowledge_record_events(id,record_id,event_kind,created_at_ms) VALUES(?1,?2,'owner-bound',?3)",params![Uuid::now_v7().to_string(),id,now])?;
+        Ok(tx.commit()?)
+    }
+    pub(crate) fn transition_knowledge_record(
+        &mut self,
+        id: &str,
+        next: KnowledgeRecordStatus,
+    ) -> Result<(), StorageError> {
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let (kind, current): (String, String) = tx.query_row(
+            "SELECT kind,status FROM knowledge_records WHERE id=?1",
+            [id],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )?;
+        let next = knowledge_status_value(next);
+        let binding = matches!(kind.as_str(), "owner-decision" | "constraint");
+        let allowed = if binding {
+            matches!(
+                (current.as_str(), next),
+                ("proposed", "pending-owner-binding") | ("active", "superseded" | "retired")
+            )
+        } else {
+            matches!(
+                (current.as_str(), next),
+                ("recorded", "active")
+                    | (
+                        "active",
+                        "validated" | "disproven" | "resolved" | "superseded" | "retired"
+                    )
+                    | (
+                        "validated" | "disproven" | "resolved",
+                        "superseded" | "retired"
+                    )
+            )
+        };
+        if !allowed {
+            return Err(StorageError::InvalidStatusTransition);
+        }
+        let now = now_millis();
+        tx.execute(
+            "UPDATE knowledge_records SET status=?2,updated_at_ms=?3 WHERE id=?1",
+            params![id, next, now],
+        )?;
+        tx.execute(
+            "INSERT INTO knowledge_record_events(id,record_id,event_kind,created_at_ms) VALUES(?1,?2,?3,?4)",
+            params![Uuid::now_v7().to_string(), id, format!("status-{next}"), now],
+        )?;
         Ok(tx.commit()?)
     }
     pub(crate) fn context_ledger(
@@ -12599,6 +12672,9 @@ mod tests {
             KnowledgeRecordStatus::Proposed
         );
         repository
+            .transition_knowledge_record(&decision, KnowledgeRecordStatus::PendingOwnerBinding)
+            .expect("owner prepares binding");
+        repository
             .bind_knowledge_record(&decision)
             .expect("owner binds");
         assert_eq!(
@@ -12625,7 +12701,72 @@ mod tests {
                     |row| row.get::<_, i64>(0)
                 )
                 .expect("events"),
-            2
+            3
+        );
+    }
+
+    #[test]
+    fn knowledge_records_enforce_nonbinding_lifecycle_and_project_scoped_supersession() {
+        let mut repository = ProjectRepository::in_memory().expect("schema");
+        let project_id = Uuid::now_v7().to_string();
+        let other_project_id = Uuid::now_v7().to_string();
+        insert_active_project(&repository, &project_id, &Uuid::now_v7().to_string());
+        insert_active_project(&repository, &other_project_id, &Uuid::now_v7().to_string());
+        let fact = repository
+            .create_knowledge_record(
+                &project_id,
+                None,
+                KnowledgeRecordKind::ObservedFact,
+                "Verified source",
+                "The source was checked locally.",
+                None,
+            )
+            .expect("fact");
+        assert!(repository
+            .transition_knowledge_record(&fact, KnowledgeRecordStatus::Validated)
+            .is_err());
+        repository
+            .transition_knowledge_record(&fact, KnowledgeRecordStatus::Active)
+            .expect("activate fact");
+        repository
+            .transition_knowledge_record(&fact, KnowledgeRecordStatus::Validated)
+            .expect("validate fact");
+        repository
+            .transition_knowledge_record(&fact, KnowledgeRecordStatus::Superseded)
+            .expect("supersede fact");
+        assert!(repository
+            .transition_knowledge_record(&fact, KnowledgeRecordStatus::Retired)
+            .is_err());
+        assert!(repository
+            .create_knowledge_record(
+                &other_project_id,
+                None,
+                KnowledgeRecordKind::ObservedFact,
+                "Invalid cross-project successor",
+                "A successor cannot cross project boundaries.",
+                Some(&fact),
+            )
+            .is_err());
+        let successor = repository
+            .create_knowledge_record(
+                &project_id,
+                None,
+                KnowledgeRecordKind::ObservedFact,
+                "Corrected source",
+                "A successor remains linked without rewriting history.",
+                Some(&fact),
+            )
+            .expect("same-project successor");
+        assert_eq!(
+            repository
+                .knowledge_records(&project_id)
+                .expect("records")
+                .iter()
+                .find(|record| record.id == successor)
+                .expect("successor")
+                .supersedes_id
+                .as_deref(),
+            Some(fact.as_str())
         );
     }
 
