@@ -8,6 +8,9 @@
   route retain their prior behavior.
 - Threads remains available as a workspace, including the beta.93 recovery
   labels and Start a local chat action.
+- The pinned Ubuntu package/release-artifact gate, root-owned staging,
+  installer-daemon installation, supervised launch, and canonical
+  installed-host validation passed for the fresh candidate.
 
 ## 0.1.0-beta.93 — M69 Threads recovery candidate
 

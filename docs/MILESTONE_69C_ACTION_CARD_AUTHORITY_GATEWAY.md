@@ -92,4 +92,8 @@ The beta.94 candidate completes the entry correction for people who selected
 Chat: an implicit persisted Threads landing opens the existing Local Chat
 workspace instead. Explicit Threads deep links still open Threads, and Codex
 mode is unchanged. No session reference, transcript, source, project, or
-authority crosses the boundary.
+authority crosses the boundary. Full validation, desktop and website E2E, the
+pinned Ubuntu package/release-artifact gate, root-owned staging,
+installer-daemon installation, supervised launch, and canonical installed-host
+validation passed. Its immutable receipt records beta.94, two artifacts,
+`passed`, and completed validation.
