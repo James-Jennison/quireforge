@@ -79,8 +79,8 @@ export const conversationSandboxModeSchema = z.enum([
 export const conversationApprovalPolicySchema = z.enum([
   "untrusted",
   "on-request",
-  "never",
 ]);
+export const interactionProfileSchema = z.enum(["direct", "conversational"]);
 
 export const conversationStartRequestSchema = z
   .object({
@@ -101,6 +101,7 @@ export const conversationStartRequestSchema = z
     selectionPolicy: modelSelectionPolicySchema,
     sandboxMode: conversationSandboxModeSchema,
     approvalPolicy: conversationApprovalPolicySchema,
+    interactionProfile: interactionProfileSchema.optional(),
   })
   .strict()
   .superRefine((request, context) => {
@@ -119,15 +120,6 @@ export const conversationStartRequestSchema = z
         code: "custom",
         message: "Connector mentions must be unique",
         path: ["integrationEntryIds"],
-      });
-    }
-    if (
-      request.sandboxMode === "danger-full-access" &&
-      request.approvalPolicy === "never"
-    ) {
-      context.addIssue({
-        code: "custom",
-        message: "Unrestricted execution cannot disable approval prompts",
       });
     }
   });

@@ -1126,10 +1126,11 @@ describe("QuireForge desktop shell", () => {
       ),
     );
 
-    expect(
-      await screen.findByRole("radiogroup", { name: "QuireForge theme" }),
-    ).toBeInTheDocument();
-    expect(screen.getAllByRole("radio")).toHaveLength(8);
+    const themeGroup = await screen.findByRole("radiogroup", {
+      name: "QuireForge theme",
+    });
+    expect(themeGroup).toBeInTheDocument();
+    expect(within(themeGroup).getAllByRole("radio")).toHaveLength(8);
   });
 
   it("previews one native-selected file through an opaque project ID", async () => {

@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+const interactionProfileSchema = z.enum(["direct", "conversational"]);
+
 export const advisorConversationStateSchema = z.enum([
   "empty",
   "running",
@@ -69,6 +71,7 @@ export const advisorConversationStartRequestSchema = z
       .min(1)
       .max(64 * 1024)
       .refine((value) => !value.includes("\0"), "Prompt must not contain NUL"),
+    interactionProfile: interactionProfileSchema.optional(),
     projectId: z.string().uuid().nullable(),
     attachmentId: z.string().uuid().nullable(),
     attachmentManifestSha256: z

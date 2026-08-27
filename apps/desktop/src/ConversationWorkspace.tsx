@@ -25,6 +25,10 @@ import {
 import type { ProjectWorkspaceSnapshot } from "./lib/project";
 import type { IntegrationCatalogSnapshot } from "./lib/integration";
 import {
+  interactionProfiles,
+  type InteractionProfileId,
+} from "./interactionProfiles";
+import {
   defaultModelSelectionPolicy,
   type ModelSelectionSnapshot,
   type ModelSelectionUpdateRequest,
@@ -45,6 +49,7 @@ interface ConversationWorkspaceProps {
   attachmentBusy: boolean;
   actionError: ConversationActionFailureCode | null;
   attachmentActionError: boolean;
+  interactionProfile?: InteractionProfileId;
   onStart: (request: ConversationStartRequest) => Promise<ConversationSnapshot>;
   onInterrupt: (conversationId: string) => Promise<ConversationSnapshot>;
   onDecideApproval: (
@@ -74,7 +79,6 @@ const sandboxOptions = [
 const approvalOptions = [
   { value: "untrusted", label: "Ask for untrusted actions" },
   { value: "on-request", label: "Ask when Codex requests" },
-  { value: "never", label: "Never ask" },
 ] as const;
 
 const stateLabels: Record<ConversationSnapshot["state"], string> = {
@@ -300,6 +304,7 @@ export function ConversationWorkspace({
   attachmentBusy,
   actionError,
   attachmentActionError,
+  interactionProfile = "direct",
   onStart,
   onInterrupt,
   onDecideApproval,
@@ -322,6 +327,8 @@ export function ConversationWorkspace({
     useState<ConversationStartRequest["sandboxMode"]>("workspace-write");
   const [approvalPolicy, setApprovalPolicy] =
     useState<ConversationStartRequest["approvalPolicy"]>("on-request");
+  const [selectedInteractionProfile, setSelectedInteractionProfile] =
+    useState<InteractionProfileId>(interactionProfile);
   const [selectionPolicy, setSelectionPolicy] = useState(
     defaultModelSelectionPolicy,
   );
@@ -370,8 +377,6 @@ export function ConversationWorkspace({
   const active = ["running", "waiting-for-approval", "stopping"].includes(
     snapshot.state,
   );
-  const unsafeCombination =
-    sandboxMode === "danger-full-access" && approvalPolicy === "never";
   const availableConnectors = useMemo(
     () =>
       integrations.entries.filter(
@@ -422,6 +427,7 @@ export function ConversationWorkspace({
       selectionPolicy,
       sandboxMode,
       approvalPolicy,
+      interactionProfile: selectedInteractionProfile,
     }),
     [
       approvalPolicy,
@@ -433,6 +439,7 @@ export function ConversationWorkspace({
       integrationEntryIds,
       selectionPolicy,
       sandboxMode,
+      selectedInteractionProfile,
     ],
   );
   const requestValid =
@@ -589,6 +596,25 @@ export function ConversationWorkspace({
             onDrop={onAttachmentDrop}
             onCancel={onAttachmentCancel}
           />
+          <fieldset className="conversation-profile">
+            <legend>Conversation style</legend>
+            <p>
+              This changes how QuireForge talks — not what it is allowed to do.
+            </p>
+            {interactionProfiles.map((profile) => (
+              <label key={profile.id}>
+                <input
+                  type="radio"
+                  name="conversation-interaction-profile"
+                  value={profile.id}
+                  checked={selectedInteractionProfile === profile.id}
+                  disabled={active || busy}
+                  onChange={() => setSelectedInteractionProfile(profile.id)}
+                />
+                <span>{profile.label}</span>
+              </label>
+            ))}
+          </fieldset>
           <details className="conversation-options">
             <summary>Actions and conversation settings</summary>
             <p>
@@ -755,8 +781,6 @@ export function ConversationWorkspace({
               projectReady &&
               !runtimeReady &&
               "A ready Codex conversation capability and model catalog are required."}
-            {unsafeCombination &&
-              "Unrestricted execution cannot be combined with disabled approvals."}
           </div>
 
           <div className="conversation-actions">

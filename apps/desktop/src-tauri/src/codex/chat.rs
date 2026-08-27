@@ -28,6 +28,8 @@ const MAX_RECENT_CONVERSATIONS: usize = 64;
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ChatConversationStartRequest {
     pub prompt: String,
+    #[serde(default)]
+    pub interaction_profile: crate::codex::conversation::types::InteractionProfile,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
@@ -413,7 +415,10 @@ async fn start_chat_turn(
         .await
         .map_err(map_adapter_error)?;
     let thread_result = process
-        .request("thread/start", chat_thread_start_params())
+        .request(
+            "thread/start",
+            chat_thread_start_params(request.interaction_profile),
+        )
         .await
         .map_err(map_adapter_error)?;
     let thread_id = parse_thread_start(thread_result)?;
@@ -427,7 +432,7 @@ async fn start_chat_turn(
     let turn_result = process
         .request(
             "turn/start",
-            chat_turn_start_params(&thread_id, &request.prompt),
+            chat_turn_start_params(&thread_id, &request.prompt, request.interaction_profile),
         )
         .await
         .map_err(map_adapter_error)?;
@@ -435,19 +440,40 @@ async fn start_chat_turn(
     Ok((conversation_id, thread_id, turn_id))
 }
 
-fn chat_thread_start_params() -> Value {
-    json!({
+fn chat_thread_start_params(
+    profile: crate::codex::conversation::types::InteractionProfile,
+) -> Value {
+    // `never` is permitted only because this exact profile has no cwd, no
+    // tools, read-only filesystem policy, and no network. Adding a capability
+    // here requires replacing this fixed policy with an explicit approval path.
+    let params = json!({
         "cwd": Value::Null,
         "environments": [],
         "dynamicTools": [],
         "approvalPolicy": "never",
         "sandbox": "read-only",
-    })
+        "personality": profile.as_protocol_value(),
+    });
+    assert_isolated_never_policy(&params);
+    params
 }
 
-fn chat_turn_start_params(thread_id: &str, prompt: &str) -> Value {
+fn assert_isolated_never_policy(params: &Value) {
+    assert_eq!(params["approvalPolicy"], "never");
+    assert_eq!(params["cwd"], Value::Null);
+    assert_eq!(params["environments"], json!([]));
+    assert_eq!(params["dynamicTools"], json!([]));
+    assert_eq!(params["sandbox"], "read-only");
+}
+
+fn chat_turn_start_params(
+    thread_id: &str,
+    prompt: &str,
+    profile: crate::codex::conversation::types::InteractionProfile,
+) -> Value {
     json!({
         "threadId": thread_id,
+        "personality": profile.as_protocol_value(),
         "input": [{"type": "text", "text": prompt}],
         "cwd": Value::Null,
         "approvalPolicy": "never",
@@ -636,7 +662,7 @@ fn map_adapter_error(error: CodexAdapterError) -> ChatConversationDiagnosticCode
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::codex::auth::types::AuthAccountKind;
+    use crate::codex::{auth::types::AuthAccountKind, InteractionProfile};
 
     #[test]
     fn rejects_empty_or_nul_prompt_without_starting_a_runtime() {
@@ -647,7 +673,7 @@ mod tests {
 
     #[test]
     fn fixed_chat_wire_parameters_cannot_carry_project_or_tool_authority() {
-        let thread = chat_thread_start_params();
+        let thread = chat_thread_start_params(InteractionProfile::Direct);
         assert_eq!(thread["cwd"], Value::Null);
         assert_eq!(thread["environments"], json!([]));
         assert_eq!(thread["dynamicTools"], json!([]));
@@ -657,7 +683,7 @@ mod tests {
         assert!(thread.get("integrations").is_none());
         assert!(thread.get("attachments").is_none());
 
-        let turn = chat_turn_start_params("thread", "Prompt");
+        let turn = chat_turn_start_params("thread", "Prompt", InteractionProfile::Direct);
         assert_eq!(turn["cwd"], Value::Null);
         assert_eq!(turn["approvalPolicy"], "never");
         assert_eq!(turn["sandboxPolicy"]["networkAccess"], false);
@@ -683,6 +709,7 @@ printf '%s\n' '{"method":"turn/completed","params":{"threadId":"018f0000-0000-70
             .start(
                 ChatConversationStartRequest {
                     prompt: "Explain the failing test.".to_owned(),
+                    interaction_profile: InteractionProfile::Direct,
                 },
                 &CodexAuthSnapshot::authenticated(AuthAccountKind::Chatgpt),
                 &projects,
@@ -716,6 +743,7 @@ printf '%s\n' '{"method":"turn/completed","params":{"threadId":"018f0000-0000-70
             .start(
                 ChatConversationStartRequest {
                     prompt: "Hello".to_owned(),
+                    interaction_profile: InteractionProfile::Direct,
                 },
                 &CodexAuthSnapshot::authenticated(AuthAccountKind::ApiKey),
                 &ProjectService::in_memory(),

@@ -1226,6 +1226,7 @@ async fn advisor_dispatch_once(
                 selection_policy: ModelSelectionPolicy::default(),
                 sandbox_mode,
                 approval_policy,
+                interaction_profile: crate::codex::InteractionProfile::Direct,
             },
             &projects,
             Vec::new(),

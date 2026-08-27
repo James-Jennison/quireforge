@@ -28,7 +28,7 @@ pub(crate) use conversation::types::ConversationState;
 pub use conversation::types::{
     ConversationApprovalDecisionRequest, ConversationApprovalPolicy, ConversationDiagnosticCode,
     ConversationRegistrySnapshot, ConversationSandboxMode, ConversationSnapshot,
-    ConversationStartRequest,
+    ConversationStartRequest, InteractionProfile,
 };
 pub(crate) use conversation::ConversationNotificationCandidate;
 pub use conversation::{

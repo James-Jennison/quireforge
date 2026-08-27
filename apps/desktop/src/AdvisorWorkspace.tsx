@@ -3,6 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 
 import type { CodexAuthSnapshot } from "./lib/auth";
+import {
+  interactionProfiles,
+  type InteractionProfileId,
+} from "./interactionProfiles";
 import type {
   AdvisorConversationSnapshot,
   AdvisorConversationStartRequest,
@@ -114,6 +118,7 @@ interface AdvisorWorkspaceProps {
   runtime: CodexRuntimeSnapshot;
   conversation: AdvisorConversationSnapshot;
   conversationBusy: boolean;
+  interactionProfile?: InteractionProfileId;
   selectedProjectId: string | null;
   targetProjectId?: string | null;
   onConversationStart: (
@@ -171,6 +176,7 @@ export function AdvisorWorkspace({
   runtime,
   conversation,
   conversationBusy,
+  interactionProfile = "direct",
   selectedProjectId,
   targetProjectId = null,
   onConversationStart,
@@ -183,6 +189,8 @@ export function AdvisorWorkspace({
   returnedTaskReceipt = null,
 }: AdvisorWorkspaceProps) {
   const [prompt, setPrompt] = useState("");
+  const [selectedInteractionProfile, setSelectedInteractionProfile] =
+    useState<InteractionProfileId>(interactionProfile);
   const [includeProjectState, setIncludeProjectState] = useState(false);
   const [confirmContextSend, setConfirmContextSend] = useState(false);
   const [confirmAttachmentSend, setConfirmAttachmentSend] = useState(false);
@@ -455,6 +463,7 @@ export function AdvisorWorkspace({
       binaryAttachment.state === "ready" ? binaryAttachment.attachment : null;
     void onConversationStart({
       prompt,
+      interactionProfile: selectedInteractionProfile,
       projectId,
       attachmentId: attachment?.attachmentId ?? null,
       attachmentManifestSha256: attachment?.sha256 ?? null,
@@ -1452,6 +1461,28 @@ export function AdvisorWorkspace({
               placeholder="Plan a milestone, review a safe Project State summary, or prepare a draft…"
               rows={4}
             />
+            <fieldset className="conversation-profile">
+              <legend>Conversation style</legend>
+              <p>
+                This changes how QuireForge talks — not what it is allowed to
+                do.
+              </p>
+              {interactionProfiles.map((profile) => (
+                <label key={profile.id}>
+                  <input
+                    type="radio"
+                    name="advisor-interaction-profile"
+                    value={profile.id}
+                    checked={selectedInteractionProfile === profile.id}
+                    disabled={
+                      conversationBusy || active || authentication !== "ready"
+                    }
+                    onChange={() => setSelectedInteractionProfile(profile.id)}
+                  />
+                  <span>{profile.label}</span>
+                </label>
+              ))}
+            </fieldset>
             {canIncludeProjectState && (
               <label>
                 <input

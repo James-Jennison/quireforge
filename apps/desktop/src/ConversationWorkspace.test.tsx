@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { ConversationWorkspace } from "./ConversationWorkspace";
@@ -134,6 +140,7 @@ describe("ConversationWorkspace", () => {
         },
         sandboxMode: "workspace-write",
         approvalPolicy: "on-request",
+        interactionProfile: "direct",
         integrationEntryIds: [],
       }),
     );
@@ -170,6 +177,21 @@ describe("ConversationWorkspace", () => {
     await waitFor(() => expect(textarea).toHaveValue(""));
   });
 
+  it("pins the chosen conversation style into the start request", async () => {
+    const { onStart } = renderWorkspace();
+    fireEvent.click(screen.getByRole("radio", { name: "Conversational" }));
+    fireEvent.change(screen.getByLabelText("Message"), {
+      target: { value: "Explain the design." },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+
+    await waitFor(() =>
+      expect(onStart).toHaveBeenCalledWith(
+        expect.objectContaining({ interactionProfile: "conversational" }),
+      ),
+    );
+  });
+
   it("shows a bounded actionable native response diagnostic", () => {
     renderWorkspace({ actionError: "native-response-invalid" });
 
@@ -202,24 +224,14 @@ describe("ConversationWorkspace", () => {
     );
   });
 
-  it("blocks an unrestricted no-approval combination before IPC", () => {
+  it("does not offer a no-approval project conversation mode", () => {
     const { onStart } = renderWorkspace();
-    fireEvent.change(screen.getByLabelText("Message"), {
-      target: { value: "Make a change." },
-    });
-    fireEvent.change(screen.getByLabelText("Filesystem access"), {
-      target: { value: "danger-full-access" },
-    });
-    fireEvent.change(screen.getByLabelText("Approval policy"), {
-      target: { value: "never" },
-    });
+    const approvalPolicy = screen.getByLabelText("Approval policy");
 
+    expect(within(approvalPolicy).getAllByRole("option")).toHaveLength(2);
     expect(
-      screen.getByText(
-        "Unrestricted execution cannot be combined with disabled approvals.",
-      ),
-    ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Send" })).toBeDisabled();
+      screen.queryByRole("option", { name: /never ask/u }),
+    ).not.toBeInTheDocument();
     expect(onStart).not.toHaveBeenCalled();
   });
 

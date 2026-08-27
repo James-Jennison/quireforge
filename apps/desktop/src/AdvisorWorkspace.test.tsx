@@ -285,6 +285,7 @@ describe("AdvisorWorkspace", () => {
     fireEvent.click(screen.getByRole("button", { name: "Confirm inclusion" }));
     expect(onConversationStart).toHaveBeenCalledWith({
       prompt: "Prepare a safe milestone plan.",
+      interactionProfile: "direct",
       projectId: "018f0000-0000-7000-8000-000000000001",
       attachmentId: null,
       attachmentManifestSha256: null,
@@ -572,6 +573,7 @@ describe("AdvisorWorkspace", () => {
     );
     expect(onConversationStart).toHaveBeenCalledWith({
       prompt: "Review the attached notes.",
+      interactionProfile: "direct",
       projectId: null,
       attachmentId: attachment.attachment.attachmentId,
       attachmentManifestSha256: attachment.attachment.sha256,

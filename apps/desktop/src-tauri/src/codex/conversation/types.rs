@@ -19,6 +19,27 @@ pub struct ConversationStartRequest {
     pub selection_policy: ModelSelectionPolicy,
     pub sandbox_mode: ConversationSandboxMode,
     pub approval_policy: ConversationApprovalPolicy,
+    #[serde(default)]
+    pub interaction_profile: InteractionProfile,
+}
+
+/// A closed, presentation-only mapping to Codex's supported personality values.
+/// This must never be reused by approval, sandbox, objective, or Action Card code.
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum InteractionProfile {
+    #[default]
+    Direct,
+    Conversational,
+}
+
+impl InteractionProfile {
+    pub(crate) const fn as_protocol_value(self) -> &'static str {
+        match self {
+            Self::Direct => "pragmatic",
+            Self::Conversational => "friendly",
+        }
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq)]

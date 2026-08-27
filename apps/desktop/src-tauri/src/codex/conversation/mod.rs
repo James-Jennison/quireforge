@@ -898,6 +898,7 @@ async fn start_on_process(
         "model": request.model_id,
         "approvalPolicy": request.approval_policy.as_protocol_value(),
         "sandbox": request.sandbox_mode.as_protocol_value(),
+        "personality": request.interaction_profile.as_protocol_value(),
         "dynamicTools": [ModelSelectionService::dynamic_tool_spec()],
     });
     let (thread_result, selection_availability) =
@@ -912,6 +913,7 @@ async fn start_on_process(
                             "model": request.model_id,
                             "approvalPolicy": request.approval_policy.as_protocol_value(),
                             "sandbox": request.sandbox_mode.as_protocol_value(),
+                            "personality": request.interaction_profile.as_protocol_value(),
                         }),
                     )
                     .await
@@ -975,6 +977,7 @@ async fn start_on_process(
                 "effort": request.reasoning_effort,
                 "approvalPolicy": request.approval_policy.as_protocol_value(),
                 "sandboxPolicy": sandbox_policy(request.sandbox_mode, cwd),
+                "personality": request.interaction_profile.as_protocol_value(),
             }),
         )
         .await
@@ -1937,9 +1940,7 @@ fn validate_start_request(
         },
     )
     .map_err(|_| ConversationDiagnosticCode::InvalidRequest)?;
-    if request.sandbox_mode == ConversationSandboxMode::DangerFullAccess
-        && request.approval_policy == ConversationApprovalPolicy::Never
-    {
+    if request.approval_policy == ConversationApprovalPolicy::Never {
         return Err(ConversationDiagnosticCode::InvalidRequest);
     }
     Ok(())
@@ -2191,6 +2192,7 @@ mod tests {
     use uuid::Uuid;
 
     use super::*;
+    use crate::codex::InteractionProfile;
 
     const THREAD_ID: &str = "018f0000-0000-7000-8000-000000000020";
     const TURN_ID: &str = "018f0000-0000-7000-8000-000000000030";
@@ -3136,7 +3138,19 @@ printf '%s\n' '{{"method":"item/agentMessage/delta","params":{{"threadId":"018f0
             selection_policy: ModelSelectionPolicy::default(),
             sandbox_mode: ConversationSandboxMode::ReadOnly,
             approval_policy: ConversationApprovalPolicy::Untrusted,
+            interaction_profile: InteractionProfile::Direct,
         }
+    }
+
+    #[test]
+    fn rejects_never_approval_for_project_conversations() {
+        let mut request = start_request(Uuid::now_v7().to_string());
+        request.approval_policy = ConversationApprovalPolicy::Never;
+
+        assert_eq!(
+            validate_start_request(&request),
+            Err(ConversationDiagnosticCode::InvalidRequest)
+        );
     }
 
     fn successful_start_script(directory: &Path, trailing: &str) -> String {

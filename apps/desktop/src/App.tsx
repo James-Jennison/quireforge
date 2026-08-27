@@ -21,6 +21,11 @@ import {
   type ThemeId,
 } from "./appearanceThemes";
 import { AuthGate } from "./AuthGate";
+import {
+  interactionProfileStorageKey,
+  storedInteractionProfile,
+  type InteractionProfileId,
+} from "./interactionProfiles";
 import { AdvisorWorkspace } from "./AdvisorWorkspace";
 import { ConversationWorkspace } from "./ConversationWorkspace";
 import { FilePreviewWorkspace } from "./FilePreviewWorkspace";
@@ -554,6 +559,10 @@ interface TrackedConversation {
 
 function initialTheme(): ThemeId {
   return storedAppearanceTheme();
+}
+
+function initialInteractionProfile(): InteractionProfileId {
+  return storedInteractionProfile();
 }
 
 function initialWorkspaceLocation(): WorkspaceLocation {
@@ -1208,6 +1217,8 @@ export default function App({
     null,
   );
   const [theme, setTheme] = useState<ThemeId>(initialTheme);
+  const [interactionProfile, setInteractionProfile] =
+    useState<InteractionProfileId>(initialInteractionProfile);
   const [themePreview, setThemePreview] = useState<ThemeId | null>(null);
   const [workspaceLocation, setWorkspaceLocation] = useState<WorkspaceLocation>(
     initialWorkspaceLocation,
@@ -1944,6 +1955,13 @@ export default function App({
   useEffect(() => {
     window.localStorage.setItem(appearanceThemeStorageKey, theme);
   }, [theme]);
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      interactionProfileStorageKey,
+      interactionProfile,
+    );
+  }, [interactionProfile]);
 
   useEffect(() => {
     window.localStorage.setItem(conversationModeStorageKey, conversationMode);
@@ -2847,7 +2865,10 @@ export default function App({
     setConversationBusy(true);
     setConversationActionError(null);
     try {
-      const result = await startConversationTask(request);
+      const result = await startConversationTask({
+        ...request,
+        interactionProfile: request.interactionProfile ?? interactionProfile,
+      });
       setConversationAttachments(scaffoldConversationAttachments);
       setConversationAttachmentActionError(false);
       setConversation(result);
@@ -2904,7 +2925,10 @@ export default function App({
   ): Promise<AdvisorConversationSnapshot> {
     setAdvisorConversationBusy(true);
     try {
-      const result = await startAdvisorConversationTask(request);
+      const result = await startAdvisorConversationTask({
+        ...request,
+        interactionProfile: request.interactionProfile ?? interactionProfile,
+      });
       setAdvisorConversation(result);
       return result;
     } finally {
@@ -4414,6 +4438,7 @@ export default function App({
                   runtime={runtime}
                   conversation={advisorConversation}
                   conversationBusy={advisorConversationBusy}
+                  interactionProfile={interactionProfile}
                   selectedProjectId={advisorProjectStateProjectId}
                   targetProjectId={currentProject?.id ?? null}
                   onConversationStart={beginAdvisorConversation}
@@ -4825,6 +4850,7 @@ export default function App({
                     attachmentBusy={conversationAttachmentBusy}
                     actionError={conversationActionError}
                     attachmentActionError={conversationAttachmentActionError}
+                    interactionProfile={interactionProfile}
                     onStart={beginConversation}
                     onInterrupt={stopConversation}
                     onDecideApproval={applyConversationApproval}
@@ -4975,6 +5001,7 @@ export default function App({
                 usageState={usageState}
                 usageBusy={usageBusy}
                 theme={theme}
+                interactionProfile={interactionProfile}
                 productName={bootstrap.product.name}
                 productVersion={bootstrap.product.version}
                 bridgeLabel={bridgeLabel}
@@ -4997,6 +5024,7 @@ export default function App({
                 }}
                 onThemePreview={setThemePreview}
                 onThemePreviewEnd={() => setThemePreview(null)}
+                onInteractionProfileChange={setInteractionProfile}
               />
             </WorkspaceView>
           </div>

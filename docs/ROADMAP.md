@@ -2054,9 +2054,10 @@ agent, connector, or execution capability.
 - **M72 — Objective-Scoped Authority Boundaries:** native project-bound
   objectives with approved scope, exclusions, expiry, revocation, and
   boundary-crossing escalation. It executes no external capability itself.
-- **M87 — Personality and Interaction Profiles:** user-selectable working
-  styles that never change authority. It follows M72 so a profile can never
-  imply objective scope, a capability, or an approval outcome.
+- [M87 — Personality and Interaction Profiles](MILESTONE_87_PERSONALITY_AND_INTERACTION_PROFILES.md):
+  user-selectable working styles that never change authority. It follows M72
+  so a profile can never imply objective scope, a capability, or an approval
+  outcome.
 - **M73 — Agent-Neutral Context Assembly:** relevant knowledge, evidence, and
   active authority assembled at the beginning of a capability-bearing task.
 - **M74 — Three-Part Completion Model:** independent implementation,

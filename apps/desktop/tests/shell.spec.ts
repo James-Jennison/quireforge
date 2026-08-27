@@ -3486,6 +3486,30 @@ test("appearance picker previews, persists, and keeps every palette accessible",
   });
 });
 
+test("interaction profile persists separately from authority controls", async ({
+  page,
+}) => {
+  await installNativeFixture(page);
+  await page.goto("/#settings/appearance");
+
+  const profilePicker = page.getByRole("radiogroup", {
+    name: "Interaction profile",
+  });
+  const conversational = profilePicker.getByRole("radio", {
+    name: /^Conversational\b/u,
+  });
+  await conversational.click();
+  await expect(conversational).toHaveAttribute("aria-checked", "true");
+  await expect(
+    page.getByText(
+      /approvals, project access, and external actions are unaffected/i,
+    ),
+  ).toBeVisible();
+
+  await page.reload();
+  await expect(conversational).toHaveAttribute("aria-checked", "true");
+});
+
 test("captures routed desktop workspace evidence", async ({
   page,
   isMobile,

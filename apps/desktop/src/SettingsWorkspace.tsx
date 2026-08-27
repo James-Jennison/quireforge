@@ -1,6 +1,10 @@
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 
 import { appearanceThemes, type ThemeId } from "./appearanceThemes";
+import {
+  interactionProfiles,
+  type InteractionProfileId,
+} from "./interactionProfiles";
 import type { CodexAuthSnapshot } from "./lib/auth";
 import type { CodexUsageSnapshot } from "./lib/usage";
 import { UsagePanel } from "./UsagePanel";
@@ -19,6 +23,7 @@ interface SettingsWorkspaceProps {
   usageState: UsageViewState;
   usageBusy: boolean;
   theme: ThemeId;
+  interactionProfile: InteractionProfileId;
   productName: string;
   productVersion: string;
   bridgeLabel: string;
@@ -33,6 +38,7 @@ interface SettingsWorkspaceProps {
   onThemeChange: (theme: ThemeId) => void;
   onThemePreview: (theme: ThemeId) => void;
   onThemePreviewEnd: () => void;
+  onInteractionProfileChange: (profile: InteractionProfileId) => void;
 }
 
 const sections: readonly {
@@ -184,6 +190,7 @@ export function SettingsWorkspace({
   usageState,
   usageBusy,
   theme,
+  interactionProfile,
   productName,
   productVersion,
   bridgeLabel,
@@ -198,6 +205,7 @@ export function SettingsWorkspace({
   onThemeChange,
   onThemePreview,
   onThemePreviewEnd,
+  onInteractionProfileChange,
 }: SettingsWorkspaceProps) {
   function handleThemeKeyDown(
     event: ReactKeyboardEvent<HTMLButtonElement>,
@@ -445,6 +453,42 @@ export function SettingsWorkspace({
                       className={`theme-option__preview theme-option__preview--${candidate.id}`}
                       aria-hidden="true"
                     />
+                    <strong>{candidate.label}</strong>
+                    <small>{candidate.description}</small>
+                  </button>
+                ))}
+              </div>
+            </article>
+            <article className="settings-card">
+              <div className="settings-card__heading">
+                <div>
+                  <span>Conversation style</span>
+                  <h3>Interaction profile</h3>
+                  <p>
+                    This changes how QuireForge talks — not what it&apos;s
+                    allowed to do. Approvals, project access, and external
+                    actions are unaffected.
+                  </p>
+                </div>
+              </div>
+              <div
+                className="theme-options"
+                role="radiogroup"
+                aria-label="Interaction profile"
+              >
+                {interactionProfiles.map((candidate) => (
+                  <button
+                    key={candidate.id}
+                    className={
+                      candidate.id === interactionProfile
+                        ? "theme-option theme-option--active"
+                        : "theme-option"
+                    }
+                    type="button"
+                    role="radio"
+                    aria-checked={candidate.id === interactionProfile}
+                    onClick={() => onInteractionProfileChange(candidate.id)}
+                  >
                     <strong>{candidate.label}</strong>
                     <small>{candidate.description}</small>
                   </button>

@@ -651,9 +651,7 @@ impl TryFrom<&StoredConversationReference> for StoredControls {
             "never" => ConversationApprovalPolicy::Never,
             _ => return Err(ConversationDiagnosticCode::ProtocolInvalid),
         };
-        if sandbox_mode == ConversationSandboxMode::DangerFullAccess
-            && approval_policy == ConversationApprovalPolicy::Never
-        {
+        if approval_policy == ConversationApprovalPolicy::Never {
             return Err(ConversationDiagnosticCode::ProtocolInvalid);
         }
         Ok(Self {

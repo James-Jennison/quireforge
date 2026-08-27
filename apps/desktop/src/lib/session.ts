@@ -90,15 +90,6 @@ const sessionReferenceSchema = z
       });
     }
     if (
-      session.sandboxMode === "danger-full-access" &&
-      session.approvalPolicy === "never"
-    ) {
-      context.addIssue({
-        code: "custom",
-        message: "Unrestricted execution cannot disable approval prompts",
-      });
-    }
-    if (
       session.modelId !== session.modelSelection.effective.modelId ||
       session.reasoningEffort !==
         session.modelSelection.effective.reasoningEffort

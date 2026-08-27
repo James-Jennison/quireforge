@@ -66,6 +66,7 @@ export const chatConversationStartRequestSchema = z
       .min(1)
       .max(64 * 1024)
       .refine((value) => !value.includes("\0"), "Prompt must not contain NUL"),
+    interactionProfile: z.enum(["direct", "conversational"]).optional(),
   })
   .strict();
 

@@ -45,6 +45,8 @@ const MAX_RECENT_CONVERSATIONS: usize = 64;
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct AdvisorConversationStartRequest {
     pub prompt: String,
+    #[serde(default)]
+    pub interaction_profile: crate::codex::conversation::types::InteractionProfile,
     /// A UI-held, application-owned attached-project identifier. When present,
     /// the command re-reads the fixed safe projection before a turn starts.
     pub project_id: Option<String>,
@@ -320,6 +322,7 @@ impl AdvisorConversationService {
         let started = start_advisor_process(
             &self.command,
             &request.prompt,
+            request.interaction_profile,
             selected_project_state.as_ref(),
             attachment.as_ref(),
             image_attachment.as_ref(),
@@ -498,6 +501,7 @@ impl ActiveAdvisorConversation {
 async fn start_advisor_process(
     command: &AppServerCommand,
     prompt: &str,
+    profile: crate::codex::conversation::types::InteractionProfile,
     selected_project_state: Option<&AdvisorSelectedProjectStateSnapshot>,
     attachment: Option<&ClaimedAdvisorTextAttachment>,
     image_attachment: Option<&ClaimedAdvisorImageAttachment>,
@@ -510,7 +514,7 @@ async fn start_advisor_process(
         .map_err(|_| AdvisorConversationDiagnosticCode::RuntimeUnavailable)?;
     let result = async {
         process.initialize().await.map_err(map_adapter_error)?;
-        let thread = start_advisor_thread(&mut process).await?;
+        let thread = start_advisor_thread(&mut process, profile).await?;
         let thread_id = parse_thread_start(thread)?;
         let conversation_id = Uuid::now_v7().to_string();
         projects
@@ -533,6 +537,7 @@ async fn start_advisor_process(
                         binary_attachment,
                     ),
                     image_attachment,
+                    profile,
                 ),
             )
             .await
@@ -558,37 +563,60 @@ async fn start_advisor_process(
     }
 }
 
-fn advisor_thread_start_params() -> Value {
-    json!({
+fn advisor_thread_start_params(
+    profile: crate::codex::conversation::types::InteractionProfile,
+) -> Value {
+    // `never` is permitted only because this exact profile has no cwd, no
+    // tools, read-only filesystem policy, and no network. Adding a capability
+    // here requires replacing this fixed policy with an explicit approval path.
+    let params = json!({
         "cwd": Value::Null,
         "approvalPolicy": "never",
         "sandbox": "read-only",
-    })
+        "personality": profile.as_protocol_value(),
+    });
+    assert_isolated_never_policy(&params);
+    params
+}
+
+fn assert_isolated_never_policy(params: &Value) {
+    assert_eq!(params["approvalPolicy"], "never");
+    assert_eq!(params["cwd"], Value::Null);
+    assert!(params.get("environments").is_none());
+    assert!(params.get("dynamicTools").is_none());
+    assert_eq!(params["sandbox"], "read-only");
 }
 
 /// Compatibility-only profile for managed app-server versions that require an
 /// explicit empty capability declaration. It grants no more authority than
 /// the minimal Advisor profile above.
-fn advisor_thread_start_compatibility_params() -> Value {
+fn advisor_thread_start_compatibility_params(
+    profile: crate::codex::conversation::types::InteractionProfile,
+) -> Value {
     json!({
         "cwd": Value::Null,
         "environments": [],
         "dynamicTools": [],
         "approvalPolicy": "never",
         "sandbox": "read-only",
+        "personality": profile.as_protocol_value(),
     })
 }
 
 async fn start_advisor_thread(
     process: &mut AppServerProcess,
+    profile: crate::codex::conversation::types::InteractionProfile,
 ) -> Result<Value, AdvisorConversationDiagnosticCode> {
     match process
-        .request("thread/start", advisor_thread_start_params())
+        .request("thread/start", advisor_thread_start_params(profile))
         .await
     {
         Ok(thread) => Ok(thread),
         Err(CodexAdapterError::RpcRejected) => process
-            .request("thread/start", advisor_thread_start_compatibility_params())
+            .request(
+                "thread/start",
+                advisor_thread_start_compatibility_params(profile),
+            )
             .await
             .map_err(map_thread_start_error),
         Err(error) => Err(map_thread_start_error(error)),
@@ -599,6 +627,7 @@ fn advisor_turn_start_params(
     thread_id: &str,
     prompt: &str,
     image_attachment: Option<&ClaimedAdvisorImageAttachment>,
+    profile: crate::codex::conversation::types::InteractionProfile,
 ) -> Value {
     let mut input = vec![json!({"type": "text", "text": prompt})];
     if let Some(image_attachment) = image_attachment {
@@ -606,6 +635,7 @@ fn advisor_turn_start_params(
     }
     json!({
         "threadId": thread_id,
+        "personality": profile.as_protocol_value(),
         "input": input,
         "cwd": Value::Null,
         "approvalPolicy": "never",
@@ -835,22 +865,22 @@ fn map_thread_start_error(error: CodexAdapterError) -> AdvisorConversationDiagno
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::codex::auth::types::AuthAccountKind;
+    use crate::codex::{auth::types::AuthAccountKind, InteractionProfile};
 
     #[test]
     fn fixed_wire_parameters_never_add_project_or_tool_authority() {
-        let thread = advisor_thread_start_params();
+        let thread = advisor_thread_start_params(InteractionProfile::Direct);
         assert_eq!(thread["cwd"], Value::Null);
         assert_eq!(thread["approvalPolicy"], "never");
         assert!(thread.get("projectId").is_none());
         assert!(thread.get("environments").is_none());
         assert!(thread.get("dynamicTools").is_none());
-        let compatibility = advisor_thread_start_compatibility_params();
+        let compatibility = advisor_thread_start_compatibility_params(InteractionProfile::Direct);
         assert_eq!(compatibility["cwd"], Value::Null);
         assert_eq!(compatibility["environments"], json!([]));
         assert_eq!(compatibility["dynamicTools"], json!([]));
         assert_eq!(compatibility["approvalPolicy"], "never");
-        let turn = advisor_turn_start_params("thread", "Prompt", None);
+        let turn = advisor_turn_start_params("thread", "Prompt", None, InteractionProfile::Direct);
         assert_eq!(turn["cwd"], Value::Null);
         assert_eq!(turn["sandboxPolicy"]["networkAccess"], false);
         assert_eq!(turn["input"], json!([{"type":"text","text":"Prompt"}]));
@@ -1025,6 +1055,7 @@ printf '%s\n' '{"method":"turn/completed","params":{"threadId":"018f0000-0000-70
             .start(
                 AdvisorConversationStartRequest {
                     prompt: "Plan the next safe step.".to_owned(),
+                    interaction_profile: InteractionProfile::Direct,
                     project_id: None,
                     attachment_id: None,
                     attachment_manifest_sha256: None,
@@ -1093,6 +1124,7 @@ printf '%s\n' '{"method":"turn/completed","params":{"threadId":"018f0000-0000-70
             .start(
                 AdvisorConversationStartRequest {
                     prompt: "Plan the next safe step.".to_owned(),
+                    interaction_profile: InteractionProfile::Direct,
                     project_id: None,
                     attachment_id: None,
                     attachment_manifest_sha256: None,
@@ -1147,6 +1179,7 @@ printf '%s\n' '{"id":3,"error":{"code":-32602,"message":"do not expose this eith
             .start(
                 AdvisorConversationStartRequest {
                     prompt: "Plan the next safe step.".to_owned(),
+                    interaction_profile: InteractionProfile::Direct,
                     project_id: None,
                     attachment_id: None,
                     attachment_manifest_sha256: None,
@@ -1192,6 +1225,7 @@ printf '%s\n' '{"id":3,"error":{"code":-32602,"message":"do not expose this eith
             .start(
                 AdvisorConversationStartRequest {
                     prompt: "Hello".to_owned(),
+                    interaction_profile: InteractionProfile::Direct,
                     project_id: None,
                     attachment_id: None,
                     attachment_manifest_sha256: None,

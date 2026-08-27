@@ -58,7 +58,7 @@ describe("conversation contract", () => {
     ).toMatchObject({ projectId, sandboxMode: "read-only" });
   });
 
-  it("rejects paths, protocol IDs, unknown fields, and an unsafe bypass combination", () => {
+  it("rejects paths, protocol IDs, unknown fields, and no-approval project modes", () => {
     const valid = {
       projectId,
       prompt: "Review the project.",
@@ -83,7 +83,6 @@ describe("conversation contract", () => {
     expect(() =>
       conversationStartRequestSchema.parse({
         ...valid,
-        sandboxMode: "danger-full-access",
         approvalPolicy: "never",
       }),
     ).toThrow();
