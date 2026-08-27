@@ -86,4 +86,7 @@ the visible profile controls remains required before M87 is marked validated.
 closed Direct/Conversational and authority contracts unchanged while rendering
 contiguous managed-conversation assistant deltas as one bounded response and
 clearing a stale transient poll error after a successful displayed-task poll.
-Its required evidence gates are the same as beta.108.
+Full validation, desktop/mobile E2E, the clean pinned Ubuntu package gate,
+restricted staged installation, installed-host integrity validation, and an
+unprivileged installed-binary launch passed. Owner acceptance of the repaired
+managed-conversation path remains the final M87 gate.

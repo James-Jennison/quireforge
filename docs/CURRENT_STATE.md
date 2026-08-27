@@ -106,8 +106,9 @@ deltas render as one bounded response, and a stale transient poll diagnostic
 clears only after the displayed task polls successfully. It does not change
 authority, approval, or native execution scope. Full validation, desktop/mobile
 E2E, clean packaging, restricted staged installation, installed-host integrity
-validation, installed-binary launch, and owner acceptance remain required
-before M87 can be marked validated. It is followed by M73 context assembly,
+validation, and installed-binary launch passed for beta.109. Owner acceptance
+of the repaired managed conversation remains required before M87 can be marked
+validated. It is followed by M73 context assembly,
 M74 completion, and M86 acceptance; later browser, connector,
 schedule, provider, and remote capabilities follow their explicit authority
 dependencies in `docs/ROADMAP.md`. M91 is the human-led roundtable: the owner

@@ -10,6 +10,10 @@
   and clears a transient polling diagnostic after the displayed task has
   successfully recovered. This changes neither conversation authority nor
   native execution scope.
+- Passed full validation, desktop/website E2E, clean pinned Ubuntu packaging,
+  restricted staged installation, installed-host integrity validation, and an
+  installed-binary launch. Owner acceptance of the repaired conversation path
+  remains required.
 
 ### 0.1.0-beta.108 — M87 interaction-profile candidate
 
