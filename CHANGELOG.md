@@ -2,6 +2,14 @@
 
 ## Unreleased — authoritative feature-parity roadmap
 
+### 0.1.0-beta.108 — M87 interaction-profile candidate
+
+- Adds closed Direct and Conversational interaction profiles to Appearance,
+  project conversations, and Advisor without changing authority or approval.
+- Removes no-approval project conversations. Native start and resume paths
+  reject them, while fixed no-capability Chat and Advisor builders assert their
+  isolated capability tuple.
+
 - Records ADR 0030 and `docs/ROADMAP.md` as the authoritative product roadmap:
   local-first, provider-neutral feature parity through supervised browser,
   connector, automation, remote-session, provider, multi-agent, and
