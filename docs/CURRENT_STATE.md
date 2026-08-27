@@ -100,8 +100,11 @@ research, and M72 objective-scoped authority are completed foundations. M72
 is validated in `0.1.0-beta.107`: full validation, desktop/mobile E2E, clean
 package, installed-host launch, and owner acceptance of the inert
 draft-to-active-to-revoked lifecycle passed. The next product foundation is
-M87 interaction profiles, followed by M73 context
-assembly, M74 completion, and M86 acceptance; later browser, connector,
+M87 interaction profiles. Its `0.1.0-beta.108` candidate has passed full
+source validation, desktop/mobile E2E, clean packaging, restricted staged
+installation, installed-host integrity validation, and installed-binary launch;
+only owner acceptance remains before it can be marked validated. It is followed
+by M73 context assembly, M74 completion, and M86 acceptance; later browser, connector,
 schedule, provider, and remote capabilities follow their explicit authority
 dependencies in `docs/ROADMAP.md`. M91 is the human-led roundtable: the owner
 selects two or three configured providers for one attributed local discussion,

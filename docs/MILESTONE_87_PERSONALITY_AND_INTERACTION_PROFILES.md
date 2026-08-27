@@ -69,5 +69,15 @@ The closed profile registry, Appearance default, project composer selector,
 Advisor selector, typed frontend contracts, and native personality mapping are
 implemented. The interaction style is visibly separate from access and
 approval controls, and project conversations offer only approval policies that
-remain truthful. Package, installed-host, and owner acceptance evidence remain
-required.
+remain truthful.
+
+`0.1.0-beta.108` passed full validation (440 desktop unit tests, seven website
+unit tests, 463 Rust tests, and two sandbox tests), desktop and website E2E
+(86 and eight tests respectively), and the clean pinned Ubuntu package gate.
+The latter built both Debian packages, completed disposable lifecycle and
+visible-launch validation, then promoted the artifacts. Both packages were
+staged through the restricted root-owned boundary and installed through the
+local installer daemon. The installed-host validator passed package state,
+version mapping, protected-file ownership, permissions, and integrity; the
+installed `/usr/bin/quireforge` process was then launched. Owner acceptance of
+the visible profile controls remains required before M87 is marked validated.

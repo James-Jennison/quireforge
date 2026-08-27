@@ -9,6 +9,10 @@
 - Removes no-approval project conversations. Native start and resume paths
   reject them, while fixed no-capability Chat and Advisor builders assert their
   isolated capability tuple.
+- Passed full validation, desktop/website E2E, the clean pinned Ubuntu package
+  and visible-launch gate, restricted staged installation, installed-host
+  integrity validation, and installed-binary launch. Owner UI acceptance is
+  still required before M87 is validated.
 
 - Records ADR 0030 and `docs/ROADMAP.md` as the authoritative product roadmap:
   local-first, provider-neutral feature parity through supervised browser,
