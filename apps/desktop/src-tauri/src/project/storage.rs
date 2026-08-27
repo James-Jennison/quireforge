@@ -13063,6 +13063,18 @@ mod tests {
             .pop()
             .expect("objective");
         assert_eq!(revoked.state, ObjectiveAuthorityState::Revoked);
+        let events: Vec<String> = repository
+            .connection
+            .prepare(
+                "SELECT event_kind FROM objective_authority_events
+                 WHERE objective_id=?1 ORDER BY created_at_ms, id",
+            )
+            .expect("event statement")
+            .query_map([&draft.id], |row| row.get(0))
+            .expect("event rows")
+            .collect::<Result<_, _>>()
+            .expect("valid event rows");
+        assert_eq!(events, vec!["created", "activated", "revoked"]);
         assert!(repository.activate_objective_authority(&draft.id).is_err());
         assert!(repository
             .create_objective_authority(
@@ -13074,6 +13086,76 @@ mod tests {
                 60,
             )
             .is_err());
+    }
+
+    #[test]
+    fn objective_authority_restart_preserves_revocation_and_content_free_ledger() {
+        let root = std::env::temp_dir().join(format!(
+            "quireforge-objective-authority-restart-{}",
+            Uuid::now_v7()
+        ));
+        let database = root.join("data/metadata.sqlite3");
+        let mut repository = ProjectRepository::open(&database).expect("metadata opens");
+        let project_id = Uuid::now_v7().to_string();
+        let now = now_millis();
+        repository
+            .connection
+            .execute(
+                "INSERT INTO projects(id,display_name,created_at_ms,updated_at_ms) VALUES(?1,'Authority restart',?2,?2)",
+                params![project_id, now],
+            )
+            .expect("project");
+        repository
+            .create_objective_authority(
+                &project_id,
+                "Restart-safe browser scope",
+                "Preserve the revoked lifecycle without executing a capability.",
+                &[ObjectiveAuthorityLane::BrowserWorkspace],
+                &[ObjectiveAuthorityLane::BrowserWorkspace],
+                60,
+            )
+            .expect("draft objective");
+        let objective_id = repository
+            .objective_authorities(&project_id)
+            .expect("list draft")
+            .pop()
+            .expect("objective")
+            .id;
+        repository
+            .activate_objective_authority(&objective_id)
+            .expect("activate");
+        repository
+            .revoke_objective_authority(&objective_id)
+            .expect("revoke");
+        drop(repository);
+
+        let mut reopened = ProjectRepository::open(&database).expect("metadata reopens");
+        let objective = reopened
+            .objective_authorities(&project_id)
+            .expect("list after restart")
+            .pop()
+            .expect("objective persists");
+        assert_eq!(objective.id, objective_id);
+        assert_eq!(objective.state, ObjectiveAuthorityState::Revoked);
+        assert!(objective.activated_at_ms.is_some());
+        assert!(objective.revoked_at_ms.is_some());
+        let ledger_columns: Vec<String> = reopened
+            .connection
+            .prepare(
+                "SELECT name FROM pragma_table_info('objective_authority_events') ORDER BY cid",
+            )
+            .expect("ledger schema")
+            .query_map([], |row| row.get(0))
+            .expect("ledger column rows")
+            .collect::<Result<_, _>>()
+            .expect("valid ledger columns");
+        assert_eq!(
+            ledger_columns,
+            vec!["id", "objective_id", "event_kind", "created_at_ms"]
+        );
+        drop(reopened);
+        fs::remove_file(database).expect("database cleanup");
+        fs::remove_dir_all(root).expect("directory cleanup");
     }
 
     #[test]

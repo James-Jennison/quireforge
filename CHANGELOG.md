@@ -10,6 +10,18 @@
   implementation milestone. This planning record does not claim a new browser,
   connector, provider, or computer-use capability has shipped.
 
+## 0.1.0-beta.104 — M72 objective-authority safeguards candidate
+
+- Makes future-lane scope visibly inert in the owner workspace and in each
+  recorded objective: a lane selection cannot start work, replace a later
+  lane's approval, or lower that lane's future Action Card requirement.
+- Adds owner-path coverage for draft → activate → revoke across desktop and
+  mobile, asserting that the lifecycle issues only objective-authority native
+  commands and no non-local network request.
+- Adds native persistence and ledger checks: the content-free created,
+  activated, and revoked lifecycle survives a storage reopen. It adds no
+  browser, agent, connector, provider, or desktop-control capability.
+
 ## 0.1.0-beta.103 — M76 research-review visibility correction
 
 - Mounts the separate Google research review in the visible Local Chat

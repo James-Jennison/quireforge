@@ -22,6 +22,12 @@ does not launch a browser, attach a project, read a connector, schedule work,
 send provider context, execute code, or control the desktop. A later service
 must define its own compatible objective-consumption and confirmation rule.
 
+Lane selection is descriptive planning metadata only. It confers no current or
+standing authority and must never reduce, replace, or skip a later capability's
+own first-use disclosure and approval tier. A confirmation-required subset may
+only pre-fill or highlight a later Action Card; it never lowers that card's
+required confirmation or permits execution.
+
 ## Boundary preservation
 
 - M69C remains a content-free Action Card grammar and is not extended.
@@ -39,7 +45,8 @@ must define its own compatible objective-consumption and confirmation rule.
 2. Native/bridge contracts expose only bounded authority metadata and reject
    unexpected fields or executable claims.
 3. A visible owner workspace can create, activate, inspect, and revoke an
-   objective without starting a capability.
+   objective without starting a capability. Every future lane is visibly locked
+   and states that it requires its own approval when available.
 4. Full validation, applicable desktop E2E, clean package, installed-host
    launch, and owner acceptance pass before M72 is validated.
 

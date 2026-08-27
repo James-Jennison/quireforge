@@ -708,9 +708,13 @@ async function installNativeFixture(
       __TAURI_INTERNALS__: {
         invoke: (command: string) => Promise<unknown>;
       };
+      __quireforgeFixtureCommands?: string[];
     };
+    const commands: string[] = [];
+    target.__quireforgeFixtureCommands = commands;
     target.__TAURI_INTERNALS__ = {
       invoke: (command) => {
+        commands.push(command);
         if (!(command in responses))
           throw new Error(`Unexpected command: ${command}`);
         const response = responses[command];
@@ -2425,6 +2429,102 @@ test("Local Chat opens the separate Google research review", async ({
   await expect(
     chat.getByRole("heading", { name: "Google research review" }),
   ).toBeVisible();
+});
+
+test("Local Chat keeps objective lanes inert through draft, activation, and revocation", async ({
+  page,
+}) => {
+  const requests: string[] = [];
+  page.on("request", (request) => requests.push(request.url()));
+  const objectiveId = "019fbee6-476f-71b0-853c-f067657aa69d";
+  const projectId = "018f0000-0000-7000-8000-000000000001";
+  const objective = (state: "draft" | "active" | "revoked") => ({
+    schemaVersion: 1,
+    objectives: [
+      {
+        id: objectiveId,
+        projectId,
+        title: "Review browser authority",
+        objective: "Plan the supervised browser capability.",
+        allowedLanes: ["browser-workspace", "browser-observation"],
+        confirmationRequiredLanes: ["browser-observation"],
+        state,
+        createdAtMs: 1,
+        activatedAtMs: state === "draft" ? null : 2,
+        expiresAtMs: 3_600_001,
+        revokedAtMs: state === "revoked" ? 3 : null,
+      },
+    ],
+    diagnosticCode: null,
+  });
+  await installNativeFixture(page, {
+    ...nativeResponses,
+    objective_authority_status: {
+      schemaVersion: 1,
+      objectives: [],
+      diagnosticCode: null,
+    },
+    objective_authority_create: objective("draft"),
+    objective_authority_activate: objective("active"),
+    objective_authority_revoke: objective("revoked"),
+  });
+  await page.goto("/");
+
+  await openWorkspace(page, "Advisor");
+  const chat = page.locator('[data-workspace-view="advisor"]');
+  await chat
+    .getByRole("button", { name: "Manage authority objectives" })
+    .click();
+  const workbench = chat.getByRole("dialog", { name: "Authority objectives" });
+  await expect(
+    workbench.locator(".objective-authority__inert-notice"),
+  ).toHaveText(/Lane selections describe future scope only/u);
+  await expect(
+    workbench.getByText(
+      "Locked — no capability executes from this selection. This lane requires its own approval when available.",
+    ),
+  ).toHaveCount(8);
+  const commandsBeforeLifecycle = await page.evaluate(
+    () =>
+      (
+        window as Window & {
+          __quireforgeFixtureCommands?: string[];
+        }
+      ).__quireforgeFixtureCommands ?? [],
+  );
+  await workbench.getByLabel("Title").fill("Review browser authority");
+  await workbench
+    .getByLabel("Objective")
+    .fill("Plan the supervised browser capability.");
+  await workbench
+    .getByRole("button", { name: "Create draft objective" })
+    .click();
+  await workbench.getByRole("button", { name: "Activate" }).click();
+  await workbench.getByRole("button", { name: "Revoke" }).click();
+  await expect(workbench.getByText(/revoked · expires/u)).toBeVisible();
+  await expect(
+    workbench.getByText(
+      "browser-workspace: locked future scope only; this lane requires its own approval when available.",
+    ),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      (before) =>
+        (
+          window as Window & {
+            __quireforgeFixtureCommands?: string[];
+          }
+        ).__quireforgeFixtureCommands?.slice(before.length),
+      commandsBeforeLifecycle,
+    ),
+  ).toEqual([
+    "objective_authority_create",
+    "objective_authority_activate",
+    "objective_authority_revoke",
+  ]);
+  expect(
+    requests.filter((url) => !url.startsWith("http://127.0.0.1:1420/")),
+  ).toEqual([]);
 });
 
 test("Advisor presents a bounded chat-first conversation with safe summaries", async ({

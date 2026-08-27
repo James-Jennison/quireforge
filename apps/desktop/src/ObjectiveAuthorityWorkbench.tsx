@@ -109,6 +109,10 @@ export function ObjectiveAuthorityWorkbench({
         Objectives are project-bound, expire automatically, and can be revoked.
         They do not open a browser, run an agent, or perform an external action.
       </p>
+      <p className="objective-authority__inert-notice" role="note">
+        Lane selections describe future scope only. They grant no capability,
+        never replace a later lane&apos;s own approval, and cannot start work.
+      </p>
       <label>
         Title
         <input
@@ -127,23 +131,40 @@ export function ObjectiveAuthorityWorkbench({
         />
       </label>
       <fieldset>
-        <legend>Allowed future lanes</legend>
+        <legend>Future lane planning</legend>
+        <p className="objective-authority__lane-explainer">
+          Each lane is locked until its own capability and approval flow are
+          available.
+        </p>
         {lanes.map((lane) => (
-          <label key={lane}>
-            <input
-              type="checkbox"
-              checked={lanesSelected.includes(lane)}
-              onChange={() => toggleLane(lane)}
-            />{" "}
-            {lane}
-            <input
-              type="checkbox"
-              checked={confirmationLanes.includes(lane)}
-              disabled={!lanesSelected.includes(lane)}
-              onChange={() => toggleConfirmation(lane)}
-            />{" "}
-            require confirmation
-          </label>
+          <div className="objective-authority__lane" key={lane}>
+            <label>
+              <input
+                type="checkbox"
+                checked={lanesSelected.includes(lane)}
+                onChange={() => toggleLane(lane)}
+              />{" "}
+              <span aria-hidden="true">🔒 </span>
+              {lane}
+            </label>
+            <p>
+              Locked — no capability executes from this selection. This lane
+              requires its own approval when available.
+            </p>
+            <label>
+              <input
+                type="checkbox"
+                checked={confirmationLanes.includes(lane)}
+                disabled={!lanesSelected.includes(lane)}
+                onChange={() => toggleConfirmation(lane)}
+              />{" "}
+              highlight confirmation when available
+            </label>
+            <p>
+              This only highlights a future Action Card. It never lowers or
+              skips that lane&apos;s approval requirement.
+            </p>
+          </div>
         ))}
       </fieldset>
       <label>
@@ -190,6 +211,15 @@ export function ObjectiveAuthorityWorkbench({
               {new Date(item.expiresAtMs).toLocaleString()}
             </p>
             <p>{item.allowedLanes.join(", ")}</p>
+            <ul className="objective-authority__inspect-lanes">
+              {item.allowedLanes.map((lane) => (
+                <li key={lane}>
+                  <span aria-hidden="true">🔒 </span>
+                  {lane}: locked future scope only; this lane requires its own
+                  approval when available.
+                </li>
+              ))}
+            </ul>
             <button
               type="button"
               disabled={busy || item.state !== "draft"}

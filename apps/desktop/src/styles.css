@@ -6851,6 +6851,36 @@ body,
   resize: vertical;
 }
 
+.objective-authority__inert-notice,
+.objective-authority__lane-explainer,
+.objective-authority__lane > p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.objective-authority__inert-notice {
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+}
+
+.objective-authority__lane {
+  display: grid;
+  gap: 5px;
+  margin-top: 12px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.objective-authority__inspect-lanes {
+  margin: 0.45rem 0;
+  padding-left: 1.2rem;
+}
+
 .mock-inference-workbench__details {
   padding-top: 12px;
   border-top: 1px solid var(--border);
