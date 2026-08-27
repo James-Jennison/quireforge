@@ -1,3 +1,4 @@
+mod action_card;
 pub mod advisor;
 mod advisor_archive_attachment;
 mod advisor_attachment;
@@ -2216,6 +2217,30 @@ fn local_chat_cancel(service: tauri::State<'_, Arc<local_chat::LocalChatService>
 }
 
 #[tauri::command]
+fn action_card_prepare(
+    request: action_card::ActionCardPrepareRequest,
+    service: tauri::State<'_, action_card::ActionCardService>,
+) -> Result<action_card::ActionCardSnapshot, ()> {
+    service.prepare(request)
+}
+
+#[tauri::command]
+fn action_card_approve(
+    request: action_card::ActionCardDecisionRequest,
+    service: tauri::State<'_, action_card::ActionCardService>,
+) -> Result<action_card::ActionCardSnapshot, ()> {
+    service.approve(request)
+}
+
+#[tauri::command]
+fn action_card_revoke(
+    request: action_card::ActionCardDecisionRequest,
+    service: tauri::State<'_, action_card::ActionCardService>,
+) -> Result<action_card::ActionCardSnapshot, ()> {
+    service.revoke(request)
+}
+
+#[tauri::command]
 fn context_assembly_review(
     request: context_assembly::ContextAttemptRequest,
     service: tauri::State<'_, context_assembly::ContextAssemblyService>,
@@ -3514,6 +3539,7 @@ pub fn run() {
         .manage(connector_foundation::ConnectorGovernanceService::default())
         .manage(controlled_browser_verification::ControlledBrowserVerificationService::default())
         .manage(context_assembly::ContextAssemblyService::default())
+        .manage(action_card::ActionCardService::default())
         .manage(local_runtime)
         .manage(local_chat)
         .setup(|app| {
@@ -3669,6 +3695,9 @@ pub fn run() {
             context_assembly_cancel_local_runtime,
             local_chat_run,
             local_chat_cancel,
+            action_card_prepare,
+            action_card_approve,
+            action_card_revoke,
             context_assembly_review,
             context_assembly_acknowledge_review,
             context_assembly_cancel,

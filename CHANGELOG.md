@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.1.0-beta.91 — M69C Action Card authority candidate
+
+- Adds a native-owned, strict Action Card lifecycle for the closed
+  `attach-project`, `use-source`, `draft-artifact`, and `work-with-code`
+  proposal classes.
+- Cards carry no user text, project/source/artifact identity, path, provider,
+  credential, tool, or execution argument. Approval creates only an opaque,
+  process-local content-free receipt; it has no data or execution authority.
+- This is a fresh candidate. A renderer, receipt consumer, package, and
+  installed-host acceptance evidence remain required before any M69C completion
+  claim.
+
 ## 0.1.0-beta.90 — M69B Threads-first candidate
 
 - Makes Threads the default workspace and adds a top-level Threads, Projects,

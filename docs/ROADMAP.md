@@ -1964,7 +1964,8 @@ authority is added. Its first available implementation directive is
 [M69B — Thread-First Agent Workspace Shell](MILESTONE_69B_THREAD_FIRST_IMPLEMENTATION.md);
 the prerequisite local-chat execution is
 [M69A — Threads-First Local Chat](MILESTONE_69A_LOCAL_CHAT_IMPLEMENTATION.md),
-and M69C remains a later authority-gateway slice.
+and the next contract-first authority slice is
+[M69C — Action Card Authority Gateway](MILESTONE_69C_ACTION_CARD_AUTHORITY_GATEWAY.md).
 
 Across all M69 work, an authorized implementation request remains active from
 inspection through validation and approved local acceptance. Inspection is

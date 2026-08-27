@@ -67,6 +67,12 @@ import {
   type LocalChatSnapshot,
 } from "./localChat";
 import {
+  actionCardDecisionRequestSchema,
+  actionCardPrepareRequestSchema,
+  actionCardSnapshotSchema,
+  type ActionCardSnapshot,
+} from "./actionCard";
+import {
   contextLedgerSnapshotSchema,
   type ContextLedgerSnapshot,
 } from "./contextLedger";
@@ -489,6 +495,9 @@ export const CONTEXT_ASSEMBLY_CANCEL_LOCAL_RUNTIME_COMMAND =
   "context_assembly_cancel_local_runtime";
 export const LOCAL_CHAT_RUN_COMMAND = "local_chat_run";
 export const LOCAL_CHAT_CANCEL_COMMAND = "local_chat_cancel";
+export const ACTION_CARD_PREPARE_COMMAND = "action_card_prepare";
+export const ACTION_CARD_APPROVE_COMMAND = "action_card_approve";
+export const ACTION_CARD_REVOKE_COMMAND = "action_card_revoke";
 export const CONTEXT_ASSEMBLY_REVIEW_COMMAND = "context_assembly_review";
 export const CONTEXT_ASSEMBLY_ACKNOWLEDGE_REVIEW_COMMAND =
   "context_assembly_acknowledge_review";
@@ -1875,6 +1884,36 @@ export const runLocalChat = async (
   localChatSnapshotSchema.parse(
     await invokeFunction(LOCAL_CHAT_RUN_COMMAND, {
       request: localChatRequestSchema.parse(request),
+    }),
+  );
+
+export const prepareActionCard = async (
+  request: unknown,
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<ActionCardSnapshot> =>
+  actionCardSnapshotSchema.parse(
+    await invokeFunction(ACTION_CARD_PREPARE_COMMAND, {
+      request: actionCardPrepareRequestSchema.parse(request),
+    }),
+  );
+
+export const approveActionCard = async (
+  request: unknown,
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<ActionCardSnapshot> =>
+  actionCardSnapshotSchema.parse(
+    await invokeFunction(ACTION_CARD_APPROVE_COMMAND, {
+      request: actionCardDecisionRequestSchema.parse(request),
+    }),
+  );
+
+export const revokeActionCard = async (
+  request: unknown,
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<ActionCardSnapshot> =>
+  actionCardSnapshotSchema.parse(
+    await invokeFunction(ACTION_CARD_REVOKE_COMMAND, {
+      request: actionCardDecisionRequestSchema.parse(request),
     }),
   );
 
