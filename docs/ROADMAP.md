@@ -1983,7 +1983,7 @@ scheduled/background work, M74 three-part completion, M79 connector
 mutation/delivery, then M75 cross-agent handoff and recovery.
 
 [M70 -- Typed Project Knowledge Foundation](MILESTONE_70_TYPED_PROJECT_KNOWLEDGE_FOUNDATION.md)
-is approved for implementation. It creates a private native Knowledge Ledger
+is validated in the `0.1.0-beta.98` candidate. It creates a private native Knowledge Ledger
 beside M66; it does not change M66's content-free projection, M60's reviewed
 context transfer, or M69C's non-executing Action Card boundary. Every later
 capability remains separately approval- and evidence-gated.

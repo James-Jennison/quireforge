@@ -1,8 +1,8 @@
 # M70 -- Typed Project Knowledge Foundation
 
-Status: implementation, full source validation, and desktop E2E are complete
-in the `0.1.0-beta.98` candidate; package/installed-host acceptance remains
-required. M70 is the first
+Status: validated in the `0.1.0-beta.98` candidate. Full source validation,
+desktop E2E, pinned Linux package lifecycle, and visible Debian-package launch
+have passed. Owner acceptance remains separate. M70 is the first
 continuity slice; it creates no agent read/write path, context assembly,
 provider transmission, execution authority, or external capability.
 
