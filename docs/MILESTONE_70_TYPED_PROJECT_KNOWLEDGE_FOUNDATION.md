@@ -1,8 +1,9 @@
 # M70 -- Typed Project Knowledge Foundation
 
-Status: approved for implementation by ADR 0029. M70 is the first continuity
-slice; it creates no agent read/write path, context assembly, provider
-transmission, execution authority, or external capability.
+Status: source validation complete in the `0.1.0-beta.97` candidate; desktop
+E2E and package/installed-host acceptance remain required. M70 is the first
+continuity slice; it creates no agent read/write path, context assembly,
+provider transmission, execution authority, or external capability.
 
 ## Purpose
 

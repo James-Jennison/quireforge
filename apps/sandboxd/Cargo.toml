@@ -1,6 +1,6 @@
 [package]
 name = "quireforge-sandboxd"
-version = "0.1.0-beta.96"
+version = "0.1.0-beta.97"
 edition = "2021"
 license = "Apache-2.0"
 publish = false

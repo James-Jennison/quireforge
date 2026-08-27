@@ -77,6 +77,13 @@ import {
   type ContextLedgerSnapshot,
 } from "./contextLedger";
 import {
+  knowledgeLedgerBindingRequestSchema,
+  knowledgeLedgerCreateRequestSchema,
+  knowledgeLedgerProjectRequestSchema,
+  knowledgeLedgerSnapshotSchema,
+  type KnowledgeLedgerSnapshot,
+} from "./knowledgeLedger";
+import {
   filePreviewHandoffRequestSchema,
   filePreviewSchema,
   type FilePreviewHandoffRequest,
@@ -485,6 +492,9 @@ export const CONTROLLED_BROWSER_VERIFICATION_REVOKE_COMMAND =
   "controlled_browser_verification_revoke";
 export const CONTEXT_ASSEMBLY_STATUS_COMMAND = "context_assembly_status";
 export const CONTEXT_AUTHORITY_LEDGER_COMMAND = "context_authority_ledger";
+export const KNOWLEDGE_LEDGER_STATUS_COMMAND = "knowledge_ledger_status";
+export const KNOWLEDGE_LEDGER_CREATE_COMMAND = "knowledge_ledger_create";
+export const KNOWLEDGE_LEDGER_BIND_COMMAND = "knowledge_ledger_bind";
 export const CONTEXT_ASSEMBLY_PREPARE_COMMAND = "context_assembly_prepare";
 export const CONTEXT_ASSEMBLY_CONFIRM_COMMAND = "context_assembly_confirm";
 export const CONTEXT_ASSEMBLY_RUN_LOCAL_RUNTIME_COMMAND =
@@ -1831,6 +1841,33 @@ export const loadContextAuthorityLedger = async (
 ): Promise<ContextLedgerSnapshot> =>
   contextLedgerSnapshotSchema.parse(
     await invokeFunction(CONTEXT_AUTHORITY_LEDGER_COMMAND, { projectId }),
+  );
+export const loadKnowledgeLedger = async (
+  request: unknown,
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<KnowledgeLedgerSnapshot> =>
+  knowledgeLedgerSnapshotSchema.parse(
+    await invokeFunction(KNOWLEDGE_LEDGER_STATUS_COMMAND, {
+      request: knowledgeLedgerProjectRequestSchema.parse(request),
+    }),
+  );
+export const createKnowledgeRecord = async (
+  request: unknown,
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<KnowledgeLedgerSnapshot> =>
+  knowledgeLedgerSnapshotSchema.parse(
+    await invokeFunction(KNOWLEDGE_LEDGER_CREATE_COMMAND, {
+      request: knowledgeLedgerCreateRequestSchema.parse(request),
+    }),
+  );
+export const bindKnowledgeRecord = async (
+  request: unknown,
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<KnowledgeLedgerSnapshot> =>
+  knowledgeLedgerSnapshotSchema.parse(
+    await invokeFunction(KNOWLEDGE_LEDGER_BIND_COMMAND, {
+      request: knowledgeLedgerBindingRequestSchema.parse(request),
+    }),
   );
 export const prepareContextAssembly = (
   request: unknown,

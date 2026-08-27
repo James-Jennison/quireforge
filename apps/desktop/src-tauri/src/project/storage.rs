@@ -28,9 +28,10 @@ use super::task_template::{
 };
 use super::types::{
     ArtifactReferenceState, ArtifactReferenceSummary, ContextLedgerEntry, DurableSourceClass,
-    DurableSourceLifecycleState, DurableSourceSummary, EvidenceEnvelopeV1,
-    LocalReviewActivityPresentationDetails, LocalReviewActivityPresentationEvidencePreview,
-    LocalReviewActivityScope, LocalReviewAnnotationState, LocalReviewAnnotationSummary,
+    DurableSourceLifecycleState, DurableSourceSummary, EvidenceEnvelopeV1, KnowledgeRecordKind,
+    KnowledgeRecordStatus, KnowledgeRecordSummary, LocalReviewActivityPresentationDetails,
+    LocalReviewActivityPresentationEvidencePreview, LocalReviewActivityScope,
+    LocalReviewAnnotationState, LocalReviewAnnotationSummary,
     LocalReviewApprovalPresentationDetails, LocalReviewApprovalPresentationEvidencePreview,
     LocalReviewCollectionState, LocalReviewCollectionSummary, LocalReviewComparisonState,
     LocalReviewComparisonSummary, LocalReviewDiagnosticCode, LocalReviewEvidenceApprovalState,
@@ -960,6 +961,18 @@ CREATE INDEX artifact_references_task_active ON artifact_references(task_id, sta
 CREATE TRIGGER artifact_references_identity_immutable BEFORE UPDATE OF id, schema_version, project_id, task_id, artifact_id, artifact_sha256, artifact_class, display_label, created_at_ms ON artifact_references BEGIN SELECT RAISE(ABORT, 'artifact reference identity is immutable'); END;
 CREATE TRIGGER artifact_references_lifecycle_transition BEFORE UPDATE OF state ON artifact_references WHEN NOT ((OLD.state = 'active' AND NEW.state = 'deleted') OR OLD.state = NEW.state) BEGIN SELECT RAISE(ABORT, 'artifact reference lifecycle transition is invalid'); END;
 "#;
+const KNOWLEDGE_LEDGER_MIGRATION: &str = r#"
+CREATE TABLE knowledge_records (
+ id TEXT PRIMARY KEY NOT NULL CHECK(length(id)=36), project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE RESTRICT,
+ task_id TEXT REFERENCES task_records(id) ON DELETE RESTRICT,
+ kind TEXT NOT NULL CHECK(kind IN ('owner-decision','constraint','observed-fact','verified-implementation','agent-claim','assumption','recommendation','rejected-approach','unresolved-question')),
+ status TEXT NOT NULL CHECK(status IN ('proposed','pending-owner-binding','recorded','active','validated','disproven','resolved','superseded','retired')),
+ title TEXT NOT NULL CHECK(length(title) BETWEEN 1 AND 240), body TEXT NOT NULL CHECK(length(body) BETWEEN 1 AND 8192), supersedes_id TEXT REFERENCES knowledge_records(id) ON DELETE RESTRICT,
+ created_at_ms INTEGER NOT NULL, updated_at_ms INTEGER NOT NULL);
+CREATE TABLE knowledge_record_events (id TEXT PRIMARY KEY NOT NULL, record_id TEXT NOT NULL REFERENCES knowledge_records(id) ON DELETE RESTRICT, event_kind TEXT NOT NULL, created_at_ms INTEGER NOT NULL);
+CREATE INDEX knowledge_records_project_recent ON knowledge_records(project_id, updated_at_ms DESC, id);
+CREATE TRIGGER knowledge_record_identity_immutable BEFORE UPDATE OF id, project_id, task_id, kind, title, body, supersedes_id, created_at_ms ON knowledge_records BEGIN SELECT RAISE(ABORT, 'knowledge identity immutable'); END;
+"#;
 
 const MIGRATIONS: &[(i64, &str, &str)] = &[
     (1, "projects-and-directory-associations", INITIAL_MIGRATION),
@@ -1065,6 +1078,7 @@ const MIGRATIONS: &[(i64, &str, &str)] = &[
     ),
     (26, "context-assembly-v1", CONTEXT_ASSEMBLY_MIGRATION),
     (27, "artifact-references-v1", ARTIFACT_REFERENCES_MIGRATION),
+    (28, "knowledge-ledger-v1", KNOWLEDGE_LEDGER_MIGRATION),
 ];
 
 #[derive(Debug, Error)]
@@ -1095,6 +1109,28 @@ pub(crate) enum StorageError {
     InvalidStatusTransition,
     #[error("generated task identifier collided")]
     DuplicateId,
+}
+
+fn knowledge_kind_value(value: KnowledgeRecordKind) -> &'static str {
+    match value {
+        KnowledgeRecordKind::OwnerDecision => "owner-decision",
+        KnowledgeRecordKind::Constraint => "constraint",
+        KnowledgeRecordKind::ObservedFact => "observed-fact",
+        KnowledgeRecordKind::VerifiedImplementation => "verified-implementation",
+        KnowledgeRecordKind::AgentClaim => "agent-claim",
+        KnowledgeRecordKind::Assumption => "assumption",
+        KnowledgeRecordKind::Recommendation => "recommendation",
+        KnowledgeRecordKind::RejectedApproach => "rejected-approach",
+        KnowledgeRecordKind::UnresolvedQuestion => "unresolved-question",
+    }
+}
+fn knowledge_kind(value: &str) -> Result<KnowledgeRecordKind, rusqlite::Error> {
+    serde_json::from_value(serde_json::Value::String(value.into()))
+        .map_err(|_| rusqlite::Error::InvalidQuery)
+}
+fn knowledge_status(value: &str) -> Result<KnowledgeRecordStatus, rusqlite::Error> {
+    serde_json::from_value(serde_json::Value::String(value.into()))
+        .map_err(|_| rusqlite::Error::InvalidQuery)
 }
 
 pub(crate) struct DurableSourceInsert<'a> {
@@ -2656,6 +2692,92 @@ pub(crate) struct LocalReviewPromotionSource {
 }
 
 impl ProjectRepository {
+    pub(crate) fn knowledge_records_for_record(&self, id: &str) -> Result<String, StorageError> {
+        self.connection
+            .query_row(
+                "SELECT project_id FROM knowledge_records WHERE id=?1",
+                [id],
+                |r| r.get(0),
+            )
+            .map_err(StorageError::from)
+    }
+    pub(crate) fn knowledge_records(
+        &self,
+        project_id: &str,
+    ) -> Result<Vec<KnowledgeRecordSummary>, StorageError> {
+        let mut statement = self.connection.prepare("SELECT id,project_id,task_id,kind,status,title,body,supersedes_id,created_at_ms,updated_at_ms FROM knowledge_records WHERE project_id=?1 ORDER BY updated_at_ms DESC,id DESC LIMIT 128")?;
+        let records = statement
+            .query_map([project_id], |row| {
+                Ok(KnowledgeRecordSummary {
+                    id: row.get(0)?,
+                    project_id: row.get(1)?,
+                    task_id: row.get(2)?,
+                    kind: knowledge_kind(&row.get::<_, String>(3)?)?,
+                    status: knowledge_status(&row.get::<_, String>(4)?)?,
+                    title: row.get(5)?,
+                    body: row.get(6)?,
+                    supersedes_id: row.get(7)?,
+                    created_at_ms: row.get(8)?,
+                    updated_at_ms: row.get(9)?,
+                })
+            })?
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(StorageError::from);
+        records
+    }
+    pub(crate) fn create_knowledge_record(
+        &mut self,
+        project_id: &str,
+        task_id: Option<&str>,
+        kind: KnowledgeRecordKind,
+        title: &str,
+        body: &str,
+        supersedes_id: Option<&str>,
+    ) -> Result<String, StorageError> {
+        if Uuid::parse_str(project_id).is_err()
+            || task_id.is_some_and(|id| Uuid::parse_str(id).is_err())
+            || supersedes_id.is_some_and(|id| Uuid::parse_str(id).is_err())
+            || title.trim().is_empty()
+            || title.len() > 240
+            || body.trim().is_empty()
+            || body.len() > 8192
+        {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let id = Uuid::now_v7().to_string();
+        let now = now_millis();
+        let status = match kind {
+            KnowledgeRecordKind::OwnerDecision | KnowledgeRecordKind::Constraint => "proposed",
+            _ => "recorded",
+        };
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        tx.execute("INSERT INTO knowledge_records(id,project_id,task_id,kind,status,title,body,supersedes_id,created_at_ms,updated_at_ms) VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9,?9)", params![id,project_id,task_id,knowledge_kind_value(kind),status,title.trim(),body.trim(),supersedes_id,now])?;
+        tx.execute("INSERT INTO knowledge_record_events(id,record_id,event_kind,created_at_ms) VALUES(?1,?2,'created',?3)", params![Uuid::now_v7().to_string(),id,now])?;
+        tx.commit()?;
+        Ok(id)
+    }
+    pub(crate) fn bind_knowledge_record(&mut self, id: &str) -> Result<(), StorageError> {
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let (kind, status): (String, String) = tx.query_row(
+            "SELECT kind,status FROM knowledge_records WHERE id=?1",
+            [id],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )?;
+        if !matches!(kind.as_str(), "owner-decision" | "constraint") || status != "proposed" {
+            return Err(StorageError::InvalidStatusTransition);
+        }
+        let now = now_millis();
+        tx.execute(
+            "UPDATE knowledge_records SET status='active',updated_at_ms=?2 WHERE id=?1",
+            params![id, now],
+        )?;
+        tx.execute("INSERT INTO knowledge_record_events(id,record_id,event_kind,created_at_ms) VALUES(?1,?2,'owner-bound',?3)",params![Uuid::now_v7().to_string(),id,now])?;
+        Ok(tx.commit()?)
+    }
     pub(crate) fn context_ledger(
         &self,
         project_id: &str,
@@ -9000,10 +9122,10 @@ mod tests {
         TemplateOrigin, TemplateState,
     };
     use crate::project::types::{
-        LocalReviewAnnotationState, LocalReviewCollectionState, LocalReviewComparisonState,
-        LocalReviewEvidenceApprovalState, LocalReviewEvidenceCheckState, LocalReviewItemClass,
-        LocalReviewItemState, LocalReviewLineKind, LocalReviewSourceKind, LocalReviewTextFormat,
-        TaskStatus,
+        KnowledgeRecordKind, KnowledgeRecordStatus, LocalReviewAnnotationState,
+        LocalReviewCollectionState, LocalReviewComparisonState, LocalReviewEvidenceApprovalState,
+        LocalReviewEvidenceCheckState, LocalReviewItemClass, LocalReviewItemState,
+        LocalReviewLineKind, LocalReviewSourceKind, LocalReviewTextFormat, TaskStatus,
     };
     use crate::project::{
         ChatConversationMetadata, ConversationPendingSelection, ConversationReference,
@@ -9541,7 +9663,7 @@ mod tests {
                     0
                 ))
                 .expect("version"),
-            27
+            28
         );
     }
 
@@ -9712,6 +9834,8 @@ mod tests {
                 "fictional_connector_audit".to_owned(),
                 "fictional_connector_bindings".to_owned(),
                 "fictional_connector_operations".to_owned(),
+                "knowledge_record_events".to_owned(),
+                "knowledge_records".to_owned(),
                 "local_review_activity_ledger".to_owned(),
                 "local_review_annotations".to_owned(),
                 "local_review_collections".to_owned(),
@@ -10138,7 +10262,7 @@ mod tests {
                     0
                 ),)
                 .expect("version"),
-            27
+            28
         );
         assert_eq!(
             repository.connection.query_row(
@@ -10606,7 +10730,7 @@ mod tests {
                     0
                 ))
                 .expect("migration version"),
-            27
+            28
         );
     }
 
@@ -10778,7 +10902,7 @@ mod tests {
                     0
                 ))
                 .expect("version"),
-            27
+            28
         );
 
         let mut failed = Connection::open_in_memory().expect("database opens");
@@ -11418,7 +11542,7 @@ mod tests {
                 1
             );
         }
-        assert_eq!(MIGRATIONS.len(), 27);
+        assert_eq!(MIGRATIONS.len(), 28);
 
         let connection = Connection::open_in_memory().expect("database");
         connection
@@ -11466,7 +11590,7 @@ mod tests {
                     0
                 ))
                 .expect("version"),
-            27
+            28
         );
         assert_eq!(
             repository
@@ -11523,7 +11647,7 @@ mod tests {
                     0
                 ))
                 .expect("version"),
-            27
+            28
         );
     }
 
@@ -12453,6 +12577,56 @@ mod tests {
         assert!(plans.is_empty());
         assert_eq!(count, 1);
         assert!(corrupt);
+    }
+
+    #[test]
+    fn knowledge_records_bind_only_owner_records_and_preserve_history() {
+        let mut repository = ProjectRepository::in_memory().expect("schema");
+        let project_id = Uuid::now_v7().to_string();
+        insert_active_project(&repository, &project_id, &Uuid::now_v7().to_string());
+        let decision = repository
+            .create_knowledge_record(
+                &project_id,
+                None,
+                KnowledgeRecordKind::OwnerDecision,
+                "Linux only",
+                "The product remains Linux only.",
+                None,
+            )
+            .expect("record");
+        assert_eq!(
+            repository.knowledge_records(&project_id).expect("list")[0].status,
+            KnowledgeRecordStatus::Proposed
+        );
+        repository
+            .bind_knowledge_record(&decision)
+            .expect("owner binds");
+        assert_eq!(
+            repository.knowledge_records(&project_id).expect("list")[0].status,
+            KnowledgeRecordStatus::Active
+        );
+        let claim = repository
+            .create_knowledge_record(
+                &project_id,
+                None,
+                KnowledgeRecordKind::AgentClaim,
+                "A claim",
+                "A non-binding claim.",
+                Some(&decision),
+            )
+            .expect("claim");
+        assert!(repository.bind_knowledge_record(&claim).is_err());
+        assert_eq!(
+            repository
+                .connection
+                .query_row(
+                    "SELECT count(*) FROM knowledge_record_events WHERE record_id=?1",
+                    [&decision],
+                    |row| row.get::<_, i64>(0)
+                )
+                .expect("events"),
+            2
+        );
     }
 
     #[test]

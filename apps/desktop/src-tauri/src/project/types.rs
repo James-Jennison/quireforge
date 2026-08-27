@@ -1581,3 +1581,72 @@ pub struct ContextLedgerSnapshot {
     pub entries: Vec<ContextLedgerEntry>,
     pub diagnostic: Option<String>,
 }
+
+pub const KNOWLEDGE_LEDGER_SCHEMA_VERSION: u16 = 1;
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum KnowledgeRecordKind {
+    OwnerDecision,
+    Constraint,
+    ObservedFact,
+    VerifiedImplementation,
+    AgentClaim,
+    Assumption,
+    Recommendation,
+    RejectedApproach,
+    UnresolvedQuestion,
+}
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum KnowledgeRecordStatus {
+    Proposed,
+    PendingOwnerBinding,
+    Recorded,
+    Active,
+    Validated,
+    Disproven,
+    Resolved,
+    Superseded,
+    Retired,
+}
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct KnowledgeRecordCreateRequest {
+    pub project_id: String,
+    pub task_id: Option<String>,
+    pub kind: KnowledgeRecordKind,
+    pub title: String,
+    pub body: String,
+    pub supersedes_id: Option<String>,
+}
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct KnowledgeRecordProjectRequest {
+    pub project_id: String,
+}
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct KnowledgeRecordBindingRequest {
+    pub record_id: String,
+}
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct KnowledgeRecordSummary {
+    pub id: String,
+    pub project_id: String,
+    pub task_id: Option<String>,
+    pub kind: KnowledgeRecordKind,
+    pub status: KnowledgeRecordStatus,
+    pub title: String,
+    pub body: String,
+    pub supersedes_id: Option<String>,
+    pub created_at_ms: i64,
+    pub updated_at_ms: i64,
+}
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct KnowledgeLedgerSnapshot {
+    pub schema_version: u16,
+    pub records: Vec<KnowledgeRecordSummary>,
+    pub diagnostic_code: Option<String>,
+}

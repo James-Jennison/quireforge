@@ -103,6 +103,12 @@ recovery. M70 is approved for implementation as a new private native service;
 it does not alter the existing M66 content-free ledger or make QuireForge's
 own ADR/CURRENT_STATE process ledger-backed.
 
+The `0.1.0-beta.97` M70 candidate adds the private native Knowledge Ledger:
+closed record kinds, bounded storage, immutable event history, owner-only
+decision/constraint activation, and strict native/TypeScript contracts. Source
+validation has passed; desktop E2E and package/installed-host acceptance remain
+required before M70 is marked validated.
+
 M65's metadata-only artifact-reference vertical slice is implemented in the
 unreleased `0.1.0-beta.75` candidate. Migration 27 persists only a confirmed
 project/task association to an opaque M48 artifact UUID, digest, closed class,

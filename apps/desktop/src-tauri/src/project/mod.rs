@@ -35,18 +35,20 @@ use types::{
     DurableSourceConfirmRequest, DurableSourceDeleteConfirmRequest, DurableSourceDiagnosticCode,
     DurableSourceFilePrepareRequest, DurableSourceManualPrepareRequest, DurableSourcePreparation,
     DurableSourceProjectRequest, DurableSourceReadRequest, DurableSourceSnapshot,
-    DurableSourceSummary, GitSummary, LocalReviewActivityPresentationEvidencePreview,
-    LocalReviewActivityPresentationEvidenceRequest, LocalReviewAnnotationCreateRequest,
-    LocalReviewAnnotationEditRequest, LocalReviewAnnotationMutationRequest,
-    LocalReviewApprovalPresentationEvidencePreview, LocalReviewApprovalPresentationEvidenceRequest,
-    LocalReviewCollectionCreateRequest, LocalReviewCollectionMutationRequest,
-    LocalReviewComparisonCreateRequest, LocalReviewComparisonDiscardRequest,
-    LocalReviewComparisonReadRequest, LocalReviewDiagnosticCode, LocalReviewEvidenceArtifactKind,
-    LocalReviewEvidenceArtifactState, LocalReviewEvidenceCheckState, LocalReviewEvidenceSource,
-    LocalReviewEvidenceWorkspaceState, LocalReviewGitStatusDiffSummaryDetails,
-    LocalReviewGitStatusDiffSummaryEvidencePreview, LocalReviewGitStatusDiffSummaryEvidenceRequest,
-    LocalReviewImagePickRequest, LocalReviewImagePreview, LocalReviewImagePreviewRequest,
-    LocalReviewItemDiscardRequest, LocalReviewListRequest, LocalReviewM48ArtifactCopyRequest,
+    DurableSourceSummary, GitSummary, KnowledgeLedgerSnapshot, KnowledgeRecordBindingRequest,
+    KnowledgeRecordCreateRequest, KnowledgeRecordProjectRequest,
+    LocalReviewActivityPresentationEvidencePreview, LocalReviewActivityPresentationEvidenceRequest,
+    LocalReviewAnnotationCreateRequest, LocalReviewAnnotationEditRequest,
+    LocalReviewAnnotationMutationRequest, LocalReviewApprovalPresentationEvidencePreview,
+    LocalReviewApprovalPresentationEvidenceRequest, LocalReviewCollectionCreateRequest,
+    LocalReviewCollectionMutationRequest, LocalReviewComparisonCreateRequest,
+    LocalReviewComparisonDiscardRequest, LocalReviewComparisonReadRequest,
+    LocalReviewDiagnosticCode, LocalReviewEvidenceArtifactKind, LocalReviewEvidenceArtifactState,
+    LocalReviewEvidenceCheckState, LocalReviewEvidenceSource, LocalReviewEvidenceWorkspaceState,
+    LocalReviewGitStatusDiffSummaryDetails, LocalReviewGitStatusDiffSummaryEvidencePreview,
+    LocalReviewGitStatusDiffSummaryEvidenceRequest, LocalReviewImagePickRequest,
+    LocalReviewImagePreview, LocalReviewImagePreviewRequest, LocalReviewItemDiscardRequest,
+    LocalReviewListRequest, LocalReviewM48ArtifactCopyRequest,
     LocalReviewM48GeneratedArtifactMetadataDetails,
     LocalReviewM48GeneratedArtifactMetadataEvidencePreview,
     LocalReviewM48GeneratedArtifactMetadataEvidenceRequest, LocalReviewManualEvidenceCreateRequest,
@@ -67,8 +69,8 @@ use types::{
     TaskTemplateEditRequest, TaskTemplateIdRequest, TaskTemplateInspectionSnapshot,
     TaskTemplateMutationRequest, TaskTemplateOrigin, TaskTemplatePreviewRequest,
     TaskTemplatePreviewSnapshot, TaskTemplateState, TaskTemplateSummary,
-    LOCAL_REVIEW_SCHEMA_VERSION, PROJECT_SCHEMA_VERSION, TASK_RECORD_SCHEMA_VERSION,
-    TASK_TEMPLATE_SCHEMA_VERSION,
+    KNOWLEDGE_LEDGER_SCHEMA_VERSION, LOCAL_REVIEW_SCHEMA_VERSION, PROJECT_SCHEMA_VERSION,
+    TASK_RECORD_SCHEMA_VERSION, TASK_TEMPLATE_SCHEMA_VERSION,
 };
 use uuid::Uuid;
 
@@ -301,6 +303,77 @@ pub(crate) struct ConversationPendingSelection<'a> {
 }
 
 impl ProjectService {
+    pub fn knowledge_ledger(
+        &self,
+        request: KnowledgeRecordProjectRequest,
+    ) -> KnowledgeLedgerSnapshot {
+        let records = self.repository.lock().ok().and_then(|r| {
+            r.as_ref()
+                .and_then(|repo| repo.knowledge_records(&request.project_id).ok())
+        });
+        let diagnostic_code = records
+            .is_none()
+            .then(|| "knowledge-ledger-unavailable".into());
+        KnowledgeLedgerSnapshot {
+            schema_version: KNOWLEDGE_LEDGER_SCHEMA_VERSION,
+            records: records.unwrap_or_default(),
+            diagnostic_code,
+        }
+    }
+    pub fn create_knowledge_record(
+        &self,
+        request: KnowledgeRecordCreateRequest,
+    ) -> KnowledgeLedgerSnapshot {
+        let project_id = request.project_id.clone();
+        let result = self.repository.lock().ok().and_then(|mut r| {
+            r.as_mut().and_then(|repo| {
+                repo.create_knowledge_record(
+                    &project_id,
+                    request.task_id.as_deref(),
+                    request.kind,
+                    &request.title,
+                    &request.body,
+                    request.supersedes_id.as_deref(),
+                )
+                .ok()
+            })
+        });
+        let mut snapshot = self.knowledge_ledger(KnowledgeRecordProjectRequest { project_id });
+        if result.is_none() {
+            snapshot.diagnostic_code = Some("knowledge-record-rejected".into());
+        }
+        snapshot
+    }
+    pub fn bind_knowledge_record(
+        &self,
+        request: KnowledgeRecordBindingRequest,
+    ) -> KnowledgeLedgerSnapshot {
+        let project_id = self.repository.lock().ok().and_then(|r| {
+            r.as_ref()
+                .and_then(|repo| repo.knowledge_records_for_record(&request.record_id).ok())
+        });
+        let Some(project_id) = project_id else {
+            return KnowledgeLedgerSnapshot {
+                schema_version: KNOWLEDGE_LEDGER_SCHEMA_VERSION,
+                records: Vec::new(),
+                diagnostic_code: Some("knowledge-record-unavailable".into()),
+            };
+        };
+        let ok = self
+            .repository
+            .lock()
+            .ok()
+            .and_then(|mut r| {
+                r.as_mut()
+                    .and_then(|repo| repo.bind_knowledge_record(&request.record_id).ok())
+            })
+            .is_some();
+        let mut snapshot = self.knowledge_ledger(KnowledgeRecordProjectRequest { project_id });
+        if !ok {
+            snapshot.diagnostic_code = Some("knowledge-binding-rejected".into());
+        }
+        snapshot
+    }
     pub fn context_ledger(&self, project_id: String) -> ContextLedgerSnapshot {
         let entries = self.repository.lock().ok().and_then(|repository| {
             repository

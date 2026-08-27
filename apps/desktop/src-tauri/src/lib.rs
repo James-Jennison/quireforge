@@ -227,21 +227,22 @@ use project::{
         DurableSourceArtifactPrepareRequest, DurableSourceConfirmRequest,
         DurableSourceDeleteConfirmRequest, DurableSourceFilePrepareRequest,
         DurableSourceManualPrepareRequest, DurableSourcePreparation, DurableSourceProjectRequest,
-        DurableSourceReadRequest, DurableSourceSnapshot, LocalReviewAnnotationCreateRequest,
-        LocalReviewAnnotationEditRequest, LocalReviewAnnotationMutationRequest,
-        LocalReviewCollectionCreateRequest, LocalReviewCollectionMutationRequest,
-        LocalReviewComparisonCreateRequest, LocalReviewComparisonDiscardRequest,
-        LocalReviewComparisonReadRequest, LocalReviewImagePickOutcome, LocalReviewImagePickRequest,
-        LocalReviewImagePreview, LocalReviewImagePreviewRequest, LocalReviewItemDiscardRequest,
-        LocalReviewListRequest, LocalReviewM48ArtifactCopyRequest,
-        LocalReviewManualEvidenceCreateRequest, LocalReviewManualEvidenceCreateResult,
-        LocalReviewManualEvidencePreview, LocalReviewPromotionPrepareRequest,
-        LocalReviewPromotionReservationRequest, LocalReviewSnapshot,
-        LocalReviewTextItemCreateRequest, LocalReviewTextPreview, LocalReviewTextPreviewRequest,
-        PlanCreateRequest, PlanEditRequest, PlanIdRequest, ProjectPreflightSnapshot,
-        ProjectWorkspaceSnapshot, TaskCatalogContextCreateRequest, TaskCatalogCreateRequest,
-        TaskCatalogListRequest, TaskCatalogSnapshot, TaskIdRequest, TaskStatusRequest,
-        TaskTitleRequest,
+        DurableSourceReadRequest, DurableSourceSnapshot, KnowledgeLedgerSnapshot,
+        KnowledgeRecordBindingRequest, KnowledgeRecordCreateRequest, KnowledgeRecordProjectRequest,
+        LocalReviewAnnotationCreateRequest, LocalReviewAnnotationEditRequest,
+        LocalReviewAnnotationMutationRequest, LocalReviewCollectionCreateRequest,
+        LocalReviewCollectionMutationRequest, LocalReviewComparisonCreateRequest,
+        LocalReviewComparisonDiscardRequest, LocalReviewComparisonReadRequest,
+        LocalReviewImagePickOutcome, LocalReviewImagePickRequest, LocalReviewImagePreview,
+        LocalReviewImagePreviewRequest, LocalReviewItemDiscardRequest, LocalReviewListRequest,
+        LocalReviewM48ArtifactCopyRequest, LocalReviewManualEvidenceCreateRequest,
+        LocalReviewManualEvidenceCreateResult, LocalReviewManualEvidencePreview,
+        LocalReviewPromotionPrepareRequest, LocalReviewPromotionReservationRequest,
+        LocalReviewSnapshot, LocalReviewTextItemCreateRequest, LocalReviewTextPreview,
+        LocalReviewTextPreviewRequest, PlanCreateRequest, PlanEditRequest, PlanIdRequest,
+        ProjectPreflightSnapshot, ProjectWorkspaceSnapshot, TaskCatalogContextCreateRequest,
+        TaskCatalogCreateRequest, TaskCatalogListRequest, TaskCatalogSnapshot, TaskIdRequest,
+        TaskStatusRequest, TaskTitleRequest,
     },
     FictionalConnectorOperationRecord, ProjectService,
 };
@@ -1379,6 +1380,28 @@ fn task_catalog_status(
     service: tauri::State<'_, ProjectService>,
 ) -> TaskCatalogSnapshot {
     service.task_catalog(request)
+}
+
+#[tauri::command]
+fn knowledge_ledger_status(
+    request: KnowledgeRecordProjectRequest,
+    service: tauri::State<'_, ProjectService>,
+) -> KnowledgeLedgerSnapshot {
+    service.knowledge_ledger(request)
+}
+#[tauri::command]
+fn knowledge_ledger_create(
+    request: KnowledgeRecordCreateRequest,
+    service: tauri::State<'_, ProjectService>,
+) -> KnowledgeLedgerSnapshot {
+    service.create_knowledge_record(request)
+}
+#[tauri::command]
+fn knowledge_ledger_bind(
+    request: KnowledgeRecordBindingRequest,
+    service: tauri::State<'_, ProjectService>,
+) -> KnowledgeLedgerSnapshot {
+    service.bind_knowledge_record(request)
 }
 
 #[tauri::command]
@@ -3643,6 +3666,9 @@ pub fn run() {
             codex_usage_refresh,
             project_workspace_status,
             task_catalog_status,
+            knowledge_ledger_status,
+            knowledge_ledger_create,
+            knowledge_ledger_bind,
             task_catalog_create,
             task_catalog_create_from_conversation,
             task_catalog_rename,
