@@ -94,14 +94,27 @@ portability work has started.
 
 ## Reuse and boundary
 
-ADR 0029 accepts a serialized, interleaved next-delivery order: M70 typed
-project knowledge, M71 evidence linkage, M76 isolated read-only browser
-research, M72 objective-scoped authority, M77 connector read access, M73
-agent-neutral context assembly, M78 scheduled/background work, M74 three-part
-completion, M79 connector mutation/delivery, and M75 cross-agent handoff and
-recovery. M70 is approved for implementation as a new private native service;
-it does not alter the existing M66 content-free ledger or make QuireForge's
-own ADR/CURRENT_STATE process ledger-backed.
+ADR 0030 makes the feature-parity delivery roadmap authoritative. M70 typed
+project knowledge, M71 evidence linkage, and M76 isolated read-only browser
+research are completed foundations; M72 objective-scoped authority is active.
+The next visible parity lane is M83's user-owned in-app browser workspace,
+followed by M73 context assembly, M84 supervised agent-browser collaboration,
+and M85 interactive browser authority. The complete serialized delivery order,
+including connectors, schedules, remote access, provider connection, a shared
+multi-provider roundtable, skills, image generation, delegated multi-agent
+objectives, and approved computer use, lives in `docs/ROADMAP.md`. M91 is the
+human-led roundtable: the owner selects two or three configured providers for
+one attributed local discussion, and every cross-provider message remains an
+explicit, destination-scoped context projection rather than manual copy/paste
+or ambient sharing. This does not alter M66's content-free ledger or make
+QuireForge's own ADR/CURRENT_STATE process ledger-backed.
+
+The `0.1.0-beta.102` M76 follow-up candidate adds the missing user-controlled
+research-review UI to Local Chat. It provides an explicit **Research Google
+(read only)** entry point that opens a separate prepare/confirm/cancel/revoke
+dialog for the fixed Google scope; it does not give Local Chat browser access
+or page content. Validation, packaging, installation, and installed-host UI
+acceptance remain required for beta.102.
 
 The validated `0.1.0-beta.101` M76 candidate adds an isolated, read-only browser-research
 controller for the owner-approved exact scope `https://google.com/` at

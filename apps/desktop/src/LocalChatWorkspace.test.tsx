@@ -149,4 +149,27 @@ describe("LocalChatWorkspace", () => {
     );
     expect(onOpenLinkedProjectChat).toHaveBeenCalledOnce();
   });
+
+  it("offers separate Google research without giving the chat runtime browser authority", () => {
+    const onOpenBrowserResearch = vi.fn();
+    render(
+      <LocalChatWorkspace
+        onRun={vi.fn()}
+        onCancel={vi.fn()}
+        onPrepareActionCard={vi.fn()}
+        onApproveActionCard={vi.fn()}
+        onRevokeActionCard={vi.fn()}
+        onOpenLinkedProjectChat={vi.fn()}
+        onOpenBrowserResearch={onOpenBrowserResearch}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Research Google (read only)" }),
+    );
+    expect(onOpenBrowserResearch).toHaveBeenCalledOnce();
+    expect(
+      screen.getByText(/Local Chat does not receive browser access/i),
+    ).toBeVisible();
+  });
 });

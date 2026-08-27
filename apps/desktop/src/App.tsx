@@ -310,6 +310,13 @@ const ControlledBrowserVerificationWorkbench = lazy(() =>
     }),
   ),
 );
+const IsolatedBrowserResearchWorkbench = lazy(() =>
+  import("./IsolatedBrowserResearchWorkbench").then(
+    ({ IsolatedBrowserResearchWorkbench: workspace }) => ({
+      default: workspace,
+    }),
+  ),
+);
 const ObjectiveAuthorityWorkbench = lazy(() =>
   import("./ObjectiveAuthorityWorkbench").then(
     ({ ObjectiveAuthorityWorkbench: workspace }) => ({ default: workspace }),
@@ -1228,6 +1235,7 @@ export default function App({
     controlledBrowserVerificationOpen,
     setControlledBrowserVerificationOpen,
   ] = useState(false);
+  const [browserResearchOpen, setBrowserResearchOpen] = useState(false);
   const [objectiveAuthorityOpen, setObjectiveAuthorityOpen] = useState(false);
   const [durableSourcesWorkbenchOpen, setDurableSourcesWorkbenchOpen] =
     useState(false);
@@ -4368,6 +4376,7 @@ export default function App({
                   onOpenLinkedProjectChat={() =>
                     requestConversationWorkspace("conversation")
                   }
+                  onOpenBrowserResearch={() => setBrowserResearchOpen(true)}
                   onOpenObjectiveAuthority={() =>
                     setObjectiveAuthorityOpen(true)
                   }
@@ -4735,6 +4744,25 @@ export default function App({
                         onClose={() =>
                           setControlledBrowserVerificationOpen(false)
                         }
+                      />
+                    </Suspense>
+                  )}
+                  {browserResearchOpen && (
+                    <Suspense
+                      fallback={
+                        <section
+                          className="mock-inference-workbench"
+                          aria-label="Isolated browser research"
+                        >
+                          <p role="status">
+                            Loading isolated browser research…
+                          </p>
+                        </section>
+                      }
+                    >
+                      <IsolatedBrowserResearchWorkbench
+                        projectId={currentProject?.id ?? null}
+                        onClose={() => setBrowserResearchOpen(false)}
                       />
                     </Suspense>
                   )}

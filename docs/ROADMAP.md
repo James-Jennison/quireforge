@@ -2024,6 +2024,13 @@ and visible Debian-package launch have passed; owner acceptance remains
 separate.
 
 [M76 -- Isolated Read-Only Browser Research](MILESTONE_76_ISOLATED_BROWSER_RESEARCH.md)
+has a `0.1.0-beta.102` user-interface follow-up candidate. It adds a visible,
+explicit Local Chat entry point for the fixed Google-only review while keeping
+chat unable to navigate or receive browser content. The operator must prepare
+and then confirm the separate one-use review; package and installed-host UI
+acceptance remain pending for beta.102.
+
+[M76 -- Isolated Read-Only Browser Research](MILESTONE_76_ISOLATED_BROWSER_RESEARCH.md)
 is validated in the `0.1.0-beta.101` candidate for the exact owner-approved
 scope `https://google.com/` at `https://google.com`. It is a separate native
 controller, not a generalization of M58: an ephemeral JavaScript-disabled

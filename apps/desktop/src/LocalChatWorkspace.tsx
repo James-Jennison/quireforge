@@ -16,6 +16,7 @@ interface LocalChatWorkspaceProps {
     cardId: string;
   }) => Promise<ActionCardSnapshot>;
   onOpenLinkedProjectChat: () => void;
+  onOpenBrowserResearch?: () => void;
   onOpenObjectiveAuthority?: () => void;
 }
 
@@ -49,6 +50,7 @@ export function LocalChatWorkspace({
   onApproveActionCard,
   onRevokeActionCard,
   onOpenLinkedProjectChat,
+  onOpenBrowserResearch,
   onOpenObjectiveAuthority,
 }: LocalChatWorkspaceProps) {
   const [message, setMessage] = useState("");
@@ -137,6 +139,11 @@ export function LocalChatWorkspace({
             Opens a separate managed project conversation. This Local Chat
             transcript is not transferred automatically.
           </p>
+          {onOpenBrowserResearch && (
+            <button type="button" onClick={onOpenBrowserResearch}>
+              Research Google (read only)
+            </button>
+          )}
           {onOpenObjectiveAuthority && (
             <button type="button" onClick={onOpenObjectiveAuthority}>
               Manage authority objectives
@@ -147,6 +154,13 @@ export function LocalChatWorkspace({
               Creates and revokes project-scoped authority objectives. It does
               not grant Local Chat browser, tool, or desktop control.
             </p>
+          )}
+          {onOpenBrowserResearch && (
+            <p>
+              Opens a separate, owner-approved Google review. Local Chat does
+              not receive browser access or page content.
+            </p>
+          )}
         </div>
       </header>
       {turns.length > 0 && (

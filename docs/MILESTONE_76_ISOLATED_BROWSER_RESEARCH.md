@@ -26,6 +26,10 @@ accepted scope is exactly `https://google.com/` at the exact origin
 
 ## Acceptance
 
+- The `0.1.0-beta.102` follow-up candidate adds the previously missing visible
+  user control: Local Chat can open, but cannot invoke, a separate Google-only
+  research review. Prepare and Confirm once remain explicit user actions;
+  beta.102 validation, package, and installed-host UI acceptance are pending.
 - Strict native and TypeScript contracts permit only the owner-approved exact
   Google target/origin and bounded observation limit.
 - The packaged Linux application exposes a separate helper with no ambient

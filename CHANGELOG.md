@@ -1,5 +1,25 @@
 # Changelog
 
+## Unreleased — authoritative feature-parity roadmap
+
+- Records ADR 0030 and `docs/ROADMAP.md` as the authoritative product roadmap:
+  local-first, provider-neutral feature parity through supervised browser,
+  connector, automation, remote-session, provider, multi-agent, and
+  computer-use capabilities.
+- Retains M70, M71, and M76 as completed foundations; M72 is the active next
+  implementation milestone. This planning record does not claim a new browser,
+  connector, provider, or computer-use capability has shipped.
+
+## 0.1.0-beta.102 — M76 research review UI candidate
+
+- Adds the missing user-controlled entry point for the existing isolated Google
+  research controller. Local Chat shows **Research Google (read only)**, which
+  opens a separate review and cannot grant browser authority or page content to
+  the chat runtime.
+- The review requires Prepare then Confirm once, exposes cancel/revoke, and
+  reports terminal redirect/origin-drift outcomes without rendering or
+  retaining page content.
+
 ## 0.1.0-beta.101 — M76 isolated browser-research
 
 - Adds a separate native, owner-confirmed browser-research controller scoped
