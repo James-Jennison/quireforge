@@ -43,7 +43,11 @@ fi
 if [[ ! -f "$cache_path" ]]; then
   temporary="$(mktemp "$cache_dir/.${cache_name}.tmp.XXXXXX")"
   trap 'rm -f -- "$temporary"' EXIT
-  curl --fail --location --retry 3 --output "$temporary" "$source_url"
+  # Pinned release mirrors can reset an otherwise healthy long download. Keep
+  # the transfer bounded and retry every transport failure; the checksum below
+  # remains the authority for accepting the downloaded bytes.
+  curl --fail --location --connect-timeout 30 --retry 5 --retry-delay 2 \
+    --retry-all-errors --output "$temporary" "$source_url"
   verify "$temporary"
   mv -f -- "$temporary" "$cache_path"
   trap - EXIT
