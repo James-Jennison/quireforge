@@ -12,8 +12,11 @@ with leading LLM desktop applications, while remaining a local-first,
 provider-neutral engineering workspace. Parity means equivalent, visible
 workflows for durable project continuity, browser collaboration, supervised
 agent work, coding review, connected work, automation, remote access, and
-computer use. It does not mean reusing private provider interfaces, scraping
-provider sessions, or exposing credentials to an agent.
+computer use. It also includes a human-led shared multi-provider roundtable:
+the owner can select two or three configured providers for one attributed
+discussion without manually relaying messages between provider chats. It does
+not mean reusing private provider interfaces, scraping provider sessions, or
+exposing credentials to an agent.
 
 Work remains serialized on the authoritative branch. M70, M71, and M76 remain
 completed historical foundations; M72 is the active next milestone. The
@@ -30,6 +33,10 @@ authoritative delivery order after M72 is defined in `docs/ROADMAP.md`.
   authority; later services consume only the compatible authority they define.
 - M60 remains the reviewed context-transfer boundary until M73 delivers its
   agent-neutral successor contract.
+- A roundtable transcript is local and attributed. Each provider receives only
+  an owner-visible, destination-specific projection through the approved live
+  provider boundary; QuireForge never silently shares one provider's private
+  session or credentials with another.
 - Every implementation milestone requires scoped tests, full validation,
   applicable desktop/browser E2E, a clean package gate, installed-host launch,
   and owner acceptance where behavior is visual, interactive, or consequential.

@@ -1994,11 +1994,12 @@ The delivery order is:
 11. M75 — Cross-Agent Handoff and Recovery;
 12. M82 — Remote Session Relay;
 13. M81 — Live Provider Connection;
-14. M87 — Personality and Interaction Profiles;
-15. M88 — Skills and Reusable Project Playbooks;
-16. M89 — Image Generation and Visual Iteration;
-17. M90 — Multi-Agent Objectives; and
-18. M80 — Approved Computer Use.
+14. M91 — Shared Multi-Provider Roundtable;
+15. M87 — Personality and Interaction Profiles;
+16. M88 — Skills and Reusable Project Playbooks;
+17. M89 — Image Generation and Visual Iteration;
+18. M90 — Multi-Agent Objectives; and
+19. M80 — Approved Computer Use.
 
 M70, M71, and M76 are completed historical foundations. M72 is active. Every
 later milestone remains separately scoped and must pass its native/unit,
@@ -2069,14 +2070,23 @@ agent, connector, or execution capability.
   locally running QuireForge instance; project data remains local.
 - **M81 — Live Provider Connection:** consented, provider-neutral live-provider
   boundary for approved capabilities.
+- **M91 — Shared Multi-Provider Roundtable:** an owner selects two or three
+  configured providers for one local discussion. QuireForge preserves an
+  attributed shared transcript and presents each proposed cross-provider
+  context projection before dispatch, so the owner no longer has to manually
+  copy, paste, and relay between provider chats. Provider-private sessions and
+  credentials remain separate; no message or source crosses providers
+  silently, and every dispatch is bounded by M72/M73 authority and evidence.
 - **M87 — Personality and Interaction Profiles:** user-selectable working
   styles that never change authority.
 - **M88 — Skills and Reusable Project Playbooks:** versioned, inspectable,
   evidence-backed reusable instructions; no public marketplace.
 - **M89 — Image Generation and Visual Iteration:** provider-routed generation,
   review, iteration history, and explicit asset adoption.
-- **M90 — Multi-Agent Objectives:** bounded sub-objectives, worktree isolation,
-  ledger coordination, conflict detection, and owner-visible synthesis.
+- **M90 — Multi-Agent Objectives:** bounded delegated sub-objectives,
+  worktree isolation, ledger coordination, conflict detection, and
+  owner-visible synthesis. This follows M91; it is distinct from a human-led
+  multi-provider conversation.
 - **M80 — Approved Computer Use:** per-invocation, visible desktop control with
   scope, expiry, revoke, high-risk detection, and confirmation before
   irreversible or external actions.
