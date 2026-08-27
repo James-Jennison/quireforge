@@ -97,17 +97,15 @@ portability work has started.
 ADR 0030 makes the feature-parity delivery roadmap authoritative. M70 typed
 project knowledge, M71 evidence linkage, and M76 isolated read-only browser
 research are completed foundations; M72 objective-scoped authority is active.
-The next visible parity lane is M83's user-owned in-app browser workspace,
-followed by M73 context assembly, M84 supervised agent-browser collaboration,
-and M85 interactive browser authority. The complete serialized delivery order,
-including connectors, schedules, remote access, provider connection, a shared
-multi-provider roundtable, skills, image generation, delegated multi-agent
-objectives, and approved computer use, lives in `docs/ROADMAP.md`. M91 is the
-human-led roundtable: the owner selects two or three configured providers for
-one attributed local discussion, and every cross-provider message remains an
-explicit, destination-scoped context projection rather than manual copy/paste
-or ambient sharing. This does not alter M66's content-free ledger or make
-QuireForge's own ADR/CURRENT_STATE process ledger-backed.
+The next product foundations are M87 interaction profiles, M73 context
+assembly, M74 completion, and M86 acceptance; later browser, connector,
+schedule, provider, and remote capabilities follow their explicit authority
+dependencies in `docs/ROADMAP.md`. M91 is the human-led roundtable: the owner
+selects two or three configured providers for one attributed local discussion,
+and every cross-provider message remains a direct, destination-scoped owner
+projection rather than manual copy/paste, ambient sharing, a scheduled action,
+or delegated-agent action. This does not alter M66's content-free ledger or
+make QuireForge's own ADR/CURRENT_STATE process ledger-backed.
 
 The `0.1.0-beta.102` M76 follow-up candidate passed source, browser E2E, clean
 package, passwordless installation, and bounded installed-host helper checks,

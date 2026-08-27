@@ -24,6 +24,15 @@ Work remains serialized on the authoritative branch. M70, M71, and M76 remain
 completed historical foundations; M72 is the active next milestone. The
 authoritative delivery order after M72 is defined in `docs/ROADMAP.md`.
 
+The serialized order follows authority dependencies rather than surface
+similarity: context assembly precedes completion and acceptance; structured
+connector mutation precedes open-ended interactive browser mutation; and
+scheduled work is split into M78A local/read-only triggers and M78B
+mutation-capable work only after manual mutation and non-bypassable handoff
+authority have matured. Profile, skill, and image-generation capabilities are
+placed at their earliest compatible authority gates rather than bundled with
+the later autonomy cluster.
+
 ## Constraints
 
 - A user-owned authenticated browser profile is never equivalent to agent

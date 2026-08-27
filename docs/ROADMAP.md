@@ -1982,24 +1982,25 @@ explicit authority and evidence rather than provider-private interfaces.
 The delivery order is:
 
 1. M72 — Objective-Scoped Authority Boundaries;
-2. M86 — Review Comments and Acceptance Workspace;
-3. M83 — User-Owned In-App Browser Workspace;
-4. M73 — Agent-Neutral Context Assembly;
-5. M84 — Supervised Agent Browser Collaboration;
+2. M87 — Personality and Interaction Profiles;
+3. M73 — Agent-Neutral Context Assembly;
+4. M74 — Three-Part Completion Model;
+5. M86 — Review Comments and Acceptance Workspace;
 6. M77 — Connector Read Access;
-7. M78 — Scheduled and Background Work;
-8. M74 — Three-Part Completion Model;
-9. M85 — Interactive Browser Authority;
-10. M79 — Connector Mutation and Delivery;
-11. M75 — Cross-Agent Handoff and Recovery;
-12. M82 — Remote Session Relay;
-13. M81 — Live Provider Connection;
-14. M91 — Shared Multi-Provider Roundtable;
-15. M87 — Personality and Interaction Profiles;
-16. M88 — Skills and Reusable Project Playbooks;
-17. M89 — Image Generation and Visual Iteration;
-18. M90 — Multi-Agent Objectives; and
-19. M80 — Approved Computer Use.
+7. M83 — User-Owned In-App Browser Workspace;
+8. M84 — Supervised Agent Browser Collaboration;
+9. M79 — Connector Mutation and Delivery;
+10. M88 — Skills and Reusable Project Playbooks;
+11. M85 — Interactive Browser Authority;
+12. M78A — Read/Local-Only Scheduled Work;
+13. M75 — Cross-Agent Handoff and Recovery;
+14. M78B — Mutation-Capable Scheduled Work;
+15. M81 — Live Provider Connection;
+16. M89 — Image Generation and Visual Iteration;
+17. M91 — Shared Multi-Provider Roundtable;
+18. M82 — Remote Session Relay;
+19. M90 — Multi-Agent Objectives; and
+20. M80 — Approved Computer Use.
 
 M70, M71, and M76 are completed historical foundations. M72 is active. Every
 later milestone remains separately scoped and must pass its native/unit,
@@ -2050,34 +2051,52 @@ agent, connector, or execution capability.
 - **M72 — Objective-Scoped Authority Boundaries:** native project-bound
   objectives with approved scope, exclusions, expiry, revocation, and
   boundary-crossing escalation. It executes no external capability itself.
+- **M87 — Personality and Interaction Profiles:** user-selectable working
+  styles that never change authority. It follows M72 so a profile can never
+  imply objective scope, a capability, or an approval outcome.
+- **M73 — Agent-Neutral Context Assembly:** relevant knowledge, evidence, and
+  active authority assembled at the beginning of a capability-bearing task.
+- **M74 — Three-Part Completion Model:** independent implementation,
+  validation, and owner-acceptance status. It defines the lifecycle that M86
+  presents and records.
 - **M86 — Review Comments and Acceptance Workspace:** inline diff comments,
-  review threads, and owner acceptance evidence linked to implementation and
-  validation.
+  review threads, and owner acceptance evidence linked to M74 implementation
+  and validation status.
+- **M77 — Connector Read Access:** initial engineering connectors with distinct
+  account, retention, scope, and revocation boundaries.
 - **M83 — User-Owned In-App Browser Workspace:** visible tabs, address bar,
   navigation, history, profile management, data reset, and download controls.
   It gives chat no ambient browser access.
-- **M73 — Agent-Neutral Context Assembly:** relevant knowledge, evidence, and
-  active authority assembled at the beginning of a capability-bearing task.
 - **M84 — Supervised Agent Browser Collaboration:** scoped tab/origin grants,
   citation-backed research, provenance capture, prompt-injection handling, and
   immediate stop/revoke controls.
-- **M77 — Connector Read Access:** initial engineering connectors with distinct
-  account, retention, scope, and revocation boundaries.
-- **M78 — Scheduled and Background Work:** one-off and recurring objectives,
-  status, cancellation, retries, and no standing authority beyond expiry.
-- **M74 — Three-Part Completion Model:** independent implementation,
-  validation, and owner-acceptance status.
-- **M85 — Interactive Browser Authority:** separately approved click, type,
-  form, upload, download, and submission lanes. The user completes credentials;
-  agents never receive passwords, cookies, or one-time codes.
 - **M79 — Connector Mutation and Delivery:** explicit final confirmation and
-  reconciliation evidence for external side effects.
+  reconciliation evidence for external side effects. This proves the bounded,
+  structured mutation model before broader interactive-browser authority.
+- **M88 — Skills and Reusable Project Playbooks:** versioned, inspectable,
+  evidence-backed reusable instructions that inherit M77/M79 capability gates;
+  no public marketplace.
+- **M85 — Interactive Browser Authority:** separately approved click, type,
+  form, upload, download, and submission lanes, following the proven M79
+  mutation boundary. The user completes credentials; agents never receive
+  passwords, cookies, or one-time codes.
+- **M78A — Read/Local-Only Scheduled Work:** one-off and recurring local or
+  read-only objectives, status, cancellation, retries, and no standing
+  authority beyond expiry. It cannot invoke a mutation, provider send,
+  roundtable dispatch, browser interaction, or external delivery.
 - **M75 — Cross-Agent Handoff and Recovery:** durable handoff proof and
-  checkpoint-based recovery across agent/provider changes.
-- **M82 — Remote Session Relay:** secure, session-scoped remote access to a
-  locally running QuireForge instance; project data remains local.
+  checkpoint-based recovery across agent/provider changes. Its gateway must
+  require an owner confirmation that callers cannot bypass; a UI flag is not a
+  sufficient authority boundary.
+- **M78B — Mutation-Capable Scheduled Work:** separately approved scheduled
+  work that can use only M79-proven mutations with outcome reconciliation.
+  It follows M75 and may not invoke an M91 roundtable dispatch.
 - **M81 — Live Provider Connection:** consented, provider-neutral live-provider
   boundary for approved capabilities.
+- **M89 — Image Generation and Visual Iteration:** provider-routed,
+  single-provider generation, review, iteration history, and explicit asset
+  adoption after M81. Its call path is not an authority or transport substrate
+  for M91.
 - **M91 — Shared Multi-Provider Roundtable:** the Phase 7B thread capability
   defined by [ADR 0031](DECISIONS/0031-owner-mediated-roundtable.md). The
   owner starts a roundtable from within one normal thread, selects two or three
@@ -2091,17 +2110,18 @@ agent, connector, or execution capability.
   relayed-provider provenance. Provider-private sessions, credentials, and
   project-source access remain separate. No message or source crosses
   providers silently; every send has per-provider evidence, and the owner can
-  revoke one provider without erasing historical evidence.
-- **M87 — Personality and Interaction Profiles:** user-selectable working
-  styles that never change authority.
-- **M88 — Skills and Reusable Project Playbooks:** versioned, inspectable,
-  evidence-backed reusable instructions; no public marketplace.
-- **M89 — Image Generation and Visual Iteration:** provider-routed generation,
-  review, iteration history, and explicit asset adoption.
+  revoke one provider without erasing historical evidence. M91's dispatch is
+  its own direct, synchronous owner interaction: it cannot reuse M89's
+  single-provider path, and is excluded from M78B schedules and M90 delegated
+  objectives.
+- **M82 — Remote Session Relay:** secure, owner-owned, session-scoped remote
+  access to a locally running QuireForge instance; project data remains local.
+  It follows M91 so an active roundtable relays its complete provider,
+  provenance, authority, and ledger state rather than a flattened transcript.
 - **M90 — Multi-Agent Objectives:** bounded delegated sub-objectives,
   worktree isolation, ledger coordination, conflict detection, and
   owner-visible synthesis. This follows M91; it is distinct from a human-led
-  multi-provider conversation.
+  multi-provider conversation and cannot invoke M91 dispatches.
 - **M80 — Approved Computer Use:** per-invocation, visible desktop control with
   scope, expiry, revoke, high-risk detection, and confirmation before
   irreversible or external actions.

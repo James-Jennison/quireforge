@@ -48,6 +48,13 @@ foundations.
   private sessions remain isolated.
 - The owner can revoke a provider seat without silently changing other seats
   or erasing the prior local transcript and evidence.
+- M91 dispatch is a direct, synchronous owner interaction. It is not invocable
+  by M78B scheduled work or M90 delegated objectives, even when an owner
+  previously configured those capabilities. A scheduled or delegated request
+  cannot convert prior configuration into an unattended roundtable relay.
+- M89 single-provider image-generation transport is not an M91 dispatch path.
+  M91 owns and enforces its distinct provider list, digest, provenance, and
+  per-provider ledger requirements at the crossing itself.
 
 ## Explicit non-goals
 
@@ -59,7 +66,7 @@ delegated-objectives capability.
 
 ## Consequences
 
-M91 follows M81 and precedes M87 in the serialized delivery order. Its
+M91 follows M89 and precedes M82 in the serialized delivery order. Its
 implementation directive must preserve the single-thread conversation grammar,
 M69C's Action Card language, per-provider evidence, and the full validation,
 package, installed-host, and owner-acceptance gates required by ADR 0030.
