@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.0-beta.101 — M76 isolated browser-research candidate
+
+- Adds a separate native, owner-confirmed browser-research controller scoped
+  exactly to `https://google.com/` at `https://google.com`.
+- The ephemeral WebKitGTK adapter disables JavaScript, retains only bounded
+  digest provenance in memory, and stops on redirect/origin drift or
+  prompt-injection indicators. It has no ambient browser session, credentials,
+  downloads, mutation, automatic context transfer, or agent access.
+
 ## 0.1.0-beta.100 — M71 Evidence Linkage candidate
 
 - Adds a private native claim → evidence → conclusion chain beside the M70

@@ -53,6 +53,13 @@ import {
   type BrowserVerificationSnapshot,
 } from "./controlledBrowserVerification";
 import {
+  browserResearchAttemptRequestSchema,
+  browserResearchConfirmRequestSchema,
+  browserResearchPrepareRequestSchema,
+  browserResearchSnapshotSchema,
+  type BrowserResearchSnapshot,
+} from "./browserResearch";
+import {
   contextAssemblyAttemptRequestSchema,
   contextAssemblyConfirmRequestSchema,
   contextAssemblyPrepareRequestSchema,
@@ -493,6 +500,11 @@ export const CONTROLLED_BROWSER_VERIFICATION_CANCEL_COMMAND =
   "controlled_browser_verification_cancel";
 export const CONTROLLED_BROWSER_VERIFICATION_REVOKE_COMMAND =
   "controlled_browser_verification_revoke";
+export const BROWSER_RESEARCH_STATUS_COMMAND = "browser_research_status";
+export const BROWSER_RESEARCH_PREPARE_COMMAND = "browser_research_prepare";
+export const BROWSER_RESEARCH_CONFIRM_COMMAND = "browser_research_confirm";
+export const BROWSER_RESEARCH_CANCEL_COMMAND = "browser_research_cancel";
+export const BROWSER_RESEARCH_REVOKE_COMMAND = "browser_research_revoke";
 export const CONTEXT_ASSEMBLY_STATUS_COMMAND = "context_assembly_status";
 export const CONTEXT_AUTHORITY_LEDGER_COMMAND = "context_authority_ledger";
 export const KNOWLEDGE_LEDGER_STATUS_COMMAND = "knowledge_ledger_status";
@@ -1825,6 +1837,63 @@ export const revokeControlledBrowserVerification = (
     CONTROLLED_BROWSER_VERIFICATION_REVOKE_COMMAND,
     request,
     browserVerificationAttemptRequestSchema,
+    invokeFunction,
+  );
+
+async function browserResearchInvoke(
+  command: string,
+  request: unknown,
+  schema: z.ZodType,
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<BrowserResearchSnapshot> {
+  return browserResearchSnapshotSchema.parse(
+    await invokeFunction(command, { request: schema.parse(request) }),
+  );
+}
+export const loadBrowserResearch = async (
+  invokeFunction: InvokeFunction = invokeTauri,
+) =>
+  browserResearchSnapshotSchema.parse(
+    await invokeFunction(BROWSER_RESEARCH_STATUS_COMMAND),
+  );
+export const prepareBrowserResearch = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+) =>
+  browserResearchInvoke(
+    BROWSER_RESEARCH_PREPARE_COMMAND,
+    request,
+    browserResearchPrepareRequestSchema,
+    invokeFunction,
+  );
+export const confirmBrowserResearch = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+) =>
+  browserResearchInvoke(
+    BROWSER_RESEARCH_CONFIRM_COMMAND,
+    request,
+    browserResearchConfirmRequestSchema,
+    invokeFunction,
+  );
+export const cancelBrowserResearch = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+) =>
+  browserResearchInvoke(
+    BROWSER_RESEARCH_CANCEL_COMMAND,
+    request,
+    browserResearchAttemptRequestSchema,
+    invokeFunction,
+  );
+export const revokeBrowserResearch = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+) =>
+  browserResearchInvoke(
+    BROWSER_RESEARCH_REVOKE_COMMAND,
+    request,
+    browserResearchAttemptRequestSchema,
     invokeFunction,
   );
 

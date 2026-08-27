@@ -7,6 +7,7 @@ mod advisor_document_attachment;
 mod advisor_generated_artifact;
 mod advisor_image_attachment;
 mod attachment;
+mod browser_research;
 mod codex;
 #[allow(dead_code)]
 mod connector_foundation;
@@ -139,6 +140,9 @@ fn complete_installed_host_validation_at(
 /// Handles the single supported headless invocation before any Tauri state is
 /// constructed. `true` means main must exit without initializing the GUI.
 pub fn run_complete_installed_host_validation_from_env() -> bool {
+    if browser_research::run_helper_from_env() {
+        return true;
+    }
     if controlled_browser_verification::run_fixture_helper_from_env() {
         return true;
     }
@@ -1869,6 +1873,51 @@ fn controlled_browser_verification_status(
 }
 
 #[tauri::command]
+fn browser_research_status(
+    service: tauri::State<'_, browser_research::BrowserResearchService>,
+) -> browser_research::BrowserResearchSnapshot {
+    service.status()
+}
+#[tauri::command]
+fn browser_research_prepare(
+    request: browser_research::BrowserResearchPrepareRequest,
+    service: tauri::State<'_, browser_research::BrowserResearchService>,
+    projects: tauri::State<'_, ProjectService>,
+) -> browser_research::BrowserResearchSnapshot {
+    let project_id = request.project_id.clone();
+    if let Some(task_id) = request.task_id.as_deref() {
+        let Some(binding) = projects.task_mock_inference_binding(task_id) else {
+            return service.status();
+        };
+        if binding.project_id != project_id {
+            return service.status();
+        }
+    }
+    service.prepare(request, project_id)
+}
+#[tauri::command]
+fn browser_research_confirm(
+    request: browser_research::BrowserResearchConfirmRequest,
+    service: tauri::State<'_, browser_research::BrowserResearchService>,
+) -> browser_research::BrowserResearchSnapshot {
+    service.confirm(request)
+}
+#[tauri::command]
+fn browser_research_cancel(
+    request: browser_research::BrowserResearchAttemptRequest,
+    service: tauri::State<'_, browser_research::BrowserResearchService>,
+) -> browser_research::BrowserResearchSnapshot {
+    service.cancel(request)
+}
+#[tauri::command]
+fn browser_research_revoke(
+    request: browser_research::BrowserResearchAttemptRequest,
+    service: tauri::State<'_, browser_research::BrowserResearchService>,
+) -> browser_research::BrowserResearchSnapshot {
+    service.revoke(request)
+}
+
+#[tauri::command]
 fn controlled_browser_verification_prepare(
     request: controlled_browser_verification::BrowserVerificationPrepareRequest,
     service: tauri::State<
@@ -3584,6 +3633,7 @@ pub fn run() {
         .manage(mock_inference::MockInferenceService::default())
         .manage(connector_foundation::ConnectorGovernanceService::default())
         .manage(controlled_browser_verification::ControlledBrowserVerificationService::default())
+        .manage(browser_research::BrowserResearchService::default())
         .manage(context_assembly::ContextAssemblyService::default())
         .manage(action_card::ActionCardService::default())
         .manage(local_runtime)
@@ -3738,6 +3788,11 @@ pub fn run() {
             controlled_browser_verification_confirm,
             controlled_browser_verification_cancel,
             controlled_browser_verification_revoke,
+            browser_research_status,
+            browser_research_prepare,
+            browser_research_confirm,
+            browser_research_cancel,
+            browser_research_revoke,
             context_assembly_status,
             context_authority_ledger,
             context_assembly_prepare,
