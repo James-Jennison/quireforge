@@ -4,8 +4,8 @@
 
 M69C establishes the one native-owned grammar by which a chat thread may ask
 for a later capability. An Action Card is a visible proposal, not a hidden
-context transfer and not an executor. Its initial beta.91 vertical slice is
-strictly non-executing.
+context transfer and not an executor. Its initial vertical slices are strictly
+non-executing.
 
 ## Closed initial contract
 
@@ -62,13 +62,10 @@ connector, terminal, Git, or database dependency.
 
 ## Candidate implementation
 
-The beta.91 candidate adds the native service, strict Tauri commands, and
-TypeScript bridge contracts described above. `pnpm validate`, desktop/mobile
-E2E, the pinned package/release-artifact gate, root-owned staging, daemon
-installation, supervised launch, and the canonical installed-host receipt all
-passed. The installed receipt is content-free and records two validated
-artifacts. This completes the non-executing gateway foundation.
-
-The candidate intentionally has no Action Card renderer yet: no chat surface
-can invoke the new commands until the visual card preserves the same closed
-lifecycle and accessibility semantics.
+The beta.91 candidate added the native service, strict Tauri commands, and
+TypeScript bridge contracts. The beta.92 candidate adds the accessible Local
+Chat renderer: a closed Actions menu can prepare one of the four visible
+proposals, and the card can approve or revoke the same opaque lifecycle. The
+renderer explicitly states that no project, source, artifact, code, provider,
+or tool data is selected or used, and that approval runs no action. It does not
+add a receipt consumer or any data/execution capability.

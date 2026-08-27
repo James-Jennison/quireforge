@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.0-beta.92 — M69C Action Card renderer candidate
+
+- Adds an accessible Local Chat Actions menu and visible Action Card renderer
+  for the closed non-executing lifecycle introduced in beta.91.
+- A card can prepare, approve, or revoke only its opaque native ID. It names
+  its boundary in the UI: no data is selected, and approval does not run an
+  action. No receipt consumer or capability is introduced.
+
 ## 0.1.0-beta.91 — M69C Action Card authority candidate
 
 - Adds a native-owned, strict Action Card lifecycle for the closed

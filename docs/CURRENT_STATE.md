@@ -205,6 +205,14 @@ explicit governed local-only attempt. The evidence record remains content-free:
 no model location, content, loader output, filesystem observation, or generated
 response is retained. M48, M55, and M60 remain preserved.
 
+The `0.1.0-beta.92` M69C Action Card candidate adds the accessible Local Chat
+renderer to the already-accepted non-executing Action Card foundation. Its
+closed Actions menu prepares only one of four visible proposal classes, and its
+card approves or revokes only an opaque card ID. It explicitly states that no
+project, source, artifact, code, provider, or tool data is selected and that
+approval runs no action. It has no capability-specific receipt consumer. Full
+validation, package, installation, and supervised acceptance are in progress.
+
 The `0.1.0-beta.91` M69C Action Card candidate completes the non-executing
 native foundation: a closed prepare, approve, revoke, and opaque content-free
 receipt lifecycle. Every card states that no data scope or execution is

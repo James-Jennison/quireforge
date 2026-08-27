@@ -50,6 +50,7 @@ import {
 import {
   archiveConversation,
   archiveProject,
+  approveActionCard,
   cancelFilePreview,
   cancelConversationAttachments,
   cancelCodexAuth,
@@ -84,6 +85,7 @@ import {
   openIntegrationControlBrowser,
   loadProjectWorkspace,
   readRepositoryState,
+  revokeActionCard,
   runLocalChat,
   logoutCodexAuth,
   openGitFile,
@@ -93,6 +95,7 @@ import {
   pickProjectDirectory,
   pickProjectRelink,
   preflightProject,
+  prepareActionCard,
   previewAdvisorGeneratedArtifact,
   previewGitMutation,
   previewIntegrationMutation,
@@ -4344,6 +4347,9 @@ export default function App({
                 <LocalChatWorkspace
                   onRun={runLocalChat}
                   onCancel={cancelLocalChat}
+                  onPrepareActionCard={prepareActionCard}
+                  onApproveActionCard={approveActionCard}
+                  onRevokeActionCard={revokeActionCard}
                 />
               ) : (
                 <AdvisorWorkspace

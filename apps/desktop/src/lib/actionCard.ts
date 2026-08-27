@@ -31,6 +31,7 @@ export const actionCardSnapshotSchema = z
 export type ActionCardPrepareRequest = z.infer<
   typeof actionCardPrepareRequestSchema
 >;
+export type ActionCardAction = z.infer<typeof actionCardActionSchema>;
 export type ActionCardDecisionRequest = z.infer<
   typeof actionCardDecisionRequestSchema
 >;

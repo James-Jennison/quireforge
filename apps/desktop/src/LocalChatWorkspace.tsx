@@ -1,10 +1,20 @@
 import { useState } from "react";
 
+import type { ActionCardAction, ActionCardSnapshot } from "./lib/actionCard";
 import type { LocalChatSnapshot } from "./lib/localChat";
 
 interface LocalChatWorkspaceProps {
   onRun: (request: { message: string }) => Promise<LocalChatSnapshot>;
   onCancel: () => Promise<boolean>;
+  onPrepareActionCard: (request: {
+    action: ActionCardAction;
+  }) => Promise<ActionCardSnapshot>;
+  onApproveActionCard: (request: {
+    cardId: string;
+  }) => Promise<ActionCardSnapshot>;
+  onRevokeActionCard: (request: {
+    cardId: string;
+  }) => Promise<ActionCardSnapshot>;
 }
 
 interface LocalChatTurn {
@@ -23,14 +33,27 @@ const diagnosticMessage: Record<string, string> = {
   cancelled: "The local chat turn was cancelled.",
 };
 
+const actionLabels: Record<ActionCardAction, string> = {
+  "attach-project": "Attach a project",
+  "use-source": "Use a source",
+  "draft-artifact": "Draft an artifact",
+  "work-with-code": "Work with code",
+};
+
 export function LocalChatWorkspace({
   onRun,
   onCancel,
+  onPrepareActionCard,
+  onApproveActionCard,
+  onRevokeActionCard,
 }: LocalChatWorkspaceProps) {
   const [message, setMessage] = useState("");
   const [snapshot, setSnapshot] = useState<LocalChatSnapshot | null>(null);
   const [turns, setTurns] = useState<LocalChatTurn[]>([]);
   const [busy, setBusy] = useState(false);
+  const [actionPickerOpen, setActionPickerOpen] = useState(false);
+  const [actionCard, setActionCard] = useState<ActionCardSnapshot | null>(null);
+  const [actionBusy, setActionBusy] = useState(false);
 
   async function run() {
     if (busy || !message.trim()) return;
@@ -65,6 +88,31 @@ export function LocalChatWorkspace({
       });
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function prepareActionCard(action: ActionCardAction) {
+    if (actionBusy) return;
+    setActionBusy(true);
+    try {
+      setActionCard(await onPrepareActionCard({ action }));
+      setActionPickerOpen(false);
+    } finally {
+      setActionBusy(false);
+    }
+  }
+
+  async function decideActionCard(approve: boolean) {
+    if (!actionCard || actionBusy || actionCard.state !== "prepared") return;
+    setActionBusy(true);
+    try {
+      setActionCard(
+        await (approve
+          ? onApproveActionCard({ cardId: actionCard.cardId })
+          : onRevokeActionCard({ cardId: actionCard.cardId })),
+      );
+    } finally {
+      setActionBusy(false);
     }
   }
 
@@ -105,6 +153,46 @@ export function LocalChatWorkspace({
             "The local chat turn could not complete."}
         </p>
       )}
+      {actionCard && (
+        <section className="action-card" aria-label="Action Card">
+          <p className="eyebrow">Action Card</p>
+          <h2>{actionLabels[actionCard.action]}</h2>
+          <p>
+            No project, source, artifact, code, provider, or tool data is
+            selected or used by this card.
+          </p>
+          {actionCard.state === "prepared" ? (
+            <>
+              <p>
+                Review this proposed boundary before any later
+                capability-specific step.
+              </p>
+              <div className="action-card__actions">
+                <button
+                  type="button"
+                  disabled={actionBusy}
+                  onClick={() => void decideActionCard(true)}
+                >
+                  Approve for later
+                </button>
+                <button
+                  type="button"
+                  disabled={actionBusy}
+                  onClick={() => void decideActionCard(false)}
+                >
+                  Revoke
+                </button>
+              </div>
+            </>
+          ) : actionCard.state === "approved" ? (
+            <p>
+              Approved for a later capability-specific step. No action has run.
+            </p>
+          ) : (
+            <p>This Action Card is no longer available.</p>
+          )}
+        </section>
+      )}
       <div className="conversation-composer">
         <label className="sr-only" htmlFor="local-chat-message">
           Local chat message
@@ -135,13 +223,46 @@ export function LocalChatWorkspace({
               Stop
             </button>
           ) : (
-            <button
-              type="button"
-              disabled={!message.trim()}
-              onClick={() => void run()}
-            >
-              Send
-            </button>
+            <>
+              <div className="action-card-picker">
+                <button
+                  type="button"
+                  aria-expanded={actionPickerOpen}
+                  aria-haspopup="menu"
+                  onClick={() => setActionPickerOpen((open) => !open)}
+                >
+                  Actions
+                </button>
+                {actionPickerOpen && (
+                  <div className="action-card-picker__menu" role="menu">
+                    <p>
+                      Prepare a visible proposal. Nothing will run from this
+                      menu.
+                    </p>
+                    {(Object.keys(actionLabels) as ActionCardAction[]).map(
+                      (action) => (
+                        <button
+                          type="button"
+                          role="menuitem"
+                          disabled={actionBusy}
+                          key={action}
+                          onClick={() => void prepareActionCard(action)}
+                        >
+                          {actionLabels[action]}
+                        </button>
+                      ),
+                    )}
+                  </div>
+                )}
+              </div>
+              <button
+                type="button"
+                disabled={!message.trim()}
+                onClick={() => void run()}
+              >
+                Send
+              </button>
+            </>
           )}
         </div>
       </div>
