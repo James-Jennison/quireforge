@@ -1609,6 +1609,13 @@ pub enum KnowledgeRecordStatus {
     Superseded,
     Retired,
 }
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum KnowledgeRecordProvenance {
+    Owner,
+    Agent,
+    System,
+}
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct KnowledgeRecordCreateRequest {
@@ -1642,6 +1649,7 @@ pub struct KnowledgeRecordSummary {
     pub project_id: String,
     pub task_id: Option<String>,
     pub kind: KnowledgeRecordKind,
+    pub provenance: KnowledgeRecordProvenance,
     pub status: KnowledgeRecordStatus,
     pub title: String,
     pub body: String,

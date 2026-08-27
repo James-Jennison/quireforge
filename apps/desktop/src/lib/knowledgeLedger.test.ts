@@ -18,6 +18,7 @@ describe("knowledge ledger contracts", () => {
             projectId,
             taskId: null,
             kind: "owner-decision",
+            provenance: "owner",
             status: "active",
             title: "Linux only",
             body: "The product is Linux only.",

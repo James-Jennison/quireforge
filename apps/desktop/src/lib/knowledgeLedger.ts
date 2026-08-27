@@ -26,6 +26,7 @@ const status = z.enum([
   "superseded",
   "retired",
 ]);
+const provenance = z.enum(["owner", "agent", "system"]);
 export const knowledgeLedgerProjectRequestSchema = z
   .object({ projectId: id })
   .strict();
@@ -56,6 +57,7 @@ export const knowledgeLedgerSnapshotSchema = z
             projectId: id,
             taskId: id.nullable(),
             kind,
+            provenance,
             status,
             title: z.string().max(240),
             body: z.string().max(8192),

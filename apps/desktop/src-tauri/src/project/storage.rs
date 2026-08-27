@@ -29,9 +29,9 @@ use super::task_template::{
 use super::types::{
     ArtifactReferenceState, ArtifactReferenceSummary, ContextLedgerEntry, DurableSourceClass,
     DurableSourceLifecycleState, DurableSourceSummary, EvidenceEnvelopeV1, KnowledgeRecordKind,
-    KnowledgeRecordStatus, KnowledgeRecordSummary, LocalReviewActivityPresentationDetails,
-    LocalReviewActivityPresentationEvidencePreview, LocalReviewActivityScope,
-    LocalReviewAnnotationState, LocalReviewAnnotationSummary,
+    KnowledgeRecordProvenance, KnowledgeRecordStatus, KnowledgeRecordSummary,
+    LocalReviewActivityPresentationDetails, LocalReviewActivityPresentationEvidencePreview,
+    LocalReviewActivityScope, LocalReviewAnnotationState, LocalReviewAnnotationSummary,
     LocalReviewApprovalPresentationDetails, LocalReviewApprovalPresentationEvidencePreview,
     LocalReviewCollectionState, LocalReviewCollectionSummary, LocalReviewComparisonState,
     LocalReviewComparisonSummary, LocalReviewDiagnosticCode, LocalReviewEvidenceApprovalState,
@@ -973,6 +973,9 @@ CREATE TABLE knowledge_record_events (id TEXT PRIMARY KEY NOT NULL, record_id TE
 CREATE INDEX knowledge_records_project_recent ON knowledge_records(project_id, updated_at_ms DESC, id);
 CREATE TRIGGER knowledge_record_identity_immutable BEFORE UPDATE OF id, project_id, task_id, kind, title, body, supersedes_id, created_at_ms ON knowledge_records BEGIN SELECT RAISE(ABORT, 'knowledge identity immutable'); END;
 "#;
+const KNOWLEDGE_LEDGER_PROVENANCE_MIGRATION: &str = r#"
+ALTER TABLE knowledge_records ADD COLUMN provenance TEXT NOT NULL DEFAULT 'owner' CHECK(provenance IN ('owner','agent','system'));
+"#;
 
 const MIGRATIONS: &[(i64, &str, &str)] = &[
     (1, "projects-and-directory-associations", INITIAL_MIGRATION),
@@ -1079,6 +1082,11 @@ const MIGRATIONS: &[(i64, &str, &str)] = &[
     (26, "context-assembly-v1", CONTEXT_ASSEMBLY_MIGRATION),
     (27, "artifact-references-v1", ARTIFACT_REFERENCES_MIGRATION),
     (28, "knowledge-ledger-v1", KNOWLEDGE_LEDGER_MIGRATION),
+    (
+        29,
+        "knowledge-ledger-provenance-v1",
+        KNOWLEDGE_LEDGER_PROVENANCE_MIGRATION,
+    ),
 ];
 
 #[derive(Debug, Error)]
@@ -1139,6 +1147,14 @@ fn knowledge_status_value(value: KnowledgeRecordStatus) -> &'static str {
         KnowledgeRecordStatus::Resolved => "resolved",
         KnowledgeRecordStatus::Superseded => "superseded",
         KnowledgeRecordStatus::Retired => "retired",
+    }
+}
+fn knowledge_provenance(value: &str) -> Result<KnowledgeRecordProvenance, rusqlite::Error> {
+    match value {
+        "owner" => Ok(KnowledgeRecordProvenance::Owner),
+        "agent" => Ok(KnowledgeRecordProvenance::Agent),
+        "system" => Ok(KnowledgeRecordProvenance::System),
+        _ => Err(rusqlite::Error::InvalidQuery),
     }
 }
 fn knowledge_status(value: &str) -> Result<KnowledgeRecordStatus, rusqlite::Error> {
@@ -2718,7 +2734,7 @@ impl ProjectRepository {
         &self,
         project_id: &str,
     ) -> Result<Vec<KnowledgeRecordSummary>, StorageError> {
-        let mut statement = self.connection.prepare("SELECT id,project_id,task_id,kind,status,title,body,supersedes_id,created_at_ms,updated_at_ms FROM knowledge_records WHERE project_id=?1 ORDER BY updated_at_ms DESC,id DESC LIMIT 128")?;
+        let mut statement = self.connection.prepare("SELECT id,project_id,task_id,kind,provenance,status,title,body,supersedes_id,created_at_ms,updated_at_ms FROM knowledge_records WHERE project_id=?1 ORDER BY updated_at_ms DESC,id DESC LIMIT 128")?;
         let records = statement
             .query_map([project_id], |row| {
                 Ok(KnowledgeRecordSummary {
@@ -2726,12 +2742,13 @@ impl ProjectRepository {
                     project_id: row.get(1)?,
                     task_id: row.get(2)?,
                     kind: knowledge_kind(&row.get::<_, String>(3)?)?,
-                    status: knowledge_status(&row.get::<_, String>(4)?)?,
-                    title: row.get(5)?,
-                    body: row.get(6)?,
-                    supersedes_id: row.get(7)?,
-                    created_at_ms: row.get(8)?,
-                    updated_at_ms: row.get(9)?,
+                    provenance: knowledge_provenance(&row.get::<_, String>(4)?)?,
+                    status: knowledge_status(&row.get::<_, String>(5)?)?,
+                    title: row.get(6)?,
+                    body: row.get(7)?,
+                    supersedes_id: row.get(8)?,
+                    created_at_ms: row.get(9)?,
+                    updated_at_ms: row.get(10)?,
                 })
             })?
             .collect::<Result<Vec<_>, _>>()
@@ -2776,7 +2793,7 @@ impl ProjectRepository {
                 return Err(StorageError::InvalidStoredValue);
             }
         }
-        tx.execute("INSERT INTO knowledge_records(id,project_id,task_id,kind,status,title,body,supersedes_id,created_at_ms,updated_at_ms) VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9,?9)", params![id,project_id,task_id,knowledge_kind_value(kind),status,title.trim(),body.trim(),supersedes_id,now])?;
+        tx.execute("INSERT INTO knowledge_records(id,project_id,task_id,kind,status,title,body,supersedes_id,created_at_ms,updated_at_ms,provenance) VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9,?9,'owner')", params![id,project_id,task_id,knowledge_kind_value(kind),status,title.trim(),body.trim(),supersedes_id,now])?;
         tx.execute("INSERT INTO knowledge_record_events(id,record_id,event_kind,created_at_ms) VALUES(?1,?2,'created',?3)", params![Uuid::now_v7().to_string(),id,now])?;
         tx.commit()?;
         Ok(id)
@@ -9194,6 +9211,7 @@ mod tests {
         builtins, canonical as canonical_template, digest as template_digest, TaskTemplate,
         TemplateOrigin, TemplateState,
     };
+    use crate::project::types::KnowledgeRecordProvenance;
     use crate::project::types::{
         KnowledgeRecordKind, KnowledgeRecordStatus, LocalReviewAnnotationState,
         LocalReviewCollectionState, LocalReviewComparisonState, LocalReviewEvidenceApprovalState,
@@ -9736,7 +9754,7 @@ mod tests {
                     0
                 ))
                 .expect("version"),
-            28
+            29
         );
     }
 
@@ -10335,7 +10353,7 @@ mod tests {
                     0
                 ),)
                 .expect("version"),
-            28
+            29
         );
         assert_eq!(
             repository.connection.query_row(
@@ -10803,7 +10821,7 @@ mod tests {
                     0
                 ))
                 .expect("migration version"),
-            28
+            29
         );
     }
 
@@ -10975,7 +10993,7 @@ mod tests {
                     0
                 ))
                 .expect("version"),
-            28
+            29
         );
 
         let mut failed = Connection::open_in_memory().expect("database opens");
@@ -11615,7 +11633,7 @@ mod tests {
                 1
             );
         }
-        assert_eq!(MIGRATIONS.len(), 28);
+        assert_eq!(MIGRATIONS.len(), 29);
 
         let connection = Connection::open_in_memory().expect("database");
         connection
@@ -11663,7 +11681,7 @@ mod tests {
                     0
                 ))
                 .expect("version"),
-            28
+            29
         );
         assert_eq!(
             repository
@@ -11720,7 +11738,7 @@ mod tests {
                     0
                 ))
                 .expect("version"),
-            28
+            29
         );
     }
 
@@ -12677,10 +12695,9 @@ mod tests {
         repository
             .bind_knowledge_record(&decision)
             .expect("owner binds");
-        assert_eq!(
-            repository.knowledge_records(&project_id).expect("list")[0].status,
-            KnowledgeRecordStatus::Active
-        );
+        let bound = &repository.knowledge_records(&project_id).expect("list")[0];
+        assert_eq!(bound.status, KnowledgeRecordStatus::Active);
+        assert_eq!(bound.provenance, KnowledgeRecordProvenance::Owner);
         let claim = repository
             .create_knowledge_record(
                 &project_id,
