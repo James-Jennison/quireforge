@@ -10,6 +10,12 @@
   implementation milestone. This planning record does not claim a new browser,
   connector, provider, or computer-use capability has shipped.
 
+## 0.1.0-beta.106 — M72 invalid-attachment boundary candidate
+
+- Treats an identity-changed attached project as unavailable rather than
+  presenting unknown repository data, and hides project authority until the
+  owner selects or relinks a verified project.
+
 ## 0.1.0-beta.105 — M72 project-first objective-authority candidate
 
 - Moves objective authority out of unattached Local Chat and into a selected

@@ -51,7 +51,9 @@ required confirmation or permits execution.
    remains visibly locked and requires its own approval when available.
 4. An authority workspace cannot be reached without its required attached
    project precondition; a defensive no-project invocation shows only a compact
-   "Choose a project first" explanation and no live form.
+   "Choose a project first" explanation and no live form. An identity-changed
+   attachment is unavailable until it is selected or relinked, and likewise
+   cannot expose authority management.
 5. Full validation, applicable desktop E2E, clean package, installed-host
    launch, and owner acceptance pass before M72 is validated.
 

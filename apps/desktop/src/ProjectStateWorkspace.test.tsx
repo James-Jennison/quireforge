@@ -143,4 +143,46 @@ describe("ProjectStateWorkspace", () => {
       screen.getByText(/cannot read an attached native repository/u),
     ).toBeInTheDocument();
   });
+
+  it("blocks authority and evidence when the attached project identity changed", () => {
+    const unavailableSnapshot = repositoryStateReadSnapshotSchema.parse({
+      ...representativeSnapshot,
+      diagnostics: [
+        {
+          id: "attached-project-unavailable",
+          severity: "error",
+          affectedField: "project",
+          sourceRef: null,
+          explanation:
+            "The requested attached project was unavailable: IdentityChanged.",
+          approvalRequired: false,
+          recommendedAction:
+            "Select or relink an attached project before reading repository state.",
+        },
+      ],
+    });
+    render(
+      <ProjectStateWorkspace
+        availability="native"
+        projectName="QuireForge"
+        snapshot={unavailableSnapshot}
+        busy={false}
+        onRefresh={() => undefined}
+        onManageAuthority={() => undefined}
+      />,
+    );
+
+    expect(
+      screen.getByText(/Select or relink the attached project/u),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Manage project authority" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Validation and packages"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText(/attached-project-unavailable/u),
+    ).toBeInTheDocument();
+  });
 });

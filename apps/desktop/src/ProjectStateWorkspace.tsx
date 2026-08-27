@@ -35,6 +35,19 @@ export function ProjectStateWorkspace({
       snapshot.git.unstagedCount +
       snapshot.git.untrackedCount
     : 0;
+  const hasBlockingDiagnostic = Boolean(
+    snapshot?.diagnostics.some((diagnostic) => diagnostic.severity === "error"),
+  );
+  const hasVerifiedRepository = Boolean(
+    availability === "native" &&
+    snapshot &&
+    repository &&
+    milestone &&
+    !hasBlockingDiagnostic,
+  );
+  const canManageAuthority = Boolean(
+    projectName && onManageAuthority && hasVerifiedRepository,
+  );
 
   return (
     <section
@@ -54,7 +67,7 @@ export function ProjectStateWorkspace({
           </p>
         </div>
         <div className="project-state-workspace__actions">
-          {projectName && onManageAuthority && (
+          {canManageAuthority && (
             <button
               className="auth-button"
               type="button"
@@ -87,15 +100,16 @@ export function ProjectStateWorkspace({
             example state is substituted.
           </p>
         )}
-        {availability === "error" && (
+        {(availability === "error" || hasBlockingDiagnostic) && (
           <p className="project-message project-message--warning" role="alert">
-            Local project state could not be read. No repository data was
-            changed.
+            Local project state could not be verified. Select or relink the
+            attached project before reading its evidence or managing project
+            authority. No repository data was changed.
           </p>
         )}
       </div>
 
-      {availability === "native" && snapshot && repository && milestone && (
+      {hasVerifiedRepository && snapshot && repository && milestone && (
         <div className="project-list">
           <article className="project-card">
             <div className="project-card__heading">
@@ -227,31 +241,28 @@ export function ProjectStateWorkspace({
               </div>
             )}
           </article>
-
-          {snapshot.diagnostics.length > 0 && (
-            <article
-              className="project-card"
-              aria-labelledby="state-diagnostics"
-            >
-              <div className="project-card__heading">
-                <div>
-                  <span className="project-kicker">Read-only diagnostics</span>
-                  <h2 id="state-diagnostics">Evidence needing attention</h2>
-                </div>
-              </div>
-              <ul className="project-list">
-                {snapshot.diagnostics.map((diagnostic) => (
-                  <li className="project-message" key={diagnostic.id}>
-                    <strong>{diagnostic.id}</strong>: {diagnostic.explanation}{" "}
-                    <span>
-                      Suggested next action: {diagnostic.recommendedAction}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </article>
-          )}
         </div>
+      )}
+
+      {snapshot && snapshot.diagnostics.length > 0 && (
+        <article className="project-card" aria-labelledby="state-diagnostics">
+          <div className="project-card__heading">
+            <div>
+              <span className="project-kicker">Read-only diagnostics</span>
+              <h2 id="state-diagnostics">Evidence needing attention</h2>
+            </div>
+          </div>
+          <ul className="project-list">
+            {snapshot.diagnostics.map((diagnostic) => (
+              <li className="project-message" key={diagnostic.id}>
+                <strong>{diagnostic.id}</strong>: {diagnostic.explanation}{" "}
+                <span>
+                  Suggested next action: {diagnostic.recommendedAction}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </article>
       )}
     </section>
   );
