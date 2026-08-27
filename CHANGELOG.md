@@ -7,6 +7,10 @@
 - Reconciliation misses now appear as unavailable threads rather than invented
   untitled conversations. The local reference remains unchanged and cannot
   open a substitute thread.
+- The fresh candidate passed full validation, desktop and website E2E, the
+  pinned Ubuntu package/release-artifact gate, root-owned staging,
+  installer-daemon installation, supervised launch, and canonical
+  installed-host validation.
 
 ## 0.1.0-beta.92 — M69C Action Card renderer candidate
 

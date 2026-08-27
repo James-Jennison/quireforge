@@ -82,3 +82,8 @@ The beta.93 candidate makes this normal Chat path discoverable from the
 Threads-first shell. It also labels a reconciliation miss as an unavailable
 thread instead of inventing an untitled conversation. It neither changes nor
 deletes a local reference, and it does not create a substitute Codex thread.
+The beta.93 candidate passed full validation, desktop and website E2E, the
+pinned Ubuntu package/release-artifact gate, root-owned staging,
+installer-daemon installation, supervised launch, and canonical installed-host
+validation. Its immutable receipt records beta.93, two artifacts, `passed`,
+and completed validation.

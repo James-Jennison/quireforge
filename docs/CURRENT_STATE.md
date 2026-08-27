@@ -210,7 +210,13 @@ discoverable from Threads and represents reconciliation misses honestly as
 unavailable threads rather than fabricated untitled conversations. A stale
 local reference remains intact and cannot open a substitute thread; no Codex
 record, transcript, path, or app-owned metadata is deleted. Full validation,
-package, installation, and supervised acceptance are in progress.
+package, installation, and supervised acceptance passed. The candidate passed
+424 desktop tests, 455 Rust tests, package-contract checks, lint/format/build/
+dist gates, 80 desktop E2E tests, and eight website E2E tests. Its pinned
+Ubuntu package and release-artifact gates passed, followed by root-owned
+staging, installer-daemon installation, supervised launch, and canonical
+installed-host validation. The immutable receipt reports beta.93, two
+artifacts, `passed`, and completed validation.
 
 The `0.1.0-beta.92` M69C Action Card candidate adds the accessible Local Chat
 renderer to the already-accepted non-executing Action Card foundation. Its
