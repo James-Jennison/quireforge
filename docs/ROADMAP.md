@@ -1972,15 +1972,38 @@ inspection through validation and approved local acceptance. Inspection is
 evidence of progress, not a completion state; the agent stops only at proven
 completion or a named external blocker/human-only decision.
 
-### 70--79 — Continuity and Capability Delivery Order
+### 70+ — Authoritative feature-parity delivery roadmap
 
-[ADR 0029](DECISIONS/0029-continuity-and-capability-delivery-order.md) accepts
-one serialized, interleaved delivery stream rather than parallel implementation
-tracks. The delivery order is M70 typed project knowledge, M71 evidence
-linkage, M76 isolated read-only browser research, M72 objective-scoped
-authority, M77 connector read access, M73 agent-neutral context assembly, M78
-scheduled/background work, M74 three-part completion, M79 connector
-mutation/delivery, then M75 cross-agent handoff and recovery.
+[ADR 0030](DECISIONS/0030-feature-parity-delivery-roadmap.md) makes this the
+authoritative, serialized roadmap. QuireForge targets outcome-level feature
+parity with leading LLM desktop applications, implemented natively with
+explicit authority and evidence rather than provider-private interfaces.
+
+The delivery order is:
+
+1. M72 — Objective-Scoped Authority Boundaries;
+2. M86 — Review Comments and Acceptance Workspace;
+3. M83 — User-Owned In-App Browser Workspace;
+4. M73 — Agent-Neutral Context Assembly;
+5. M84 — Supervised Agent Browser Collaboration;
+6. M77 — Connector Read Access;
+7. M78 — Scheduled and Background Work;
+8. M74 — Three-Part Completion Model;
+9. M85 — Interactive Browser Authority;
+10. M79 — Connector Mutation and Delivery;
+11. M75 — Cross-Agent Handoff and Recovery;
+12. M82 — Remote Session Relay;
+13. M81 — Live Provider Connection;
+14. M87 — Personality and Interaction Profiles;
+15. M88 — Skills and Reusable Project Playbooks;
+16. M89 — Image Generation and Visual Iteration;
+17. M90 — Multi-Agent Objectives; and
+18. M80 — Approved Computer Use.
+
+M70, M71, and M76 are completed historical foundations. M72 is active. Every
+later milestone remains separately scoped and must pass its native/unit,
+desktop/browser E2E where applicable, clean package, installed-host, and
+owner-acceptance gates before it is marked validated.
 
 [M70 -- Typed Project Knowledge Foundation](MILESTONE_70_TYPED_PROJECT_KNOWLEDGE_FOUNDATION.md)
 is validated in the `0.1.0-beta.99` candidate. It creates a private native Knowledge Ledger
@@ -2013,15 +2036,57 @@ count was retained. The installed `0.1.0~beta.101` binary reproduced that
 terminal containment result. It adds no ambient session, credential, transfer,
 agent, connector, or execution capability.
 
-### Deferred capability gates
+### Feature-parity milestone definitions
 
-Real in-app browsing for Codex-assisted research and verification is a deferred
-capability gate. It must be designed as an isolated, governed browser surface
-with explicit target/navigation scope, read-only observation and provenance
-capture, and separately approved authentication, interaction, download, upload,
-or external-mutation lanes. It must not reuse ambient browser sessions,
-cookies, or credentials, and it does not follow from M58's fictional local-only
-verification fixture.
+- **M72 — Objective-Scoped Authority Boundaries:** native project-bound
+  objectives with approved scope, exclusions, expiry, revocation, and
+  boundary-crossing escalation. It executes no external capability itself.
+- **M86 — Review Comments and Acceptance Workspace:** inline diff comments,
+  review threads, and owner acceptance evidence linked to implementation and
+  validation.
+- **M83 — User-Owned In-App Browser Workspace:** visible tabs, address bar,
+  navigation, history, profile management, data reset, and download controls.
+  It gives chat no ambient browser access.
+- **M73 — Agent-Neutral Context Assembly:** relevant knowledge, evidence, and
+  active authority assembled at the beginning of a capability-bearing task.
+- **M84 — Supervised Agent Browser Collaboration:** scoped tab/origin grants,
+  citation-backed research, provenance capture, prompt-injection handling, and
+  immediate stop/revoke controls.
+- **M77 — Connector Read Access:** initial engineering connectors with distinct
+  account, retention, scope, and revocation boundaries.
+- **M78 — Scheduled and Background Work:** one-off and recurring objectives,
+  status, cancellation, retries, and no standing authority beyond expiry.
+- **M74 — Three-Part Completion Model:** independent implementation,
+  validation, and owner-acceptance status.
+- **M85 — Interactive Browser Authority:** separately approved click, type,
+  form, upload, download, and submission lanes. The user completes credentials;
+  agents never receive passwords, cookies, or one-time codes.
+- **M79 — Connector Mutation and Delivery:** explicit final confirmation and
+  reconciliation evidence for external side effects.
+- **M75 — Cross-Agent Handoff and Recovery:** durable handoff proof and
+  checkpoint-based recovery across agent/provider changes.
+- **M82 — Remote Session Relay:** secure, session-scoped remote access to a
+  locally running QuireForge instance; project data remains local.
+- **M81 — Live Provider Connection:** consented, provider-neutral live-provider
+  boundary for approved capabilities.
+- **M87 — Personality and Interaction Profiles:** user-selectable working
+  styles that never change authority.
+- **M88 — Skills and Reusable Project Playbooks:** versioned, inspectable,
+  evidence-backed reusable instructions; no public marketplace.
+- **M89 — Image Generation and Visual Iteration:** provider-routed generation,
+  review, iteration history, and explicit asset adoption.
+- **M90 — Multi-Agent Objectives:** bounded sub-objectives, worktree isolation,
+  ledger coordination, conflict detection, and owner-visible synthesis.
+- **M80 — Approved Computer Use:** per-invocation, visible desktop control with
+  scope, expiry, revoke, high-risk detection, and confirmation before
+  irreversible or external actions.
+
+The browser is deliberately delivered in three lanes: M83 gives the owner a
+real browser, M84 gives an agent limited supervised observation, and M85 adds
+interactive authority. This provides IAB parity without treating a browser
+profile or authentication state as an ambient agent capability.
+
+### Deferred capability gates
 
 New archive, Office, or binary formats; generic upload; executable loading or
 execution beyond the separately installed M39 worker; dynamic loader support;

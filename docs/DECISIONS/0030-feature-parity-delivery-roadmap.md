@@ -1,0 +1,43 @@
+# ADR 0030: Feature-Parity Delivery Roadmap
+
+- Status: Accepted
+- Date: 2026-08-27
+- Decision owners: Project owner and maintainers
+- Supersedes: ADR 0029's future delivery order
+
+## Decision
+
+QuireForge's authoritative product objective is outcome-level feature parity
+with leading LLM desktop applications, while remaining a local-first,
+provider-neutral engineering workspace. Parity means equivalent, visible
+workflows for durable project continuity, browser collaboration, supervised
+agent work, coding review, connected work, automation, remote access, and
+computer use. It does not mean reusing private provider interfaces, scraping
+provider sessions, or exposing credentials to an agent.
+
+Work remains serialized on the authoritative branch. M70, M71, and M76 remain
+completed historical foundations; M72 is the active next milestone. The
+authoritative delivery order after M72 is defined in `docs/ROADMAP.md`.
+
+## Constraints
+
+- A user-owned authenticated browser profile is never equivalent to agent
+  possession of credentials, cookies, passwords, or one-time codes.
+- Agent inspection, browser interaction, uploads, downloads, form submission,
+  connector mutation, remote control, and desktop-wide computer use each need
+  their own explicit authority lane, expiry, revocation, and evidence.
+- M69C remains a non-executing Action Card grammar. M72 owns objective-scoped
+  authority; later services consume only the compatible authority they define.
+- M60 remains the reviewed context-transfer boundary until M73 delivers its
+  agent-neutral successor contract.
+- Every implementation milestone requires scoped tests, full validation,
+  applicable desktop/browser E2E, a clean package gate, installed-host launch,
+  and owner acceptance where behavior is visual, interactive, or consequential.
+
+## Consequences
+
+The narrow M76 controller is a safe research baseline, not the endpoint for
+in-app-browser parity. A user-visible browser workspace follows M72; supervised
+agent browsing follows M73; and interactive browser authority follows the
+three-part completion model in M74. General computer use remains separately
+gated because it extends browser authority to the entire desktop.

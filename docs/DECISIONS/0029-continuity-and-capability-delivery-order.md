@@ -1,6 +1,6 @@
 # ADR 0029: Continuity and Capability Delivery Order
 
-- Status: Accepted
+- Status: Superseded by ADR 0030
 - Date: 2026-08-27
 - Decision owners: Project owner and maintainers
 
@@ -59,9 +59,11 @@ effects and the strongest finality requirements. Every milestone retains its
 own required evidence, full validation, desktop/browser E2E when applicable,
 and package gate before it is marked validated.
 
-## Reconsideration
+## Supersession
 
-Re-open this decision only if measured integration evidence shows that the
-streams are demonstrably independent through the native bridge, storage,
-authority, and package gates, or if a named capability cannot safely proceed
-under its own approved boundary.
+The initial serialized order completed M70, M71, and M76, and established M72
+as the next prerequisite. The project owner subsequently set full feature
+parity with leading LLM desktop applications as the authoritative product
+objective. [ADR 0030](0030-feature-parity-delivery-roadmap.md) retains the
+completed evidence and the single-stream delivery rule, but replaces this
+narrow capability sequence with the authoritative end-to-end roadmap.
