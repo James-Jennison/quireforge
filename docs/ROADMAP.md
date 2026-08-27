@@ -2078,13 +2078,20 @@ agent, connector, or execution capability.
   locally running QuireForge instance; project data remains local.
 - **M81 — Live Provider Connection:** consented, provider-neutral live-provider
   boundary for approved capabilities.
-- **M91 — Shared Multi-Provider Roundtable:** an owner selects two or three
-  configured providers for one local discussion. QuireForge preserves an
-  attributed shared transcript and presents each proposed cross-provider
-  context projection before dispatch, so the owner no longer has to manually
-  copy, paste, and relay between provider chats. Provider-private sessions and
-  credentials remain separate; no message or source crosses providers
-  silently, and every dispatch is bounded by M72/M73 authority and evidence.
+- **M91 — Shared Multi-Provider Roundtable:** the Phase 7B thread capability
+  defined by [ADR 0031](DECISIONS/0031-owner-mediated-roundtable.md). The
+  owner starts a roundtable from within one normal thread, selects two or three
+  configured providers, and moderates deliberate, attributed rounds in one
+  vertical transcript. It replaces manual copy/paste relay; it is not an
+  autonomous multi-agent system. Each provider response is an attributed,
+  collapsible card. Relayed content carries visible provenance in the thread
+  and before dispatch. The first send to each provider uses its full
+  destination-specific disclosure; later rounds require a compact, expandable
+  dispatch line naming providers, summarising the payload, and flagging any
+  relayed-provider provenance. Provider-private sessions, credentials, and
+  project-source access remain separate. No message or source crosses
+  providers silently; every send has per-provider evidence, and the owner can
+  revoke one provider without erasing historical evidence.
 - **M87 — Personality and Interaction Profiles:** user-selectable working
   styles that never change authority.
 - **M88 — Skills and Reusable Project Playbooks:** versioned, inspectable,

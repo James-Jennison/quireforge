@@ -14,9 +14,11 @@ workflows for durable project continuity, browser collaboration, supervised
 agent work, coding review, connected work, automation, remote access, and
 computer use. It also includes a human-led shared multi-provider roundtable:
 the owner can select two or three configured providers for one attributed
-discussion without manually relaying messages between provider chats. It does
-not mean reusing private provider interfaces, scraping provider sessions, or
-exposing credentials to an agent.
+discussion without manually relaying messages between provider chats. Its
+owner-mediated interaction and authority model are specified by
+[ADR 0031](0031-owner-mediated-roundtable.md). It does not mean reusing
+private provider interfaces, scraping provider sessions, or exposing
+credentials to an agent.
 
 Work remains serialized on the authoritative branch. M70, M71, and M76 remain
 completed historical foundations; M72 is the active next milestone. The
