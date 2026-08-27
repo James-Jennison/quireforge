@@ -780,7 +780,7 @@ export function ConversationWorkspace({
             )}
             <span>
               {projectReady
-                ? `${project.displayName} · Enter to send · Shift+Enter for a new line`
+                ? `${project.displayName} · Enter to send · Shift+Enter to insert a line break`
                 : "No runnable project"}
             </span>
           </div>

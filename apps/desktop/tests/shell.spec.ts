@@ -2632,8 +2632,8 @@ test("visual polish keeps the branded shell and composer accessible", async ({
       (element) => getComputedStyle(element).borderRadius,
     ),
   ).toBe("16px");
-  await page.getByRole("textbox", { name: "Task" }).focus();
-  await expect(page.getByRole("textbox", { name: "Task" })).toBeFocused();
+  await page.getByRole("textbox", { name: "Message" }).focus();
+  await expect(page.getByRole("textbox", { name: "Message" })).toBeFocused();
   await expect(page.locator(".sidebar .nav-item--active")).toContainText(
     "New task",
   );
@@ -2961,7 +2961,7 @@ test("native Git fixture reviews a diff and confirms a fixed mutation", async ({
   await expect(
     page.getByRole("table", { name: "Diff for src/App.tsx" }),
   ).toBeVisible();
-  await expect(page.getByText("new line")).toBeVisible();
+  await expect(page.getByRole("cell", { name: "new line" })).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Open in default editor" }),
   ).toBeEnabled();
