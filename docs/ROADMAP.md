@@ -2009,8 +2009,9 @@ timeout, cancellation, and revocation are terminal. Full validation,
 desktop/website E2E, and the clean pinned Linux package/visible-launch gate
 passed. The one authorized packaged launch stopped at `origin_drift` after
 Google redirected beyond `https://google.com`; no content, digest, or byte
-count was retained. It adds no ambient session, credential, transfer, agent,
-connector, or execution capability.
+count was retained. The installed `0.1.0~beta.101` binary reproduced that
+terminal containment result. It adds no ambient session, credential, transfer,
+agent, connector, or execution capability.
 
 ### Deferred capability gates
 

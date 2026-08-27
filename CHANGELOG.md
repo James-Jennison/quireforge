@@ -12,6 +12,8 @@
   Linux package/visible-launch gate. The one owner-authorized packaged Google
   launch returned `origin_drift` after a redirect beyond the exact approved
   origin, retaining no content, digest, or byte count.
+- The beta.101 Debian package is installed on the local host; its installed
+  binary reproduced the same terminal containment result.
 
 ## 0.1.0-beta.100 — M71 Evidence Linkage candidate
 

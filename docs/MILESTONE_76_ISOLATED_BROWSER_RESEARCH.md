@@ -42,3 +42,7 @@ accepted scope is exactly `https://google.com/` at the exact origin
   timestamp, after Google redirected outside that approved origin. A later
   `www.google.com` observation is outside this approval and requires a new
   exact-origin authorization.
+- The staged Debian package was installed through the root-owned local
+  installer daemon. The installed `0.1.0~beta.101` binary repeated the exact
+  Google probe and returned the same terminal `origin_drift` state without
+  content digest, observed byte count, or timestamp.

@@ -114,7 +114,10 @@ E2E, and the clean pinned Linux package/visible-launch gate have passed. The
 one owner-authorized packaged launch to `https://google.com/` stopped at
 `origin_drift` when Google redirected outside the approved origin; no content,
 digest, or byte count was retained. A distinct `www.google.com` observation
-requires a new exact-origin approval; owner acceptance remains separate.
+requires a new exact-origin approval. The local installed host now runs
+`0.1.0~beta.101`; its installed binary reproduced the same terminal
+`origin_drift` containment result with no retained observation data. Owner
+acceptance remains separate.
 
 The validated `0.1.0-beta.100` M71 release candidate extends the validated M70 private native
 Knowledge Ledger with immutable claim → evidence → conclusion linkage. It
