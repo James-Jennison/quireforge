@@ -94,6 +94,15 @@ portability work has started.
 
 ## Reuse and boundary
 
+ADR 0029 accepts a serialized, interleaved next-delivery order: M70 typed
+project knowledge, M71 evidence linkage, M76 isolated read-only browser
+research, M72 objective-scoped authority, M77 connector read access, M73
+agent-neutral context assembly, M78 scheduled/background work, M74 three-part
+completion, M79 connector mutation/delivery, and M75 cross-agent handoff and
+recovery. M70 is approved for implementation as a new private native service;
+it does not alter the existing M66 content-free ledger or make QuireForge's
+own ADR/CURRENT_STATE process ledger-backed.
+
 M65's metadata-only artifact-reference vertical slice is implemented in the
 unreleased `0.1.0-beta.75` candidate. Migration 27 persists only a confirmed
 project/task association to an opaque M48 artifact UUID, digest, closed class,

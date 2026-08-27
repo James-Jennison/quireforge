@@ -1972,6 +1972,22 @@ inspection through validation and approved local acceptance. Inspection is
 evidence of progress, not a completion state; the agent stops only at proven
 completion or a named external blocker/human-only decision.
 
+### 70--79 — Continuity and Capability Delivery Order
+
+[ADR 0029](DECISIONS/0029-continuity-and-capability-delivery-order.md) accepts
+one serialized, interleaved delivery stream rather than parallel implementation
+tracks. The delivery order is M70 typed project knowledge, M71 evidence
+linkage, M76 isolated read-only browser research, M72 objective-scoped
+authority, M77 connector read access, M73 agent-neutral context assembly, M78
+scheduled/background work, M74 three-part completion, M79 connector
+mutation/delivery, then M75 cross-agent handoff and recovery.
+
+[M70 -- Typed Project Knowledge Foundation](MILESTONE_70_TYPED_PROJECT_KNOWLEDGE_FOUNDATION.md)
+is approved for implementation. It creates a private native Knowledge Ledger
+beside M66; it does not change M66's content-free projection, M60's reviewed
+context transfer, or M69C's non-executing Action Card boundary. Every later
+capability remains separately approval- and evidence-gated.
+
 ### Deferred capability gates
 
 Real in-app browsing for Codex-assisted research and verification is a deferred
