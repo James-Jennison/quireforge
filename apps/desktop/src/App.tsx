@@ -4490,6 +4490,7 @@ export default function App({
                 searchTerm={sessionSearchTerm}
                 onSearch={refreshSessions}
                 onRefresh={() => refreshSessions()}
+                onStartLocalChat={() => requestConversationWorkspace("advisor")}
                 onSelect={(session) => selectProject(session.projectId)}
                 onResume={(request) =>
                   continueHistoricalConversation(

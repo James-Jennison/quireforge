@@ -43,6 +43,7 @@ interface SessionWorkspaceProps {
   searchTerm: string | null;
   onSearch: (request: SessionListRequest) => Promise<void>;
   onRefresh: () => Promise<void>;
+  onStartLocalChat: () => void;
   onSelect: (session: Session) => void;
   onResume: (
     request: ConversationContinueRequest,
@@ -78,7 +79,8 @@ const stateLabels: Record<Session["state"], string> = {
 const threadsMigrationDismissalKey = "quireforge-m69b-threads-migration";
 
 function titleFor(session: Session): string {
-  return session.title ?? "Untitled session";
+  if (session.title) return session.title;
+  return session.state === "missing" ? "Unavailable thread" : "Untitled thread";
 }
 
 function formatUpdated(timestamp: number): string {
@@ -110,6 +112,7 @@ export function SessionWorkspace({
   searchTerm,
   onSearch,
   onRefresh,
+  onStartLocalChat,
   onSelect,
   onResume,
   onFork,
@@ -149,7 +152,7 @@ export function SessionWorkspace({
         projectThreadTree(
           snapshot.sessions.map((session) => ({
             conversationId: session.conversationId,
-            title: session.title,
+            title: titleFor(session),
             projectLabel: projectNames.get(session.projectId) ?? null,
           })),
           viewedThreadIds,
@@ -278,6 +281,13 @@ export function SessionWorkspace({
           <h1 id="sessions-title" data-workspace-heading tabIndex={-1}>
             Pick up any conversation from one place.
           </h1>
+          <button
+            className="session-workspace__start-chat"
+            type="button"
+            onClick={onStartLocalChat}
+          >
+            Start a local chat
+          </button>
         </div>
         <p>
           QuireForge shows bounded local references only. Codex remains
@@ -632,8 +642,9 @@ export function SessionWorkspace({
                       )}
                       {selectedSession.state === "missing" && (
                         <p>
-                          This app-owned reference is no longer available from
-                          Codex. No substitute session will be opened.
+                          This local reference is unavailable from Codex. Its
+                          original title and transcript are not retained here,
+                          and no substitute session will be opened.
                         </p>
                       )}
                       {selectedSession.state === "running" && (

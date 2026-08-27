@@ -117,6 +117,7 @@ function renderWorkspace(
     searchTerm: null,
     onSearch: vi.fn().mockResolvedValue(undefined),
     onRefresh: vi.fn().mockResolvedValue(undefined),
+    onStartLocalChat: vi.fn(),
     onSelect: vi.fn(),
     onResume: vi.fn().mockResolvedValue(running),
     onFork: vi.fn().mockResolvedValue(running),
@@ -156,7 +157,7 @@ describe("SessionWorkspace", () => {
   });
 
   it("shows local-only unread state and dismisses the migration explanation", () => {
-    renderWorkspace();
+    const props = renderWorkspace();
 
     expect(screen.getAllByLabelText("Unread")).toHaveLength(2);
     expect(screen.getByLabelText("Threads migration")).toBeInTheDocument();
@@ -169,6 +170,8 @@ describe("SessionWorkspace", () => {
     expect(
       window.localStorage.getItem("quireforge-m69b-threads-migration"),
     ).toBe("dismissed");
+    fireEvent.click(screen.getByRole("button", { name: "Start a local chat" }));
+    expect(props.onStartLocalChat).toHaveBeenCalledTimes(1);
   });
 
   it("opens keyboard-accessible tabs and resumes or forks only the app ID", async () => {
@@ -240,9 +243,11 @@ describe("SessionWorkspace", () => {
       diagnosticCode: null,
     });
     renderWorkspace({ snapshot: missing });
-    fireEvent.click(screen.getByRole("button", { name: /Untitled thread/u }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /Unavailable thread/u }),
+    );
     expect(
-      screen.getByText(/No substitute session will be opened/u),
+      screen.getByText(/original title and transcript are not retained/u),
     ).toBeInTheDocument();
   });
 

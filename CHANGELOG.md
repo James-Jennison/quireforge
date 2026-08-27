@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.0-beta.93 — M69 Threads recovery candidate
+
+- Adds a prominent Start a local chat action to Threads and routes it through
+  the existing Chat mode boundary.
+- Reconciliation misses now appear as unavailable threads rather than invented
+  untitled conversations. The local reference remains unchanged and cannot
+  open a substitute thread.
+
 ## 0.1.0-beta.92 — M69C Action Card renderer candidate
 
 - Adds an accessible Local Chat Actions menu and visible Action Card renderer

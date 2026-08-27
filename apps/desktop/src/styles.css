@@ -1780,6 +1780,10 @@ button:disabled {
   max-width: 560px;
 }
 
+.session-workspace__start-chat {
+  margin-top: 18px;
+}
+
 .session-workspace__intro > p,
 .conversation-workspace__intro > p {
   max-width: 450px;

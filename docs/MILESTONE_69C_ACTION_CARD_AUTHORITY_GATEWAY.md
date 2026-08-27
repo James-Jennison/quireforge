@@ -77,3 +77,8 @@ release-artifact gate and was installed through root-owned staging and the
 installer daemon. The supervised installed-host launcher was active, running,
 and successful under the fixed 6 GiB boundary; the canonical immutable receipt
 records beta.92, two artifacts, `passed`, and completed validation.
+
+The beta.93 candidate makes this normal Chat path discoverable from the
+Threads-first shell. It also labels a reconciliation miss as an unavailable
+thread instead of inventing an untitled conversation. It neither changes nor
+deletes a local reference, and it does not create a substitute Codex thread.

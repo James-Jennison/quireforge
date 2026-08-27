@@ -205,6 +205,13 @@ explicit governed local-only attempt. The evidence record remains content-free:
 no model location, content, loader output, filesystem observation, or generated
 response is retained. M48, M55, and M60 remain preserved.
 
+The `0.1.0-beta.93` M69C Threads recovery candidate makes the chat-first path
+discoverable from Threads and represents reconciliation misses honestly as
+unavailable threads rather than fabricated untitled conversations. A stale
+local reference remains intact and cannot open a substitute thread; no Codex
+record, transcript, path, or app-owned metadata is deleted. Full validation,
+package, installation, and supervised acceptance are in progress.
+
 The `0.1.0-beta.92` M69C Action Card candidate adds the accessible Local Chat
 renderer to the already-accepted non-executing Action Card foundation. Its
 closed Actions menu prepares only one of four visible proposal classes, and its
