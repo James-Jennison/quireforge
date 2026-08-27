@@ -20,8 +20,8 @@ owner-mediated interaction and authority model are specified by
 private provider interfaces, scraping provider sessions, or exposing
 credentials to an agent.
 
-Work remains serialized on the authoritative branch. M70, M71, and M76 remain
-completed historical foundations; M72 is the active next milestone. The
+Work remains serialized on the authoritative branch. M70, M71, M76, and M72
+are completed historical foundations; M87 is the active next milestone. The
 authoritative delivery order after M72 is defined in `docs/ROADMAP.md`.
 
 The serialized order follows authority dependencies rather than surface

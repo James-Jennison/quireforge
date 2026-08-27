@@ -95,9 +95,12 @@ portability work has started.
 ## Reuse and boundary
 
 ADR 0030 makes the feature-parity delivery roadmap authoritative. M70 typed
-project knowledge, M71 evidence linkage, and M76 isolated read-only browser
-research are completed foundations; M72 objective-scoped authority is active.
-The next product foundations are M87 interaction profiles, M73 context
+project knowledge, M71 evidence linkage, M76 isolated read-only browser
+research, and M72 objective-scoped authority are completed foundations. M72
+is validated in `0.1.0-beta.107`: full validation, desktop/mobile E2E, clean
+package, installed-host launch, and owner acceptance of the inert
+draft-to-active-to-revoked lifecycle passed. The next product foundation is
+M87 interaction profiles, followed by M73 context
 assembly, M74 completion, and M86 acceptance; later browser, connector,
 schedule, provider, and remote capabilities follow their explicit authority
 dependencies in `docs/ROADMAP.md`. M91 is the human-led roundtable: the owner

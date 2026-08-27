@@ -69,3 +69,12 @@ or external action. A successful draft creation clears the form and confirms
 the draft beside the submit control, preventing an off-screen lifecycle update
 from looking like a failed click. Clean package, installed-host launch, and
 owner acceptance remain required before M72 is marked validated.
+
+## Validation evidence
+
+`0.1.0-beta.107` passed `pnpm validate` (438 desktop unit tests, 7 website
+unit tests, 462 Rust tests, and 2 sandbox tests), 84 desktop and 8 website E2E
+tests, clean Linux package validation, and installed-host launch. Owner
+acceptance created an objective, activated it, and revoked it in the
+project-first workspace; the observed lifecycle remained inert and started no
+browser, provider, connector, agent, or external action. M72 is validated.

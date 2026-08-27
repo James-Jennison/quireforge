@@ -2002,8 +2002,11 @@ The delivery order is:
 19. M90 — Multi-Agent Objectives; and
 20. M80 — Approved Computer Use.
 
-M70, M71, and M76 are completed historical foundations. M72 is active. Every
-later milestone remains separately scoped and must pass its native/unit,
+M70, M71, M76, and M72 are completed historical foundations. M72 is validated
+in `0.1.0-beta.107`: its project-first authority workspace passed full source
+validation, desktop/mobile E2E, clean packaging, installed-host launch, and
+owner acceptance of an inert draft-to-active-to-revoked lifecycle. M87 is now
+active. Every later milestone remains separately scoped and must pass its native/unit,
 desktop/browser E2E where applicable, clean package, installed-host, and
 owner-acceptance gates before it is marked validated.
 

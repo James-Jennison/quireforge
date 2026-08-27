@@ -15,6 +15,9 @@
 - Clears the completed draft form and reports its successful creation directly
   beside the submit control, so the owner does not mistake a newly created
   inert objective for a failed click or create duplicate drafts.
+- Passed full validation, desktop/mobile E2E, clean package validation,
+  installed-host launch, and owner acceptance of the inert
+  draft-to-active-to-revoked lifecycle. M72 is validated.
 
 ## 0.1.0-beta.106 — M72 invalid-attachment boundary candidate
 
