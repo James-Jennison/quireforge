@@ -206,8 +206,8 @@ no model location, content, loader output, filesystem observation, or generated
 response is retained. M48, M55, and M60 remain preserved.
 
 The `0.1.0-beta.90` M69B Threads-first candidate completed source, package,
-staging, daemon-installation, and supervised-launch validation, but remains
-incomplete at the canonical installed-host receipt. It combines
+staging, daemon-installation, supervised-launch, and canonical installed-host
+validation. It combines
 the M69A dedicated local-only IPC service and ephemeral Chat composer with a
 presentation-only Threads-first shell. The thread tree uses existing bounded
 thread/project labels, session-local unread state, and a closed fail-closed
@@ -217,12 +217,12 @@ free, and direct local date/time questions use only the host clock. It reuses
 only the bounded M63 primitive and does not alter M48, M55, or M60 governed
 review. `pnpm validate`, desktop/mobile E2E, the pinned package/lifecycle/
 visible-launch and release-artifact gates, root-owned staging, daemon
-installation, and the supervised 6 GiB launch gate have passed. The native
-headless receipt correctly returned `unavailable`: its one live attached
-project has no beta.90 unprivileged candidate receipt because beta.90 was built
-from a distinct current worktree. The receipt must be created through a
-non-destructive relink to that candidate; no metadata was edited or receipt
-fabricated.
+installation, and the supervised 6 GiB launch gate have passed. The initially
+unavailable native receipt was resolved by a non-destructive relink of the
+live attached project to the beta.90 candidate; the canonical headless gate
+then returned `created`. Its immutable content-free record reports beta.90,
+two artifacts, passed installed-host state, and completed validation. No
+metadata was edited and no receipt was fabricated.
 
 ### Current provider-neutral completion record
 

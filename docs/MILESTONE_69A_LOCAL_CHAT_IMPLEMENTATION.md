@@ -102,8 +102,7 @@ without a model attempt, while ordinary references to time remain ordinary
 bounded local-runtime requests. Desktop and narrow/mobile E2E cover a normal
 no-project chat turn. `pnpm validate`, desktop/mobile E2E, the pinned
 package/release-artifact gate, root-owned staging, daemon installation, and
-supervised launch have fresh beta.90 evidence. Its required immutable
-installed-host receipt remains unavailable because the currently attached
-project has no beta.90 candidate receipt; the approved non-destructive relink
-is still required. No receipt was fabricated and the candidate remains
-incomplete until that native gate passes.
+supervised launch have fresh beta.90 evidence. After a non-destructive relink
+of the live attached project to the beta.90 candidate, the required immutable
+installed-host receipt returned `created` with a completed two-artifact,
+content-free validation record. No receipt was fabricated.

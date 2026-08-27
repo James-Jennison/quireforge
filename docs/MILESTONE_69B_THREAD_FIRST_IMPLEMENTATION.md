@@ -133,7 +133,8 @@ never synthesizes `needsDecision`; unknown status values fail closed to no dot.
 No native command or additional authority is introduced. `pnpm validate` and
 desktop/mobile E2E passed. The beta.90 package also passed its pinned package
 and release-artifact gates, trusted staging, daemon installation, and
-supervised launch because its M69A clock refinement changed native code. The
-canonical installed-host receipt remains unavailable until the live attached
-project is non-destructively relinked to the beta.90 candidate; no record was
-fabricated, so the candidate remains incomplete.
+supervised launch because its M69A clock refinement changed native code. After
+the live attached project was non-destructively relinked to the beta.90
+candidate, the canonical installed-host receipt returned `created` with a
+completed two-artifact, content-free validation record. No record was
+fabricated.

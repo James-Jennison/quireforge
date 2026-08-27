@@ -16,11 +16,11 @@
   gates, `pnpm validate`, and desktop/mobile E2E passed. Both Debian packages
   were staged through the root-owned boundary, installed by the root-owned
   daemon, and launched by the supervised 6 GiB service.
-- The canonical installed-host receipt remains unavailable, rather than being
-  bypassed: the application's one attached project has candidate receipts only
-  through beta.63, while beta.90 was built from a distinct current worktree.
-  Relinking that project to the beta.90 candidate through the application is
-  required before the immutable native receipt can be created.
+- The attached project was non-destructively relinked to the beta.90 candidate.
+  The canonical installed-host receipt then completed with `created`: both
+  installed packages matched beta.90 and the immutable record reports two
+  artifacts with every package-validation phase passed. The receipt is
+  content-free and does not record model, source, or project content.
 
 ## 0.1.0-beta.89 — M69A local chat candidate
 
