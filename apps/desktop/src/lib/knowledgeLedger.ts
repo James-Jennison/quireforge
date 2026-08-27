@@ -27,6 +27,15 @@ const status = z.enum([
   "retired",
 ]);
 const provenance = z.enum(["owner", "agent", "system"]);
+const evidenceKind = z.enum([
+  "m48-artifact-reference",
+  "task-evidence",
+  "package-validation",
+  "owner-trial",
+]);
+const ownerTrialKind = z.enum(["functional", "visual", "device"]);
+const ownerTrialResult = z.enum(["passed", "failed", "inconclusive"]);
+const evidenceConclusion = z.enum(["supports", "contradicts", "inconclusive"]);
 export const knowledgeLedgerProjectRequestSchema = z
   .object({ projectId: id })
   .strict();
@@ -46,9 +55,37 @@ export const knowledgeLedgerBindingRequestSchema = z
 export const knowledgeLedgerTransitionRequestSchema = z
   .object({ recordId: id, status })
   .strict();
+export const knowledgeEvidenceLinkCreateRequestSchema = z
+  .object({
+    recordId: id,
+    kind: evidenceKind,
+    sourceId: id.nullable().optional(),
+    ownerTrialKind: ownerTrialKind.nullable().optional(),
+    ownerTrialResult: ownerTrialResult.nullable().optional(),
+  })
+  .strict()
+  .superRefine((value, context) => {
+    const ownerTrial = value.kind === "owner-trial";
+    if (ownerTrial !== (value.sourceId == null))
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "sourceId must be absent only for owner trials",
+      });
+    if (
+      ownerTrial !==
+      (value.ownerTrialKind != null && value.ownerTrialResult != null)
+    )
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "owner trial receipts require both bounded fields",
+      });
+  });
+export const knowledgeEvidenceConclusionRequestSchema = z
+  .object({ linkId: id, conclusion: evidenceConclusion })
+  .strict();
 export const knowledgeLedgerSnapshotSchema = z
   .object({
-    schemaVersion: z.literal(1),
+    schemaVersion: z.literal(2),
     records: z
       .array(
         z
@@ -68,6 +105,35 @@ export const knowledgeLedgerSnapshotSchema = z
           .strict(),
       )
       .max(128),
+    evidenceLinks: z
+      .array(
+        z
+          .object({
+            id,
+            recordId: id,
+            kind: evidenceKind,
+            sourceClass: z.string().min(1).max(80),
+            sourceId: id,
+            sourceDigest: z.string().regex(/^[0-9a-f]{64}$/u),
+            ownerTrialKind: ownerTrialKind.nullable(),
+            ownerTrialResult: ownerTrialResult.nullable(),
+            createdAtMs: z.number().int().nonnegative(),
+          })
+          .strict(),
+      )
+      .max(256),
+    evidenceConclusions: z
+      .array(
+        z
+          .object({
+            id,
+            linkId: id,
+            conclusion: evidenceConclusion,
+            createdAtMs: z.number().int().nonnegative(),
+          })
+          .strict(),
+      )
+      .max(256),
     diagnosticCode: z.string().max(120).nullable(),
   })
   .strict();

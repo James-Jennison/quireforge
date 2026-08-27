@@ -227,8 +227,9 @@ use project::{
         DurableSourceArtifactPrepareRequest, DurableSourceConfirmRequest,
         DurableSourceDeleteConfirmRequest, DurableSourceFilePrepareRequest,
         DurableSourceManualPrepareRequest, DurableSourcePreparation, DurableSourceProjectRequest,
-        DurableSourceReadRequest, DurableSourceSnapshot, KnowledgeLedgerSnapshot,
-        KnowledgeRecordBindingRequest, KnowledgeRecordCreateRequest, KnowledgeRecordProjectRequest,
+        DurableSourceReadRequest, DurableSourceSnapshot, KnowledgeEvidenceConclusionRequest,
+        KnowledgeEvidenceLinkCreateRequest, KnowledgeLedgerSnapshot, KnowledgeRecordBindingRequest,
+        KnowledgeRecordCreateRequest, KnowledgeRecordProjectRequest,
         KnowledgeRecordTransitionRequest, LocalReviewAnnotationCreateRequest,
         LocalReviewAnnotationEditRequest, LocalReviewAnnotationMutationRequest,
         LocalReviewCollectionCreateRequest, LocalReviewCollectionMutationRequest,
@@ -1410,6 +1411,20 @@ fn knowledge_ledger_transition(
     service: tauri::State<'_, ProjectService>,
 ) -> KnowledgeLedgerSnapshot {
     service.transition_knowledge_record(request)
+}
+#[tauri::command]
+fn knowledge_evidence_link_create(
+    request: KnowledgeEvidenceLinkCreateRequest,
+    service: tauri::State<'_, ProjectService>,
+) -> KnowledgeLedgerSnapshot {
+    service.create_knowledge_evidence_link(request)
+}
+#[tauri::command]
+fn knowledge_evidence_conclude(
+    request: KnowledgeEvidenceConclusionRequest,
+    service: tauri::State<'_, ProjectService>,
+) -> KnowledgeLedgerSnapshot {
+    service.conclude_knowledge_evidence_link(request)
 }
 
 #[tauri::command]
@@ -3678,6 +3693,8 @@ pub fn run() {
             knowledge_ledger_create,
             knowledge_ledger_bind,
             knowledge_ledger_transition,
+            knowledge_evidence_link_create,
+            knowledge_evidence_conclude,
             task_catalog_create,
             task_catalog_create_from_conversation,
             task_catalog_rename,

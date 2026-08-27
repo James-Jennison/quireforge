@@ -28,8 +28,10 @@ use super::task_template::{
 };
 use super::types::{
     ArtifactReferenceState, ArtifactReferenceSummary, ContextLedgerEntry, DurableSourceClass,
-    DurableSourceLifecycleState, DurableSourceSummary, EvidenceEnvelopeV1, KnowledgeRecordKind,
-    KnowledgeRecordProvenance, KnowledgeRecordStatus, KnowledgeRecordSummary,
+    DurableSourceLifecycleState, DurableSourceSummary, EvidenceEnvelopeV1,
+    KnowledgeEvidenceConclusion, KnowledgeEvidenceConclusionSummary, KnowledgeEvidenceKind,
+    KnowledgeEvidenceLinkSummary, KnowledgeOwnerTrialKind, KnowledgeOwnerTrialResult,
+    KnowledgeRecordKind, KnowledgeRecordProvenance, KnowledgeRecordStatus, KnowledgeRecordSummary,
     LocalReviewActivityPresentationDetails, LocalReviewActivityPresentationEvidencePreview,
     LocalReviewActivityScope, LocalReviewAnnotationState, LocalReviewAnnotationSummary,
     LocalReviewApprovalPresentationDetails, LocalReviewApprovalPresentationEvidencePreview,
@@ -976,6 +978,26 @@ CREATE TRIGGER knowledge_record_identity_immutable BEFORE UPDATE OF id, project_
 const KNOWLEDGE_LEDGER_PROVENANCE_MIGRATION: &str = r#"
 ALTER TABLE knowledge_records ADD COLUMN provenance TEXT NOT NULL DEFAULT 'owner' CHECK(provenance IN ('owner','agent','system'));
 "#;
+const KNOWLEDGE_EVIDENCE_LINKAGE_MIGRATION: &str = r#"
+CREATE TABLE knowledge_evidence_links (
+ id TEXT PRIMARY KEY NOT NULL CHECK(length(id)=36), record_id TEXT NOT NULL REFERENCES knowledge_records(id) ON DELETE RESTRICT,
+ kind TEXT NOT NULL CHECK(kind IN ('m48-artifact-reference','task-evidence','package-validation','owner-trial')),
+ source_class TEXT NOT NULL CHECK(length(source_class) BETWEEN 1 AND 80), source_id TEXT NOT NULL CHECK(length(source_id)=36),
+ source_digest TEXT NOT NULL CHECK(length(source_digest)=64 AND source_digest NOT GLOB '*[^0-9a-f]*'),
+ owner_trial_kind TEXT CHECK(owner_trial_kind IN ('functional','visual','device')),
+ owner_trial_result TEXT CHECK(owner_trial_result IN ('passed','failed','inconclusive')),
+ created_at_ms INTEGER NOT NULL,
+ CHECK((kind='owner-trial' AND owner_trial_kind IS NOT NULL AND owner_trial_result IS NOT NULL) OR (kind <> 'owner-trial' AND owner_trial_kind IS NULL AND owner_trial_result IS NULL)),
+ UNIQUE(record_id, kind, source_id, source_digest)
+);
+CREATE TABLE knowledge_evidence_conclusions (
+ id TEXT PRIMARY KEY NOT NULL CHECK(length(id)=36), link_id TEXT NOT NULL UNIQUE REFERENCES knowledge_evidence_links(id) ON DELETE RESTRICT,
+ conclusion TEXT NOT NULL CHECK(conclusion IN ('supports','contradicts','inconclusive')), created_at_ms INTEGER NOT NULL
+);
+CREATE INDEX knowledge_evidence_links_record_recent ON knowledge_evidence_links(record_id, created_at_ms DESC, id);
+CREATE TRIGGER knowledge_evidence_links_immutable BEFORE UPDATE ON knowledge_evidence_links BEGIN SELECT RAISE(ABORT, 'knowledge evidence links are immutable'); END;
+CREATE TRIGGER knowledge_evidence_conclusions_immutable BEFORE UPDATE ON knowledge_evidence_conclusions BEGIN SELECT RAISE(ABORT, 'knowledge evidence conclusions are immutable'); END;
+"#;
 
 const MIGRATIONS: &[(i64, &str, &str)] = &[
     (1, "projects-and-directory-associations", INITIAL_MIGRATION),
@@ -1087,6 +1109,11 @@ const MIGRATIONS: &[(i64, &str, &str)] = &[
         "knowledge-ledger-provenance-v1",
         KNOWLEDGE_LEDGER_PROVENANCE_MIGRATION,
     ),
+    (
+        30,
+        "knowledge-evidence-linkage-v1",
+        KNOWLEDGE_EVIDENCE_LINKAGE_MIGRATION,
+    ),
 ];
 
 #[derive(Debug, Error)]
@@ -1160,6 +1187,71 @@ fn knowledge_provenance(value: &str) -> Result<KnowledgeRecordProvenance, rusqli
 fn knowledge_status(value: &str) -> Result<KnowledgeRecordStatus, rusqlite::Error> {
     serde_json::from_value(serde_json::Value::String(value.into()))
         .map_err(|_| rusqlite::Error::InvalidQuery)
+}
+
+fn knowledge_evidence_kind_value(value: KnowledgeEvidenceKind) -> &'static str {
+    match value {
+        KnowledgeEvidenceKind::M48ArtifactReference => "m48-artifact-reference",
+        KnowledgeEvidenceKind::TaskEvidence => "task-evidence",
+        KnowledgeEvidenceKind::PackageValidation => "package-validation",
+        KnowledgeEvidenceKind::OwnerTrial => "owner-trial",
+    }
+}
+fn knowledge_evidence_kind(value: &str) -> Result<KnowledgeEvidenceKind, rusqlite::Error> {
+    match value {
+        "m48-artifact-reference" => Ok(KnowledgeEvidenceKind::M48ArtifactReference),
+        "task-evidence" => Ok(KnowledgeEvidenceKind::TaskEvidence),
+        "package-validation" => Ok(KnowledgeEvidenceKind::PackageValidation),
+        "owner-trial" => Ok(KnowledgeEvidenceKind::OwnerTrial),
+        _ => Err(rusqlite::Error::InvalidQuery),
+    }
+}
+fn owner_trial_kind_value(value: KnowledgeOwnerTrialKind) -> &'static str {
+    match value {
+        KnowledgeOwnerTrialKind::Functional => "functional",
+        KnowledgeOwnerTrialKind::Visual => "visual",
+        KnowledgeOwnerTrialKind::Device => "device",
+    }
+}
+fn owner_trial_kind(value: &str) -> Result<KnowledgeOwnerTrialKind, rusqlite::Error> {
+    match value {
+        "functional" => Ok(KnowledgeOwnerTrialKind::Functional),
+        "visual" => Ok(KnowledgeOwnerTrialKind::Visual),
+        "device" => Ok(KnowledgeOwnerTrialKind::Device),
+        _ => Err(rusqlite::Error::InvalidQuery),
+    }
+}
+fn owner_trial_result_value(value: KnowledgeOwnerTrialResult) -> &'static str {
+    match value {
+        KnowledgeOwnerTrialResult::Passed => "passed",
+        KnowledgeOwnerTrialResult::Failed => "failed",
+        KnowledgeOwnerTrialResult::Inconclusive => "inconclusive",
+    }
+}
+fn owner_trial_result(value: &str) -> Result<KnowledgeOwnerTrialResult, rusqlite::Error> {
+    match value {
+        "passed" => Ok(KnowledgeOwnerTrialResult::Passed),
+        "failed" => Ok(KnowledgeOwnerTrialResult::Failed),
+        "inconclusive" => Ok(KnowledgeOwnerTrialResult::Inconclusive),
+        _ => Err(rusqlite::Error::InvalidQuery),
+    }
+}
+fn knowledge_evidence_conclusion_value(value: KnowledgeEvidenceConclusion) -> &'static str {
+    match value {
+        KnowledgeEvidenceConclusion::Supports => "supports",
+        KnowledgeEvidenceConclusion::Contradicts => "contradicts",
+        KnowledgeEvidenceConclusion::Inconclusive => "inconclusive",
+    }
+}
+fn knowledge_evidence_conclusion(
+    value: &str,
+) -> Result<KnowledgeEvidenceConclusion, rusqlite::Error> {
+    match value {
+        "supports" => Ok(KnowledgeEvidenceConclusion::Supports),
+        "contradicts" => Ok(KnowledgeEvidenceConclusion::Contradicts),
+        "inconclusive" => Ok(KnowledgeEvidenceConclusion::Inconclusive),
+        _ => Err(rusqlite::Error::InvalidQuery),
+    }
 }
 
 pub(crate) struct DurableSourceInsert<'a> {
@@ -2867,6 +2959,179 @@ impl ProjectRepository {
             params![Uuid::now_v7().to_string(), id, format!("status-{next}"), now],
         )?;
         Ok(tx.commit()?)
+    }
+    pub(crate) fn knowledge_evidence_links(
+        &self,
+        project_id: &str,
+    ) -> Result<Vec<KnowledgeEvidenceLinkSummary>, StorageError> {
+        let mut statement = self.connection.prepare(
+            "SELECT link.id,link.record_id,link.kind,link.source_class,link.source_id,link.source_digest,link.owner_trial_kind,link.owner_trial_result,link.created_at_ms FROM knowledge_evidence_links AS link JOIN knowledge_records AS record ON record.id=link.record_id WHERE record.project_id=?1 ORDER BY link.created_at_ms DESC,link.id DESC LIMIT 256",
+        )?;
+        let rows = statement
+            .query_map([project_id], |row| {
+                let trial_kind: Option<String> = row.get(6)?;
+                let trial_result: Option<String> = row.get(7)?;
+                Ok(KnowledgeEvidenceLinkSummary {
+                    id: row.get(0)?,
+                    record_id: row.get(1)?,
+                    kind: knowledge_evidence_kind(&row.get::<_, String>(2)?)?,
+                    source_class: row.get(3)?,
+                    source_id: row.get(4)?,
+                    source_digest: row.get(5)?,
+                    owner_trial_kind: trial_kind.as_deref().map(owner_trial_kind).transpose()?,
+                    owner_trial_result: trial_result
+                        .as_deref()
+                        .map(owner_trial_result)
+                        .transpose()?,
+                    created_at_ms: row.get(8)?,
+                })
+            })?
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(StorageError::from);
+        rows
+    }
+    pub(crate) fn knowledge_evidence_conclusions(
+        &self,
+        project_id: &str,
+    ) -> Result<Vec<KnowledgeEvidenceConclusionSummary>, StorageError> {
+        let mut statement = self.connection.prepare(
+            "SELECT conclusion.id,conclusion.link_id,conclusion.conclusion,conclusion.created_at_ms FROM knowledge_evidence_conclusions AS conclusion JOIN knowledge_evidence_links AS link ON link.id=conclusion.link_id JOIN knowledge_records AS record ON record.id=link.record_id WHERE record.project_id=?1 ORDER BY conclusion.created_at_ms DESC,conclusion.id DESC LIMIT 256",
+        )?;
+        let rows = statement
+            .query_map([project_id], |row| {
+                Ok(KnowledgeEvidenceConclusionSummary {
+                    id: row.get(0)?,
+                    link_id: row.get(1)?,
+                    conclusion: knowledge_evidence_conclusion(&row.get::<_, String>(2)?)?,
+                    created_at_ms: row.get(3)?,
+                })
+            })?
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(StorageError::from);
+        rows
+    }
+    pub(crate) fn knowledge_project_for_evidence_link(
+        &self,
+        id: &str,
+    ) -> Result<String, StorageError> {
+        self.connection.query_row("SELECT record.project_id FROM knowledge_evidence_links AS link JOIN knowledge_records AS record ON record.id=link.record_id WHERE link.id=?1", [id], |row| row.get(0)).map_err(StorageError::from)
+    }
+    pub(crate) fn create_knowledge_evidence_link(
+        &mut self,
+        record_id: &str,
+        kind: KnowledgeEvidenceKind,
+        source_id: Option<&str>,
+        trial_kind: Option<KnowledgeOwnerTrialKind>,
+        trial_result: Option<KnowledgeOwnerTrialResult>,
+    ) -> Result<(), StorageError> {
+        if Uuid::parse_str(record_id).is_err()
+            || source_id.is_some_and(|id| Uuid::parse_str(id).is_err())
+        {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let project_id: String = tx.query_row(
+            "SELECT project_id FROM knowledge_records WHERE id=?1",
+            [record_id],
+            |row| row.get(0),
+        )?;
+        let link_id = Uuid::now_v7().to_string();
+        let (
+            source_class,
+            resolved_source_id,
+            source_digest,
+            stored_trial_kind,
+            stored_trial_result,
+        ) = match kind {
+            KnowledgeEvidenceKind::M48ArtifactReference => {
+                let source_id = source_id.ok_or(StorageError::InvalidStoredValue)?;
+                let (digest, state): (String, String) = tx.query_row("SELECT artifact_sha256,state FROM artifact_references WHERE id=?1 AND project_id=?2", params![source_id, project_id], |row| Ok((row.get(0)?, row.get(1)?)))?;
+                if state != "active" || trial_kind.is_some() || trial_result.is_some() {
+                    return Err(StorageError::InvalidStoredValue);
+                }
+                (
+                    "m48-artifact-reference",
+                    source_id.to_owned(),
+                    digest,
+                    None,
+                    None,
+                )
+            }
+            KnowledgeEvidenceKind::TaskEvidence => {
+                let source_id = source_id.ok_or(StorageError::InvalidStoredValue)?;
+                let (digest, state, class): (String, String, String) = tx.query_row("SELECT item.sha256,item.state,item.class FROM local_review_items AS item JOIN local_review_collections AS collection ON collection.id=item.collection_id JOIN task_records AS task ON task.id=collection.task_id WHERE item.id=?1 AND task.project_id=?2", params![source_id, project_id], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))?;
+                if state != "ready"
+                    || class != "evidence"
+                    || trial_kind.is_some()
+                    || trial_result.is_some()
+                {
+                    return Err(StorageError::InvalidStoredValue);
+                }
+                (
+                    "m52-local-review-evidence",
+                    source_id.to_owned(),
+                    digest,
+                    None,
+                    None,
+                )
+            }
+            KnowledgeEvidenceKind::PackageValidation => {
+                let source_id = source_id.ok_or(StorageError::InvalidStoredValue)?;
+                let digest: String = tx.query_row("SELECT record_sha256 FROM project_package_validation_summaries WHERE id=?1 AND project_id=?2", params![source_id, project_id], |row| row.get(0))?;
+                if trial_kind.is_some() || trial_result.is_some() {
+                    return Err(StorageError::InvalidStoredValue);
+                }
+                (
+                    "package-validation-summary",
+                    source_id.to_owned(),
+                    digest,
+                    None,
+                    None,
+                )
+            }
+            KnowledgeEvidenceKind::OwnerTrial => {
+                let (trial_kind, trial_result) = (
+                    trial_kind.ok_or(StorageError::InvalidStoredValue)?,
+                    trial_result.ok_or(StorageError::InvalidStoredValue)?,
+                );
+                if source_id.is_some() {
+                    return Err(StorageError::InvalidStoredValue);
+                }
+                let digest = format!(
+                    "{:x}",
+                    Sha256::digest(
+                        format!(
+                            "owner-trial-v1:{link_id}:{}:{}",
+                            owner_trial_kind_value(trial_kind),
+                            owner_trial_result_value(trial_result)
+                        )
+                        .as_bytes()
+                    )
+                );
+                (
+                    "owner-trial-receipt-v1",
+                    link_id.clone(),
+                    digest,
+                    Some(owner_trial_kind_value(trial_kind)),
+                    Some(owner_trial_result_value(trial_result)),
+                )
+            }
+        };
+        tx.execute("INSERT INTO knowledge_evidence_links(id,record_id,kind,source_class,source_id,source_digest,owner_trial_kind,owner_trial_result,created_at_ms) VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9)", params![link_id,record_id,knowledge_evidence_kind_value(kind),source_class,resolved_source_id,source_digest,stored_trial_kind,stored_trial_result,now_millis()])?;
+        Ok(tx.commit()?)
+    }
+    pub(crate) fn conclude_knowledge_evidence_link(
+        &mut self,
+        link_id: &str,
+        conclusion: KnowledgeEvidenceConclusion,
+    ) -> Result<(), StorageError> {
+        if Uuid::parse_str(link_id).is_err() {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        self.connection.execute("INSERT INTO knowledge_evidence_conclusions(id,link_id,conclusion,created_at_ms) VALUES(?1,?2,?3,?4)", params![Uuid::now_v7().to_string(),link_id,knowledge_evidence_conclusion_value(conclusion),now_millis()])?;
+        Ok(())
     }
     pub(crate) fn context_ledger(
         &self,
@@ -9754,7 +10019,7 @@ mod tests {
                     0
                 ))
                 .expect("version"),
-            29
+            30
         );
     }
 
@@ -9925,6 +10190,8 @@ mod tests {
                 "fictional_connector_audit".to_owned(),
                 "fictional_connector_bindings".to_owned(),
                 "fictional_connector_operations".to_owned(),
+                "knowledge_evidence_conclusions".to_owned(),
+                "knowledge_evidence_links".to_owned(),
                 "knowledge_record_events".to_owned(),
                 "knowledge_records".to_owned(),
                 "local_review_activity_ledger".to_owned(),
@@ -10353,7 +10620,7 @@ mod tests {
                     0
                 ),)
                 .expect("version"),
-            29
+            30
         );
         assert_eq!(
             repository.connection.query_row(
@@ -10821,7 +11088,7 @@ mod tests {
                     0
                 ))
                 .expect("migration version"),
-            29
+            30
         );
     }
 
@@ -10993,7 +11260,7 @@ mod tests {
                     0
                 ))
                 .expect("version"),
-            29
+            30
         );
 
         let mut failed = Connection::open_in_memory().expect("database opens");
@@ -11633,7 +11900,7 @@ mod tests {
                 1
             );
         }
-        assert_eq!(MIGRATIONS.len(), 29);
+        assert_eq!(MIGRATIONS.len(), 30);
 
         let connection = Connection::open_in_memory().expect("database");
         connection
@@ -11681,7 +11948,7 @@ mod tests {
                     0
                 ))
                 .expect("version"),
-            29
+            30
         );
         assert_eq!(
             repository
@@ -11738,7 +12005,7 @@ mod tests {
                     0
                 ))
                 .expect("version"),
-            29
+            30
         );
     }
 
@@ -12785,6 +13052,73 @@ mod tests {
                 .as_deref(),
             Some(fact.as_str())
         );
+    }
+
+    #[test]
+    fn knowledge_evidence_owner_trial_is_immutable_and_never_changes_record_status() {
+        let mut repository = ProjectRepository::in_memory().expect("schema");
+        let project_id = Uuid::now_v7().to_string();
+        insert_active_project(&repository, &project_id, &Uuid::now_v7().to_string());
+        let record_id = repository
+            .create_knowledge_record(
+                &project_id,
+                None,
+                KnowledgeRecordKind::ObservedFact,
+                "Trial claim",
+                "Requires an explicit owner trial.",
+                None,
+            )
+            .expect("record");
+        repository
+            .transition_knowledge_record(&record_id, KnowledgeRecordStatus::Active)
+            .expect("activate");
+        repository
+            .create_knowledge_evidence_link(
+                &record_id,
+                super::KnowledgeEvidenceKind::OwnerTrial,
+                None,
+                Some(super::KnowledgeOwnerTrialKind::Device),
+                Some(super::KnowledgeOwnerTrialResult::Passed),
+            )
+            .expect("receipt");
+        let links = repository
+            .knowledge_evidence_links(&project_id)
+            .expect("links");
+        assert_eq!(links.len(), 1);
+        assert_eq!(
+            repository.knowledge_records(&project_id).expect("records")[0].status,
+            KnowledgeRecordStatus::Active
+        );
+        repository
+            .conclude_knowledge_evidence_link(
+                &links[0].id,
+                super::KnowledgeEvidenceConclusion::Supports,
+            )
+            .expect("conclusion");
+        assert_eq!(
+            repository
+                .knowledge_evidence_conclusions(&project_id)
+                .expect("conclusions")
+                .len(),
+            1
+        );
+        assert!(repository
+            .conclude_knowledge_evidence_link(
+                &links[0].id,
+                super::KnowledgeEvidenceConclusion::Supports
+            )
+            .is_err());
+        assert_eq!(
+            repository.knowledge_records(&project_id).expect("records")[0].status,
+            KnowledgeRecordStatus::Active
+        );
+        assert!(repository
+            .connection
+            .execute(
+                "UPDATE knowledge_evidence_links SET source_class='forged' WHERE id=?1",
+                [&links[0].id]
+            )
+            .is_err());
     }
 
     #[test]

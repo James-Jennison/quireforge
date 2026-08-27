@@ -35,7 +35,8 @@ use types::{
     DurableSourceConfirmRequest, DurableSourceDeleteConfirmRequest, DurableSourceDiagnosticCode,
     DurableSourceFilePrepareRequest, DurableSourceManualPrepareRequest, DurableSourcePreparation,
     DurableSourceProjectRequest, DurableSourceReadRequest, DurableSourceSnapshot,
-    DurableSourceSummary, GitSummary, KnowledgeLedgerSnapshot, KnowledgeRecordBindingRequest,
+    DurableSourceSummary, GitSummary, KnowledgeEvidenceConclusionRequest,
+    KnowledgeEvidenceLinkCreateRequest, KnowledgeLedgerSnapshot, KnowledgeRecordBindingRequest,
     KnowledgeRecordCreateRequest, KnowledgeRecordProjectRequest, KnowledgeRecordTransitionRequest,
     LocalReviewActivityPresentationEvidencePreview, LocalReviewActivityPresentationEvidenceRequest,
     LocalReviewAnnotationCreateRequest, LocalReviewAnnotationEditRequest,
@@ -311,12 +312,24 @@ impl ProjectService {
             r.as_ref()
                 .and_then(|repo| repo.knowledge_records(&request.project_id).ok())
         });
-        let diagnostic_code = records
-            .is_none()
-            .then(|| "knowledge-ledger-unavailable".into());
+        let evidence_links = self.repository.lock().ok().and_then(|r| {
+            r.as_ref()
+                .and_then(|repo| repo.knowledge_evidence_links(&request.project_id).ok())
+        });
+        let evidence_conclusions = self.repository.lock().ok().and_then(|r| {
+            r.as_ref().and_then(|repo| {
+                repo.knowledge_evidence_conclusions(&request.project_id)
+                    .ok()
+            })
+        });
+        let diagnostic_code =
+            (records.is_none() || evidence_links.is_none() || evidence_conclusions.is_none())
+                .then(|| "knowledge-ledger-unavailable".into());
         KnowledgeLedgerSnapshot {
             schema_version: KNOWLEDGE_LEDGER_SCHEMA_VERSION,
             records: records.unwrap_or_default(),
+            evidence_links: evidence_links.unwrap_or_default(),
+            evidence_conclusions: evidence_conclusions.unwrap_or_default(),
             diagnostic_code,
         }
     }
@@ -356,6 +369,8 @@ impl ProjectService {
             return KnowledgeLedgerSnapshot {
                 schema_version: KNOWLEDGE_LEDGER_SCHEMA_VERSION,
                 records: Vec::new(),
+                evidence_links: Vec::new(),
+                evidence_conclusions: Vec::new(),
                 diagnostic_code: Some("knowledge-record-unavailable".into()),
             };
         };
@@ -386,6 +401,8 @@ impl ProjectService {
             return KnowledgeLedgerSnapshot {
                 schema_version: KNOWLEDGE_LEDGER_SCHEMA_VERSION,
                 records: Vec::new(),
+                evidence_links: Vec::new(),
+                evidence_conclusions: Vec::new(),
                 diagnostic_code: Some("knowledge-record-unavailable".into()),
             };
         };
@@ -403,6 +420,82 @@ impl ProjectService {
         let mut snapshot = self.knowledge_ledger(KnowledgeRecordProjectRequest { project_id });
         if !ok {
             snapshot.diagnostic_code = Some("knowledge-transition-rejected".into());
+        }
+        snapshot
+    }
+    pub fn create_knowledge_evidence_link(
+        &self,
+        request: KnowledgeEvidenceLinkCreateRequest,
+    ) -> KnowledgeLedgerSnapshot {
+        let project_id = self.repository.lock().ok().and_then(|r| {
+            r.as_ref()
+                .and_then(|repo| repo.knowledge_records_for_record(&request.record_id).ok())
+        });
+        let Some(project_id) = project_id else {
+            return KnowledgeLedgerSnapshot {
+                schema_version: KNOWLEDGE_LEDGER_SCHEMA_VERSION,
+                records: Vec::new(),
+                evidence_links: Vec::new(),
+                evidence_conclusions: Vec::new(),
+                diagnostic_code: Some("knowledge-record-unavailable".into()),
+            };
+        };
+        let ok = self
+            .repository
+            .lock()
+            .ok()
+            .and_then(|mut r| {
+                r.as_mut().and_then(|repo| {
+                    repo.create_knowledge_evidence_link(
+                        &request.record_id,
+                        request.kind,
+                        request.source_id.as_deref(),
+                        request.owner_trial_kind,
+                        request.owner_trial_result,
+                    )
+                    .ok()
+                })
+            })
+            .is_some();
+        let mut snapshot = self.knowledge_ledger(KnowledgeRecordProjectRequest { project_id });
+        if !ok {
+            snapshot.diagnostic_code = Some("knowledge-evidence-link-rejected".into());
+        }
+        snapshot
+    }
+    pub fn conclude_knowledge_evidence_link(
+        &self,
+        request: KnowledgeEvidenceConclusionRequest,
+    ) -> KnowledgeLedgerSnapshot {
+        let project_id = self.repository.lock().ok().and_then(|r| {
+            r.as_ref().and_then(|repo| {
+                repo.knowledge_project_for_evidence_link(&request.link_id)
+                    .ok()
+            })
+        });
+        let Some(project_id) = project_id else {
+            return KnowledgeLedgerSnapshot {
+                schema_version: KNOWLEDGE_LEDGER_SCHEMA_VERSION,
+                records: Vec::new(),
+                evidence_links: Vec::new(),
+                evidence_conclusions: Vec::new(),
+                diagnostic_code: Some("knowledge-evidence-unavailable".into()),
+            };
+        };
+        let ok = self
+            .repository
+            .lock()
+            .ok()
+            .and_then(|mut r| {
+                r.as_mut().and_then(|repo| {
+                    repo.conclude_knowledge_evidence_link(&request.link_id, request.conclusion)
+                        .ok()
+                })
+            })
+            .is_some();
+        let mut snapshot = self.knowledge_ledger(KnowledgeRecordProjectRequest { project_id });
+        if !ok {
+            snapshot.diagnostic_code = Some("knowledge-evidence-conclusion-rejected".into());
         }
         snapshot
     }

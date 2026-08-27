@@ -77,6 +77,8 @@ import {
   type ContextLedgerSnapshot,
 } from "./contextLedger";
 import {
+  knowledgeEvidenceConclusionRequestSchema,
+  knowledgeEvidenceLinkCreateRequestSchema,
   knowledgeLedgerBindingRequestSchema,
   knowledgeLedgerCreateRequestSchema,
   knowledgeLedgerProjectRequestSchema,
@@ -498,6 +500,10 @@ export const KNOWLEDGE_LEDGER_CREATE_COMMAND = "knowledge_ledger_create";
 export const KNOWLEDGE_LEDGER_BIND_COMMAND = "knowledge_ledger_bind";
 export const KNOWLEDGE_LEDGER_TRANSITION_COMMAND =
   "knowledge_ledger_transition";
+export const KNOWLEDGE_EVIDENCE_LINK_CREATE_COMMAND =
+  "knowledge_evidence_link_create";
+export const KNOWLEDGE_EVIDENCE_CONCLUDE_COMMAND =
+  "knowledge_evidence_conclude";
 export const CONTEXT_ASSEMBLY_PREPARE_COMMAND = "context_assembly_prepare";
 export const CONTEXT_ASSEMBLY_CONFIRM_COMMAND = "context_assembly_confirm";
 export const CONTEXT_ASSEMBLY_RUN_LOCAL_RUNTIME_COMMAND =
@@ -1879,6 +1885,24 @@ export const transitionKnowledgeRecord = async (
   knowledgeLedgerSnapshotSchema.parse(
     await invokeFunction(KNOWLEDGE_LEDGER_TRANSITION_COMMAND, {
       request: knowledgeLedgerTransitionRequestSchema.parse(request),
+    }),
+  );
+export const createKnowledgeEvidenceLink = async (
+  request: unknown,
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<KnowledgeLedgerSnapshot> =>
+  knowledgeLedgerSnapshotSchema.parse(
+    await invokeFunction(KNOWLEDGE_EVIDENCE_LINK_CREATE_COMMAND, {
+      request: knowledgeEvidenceLinkCreateRequestSchema.parse(request),
+    }),
+  );
+export const concludeKnowledgeEvidenceLink = async (
+  request: unknown,
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<KnowledgeLedgerSnapshot> =>
+  knowledgeLedgerSnapshotSchema.parse(
+    await invokeFunction(KNOWLEDGE_EVIDENCE_CONCLUDE_COMMAND, {
+      request: knowledgeEvidenceConclusionRequestSchema.parse(request),
     }),
   );
 export const prepareContextAssembly = (

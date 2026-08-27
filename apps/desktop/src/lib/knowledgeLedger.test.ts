@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   knowledgeLedgerCreateRequestSchema,
+  knowledgeEvidenceLinkCreateRequestSchema,
   knowledgeLedgerSnapshotSchema,
   knowledgeLedgerTransitionRequestSchema,
 } from "./knowledgeLedger";
@@ -11,7 +12,7 @@ describe("knowledge ledger contracts", () => {
   it("accepts a bounded owner decision snapshot", () => {
     expect(
       knowledgeLedgerSnapshotSchema.parse({
-        schemaVersion: 1,
+        schemaVersion: 2,
         records: [
           {
             id: "019fbee6-476f-71b0-853c-f067657aa69b",
@@ -27,6 +28,8 @@ describe("knowledge ledger contracts", () => {
             updatedAtMs: 2,
           },
         ],
+        evidenceLinks: [],
+        evidenceConclusions: [],
         diagnosticCode: null,
       }).records[0]!.status,
     ).toBe("active");
@@ -64,6 +67,26 @@ describe("knowledge ledger contracts", () => {
         recordId: "019fbee6-476f-71b0-853c-f067657aa69b",
         status: "active",
         bypass: true,
+      }),
+    ).toThrow();
+  });
+
+  it("permits only bounded owner-trial evidence without a source id", () => {
+    expect(
+      knowledgeEvidenceLinkCreateRequestSchema.parse({
+        recordId: "019fbee6-476f-71b0-853c-f067657aa69b",
+        kind: "owner-trial",
+        ownerTrialKind: "device",
+        ownerTrialResult: "passed",
+      }).kind,
+    ).toBe("owner-trial");
+    expect(() =>
+      knowledgeEvidenceLinkCreateRequestSchema.parse({
+        recordId: "019fbee6-476f-71b0-853c-f067657aa69b",
+        kind: "owner-trial",
+        sourceId: "019fbee6-476f-71b0-853c-f067657aa69c",
+        ownerTrialKind: "device",
+        ownerTrialResult: "passed",
       }),
     ).toThrow();
   });

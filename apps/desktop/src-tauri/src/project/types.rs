@@ -1582,7 +1582,7 @@ pub struct ContextLedgerSnapshot {
     pub diagnostic: Option<String>,
 }
 
-pub const KNOWLEDGE_LEDGER_SCHEMA_VERSION: u16 = 1;
+pub const KNOWLEDGE_LEDGER_SCHEMA_VERSION: u16 = 2;
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum KnowledgeRecordKind {
@@ -1616,6 +1616,35 @@ pub enum KnowledgeRecordProvenance {
     Agent,
     System,
 }
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum KnowledgeEvidenceKind {
+    M48ArtifactReference,
+    TaskEvidence,
+    PackageValidation,
+    OwnerTrial,
+}
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum KnowledgeOwnerTrialKind {
+    Functional,
+    Visual,
+    Device,
+}
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum KnowledgeOwnerTrialResult {
+    Passed,
+    Failed,
+    Inconclusive,
+}
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum KnowledgeEvidenceConclusion {
+    Supports,
+    Contradicts,
+    Inconclusive,
+}
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct KnowledgeRecordCreateRequest {
@@ -1642,6 +1671,21 @@ pub struct KnowledgeRecordTransitionRequest {
     pub record_id: String,
     pub status: KnowledgeRecordStatus,
 }
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct KnowledgeEvidenceLinkCreateRequest {
+    pub record_id: String,
+    pub kind: KnowledgeEvidenceKind,
+    pub source_id: Option<String>,
+    pub owner_trial_kind: Option<KnowledgeOwnerTrialKind>,
+    pub owner_trial_result: Option<KnowledgeOwnerTrialResult>,
+}
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct KnowledgeEvidenceConclusionRequest {
+    pub link_id: String,
+    pub conclusion: KnowledgeEvidenceConclusion,
+}
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct KnowledgeRecordSummary {
@@ -1662,5 +1706,28 @@ pub struct KnowledgeRecordSummary {
 pub struct KnowledgeLedgerSnapshot {
     pub schema_version: u16,
     pub records: Vec<KnowledgeRecordSummary>,
+    pub evidence_links: Vec<KnowledgeEvidenceLinkSummary>,
+    pub evidence_conclusions: Vec<KnowledgeEvidenceConclusionSummary>,
     pub diagnostic_code: Option<String>,
+}
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct KnowledgeEvidenceLinkSummary {
+    pub id: String,
+    pub record_id: String,
+    pub kind: KnowledgeEvidenceKind,
+    pub source_class: String,
+    pub source_id: String,
+    pub source_digest: String,
+    pub owner_trial_kind: Option<KnowledgeOwnerTrialKind>,
+    pub owner_trial_result: Option<KnowledgeOwnerTrialResult>,
+    pub created_at_ms: i64,
+}
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct KnowledgeEvidenceConclusionSummary {
+    pub id: String,
+    pub link_id: String,
+    pub conclusion: KnowledgeEvidenceConclusion,
+    pub created_at_ms: i64,
 }

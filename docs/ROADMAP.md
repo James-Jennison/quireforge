@@ -1988,6 +1988,14 @@ beside M66; it does not change M66's content-free projection, M60's reviewed
 context transfer, or M69C's non-executing Action Card boundary. Every later
 capability remains separately approval- and evidence-gated.
 
+[M71 -- Evidence Linkage](MILESTONE_71_EVIDENCE_LINKAGE.md) is implemented in
+the `0.1.0-beta.100` candidate. It adds immutable, project-scoped claim →
+evidence → conclusion links for existing M48 artifact references, M52 typed
+local-review evidence, package-validation summaries, and bounded owner-trial
+receipts. A conclusion is an explicit owner action and never changes an M70
+record lifecycle automatically. M71 stores no raw evidence and adds no agent,
+context-transfer, provider, or execution capability.
+
 ### Deferred capability gates
 
 Real in-app browsing for Codex-assisted research and verification is a deferred
