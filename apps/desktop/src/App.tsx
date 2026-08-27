@@ -551,6 +551,15 @@ function initialWorkspaceLocation(): WorkspaceLocation {
   const fromStorage = parseWorkspaceHash(
     window.localStorage.getItem(workspaceStorageKey) ?? "",
   );
+  const preferredConversationMode = window.localStorage.getItem(
+    conversationModeStorageKey,
+  );
+  if (
+    preferredConversationMode === "chat" &&
+    (!fromStorage || fromStorage.route === "sessions")
+  ) {
+    return workspaceLocationFor("advisor");
+  }
   return fromStorage ?? defaultWorkspaceLocation;
 }
 

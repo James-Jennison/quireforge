@@ -218,6 +218,14 @@ staging, installer-daemon installation, supervised launch, and canonical
 installed-host validation. The immutable receipt reports beta.93, two
 artifacts, `passed`, and completed validation.
 
+The `0.1.0-beta.94` Chat-first entry candidate redirects only the implicit
+persisted Threads landing to Local Chat when the user has selected Chat mode.
+An explicit Threads deep link remains a Threads request, and Codex-mode
+navigation is unchanged. It preserves beta.93's unavailable-reference
+representation and does not alter, recover, delete, or substitute any Codex
+thread or transcript. Full validation, package, installation, and supervised
+acceptance evidence is recorded only after the new candidate passes every gate.
+
 The `0.1.0-beta.92` M69C Action Card candidate adds the accessible Local Chat
 renderer to the already-accepted non-executing Action Card foundation. Its
 closed Actions menu prepares only one of four visible proposal classes, and its

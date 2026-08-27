@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.0-beta.94 — Chat-first entry candidate
+
+- When the persisted workspace route is Threads and the user has selected Chat
+  mode, QuireForge opens the existing Local Chat workspace instead.
+- Explicit Threads deep links remain Threads; Codex mode and every workspace
+  route retain their prior behavior.
+- Threads remains available as a workspace, including the beta.93 recovery
+  labels and Start a local chat action.
+
 ## 0.1.0-beta.93 — M69 Threads recovery candidate
 
 - Adds a prominent Start a local chat action to Threads and routes it through

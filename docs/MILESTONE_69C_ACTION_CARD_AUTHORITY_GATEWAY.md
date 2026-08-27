@@ -87,3 +87,9 @@ pinned Ubuntu package/release-artifact gate, root-owned staging,
 installer-daemon installation, supervised launch, and canonical installed-host
 validation. Its immutable receipt records beta.93, two artifacts, `passed`,
 and completed validation.
+
+The beta.94 candidate completes the entry correction for people who selected
+Chat: an implicit persisted Threads landing opens the existing Local Chat
+workspace instead. Explicit Threads deep links still open Threads, and Codex
+mode is unchanged. No session reference, transcript, source, project, or
+authority crosses the boundary.

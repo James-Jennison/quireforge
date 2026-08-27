@@ -886,6 +886,25 @@ describe("QuireForge desktop shell", () => {
     expect(window.location.hash).toBe("#sessions");
   });
 
+  it("opens local Chat instead of a persisted Threads landing page in Chat mode", async () => {
+    window.history.replaceState(null, "", "/");
+    window.localStorage.setItem("quireforge-conversation-mode", "chat");
+    window.localStorage.setItem("quireforge-workspace-location", "#sessions");
+    render(
+      <App
+        loadBootstrap={() => Promise.resolve(scaffoldBootstrap)}
+        loadRuntime={() => Promise.resolve(scaffoldCodexRuntime)}
+        loadAuth={() => Promise.resolve(authenticatedAuth)}
+        loadProjects={() => Promise.resolve(attachedProject)}
+      />,
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: "Start a conversation." }),
+    ).toBeInTheDocument();
+    expect(window.location.hash).toBe("#advisor");
+  });
+
   it("labels a browser-only render without simulating native success", async () => {
     render(
       <App
