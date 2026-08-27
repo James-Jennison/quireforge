@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.0-beta.100 — M71 Evidence Linkage candidate
+
+- Adds a private native claim → evidence → conclusion chain beside the M70
+  Knowledge Ledger. It links M48 artifact references, M52 typed local-review
+  evidence, package-validation summaries, and bounded owner-trial receipts.
+- Evidence captures only source identity, closed class, digest, timestamp, and
+  bounded owner-trial outcome. It stores no raw evidence, and its explicit
+  conclusion cannot change a knowledge record status automatically.
+- The candidate passed full source validation, desktop and website E2E, and the
+  clean pinned Ubuntu package/release-artifact/visible-launch gate.
+
 ## 0.1.0-beta.95 — Explicit linked-project chat bridge candidate
 
 - Local Chat now names its actual scope as “Project context not attached” and
