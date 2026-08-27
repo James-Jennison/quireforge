@@ -46,7 +46,8 @@ use super::types::{
     LocalReviewManualValidationDetails, LocalReviewPackageManifestSummaryDetails,
     LocalReviewPackageManifestSummaryEvidencePreview, LocalReviewSafePreviewMetadataDetails,
     LocalReviewSafePreviewMetadataEvidencePreview, LocalReviewSourceKind, LocalReviewTextFormat,
-    LocalReviewTextPreview, LocalReviewValidationState, TaskPlanSummary, TaskRecordSummary,
+    LocalReviewTextPreview, LocalReviewValidationState, ObjectiveAuthorityLane,
+    ObjectiveAuthorityState, ObjectiveAuthoritySummary, TaskPlanSummary, TaskRecordSummary,
     TaskStatus,
 };
 use super::{
@@ -998,6 +999,36 @@ CREATE INDEX knowledge_evidence_links_record_recent ON knowledge_evidence_links(
 CREATE TRIGGER knowledge_evidence_links_immutable BEFORE UPDATE ON knowledge_evidence_links BEGIN SELECT RAISE(ABORT, 'knowledge evidence links are immutable'); END;
 CREATE TRIGGER knowledge_evidence_conclusions_immutable BEFORE UPDATE ON knowledge_evidence_conclusions BEGIN SELECT RAISE(ABORT, 'knowledge evidence conclusions are immutable'); END;
 "#;
+const OBJECTIVE_AUTHORITY_MIGRATION: &str = r#"
+CREATE TABLE objective_authorities (
+ id TEXT PRIMARY KEY NOT NULL CHECK(length(id)=36),
+ project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE RESTRICT,
+ title TEXT NOT NULL CHECK(length(title) BETWEEN 1 AND 240),
+ objective TEXT NOT NULL CHECK(length(objective) BETWEEN 1 AND 8192),
+ state TEXT NOT NULL CHECK(state IN ('draft','active','revoked','expired')),
+ created_at_ms INTEGER NOT NULL, activated_at_ms INTEGER, expires_at_ms INTEGER NOT NULL,
+ revoked_at_ms INTEGER,
+ CHECK(expires_at_ms > created_at_ms),
+ CHECK((state = 'draft' AND activated_at_ms IS NULL AND revoked_at_ms IS NULL) OR
+       (state = 'active' AND activated_at_ms IS NOT NULL AND revoked_at_ms IS NULL) OR
+       (state = 'revoked' AND revoked_at_ms IS NOT NULL) OR
+       state = 'expired')
+);
+CREATE TABLE objective_authority_lanes (
+ objective_id TEXT NOT NULL REFERENCES objective_authorities(id) ON DELETE RESTRICT,
+ lane TEXT NOT NULL CHECK(lane IN ('work-with-code','browser-workspace','browser-observation','connector-read','scheduled-work','connector-mutation','provider-inference','computer-use')),
+ confirmation_required INTEGER NOT NULL CHECK(confirmation_required IN (0,1)),
+ PRIMARY KEY(objective_id,lane)
+);
+CREATE TABLE objective_authority_events (
+ id TEXT PRIMARY KEY NOT NULL CHECK(length(id)=36), objective_id TEXT NOT NULL REFERENCES objective_authorities(id) ON DELETE RESTRICT,
+ event_kind TEXT NOT NULL CHECK(event_kind IN ('created','activated','revoked','expired')), created_at_ms INTEGER NOT NULL
+);
+CREATE INDEX objective_authorities_project_recent ON objective_authorities(project_id, created_at_ms DESC, id);
+CREATE TRIGGER objective_authority_identity_immutable BEFORE UPDATE OF id,project_id,title,objective,created_at_ms,expires_at_ms ON objective_authorities BEGIN SELECT RAISE(ABORT, 'objective authority identity immutable'); END;
+CREATE TRIGGER objective_authority_lanes_immutable BEFORE UPDATE ON objective_authority_lanes BEGIN SELECT RAISE(ABORT, 'objective authority lanes immutable'); END;
+CREATE TRIGGER objective_authority_lanes_not_deleted BEFORE DELETE ON objective_authority_lanes BEGIN SELECT RAISE(ABORT, 'objective authority lanes immutable'); END;
+"#;
 
 const MIGRATIONS: &[(i64, &str, &str)] = &[
     (1, "projects-and-directory-associations", INITIAL_MIGRATION),
@@ -1114,6 +1145,7 @@ const MIGRATIONS: &[(i64, &str, &str)] = &[
         "knowledge-evidence-linkage-v1",
         KNOWLEDGE_EVIDENCE_LINKAGE_MIGRATION,
     ),
+    (31, "objective-authority-v1", OBJECTIVE_AUTHORITY_MIGRATION),
 ];
 
 #[derive(Debug, Error)]
@@ -1250,6 +1282,43 @@ fn knowledge_evidence_conclusion(
         "supports" => Ok(KnowledgeEvidenceConclusion::Supports),
         "contradicts" => Ok(KnowledgeEvidenceConclusion::Contradicts),
         "inconclusive" => Ok(KnowledgeEvidenceConclusion::Inconclusive),
+        _ => Err(rusqlite::Error::InvalidQuery),
+    }
+}
+
+fn objective_authority_lane_value(value: ObjectiveAuthorityLane) -> &'static str {
+    match value {
+        ObjectiveAuthorityLane::WorkWithCode => "work-with-code",
+        ObjectiveAuthorityLane::BrowserWorkspace => "browser-workspace",
+        ObjectiveAuthorityLane::BrowserObservation => "browser-observation",
+        ObjectiveAuthorityLane::ConnectorRead => "connector-read",
+        ObjectiveAuthorityLane::ScheduledWork => "scheduled-work",
+        ObjectiveAuthorityLane::ConnectorMutation => "connector-mutation",
+        ObjectiveAuthorityLane::ProviderInference => "provider-inference",
+        ObjectiveAuthorityLane::ComputerUse => "computer-use",
+    }
+}
+
+fn objective_authority_lane(value: &str) -> Result<ObjectiveAuthorityLane, rusqlite::Error> {
+    match value {
+        "work-with-code" => Ok(ObjectiveAuthorityLane::WorkWithCode),
+        "browser-workspace" => Ok(ObjectiveAuthorityLane::BrowserWorkspace),
+        "browser-observation" => Ok(ObjectiveAuthorityLane::BrowserObservation),
+        "connector-read" => Ok(ObjectiveAuthorityLane::ConnectorRead),
+        "scheduled-work" => Ok(ObjectiveAuthorityLane::ScheduledWork),
+        "connector-mutation" => Ok(ObjectiveAuthorityLane::ConnectorMutation),
+        "provider-inference" => Ok(ObjectiveAuthorityLane::ProviderInference),
+        "computer-use" => Ok(ObjectiveAuthorityLane::ComputerUse),
+        _ => Err(rusqlite::Error::InvalidQuery),
+    }
+}
+
+fn objective_authority_state(value: &str) -> Result<ObjectiveAuthorityState, rusqlite::Error> {
+    match value {
+        "draft" => Ok(ObjectiveAuthorityState::Draft),
+        "active" => Ok(ObjectiveAuthorityState::Active),
+        "revoked" => Ok(ObjectiveAuthorityState::Revoked),
+        "expired" => Ok(ObjectiveAuthorityState::Expired),
         _ => Err(rusqlite::Error::InvalidQuery),
     }
 }
@@ -3009,6 +3078,139 @@ impl ProjectRepository {
             .collect::<Result<Vec<_>, _>>()
             .map_err(StorageError::from);
         rows
+    }
+
+    pub(crate) fn objective_authority_project(&self, id: &str) -> Result<String, StorageError> {
+        self.connection
+            .query_row(
+                "SELECT project_id FROM objective_authorities WHERE id=?1",
+                [id],
+                |row| row.get(0),
+            )
+            .map_err(StorageError::from)
+    }
+
+    pub(crate) fn objective_authorities(
+        &mut self,
+        project_id: &str,
+    ) -> Result<Vec<ObjectiveAuthoritySummary>, StorageError> {
+        let now = now_millis();
+        self.connection.execute(
+            "UPDATE objective_authorities SET state='expired' WHERE project_id=?1 AND state IN ('draft','active') AND expires_at_ms<=?2",
+            params![project_id, now],
+        )?;
+        let mut statement = self.connection.prepare(
+            "SELECT id,project_id,title,objective,state,created_at_ms,activated_at_ms,expires_at_ms,revoked_at_ms FROM objective_authorities WHERE project_id=?1 ORDER BY created_at_ms DESC,id DESC LIMIT 128",
+        )?;
+        let records = statement
+            .query_map([project_id], |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, String>(2)?,
+                    row.get::<_, String>(3)?,
+                    row.get::<_, String>(4)?,
+                    row.get::<_, i64>(5)?,
+                    row.get::<_, Option<i64>>(6)?,
+                    row.get::<_, i64>(7)?,
+                    row.get::<_, Option<i64>>(8)?,
+                ))
+            })?
+            .collect::<Result<Vec<_>, _>>()?;
+        records
+            .into_iter()
+            .map(|(id, project_id, title, objective, state, created_at_ms, activated_at_ms, expires_at_ms, revoked_at_ms)| {
+                let mut lanes = self.connection.prepare("SELECT lane,confirmation_required FROM objective_authority_lanes WHERE objective_id=?1 ORDER BY lane")?;
+                let lane_rows = lanes.query_map([&id], |row| Ok((objective_authority_lane(&row.get::<_, String>(0)?)?, row.get::<_, bool>(1)?)))?.collect::<Result<Vec<_>, _>>()?;
+                Ok(ObjectiveAuthoritySummary {
+                    id, project_id, title, objective, state: objective_authority_state(&state)?,
+                    allowed_lanes: lane_rows.iter().map(|(lane, _)| *lane).collect(),
+                    confirmation_required_lanes: lane_rows.into_iter().filter_map(|(lane, required)| required.then_some(lane)).collect(),
+                    created_at_ms, activated_at_ms, expires_at_ms, revoked_at_ms,
+                })
+            })
+            .collect::<Result<Vec<_>, rusqlite::Error>>()
+            .map_err(StorageError::from)
+    }
+
+    pub(crate) fn create_objective_authority(
+        &mut self,
+        project_id: &str,
+        title: &str,
+        objective: &str,
+        allowed_lanes: &[ObjectiveAuthorityLane],
+        confirmation_required_lanes: &[ObjectiveAuthorityLane],
+        expires_in_minutes: u32,
+    ) -> Result<(), StorageError> {
+        let title = title.trim();
+        let objective = objective.trim();
+        if title.is_empty()
+            || title.len() > 240
+            || objective.is_empty()
+            || objective.len() > 8192
+            || allowed_lanes.is_empty()
+            || allowed_lanes.len() > 8
+            || expires_in_minutes == 0
+            || expires_in_minutes > 10_080
+        {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let allowed = allowed_lanes.iter().copied().collect::<HashSet<_>>();
+        let confirmations = confirmation_required_lanes
+            .iter()
+            .copied()
+            .collect::<HashSet<_>>();
+        if allowed.len() != allowed_lanes.len()
+            || confirmations.len() != confirmation_required_lanes.len()
+            || !confirmations.is_subset(&allowed)
+        {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        let now = now_millis();
+        let expires_at_ms = now
+            .checked_add(i64::from(expires_in_minutes) * 60_000)
+            .ok_or(StorageError::InvalidStoredValue)?;
+        let id = Uuid::now_v7().to_string();
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        tx.execute("INSERT INTO objective_authorities(id,project_id,title,objective,state,created_at_ms,expires_at_ms) VALUES(?1,?2,?3,?4,'draft',?5,?6)", params![id,project_id,title,objective,now,expires_at_ms])?;
+        for lane in allowed {
+            tx.execute("INSERT INTO objective_authority_lanes(objective_id,lane,confirmation_required) VALUES(?1,?2,?3)", params![id,objective_authority_lane_value(lane),confirmations.contains(&lane)])?;
+        }
+        tx.execute("INSERT INTO objective_authority_events(id,objective_id,event_kind,created_at_ms) VALUES(?1,?2,'created',?3)", params![Uuid::now_v7().to_string(),id,now])?;
+        tx.commit()?;
+        Ok(())
+    }
+
+    pub(crate) fn activate_objective_authority(&mut self, id: &str) -> Result<(), StorageError> {
+        self.transition_objective_authority(id, "draft", "active", "activated")
+    }
+
+    pub(crate) fn revoke_objective_authority(&mut self, id: &str) -> Result<(), StorageError> {
+        let now = now_millis();
+        let changed = self.connection.execute("UPDATE objective_authorities SET state='revoked',revoked_at_ms=?2 WHERE id=?1 AND state IN ('draft','active') AND expires_at_ms>?2", params![id,now])?;
+        if changed != 1 {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        self.connection.execute("INSERT INTO objective_authority_events(id,objective_id,event_kind,created_at_ms) VALUES(?1,?2,'revoked',?3)", params![Uuid::now_v7().to_string(),id,now])?;
+        Ok(())
+    }
+
+    fn transition_objective_authority(
+        &mut self,
+        id: &str,
+        from: &str,
+        to: &str,
+        event: &str,
+    ) -> Result<(), StorageError> {
+        let now = now_millis();
+        let changed = self.connection.execute("UPDATE objective_authorities SET state=?3,activated_at_ms=?2 WHERE id=?1 AND state=?4 AND expires_at_ms>?2", params![id,now,to,from])?;
+        if changed != 1 {
+            return Err(StorageError::InvalidStoredValue);
+        }
+        self.connection.execute("INSERT INTO objective_authority_events(id,objective_id,event_kind,created_at_ms) VALUES(?1,?2,?3,?4)", params![Uuid::now_v7().to_string(),id,event,now])?;
+        Ok(())
     }
     pub(crate) fn knowledge_project_for_evidence_link(
         &self,
@@ -9464,11 +9666,12 @@ mod tests {
     use uuid::Uuid;
 
     use super::{
-        apply_migrations, installed_host_attempt_identity, parse_manual_evidence_envelope,
-        recover_interrupted_context_bundles, recover_interrupted_controlled_browser_verifications,
-        review_digest, review_payload_bytes, valid_task_id, PackageValidationInstalledHostFacts,
-        PackageValidationPhase, PackageValidationRecordInput, PackageValidationRecordOutcome,
-        PackageValidationSummary, ProjectRepository, StorageError, INITIAL_MIGRATION, MIGRATIONS,
+        apply_migrations, installed_host_attempt_identity, now_millis,
+        parse_manual_evidence_envelope, recover_interrupted_context_bundles,
+        recover_interrupted_controlled_browser_verifications, review_digest, review_payload_bytes,
+        valid_task_id, PackageValidationInstalledHostFacts, PackageValidationPhase,
+        PackageValidationRecordInput, PackageValidationRecordOutcome, PackageValidationSummary,
+        ProjectRepository, StorageError, INITIAL_MIGRATION, MIGRATIONS,
         PACKAGE_VALIDATION_PROTECTION_MS, TASK_CLEANUP_AGE_MS, TASK_COUNT_LIMIT,
         TASK_PAYLOAD_LIMIT,
     };
@@ -9476,12 +9679,14 @@ mod tests {
         builtins, canonical as canonical_template, digest as template_digest, TaskTemplate,
         TemplateOrigin, TemplateState,
     };
-    use crate::project::types::KnowledgeRecordProvenance;
     use crate::project::types::{
         KnowledgeRecordKind, KnowledgeRecordStatus, LocalReviewAnnotationState,
         LocalReviewCollectionState, LocalReviewComparisonState, LocalReviewEvidenceApprovalState,
         LocalReviewEvidenceCheckState, LocalReviewItemClass, LocalReviewItemState,
         LocalReviewLineKind, LocalReviewSourceKind, LocalReviewTextFormat, TaskStatus,
+    };
+    use crate::project::types::{
+        KnowledgeRecordProvenance, ObjectiveAuthorityLane, ObjectiveAuthorityState,
     };
     use crate::project::{
         ChatConversationMetadata, ConversationPendingSelection, ConversationReference,
@@ -10019,7 +10224,7 @@ mod tests {
                     0
                 ))
                 .expect("version"),
-            30
+            31
         );
     }
 
@@ -10200,6 +10405,9 @@ mod tests {
                 "local_review_comparisons".to_owned(),
                 "local_review_items".to_owned(),
                 "local_task_templates".to_owned(),
+                "objective_authorities".to_owned(),
+                "objective_authority_events".to_owned(),
+                "objective_authority_lanes".to_owned(),
                 "project_package_validation_candidate_identities".to_owned(),
                 "project_package_validation_summaries".to_owned(),
                 "projects".to_owned(),
@@ -10620,7 +10828,7 @@ mod tests {
                     0
                 ),)
                 .expect("version"),
-            30
+            31
         );
         assert_eq!(
             repository.connection.query_row(
@@ -11088,7 +11296,7 @@ mod tests {
                     0
                 ))
                 .expect("migration version"),
-            30
+            31
         );
     }
 
@@ -11260,7 +11468,7 @@ mod tests {
                     0
                 ))
                 .expect("version"),
-            30
+            31
         );
 
         let mut failed = Connection::open_in_memory().expect("database opens");
@@ -11900,7 +12108,7 @@ mod tests {
                 1
             );
         }
-        assert_eq!(MIGRATIONS.len(), 30);
+        assert_eq!(MIGRATIONS.len(), 31);
 
         let connection = Connection::open_in_memory().expect("database");
         connection
@@ -11948,7 +12156,7 @@ mod tests {
                     0
                 ))
                 .expect("version"),
-            30
+            31
         );
         assert_eq!(
             repository
@@ -12005,7 +12213,7 @@ mod tests {
                     0
                 ))
                 .expect("version"),
-            30
+            31
         );
     }
 
@@ -12806,6 +13014,66 @@ mod tests {
             .expect("task remains selected");
         assert_eq!(selected.selected_plan_id, primary);
         assert!(repository.delete_plan(&task, &third).is_ok());
+    }
+
+    #[test]
+    fn objective_authority_is_project_bound_explicit_and_revocable() {
+        let mut repository = ProjectRepository::in_memory().expect("schema must migrate");
+        let project_id = Uuid::now_v7().to_string();
+        let now = now_millis();
+        repository
+            .connection
+            .execute(
+                "INSERT INTO projects(id,display_name,created_at_ms,updated_at_ms) VALUES(?1,'Authority test',?2,?2)",
+                params![project_id, now],
+            )
+            .expect("project");
+        repository
+            .create_objective_authority(
+                &project_id,
+                "Review browser workspace",
+                "Review an owner-visible browser without executing it.",
+                &[
+                    ObjectiveAuthorityLane::BrowserWorkspace,
+                    ObjectiveAuthorityLane::BrowserObservation,
+                ],
+                &[ObjectiveAuthorityLane::BrowserObservation],
+                60,
+            )
+            .expect("draft objective");
+        let draft = repository
+            .objective_authorities(&project_id)
+            .expect("list draft")
+            .pop()
+            .expect("objective");
+        assert_eq!(draft.state, ObjectiveAuthorityState::Draft);
+        assert_eq!(
+            draft.confirmation_required_lanes,
+            vec![ObjectiveAuthorityLane::BrowserObservation]
+        );
+        repository
+            .activate_objective_authority(&draft.id)
+            .expect("activate");
+        repository
+            .revoke_objective_authority(&draft.id)
+            .expect("revoke");
+        let revoked = repository
+            .objective_authorities(&project_id)
+            .expect("list revoked")
+            .pop()
+            .expect("objective");
+        assert_eq!(revoked.state, ObjectiveAuthorityState::Revoked);
+        assert!(repository.activate_objective_authority(&draft.id).is_err());
+        assert!(repository
+            .create_objective_authority(
+                &project_id,
+                "Invalid",
+                "Confirmation may not exceed scope.",
+                &[ObjectiveAuthorityLane::BrowserWorkspace],
+                &[ObjectiveAuthorityLane::ComputerUse],
+                60,
+            )
+            .is_err());
     }
 
     #[test]

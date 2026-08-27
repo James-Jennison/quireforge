@@ -94,6 +94,13 @@ import {
   type KnowledgeLedgerSnapshot,
 } from "./knowledgeLedger";
 import {
+  objectiveAuthorityCreateRequestSchema,
+  objectiveAuthorityDecisionRequestSchema,
+  objectiveAuthorityProjectRequestSchema,
+  objectiveAuthoritySnapshotSchema,
+  type ObjectiveAuthoritySnapshot,
+} from "./objectiveAuthority";
+import {
   filePreviewHandoffRequestSchema,
   filePreviewSchema,
   type FilePreviewHandoffRequest,
@@ -516,6 +523,11 @@ export const KNOWLEDGE_EVIDENCE_LINK_CREATE_COMMAND =
   "knowledge_evidence_link_create";
 export const KNOWLEDGE_EVIDENCE_CONCLUDE_COMMAND =
   "knowledge_evidence_conclude";
+export const OBJECTIVE_AUTHORITY_STATUS_COMMAND = "objective_authority_status";
+export const OBJECTIVE_AUTHORITY_CREATE_COMMAND = "objective_authority_create";
+export const OBJECTIVE_AUTHORITY_ACTIVATE_COMMAND =
+  "objective_authority_activate";
+export const OBJECTIVE_AUTHORITY_REVOKE_COMMAND = "objective_authority_revoke";
 export const CONTEXT_ASSEMBLY_PREPARE_COMMAND = "context_assembly_prepare";
 export const CONTEXT_ASSEMBLY_CONFIRM_COMMAND = "context_assembly_confirm";
 export const CONTEXT_ASSEMBLY_RUN_LOCAL_RUNTIME_COMMAND =
@@ -1928,6 +1940,53 @@ export const loadKnowledgeLedger = async (
     await invokeFunction(KNOWLEDGE_LEDGER_STATUS_COMMAND, {
       request: knowledgeLedgerProjectRequestSchema.parse(request),
     }),
+  );
+export const loadObjectiveAuthority = async (
+  request: unknown,
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<ObjectiveAuthoritySnapshot> =>
+  objectiveAuthoritySnapshotSchema.parse(
+    await invokeFunction(OBJECTIVE_AUTHORITY_STATUS_COMMAND, {
+      request: objectiveAuthorityProjectRequestSchema.parse(request),
+    }),
+  );
+export const createObjectiveAuthority = async (
+  request: unknown,
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<ObjectiveAuthoritySnapshot> =>
+  objectiveAuthoritySnapshotSchema.parse(
+    await invokeFunction(OBJECTIVE_AUTHORITY_CREATE_COMMAND, {
+      request: objectiveAuthorityCreateRequestSchema.parse(request),
+    }),
+  );
+async function decideObjectiveAuthority(
+  command: string,
+  request: unknown,
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<ObjectiveAuthoritySnapshot> {
+  return objectiveAuthoritySnapshotSchema.parse(
+    await invokeFunction(command, {
+      request: objectiveAuthorityDecisionRequestSchema.parse(request),
+    }),
+  );
+}
+export const activateObjectiveAuthority = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+) =>
+  decideObjectiveAuthority(
+    OBJECTIVE_AUTHORITY_ACTIVATE_COMMAND,
+    request,
+    invokeFunction,
+  );
+export const revokeObjectiveAuthority = (
+  request: unknown,
+  invokeFunction?: InvokeFunction,
+) =>
+  decideObjectiveAuthority(
+    OBJECTIVE_AUTHORITY_REVOKE_COMMAND,
+    request,
+    invokeFunction,
   );
 export const createKnowledgeRecord = async (
   request: unknown,

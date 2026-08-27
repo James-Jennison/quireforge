@@ -310,6 +310,11 @@ const ControlledBrowserVerificationWorkbench = lazy(() =>
     }),
   ),
 );
+const ObjectiveAuthorityWorkbench = lazy(() =>
+  import("./ObjectiveAuthorityWorkbench").then(
+    ({ ObjectiveAuthorityWorkbench: workspace }) => ({ default: workspace }),
+  ),
+);
 const ContextAssemblyWorkbench = lazy(() =>
   import("./ContextAssemblyWorkbench").then(
     ({ ContextAssemblyWorkbench: workspace }) => ({ default: workspace }),
@@ -1223,6 +1228,7 @@ export default function App({
     controlledBrowserVerificationOpen,
     setControlledBrowserVerificationOpen,
   ] = useState(false);
+  const [objectiveAuthorityOpen, setObjectiveAuthorityOpen] = useState(false);
   const [durableSourcesWorkbenchOpen, setDurableSourcesWorkbenchOpen] =
     useState(false);
   const [contextAssemblyWorkbenchOpen, setContextAssemblyWorkbenchOpen] =
@@ -4362,6 +4368,9 @@ export default function App({
                   onOpenLinkedProjectChat={() =>
                     requestConversationWorkspace("conversation")
                   }
+                  onOpenObjectiveAuthority={() =>
+                    setObjectiveAuthorityOpen(true)
+                  }
                 />
               ) : (
                 <AdvisorWorkspace
@@ -4726,6 +4735,20 @@ export default function App({
                         onClose={() =>
                           setControlledBrowserVerificationOpen(false)
                         }
+                      />
+                    </Suspense>
+                  )}
+                  {objectiveAuthorityOpen && (
+                    <Suspense
+                      fallback={
+                        <section className="mock-inference-workbench">
+                          <p role="status">Loading authority objectives…</p>
+                        </section>
+                      }
+                    >
+                      <ObjectiveAuthorityWorkbench
+                        projectId={currentProject?.id ?? null}
+                        onClose={() => setObjectiveAuthorityOpen(false)}
                       />
                     </Suspense>
                   )}

@@ -245,10 +245,11 @@ use project::{
         LocalReviewManualEvidencePreview, LocalReviewPromotionPrepareRequest,
         LocalReviewPromotionReservationRequest, LocalReviewSnapshot,
         LocalReviewTextItemCreateRequest, LocalReviewTextPreview, LocalReviewTextPreviewRequest,
-        PlanCreateRequest, PlanEditRequest, PlanIdRequest, ProjectPreflightSnapshot,
-        ProjectWorkspaceSnapshot, TaskCatalogContextCreateRequest, TaskCatalogCreateRequest,
-        TaskCatalogListRequest, TaskCatalogSnapshot, TaskIdRequest, TaskStatusRequest,
-        TaskTitleRequest,
+        ObjectiveAuthorityCreateRequest, ObjectiveAuthorityDecisionRequest,
+        ObjectiveAuthorityProjectRequest, ObjectiveAuthoritySnapshot, PlanCreateRequest,
+        PlanEditRequest, PlanIdRequest, ProjectPreflightSnapshot, ProjectWorkspaceSnapshot,
+        TaskCatalogContextCreateRequest, TaskCatalogCreateRequest, TaskCatalogListRequest,
+        TaskCatalogSnapshot, TaskIdRequest, TaskStatusRequest, TaskTitleRequest,
     },
     FictionalConnectorOperationRecord, ProjectService,
 };
@@ -1386,6 +1387,38 @@ fn task_catalog_status(
     service: tauri::State<'_, ProjectService>,
 ) -> TaskCatalogSnapshot {
     service.task_catalog(request)
+}
+
+#[tauri::command]
+fn objective_authority_status(
+    request: ObjectiveAuthorityProjectRequest,
+    service: tauri::State<'_, ProjectService>,
+) -> ObjectiveAuthoritySnapshot {
+    service.objective_authority(request)
+}
+
+#[tauri::command]
+fn objective_authority_create(
+    request: ObjectiveAuthorityCreateRequest,
+    service: tauri::State<'_, ProjectService>,
+) -> ObjectiveAuthoritySnapshot {
+    service.create_objective_authority(request)
+}
+
+#[tauri::command]
+fn objective_authority_activate(
+    request: ObjectiveAuthorityDecisionRequest,
+    service: tauri::State<'_, ProjectService>,
+) -> ObjectiveAuthoritySnapshot {
+    service.activate_objective_authority(request)
+}
+
+#[tauri::command]
+fn objective_authority_revoke(
+    request: ObjectiveAuthorityDecisionRequest,
+    service: tauri::State<'_, ProjectService>,
+) -> ObjectiveAuthoritySnapshot {
+    service.revoke_objective_authority(request)
 }
 
 #[tauri::command]
@@ -3739,6 +3772,10 @@ pub fn run() {
             codex_usage_refresh,
             project_workspace_status,
             task_catalog_status,
+            objective_authority_status,
+            objective_authority_create,
+            objective_authority_activate,
+            objective_authority_revoke,
             knowledge_ledger_status,
             knowledge_ledger_create,
             knowledge_ledger_bind,

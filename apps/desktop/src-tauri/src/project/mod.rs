@@ -60,7 +60,9 @@ use types::{
     LocalReviewPromotionReservationState, LocalReviewSafePreviewMetadataDetails,
     LocalReviewSafePreviewMetadataEvidencePreview, LocalReviewSafePreviewMetadataEvidenceRequest,
     LocalReviewSnapshot, LocalReviewTextItemCreateRequest, LocalReviewTextPreview,
-    LocalReviewTextPreviewRequest, PendingAttachmentKind, PendingAttachmentPreview,
+    LocalReviewTextPreviewRequest, ObjectiveAuthorityCreateRequest,
+    ObjectiveAuthorityDecisionRequest, ObjectiveAuthorityProjectRequest,
+    ObjectiveAuthoritySnapshot, PendingAttachmentKind, PendingAttachmentPreview,
     ProjectDiagnosticCode, ProjectPreflightSnapshot, ProjectSummary, ProjectWorkspaceSnapshot,
     ProjectWorkspaceState, TaskCatalogListRequest, TaskCatalogSnapshot, TaskCatalogState,
     TaskDiagnosticCode, TaskTemplateApplicationChecklist, TaskTemplateApplicationOutcome,
@@ -70,8 +72,9 @@ use types::{
     TaskTemplateEditRequest, TaskTemplateIdRequest, TaskTemplateInspectionSnapshot,
     TaskTemplateMutationRequest, TaskTemplateOrigin, TaskTemplatePreviewRequest,
     TaskTemplatePreviewSnapshot, TaskTemplateState, TaskTemplateSummary,
-    KNOWLEDGE_LEDGER_SCHEMA_VERSION, LOCAL_REVIEW_SCHEMA_VERSION, PROJECT_SCHEMA_VERSION,
-    TASK_RECORD_SCHEMA_VERSION, TASK_TEMPLATE_SCHEMA_VERSION,
+    KNOWLEDGE_LEDGER_SCHEMA_VERSION, LOCAL_REVIEW_SCHEMA_VERSION,
+    OBJECTIVE_AUTHORITY_SCHEMA_VERSION, PROJECT_SCHEMA_VERSION, TASK_RECORD_SCHEMA_VERSION,
+    TASK_TEMPLATE_SCHEMA_VERSION,
 };
 use uuid::Uuid;
 
@@ -304,6 +307,108 @@ pub(crate) struct ConversationPendingSelection<'a> {
 }
 
 impl ProjectService {
+    pub fn objective_authority(
+        &self,
+        request: ObjectiveAuthorityProjectRequest,
+    ) -> ObjectiveAuthoritySnapshot {
+        let objectives = self.repository.lock().ok().and_then(|mut repository| {
+            repository
+                .as_mut()
+                .and_then(|value| value.objective_authorities(&request.project_id).ok())
+        });
+        let diagnostic_code = objectives
+            .is_none()
+            .then(|| "objective-authority-unavailable".into());
+        ObjectiveAuthoritySnapshot {
+            schema_version: OBJECTIVE_AUTHORITY_SCHEMA_VERSION,
+            objectives: objectives.unwrap_or_default(),
+            diagnostic_code,
+        }
+    }
+
+    pub fn create_objective_authority(
+        &self,
+        request: ObjectiveAuthorityCreateRequest,
+    ) -> ObjectiveAuthoritySnapshot {
+        let project_id = request.project_id.clone();
+        let created = self.repository.lock().ok().and_then(|mut repository| {
+            repository.as_mut().and_then(|value| {
+                value
+                    .create_objective_authority(
+                        &project_id,
+                        &request.title,
+                        &request.objective,
+                        &request.allowed_lanes,
+                        &request.confirmation_required_lanes,
+                        request.expires_in_minutes,
+                    )
+                    .ok()
+            })
+        });
+        let mut snapshot =
+            self.objective_authority(ObjectiveAuthorityProjectRequest { project_id });
+        if created.is_none() {
+            snapshot.diagnostic_code = Some("objective-authority-create-rejected".into());
+        }
+        snapshot
+    }
+
+    pub fn activate_objective_authority(
+        &self,
+        request: ObjectiveAuthorityDecisionRequest,
+    ) -> ObjectiveAuthoritySnapshot {
+        self.decide_objective_authority(request, true)
+    }
+
+    pub fn revoke_objective_authority(
+        &self,
+        request: ObjectiveAuthorityDecisionRequest,
+    ) -> ObjectiveAuthoritySnapshot {
+        self.decide_objective_authority(request, false)
+    }
+
+    fn decide_objective_authority(
+        &self,
+        request: ObjectiveAuthorityDecisionRequest,
+        activate: bool,
+    ) -> ObjectiveAuthoritySnapshot {
+        let project_id = self.repository.lock().ok().and_then(|repository| {
+            repository.as_ref().and_then(|value| {
+                value
+                    .objective_authority_project(&request.objective_id)
+                    .ok()
+            })
+        });
+        let Some(project_id) = project_id else {
+            return ObjectiveAuthoritySnapshot {
+                schema_version: OBJECTIVE_AUTHORITY_SCHEMA_VERSION,
+                objectives: Vec::new(),
+                diagnostic_code: Some("objective-authority-unavailable".into()),
+            };
+        };
+        let changed = self.repository.lock().ok().and_then(|mut repository| {
+            repository.as_mut().and_then(|value| {
+                if activate {
+                    value
+                        .activate_objective_authority(&request.objective_id)
+                        .ok()
+                } else {
+                    value.revoke_objective_authority(&request.objective_id).ok()
+                }
+            })
+        });
+        let mut snapshot =
+            self.objective_authority(ObjectiveAuthorityProjectRequest { project_id });
+        if changed.is_none() {
+            snapshot.diagnostic_code = Some(if activate {
+                "objective-authority-activation-rejected".into()
+            } else {
+                "objective-authority-revocation-rejected".into()
+            });
+        }
+        snapshot
+    }
+
     pub fn knowledge_ledger(
         &self,
         request: KnowledgeRecordProjectRequest,

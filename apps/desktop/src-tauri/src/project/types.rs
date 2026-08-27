@@ -1731,3 +1731,74 @@ pub struct KnowledgeEvidenceConclusionSummary {
     pub conclusion: KnowledgeEvidenceConclusion,
     pub created_at_ms: i64,
 }
+
+pub const OBJECTIVE_AUTHORITY_SCHEMA_VERSION: u16 = 1;
+
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum ObjectiveAuthorityLane {
+    WorkWithCode,
+    BrowserWorkspace,
+    BrowserObservation,
+    ConnectorRead,
+    ScheduledWork,
+    ConnectorMutation,
+    ProviderInference,
+    ComputerUse,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum ObjectiveAuthorityState {
+    Draft,
+    Active,
+    Revoked,
+    Expired,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ObjectiveAuthorityProjectRequest {
+    pub project_id: String,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ObjectiveAuthorityCreateRequest {
+    pub project_id: String,
+    pub title: String,
+    pub objective: String,
+    pub allowed_lanes: Vec<ObjectiveAuthorityLane>,
+    pub confirmation_required_lanes: Vec<ObjectiveAuthorityLane>,
+    pub expires_in_minutes: u32,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ObjectiveAuthorityDecisionRequest {
+    pub objective_id: String,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ObjectiveAuthoritySummary {
+    pub id: String,
+    pub project_id: String,
+    pub title: String,
+    pub objective: String,
+    pub allowed_lanes: Vec<ObjectiveAuthorityLane>,
+    pub confirmation_required_lanes: Vec<ObjectiveAuthorityLane>,
+    pub state: ObjectiveAuthorityState,
+    pub created_at_ms: i64,
+    pub activated_at_ms: Option<i64>,
+    pub expires_at_ms: i64,
+    pub revoked_at_ms: Option<i64>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ObjectiveAuthoritySnapshot {
+    pub schema_version: u16,
+    pub objectives: Vec<ObjectiveAuthoritySummary>,
+    pub diagnostic_code: Option<String>,
+}
