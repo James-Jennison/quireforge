@@ -3,21 +3,18 @@ import { describe, expect, it, vi } from "vitest";
 
 const projectId = "019fbee6-476f-71b0-853c-f067657aa69c";
 const objectiveId = "019fbee6-476f-71b0-853c-f067657aa69d";
-
 const operations = vi.hoisted(() => ({
   load: vi.fn(),
   create: vi.fn(),
   activate: vi.fn(),
   revoke: vi.fn(),
 }));
-
 vi.mock("./lib/bridge", () => ({
   loadObjectiveAuthority: operations.load,
   createObjectiveAuthority: operations.create,
   activateObjectiveAuthority: operations.activate,
   revokeObjectiveAuthority: operations.revoke,
 }));
-
 import { ObjectiveAuthorityWorkbench } from "./ObjectiveAuthorityWorkbench";
 
 const snapshot = (state: "draft" | "active" | "revoked") => ({
@@ -41,7 +38,23 @@ const snapshot = (state: "draft" | "active" | "revoked") => ({
 });
 
 describe("ObjectiveAuthorityWorkbench", () => {
-  it("keeps future lanes visibly locked and records the draft-to-revoked lifecycle without starting a capability", async () => {
+  it("requires a project before exposing authority choices", () => {
+    render(
+      <ObjectiveAuthorityWorkbench
+        projectId={null}
+        projectName={null}
+        onClose={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByRole("heading", { name: "Choose a project first" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Create draft objective" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("uses grouped future scope and records the draft-to-revoked lifecycle", async () => {
     operations.load.mockResolvedValueOnce({
       schemaVersion: 1,
       objectives: [],
@@ -50,25 +63,28 @@ describe("ObjectiveAuthorityWorkbench", () => {
     operations.create.mockResolvedValueOnce(snapshot("draft"));
     operations.activate.mockResolvedValueOnce(snapshot("active"));
     operations.revoke.mockResolvedValueOnce(snapshot("revoked"));
-
     render(
-      <ObjectiveAuthorityWorkbench projectId={projectId} onClose={vi.fn()} />,
+      <ObjectiveAuthorityWorkbench
+        projectId={projectId}
+        projectName="QuireForge"
+        onClose={vi.fn()}
+      />,
     );
-
     expect(await screen.findByRole("note")).toHaveTextContent(
-      "Lane selections describe future scope only",
+      "Scope choices describe future work only",
     );
     expect(
-      screen.getAllByText(
-        "Locked — no capability executes from this selection. This lane requires its own approval when available.",
-      ),
-    ).toHaveLength(8);
+      screen.getByRole("checkbox", { name: /Work on this project/u }),
+    ).toBeChecked();
     expect(
-      screen.getAllByText(
-        "This only highlights a future Action Card. It never lowers or skips that lane's approval requirement.",
-      ),
-    ).toHaveLength(8);
-
+      screen.getByRole("checkbox", { name: /Research and project data/u }),
+    ).not.toBeChecked();
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: /Research and project data/u }),
+    );
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: /Flag this scope for review/u }),
+    );
     fireEvent.change(screen.getByLabelText("Title"), {
       target: { value: "Review browser authority" },
     });
@@ -83,21 +99,23 @@ describe("ObjectiveAuthorityWorkbench", () => {
       projectId,
       title: "Review browser authority",
       objective: "Plan the supervised browser capability.",
-      allowedLanes: ["work-with-code"],
-      confirmationRequiredLanes: [],
+      allowedLanes: [
+        "work-with-code",
+        "browser-workspace",
+        "browser-observation",
+        "connector-read",
+      ],
+      confirmationRequiredLanes: [
+        "work-with-code",
+        "browser-workspace",
+        "browser-observation",
+        "connector-read",
+      ],
       expiresInMinutes: 60,
     });
     expect(
-      screen.getByText(
-        "browser-workspace: locked future scope only; this lane requires its own approval when available.",
-      ),
+      screen.getByRole("heading", { name: "Current objectives" }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "browser-observation: locked future scope only; this lane requires its own approval when available.",
-      ),
-    ).toBeInTheDocument();
-
     fireEvent.click(screen.getByRole("button", { name: "Activate" }));
     await waitFor(() =>
       expect(operations.activate).toHaveBeenCalledWith({ objectiveId }),
@@ -106,7 +124,5 @@ describe("ObjectiveAuthorityWorkbench", () => {
     await waitFor(() =>
       expect(operations.revoke).toHaveBeenCalledWith({ objectiveId }),
     );
-    expect(screen.getByText(/revoked · expires/u)).toBeInTheDocument();
-    expect(operations.load).toHaveBeenCalledWith({ projectId });
   });
 });

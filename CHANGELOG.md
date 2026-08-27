@@ -10,6 +10,17 @@
   implementation milestone. This planning record does not claim a new browser,
   connector, provider, or computer-use capability has shipped.
 
+## 0.1.0-beta.105 — M72 project-first objective-authority candidate
+
+- Moves objective authority out of unattached Local Chat and into a selected
+  project's Project State, so the live form is unreachable without its
+  project-attachment precondition.
+- Replaces the internal eight-lane checklist with three owner-readable future
+  scope groups, expandable locked lane detail, one inert-scope statement, and
+  a review flag that preserves the existing Action Card-only semantics.
+- Presents current objective lifecycle actions before collapsed scope detail
+  and adds desktop/mobile coverage for the project-first entry rule.
+
 ## 0.1.0-beta.104 — M72 objective-authority safeguards candidate
 
 - Makes future-lane scope visibly inert in the owner workspace and in each

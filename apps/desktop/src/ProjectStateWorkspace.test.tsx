@@ -67,6 +67,7 @@ const representativeSnapshot = repositoryStateReadSnapshotSchema.parse({
 describe("ProjectStateWorkspace", () => {
   it("renders normalized evidence without exposing mutation controls", () => {
     const onRefresh = vi.fn();
+    const onManageAuthority = vi.fn();
     render(
       <ProjectStateWorkspace
         availability="native"
@@ -74,6 +75,7 @@ describe("ProjectStateWorkspace", () => {
         snapshot={representativeSnapshot}
         busy={false}
         onRefresh={onRefresh}
+        onManageAuthority={onManageAuthority}
       />,
     );
 
@@ -100,6 +102,10 @@ describe("ProjectStateWorkspace", () => {
       screen.getByRole("button", { name: "Refresh local evidence" }),
     );
     expect(onRefresh).toHaveBeenCalledOnce();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Manage project authority" }),
+    );
+    expect(onManageAuthority).toHaveBeenCalledOnce();
   });
 
   it("renders honest idle and browser-preview states", () => {
@@ -120,6 +126,9 @@ describe("ProjectStateWorkspace", () => {
     expect(
       screen.getByRole("button", { name: "Refresh local evidence" }),
     ).toBeDisabled();
+    expect(
+      screen.queryByRole("button", { name: "Manage project authority" }),
+    ).not.toBeInTheDocument();
 
     rerender(
       <ProjectStateWorkspace

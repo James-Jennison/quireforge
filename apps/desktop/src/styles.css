@@ -755,6 +755,13 @@ button:disabled {
   flex: 0 0 auto;
 }
 
+.project-state-workspace__actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .worktree-workspace__heading > div > p:last-child,
 .git-workspace__heading > div > p:last-child {
   max-width: 700px;
@@ -6851,9 +6858,7 @@ body,
   resize: vertical;
 }
 
-.objective-authority__inert-notice,
-.objective-authority__lane-explainer,
-.objective-authority__lane > p {
+.objective-authority__inert-notice {
   margin: 0;
   color: var(--text-muted);
   font-size: 12px;
@@ -6867,13 +6872,114 @@ body,
   background: color-mix(in srgb, var(--accent) 8%, var(--surface));
 }
 
-.objective-authority__lane {
-  display: grid;
-  gap: 5px;
-  margin-top: 12px;
-  padding: 10px;
+.objective-authority-workbench {
+  width: min(760px, 100%);
+  max-height: 100%;
+  overflow: auto;
+  margin: 0;
+  padding: 24px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: 0 24px 72px color-mix(in srgb, var(--shadow) 60%, transparent);
+}
+
+.objective-authority__backdrop {
+  position: fixed;
+  z-index: 50;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: color-mix(in srgb, var(--shadow) 42%, transparent);
+}
+
+.objective-authority-workbench__header,
+.objective-authority__lifecycle article,
+.objective-authority__scope-group,
+.objective-authority__review-flag {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.objective-authority-workbench__header h2,
+.objective-authority__lifecycle h3,
+.objective-authority__lifecycle h4,
+.objective-authority__form h3 {
+  margin: 0;
+}
+
+.objective-authority__lifecycle,
+.objective-authority__form {
+  display: grid;
+  gap: 14px;
+  margin-top: 20px;
+}
+
+.objective-authority__lifecycle article,
+.objective-authority__scope-group,
+.objective-authority__review-flag {
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.objective-authority__lifecycle article {
+  display: grid;
+  grid-template-columns: 1fr auto;
+}
+
+.objective-authority__lifecycle article details {
+  grid-column: 1 / -1;
+}
+
+.objective-authority__lifecycle-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.objective-authority__form label,
+.objective-authority__form fieldset {
+  display: grid;
+  gap: 7px;
+}
+
+.objective-authority__form fieldset {
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.objective-authority__scope-group,
+.objective-authority__review-flag {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+
+.objective-authority__scope-group span,
+.objective-authority__review-flag span {
+  display: grid;
+  gap: 3px;
+}
+
+.objective-authority__scope-group small,
+.objective-authority__review-flag small {
+  color: var(--text-muted);
+}
+
+.objective-authority__scope-details {
+  flex-basis: 100%;
+  margin-left: 28px;
+  color: var(--text-muted);
+}
+
+.objective-authority__scope-details ul {
+  display: grid;
+  gap: 4px;
+  margin: 8px 0 0;
+  padding-left: 20px;
 }
 
 .objective-authority__inspect-lanes {

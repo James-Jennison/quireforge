@@ -17,7 +17,6 @@ interface LocalChatWorkspaceProps {
   }) => Promise<ActionCardSnapshot>;
   onOpenLinkedProjectChat: () => void;
   onOpenBrowserResearch?: () => void;
-  onOpenObjectiveAuthority?: () => void;
 }
 
 interface LocalChatTurn {
@@ -51,7 +50,6 @@ export function LocalChatWorkspace({
   onRevokeActionCard,
   onOpenLinkedProjectChat,
   onOpenBrowserResearch,
-  onOpenObjectiveAuthority,
 }: LocalChatWorkspaceProps) {
   const [message, setMessage] = useState("");
   const [snapshot, setSnapshot] = useState<LocalChatSnapshot | null>(null);
@@ -143,17 +141,6 @@ export function LocalChatWorkspace({
             <button type="button" onClick={onOpenBrowserResearch}>
               Research Google (read only)
             </button>
-          )}
-          {onOpenObjectiveAuthority && (
-            <button type="button" onClick={onOpenObjectiveAuthority}>
-              Manage authority objectives
-            </button>
-          )}
-          {onOpenObjectiveAuthority && (
-            <p>
-              Creates and revokes project-scoped authority objectives. It does
-              not grant Local Chat browser, tool, or desktop control.
-            </p>
           )}
           {onOpenBrowserResearch && (
             <p>

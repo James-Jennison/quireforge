@@ -44,18 +44,24 @@ required confirmation or permits execution.
    lifecycle transitions.
 2. Native/bridge contracts expose only bounded authority metadata and reject
    unexpected fields or executable claims.
-3. A visible owner workspace can create, activate, inspect, and revoke an
-   objective without starting a capability. Every future lane is visibly locked
-   and states that it requires its own approval when available.
-4. Full validation, applicable desktop E2E, clean package, installed-host
+3. The owner authority workspace is reachable only from Project State after a
+   project is attached; Local Chat cannot open it. It can create, activate,
+   inspect, and revoke an objective without starting a capability. Future scope
+   is grouped in owner-readable categories, while each individual future lane
+   remains visibly locked and requires its own approval when available.
+4. An authority workspace cannot be reached without its required attached
+   project precondition; a defensive no-project invocation shows only a compact
+   "Choose a project first" explanation and no live form.
+5. Full validation, applicable desktop E2E, clean package, installed-host
    launch, and owner acceptance pass before M72 is validated.
 
 ## Implementation checkpoint
 
 The native storage, typed bridge, and owner workspace have been implemented.
-An owner can create a draft, select the future authority lanes and any
-confirmation-required subset, activate it, inspect it, and revoke it. The
-interface states explicitly that these records do not start a browser, agent,
-connector, or external action. Full source validation has passed; clean
-package, installed-host launch, and owner acceptance remain required before
-M72 is marked validated.
+Authority management is project-first: it is entered from Project State only
+after a project is attached, never from an unattached Local Chat. An owner can
+create a draft, select grouped future scope and an optional review flag,
+activate it, inspect individual locked lanes, and revoke it. The interface
+states explicitly that these records do not start a browser, agent, connector,
+or external action. Clean package, installed-host launch, and owner acceptance
+remain required before M72 is marked validated.

@@ -4359,7 +4359,25 @@ export default function App({
                 onRefresh={() =>
                   setRepositoryStateRefresh((current) => current + 1)
                 }
+                onManageAuthority={() => setObjectiveAuthorityOpen(true)}
               />
+              {objectiveAuthorityOpen && (
+                <div className="objective-authority__backdrop">
+                  <Suspense
+                    fallback={
+                      <section className="objective-authority-workbench">
+                        <p role="status">Loading project authority…</p>
+                      </section>
+                    }
+                  >
+                    <ObjectiveAuthorityWorkbench
+                      projectId={currentProject?.id ?? null}
+                      projectName={currentProject?.displayName ?? null}
+                      onClose={() => setObjectiveAuthorityOpen(false)}
+                    />
+                  </Suspense>
+                </div>
+              )}
             </WorkspaceView>
 
             <WorkspaceView
@@ -4377,9 +4395,6 @@ export default function App({
                     requestConversationWorkspace("conversation")
                   }
                   onOpenBrowserResearch={() => setBrowserResearchOpen(true)}
-                  onOpenObjectiveAuthority={() =>
-                    setObjectiveAuthorityOpen(true)
-                  }
                 />
               ) : (
                 <AdvisorWorkspace
@@ -4429,20 +4444,6 @@ export default function App({
                   <IsolatedBrowserResearchWorkbench
                     projectId={currentProject?.id ?? null}
                     onClose={() => setBrowserResearchOpen(false)}
-                  />
-                </Suspense>
-              )}
-              {objectiveAuthorityOpen && (
-                <Suspense
-                  fallback={
-                    <section className="mock-inference-workbench">
-                      <p role="status">Loading authority objectives…</p>
-                    </section>
-                  }
-                >
-                  <ObjectiveAuthorityWorkbench
-                    projectId={currentProject?.id ?? null}
-                    onClose={() => setObjectiveAuthorityOpen(false)}
                   />
                 </Suspense>
               )}

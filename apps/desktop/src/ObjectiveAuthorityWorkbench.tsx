@@ -6,18 +6,66 @@ import {
   loadObjectiveAuthority,
   revokeObjectiveAuthority,
 } from "./lib/bridge";
-import {
-  objectiveAuthorityLaneSchema,
-  type ObjectiveAuthoritySnapshot,
-} from "./lib/objectiveAuthority";
+import type { ObjectiveAuthoritySnapshot } from "./lib/objectiveAuthority";
 
-const lanes = objectiveAuthorityLaneSchema.options;
+const scopeGroups = [
+  {
+    id: "project-work",
+    label: "Work on this project",
+    description: "Future code and project-work capability.",
+    lanes: ["work-with-code"],
+  },
+  {
+    id: "research-and-data",
+    label: "Research and project data",
+    description: "Future browser research and read-only connected data.",
+    lanes: ["browser-workspace", "browser-observation", "connector-read"],
+  },
+  {
+    id: "future-actions",
+    label: "Future actions and services",
+    description: "Future schedules, delivery, providers, and computer use.",
+    lanes: [
+      "scheduled-work",
+      "connector-mutation",
+      "provider-inference",
+      "computer-use",
+    ],
+  },
+] as const;
+
+const scopeLaneLabels: Record<string, string> = {
+  "work-with-code": "Work with project code",
+  "browser-workspace": "Use a private browser workspace",
+  "browser-observation": "Observe browser pages",
+  "connector-read": "Read connected project data",
+  "scheduled-work": "Schedule project work",
+  "connector-mutation": "Change a connected service",
+  "provider-inference": "Use an AI provider",
+  "computer-use": "Use a computer",
+};
+
+function selectedGroupLanes(lanesSelected: string[], groupId: string) {
+  return (
+    scopeGroups
+      .find((group) => group.id === groupId)
+      ?.lanes.filter((lane) => lanesSelected.includes(lane)) ?? []
+  );
+}
+
+function selectedScopeGroupLabels(lanes: string[]) {
+  return scopeGroups
+    .filter((group) => group.lanes.some((lane) => lanes.includes(lane)))
+    .map((group) => group.label);
+}
 
 export function ObjectiveAuthorityWorkbench({
   projectId,
+  projectName,
   onClose,
 }: {
   projectId: string | null;
+  projectName: string | null;
   onClose: () => void;
 }) {
   const titleId = useId();
@@ -30,10 +78,10 @@ export function ObjectiveAuthorityWorkbench({
   const [lanesSelected, setLanesSelected] = useState<string[]>([
     "work-with-code",
   ]);
-  const [confirmationLanes, setConfirmationLanes] = useState<string[]>([]);
+  const [flagForReview, setFlagForReview] = useState(false);
   const [minutes, setMinutes] = useState(60);
   const [busy, setBusy] = useState(false);
-  const [notice, setNotice] = useState("Loading objective authority…");
+  const [notice, setNotice] = useState("Loading authority objectives…");
 
   useEffect(() => {
     closeRef.current?.focus();
@@ -43,208 +91,264 @@ export function ObjectiveAuthorityWorkbench({
       .then((next) => {
         setSnapshot(next);
         setNotice(
-          "Objectives are proposals until you explicitly activate them. No capability has started.",
+          "Drafts record future scope only. No capability has started.",
         );
       })
       .catch(() =>
         setNotice(
-          "Objective authority is unavailable; no capability has started.",
+          "Authority objectives are unavailable; no capability has started.",
         ),
       );
   }, [projectId]);
+
   const apply = async (action: () => Promise<ObjectiveAuthoritySnapshot>) => {
     setBusy(true);
     try {
       const next = await action();
       setSnapshot(next);
       setNotice(
-        next.diagnosticCode ??
-          "Objective authority updated. No capability has started.",
+        next.diagnosticCode ?? "Objective updated. No capability has started.",
       );
     } catch {
       setNotice(
-        "Objective authority is unavailable; no capability has started.",
+        "Authority objectives are unavailable; no capability has started.",
       );
     } finally {
       setBusy(false);
     }
   };
-  const toggleLane = (lane: string) => {
-    const wasSelected = lanesSelected.includes(lane);
+  const toggleGroup = (groupId: string) => {
+    const groupLanes = selectedGroupLanes(lanesSelected, groupId);
+    const group = scopeGroups.find((candidate) => candidate.id === groupId);
+    if (!group) return;
     setLanesSelected((current) =>
-      wasSelected
-        ? current.filter((value) => value !== lane)
-        : [...current, lane],
+      groupLanes.length === group.lanes.length
+        ? current.filter(
+            (lane) => !(group.lanes as readonly string[]).includes(lane),
+          )
+        : [...new Set([...current, ...group.lanes])],
     );
-    if (wasSelected) {
-      setConfirmationLanes((current) =>
-        current.filter((value) => value !== lane),
-      );
-    }
   };
-  const toggleConfirmation = (lane: string) =>
-    setConfirmationLanes((current) =>
-      current.includes(lane)
-        ? current.filter((value) => value !== lane)
-        : [...current, lane],
+
+  if (!projectId)
+    return (
+      <section
+        className="objective-authority-workbench"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+      >
+        <header className="objective-authority-workbench__header">
+          <div>
+            <p className="eyebrow">Project authority</p>
+            <h2 id={titleId}>Choose a project first</h2>
+          </div>
+          <button ref={closeRef} type="button" onClick={onClose}>
+            Close
+          </button>
+        </header>
+        <p className="objective-authority__inert-notice" role="note">
+          Objectives belong to one attached project. No authority form is
+          available until a project is selected.
+        </p>
+      </section>
     );
+
   return (
     <section
-      className="mock-inference-workbench"
+      className="objective-authority-workbench"
       role="dialog"
       aria-modal="true"
       aria-labelledby={titleId}
     >
-      <header className="mock-inference-workbench__header">
+      <header className="objective-authority-workbench__header">
         <div>
-          <p className="eyebrow">Objective-scoped authority</p>
-          <h2 id={titleId}>Authority objectives</h2>
+          <p className="eyebrow">Project authority</p>
+          <h2 id={titleId}>
+            Authority objectives for {projectName ?? "this project"}
+          </h2>
         </div>
         <button ref={closeRef} type="button" onClick={onClose}>
           Close
         </button>
       </header>
       <p role="status">{notice}</p>
-      <p>
-        Objectives are project-bound, expire automatically, and can be revoked.
-        They do not open a browser, run an agent, or perform an external action.
-      </p>
       <p className="objective-authority__inert-notice" role="note">
-        Lane selections describe future scope only. They grant no capability,
-        never replace a later lane&apos;s own approval, and cannot start work.
+        Scope choices describe future work only. They start nothing and never
+        replace a future capability&apos;s own approval.
       </p>
-      <label>
-        Title
-        <input
-          value={title}
-          onChange={(event) => setTitle(event.target.value)}
-          maxLength={240}
-        />
-      </label>
-      <label>
-        Objective
-        <textarea
-          value={objective}
-          onChange={(event) => setObjective(event.target.value)}
-          maxLength={8192}
-          rows={3}
-        />
-      </label>
-      <fieldset>
-        <legend>Future lane planning</legend>
-        <p className="objective-authority__lane-explainer">
-          Each lane is locked until its own capability and approval flow are
-          available.
-        </p>
-        {lanes.map((lane) => (
-          <div className="objective-authority__lane" key={lane}>
-            <label>
-              <input
-                type="checkbox"
-                checked={lanesSelected.includes(lane)}
-                onChange={() => toggleLane(lane)}
-              />{" "}
-              <span aria-hidden="true">🔒 </span>
-              {lane}
-            </label>
-            <p>
-              Locked — no capability executes from this selection. This lane
-              requires its own approval when available.
-            </p>
-            <label>
-              <input
-                type="checkbox"
-                checked={confirmationLanes.includes(lane)}
-                disabled={!lanesSelected.includes(lane)}
-                onChange={() => toggleConfirmation(lane)}
-              />{" "}
-              highlight confirmation when available
-            </label>
-            <p>
-              This only highlights a future Action Card. It never lowers or
-              skips that lane&apos;s approval requirement.
-            </p>
-          </div>
-        ))}
-      </fieldset>
-      <label>
-        Expiry in minutes
-        <input
-          type="number"
-          min={1}
-          max={10080}
-          value={minutes}
-          onChange={(event) => setMinutes(Number(event.target.value))}
-        />
-      </label>
-      <button
-        type="button"
-        disabled={
-          !projectId ||
-          busy ||
-          !title.trim() ||
-          !objective.trim() ||
-          !lanesSelected.length
-        }
-        onClick={() =>
+      {snapshot?.objectives.length ? (
+        <section
+          className="objective-authority__lifecycle"
+          aria-label="Existing authority objectives"
+        >
+          <h3>Current objectives</h3>
+          {snapshot.objectives.map((item) => (
+            <article key={item.id}>
+              <div>
+                <p className="eyebrow">{item.state}</p>
+                <h4>{item.title}</h4>
+                <p>{item.objective}</p>
+                <p>Expires {new Date(item.expiresAtMs).toLocaleString()}</p>
+              </div>
+              <div className="objective-authority__lifecycle-actions">
+                {item.state === "draft" && (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() =>
+                      void apply(() =>
+                        activateObjectiveAuthority({ objectiveId: item.id }),
+                      )
+                    }
+                  >
+                    Activate
+                  </button>
+                )}
+                {["draft", "active"].includes(item.state) && (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() =>
+                      void apply(() =>
+                        revokeObjectiveAuthority({ objectiveId: item.id }),
+                      )
+                    }
+                  >
+                    Revoke
+                  </button>
+                )}
+              </div>
+              <details>
+                <summary>Review future scope</summary>
+                <p>
+                  🔒 Every listed scope remains locked until its own capability
+                  and approval flow exist.
+                </p>
+                <ul>
+                  {selectedScopeGroupLabels(item.allowedLanes).map((label) => (
+                    <li key={label}>{label}</li>
+                  ))}
+                </ul>
+              </details>
+            </article>
+          ))}
+        </section>
+      ) : null}
+      <form
+        className="objective-authority__form"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (
+            busy ||
+            !title.trim() ||
+            !objective.trim() ||
+            !lanesSelected.length
+          )
+            return;
           void apply(() =>
             createObjectiveAuthority({
               projectId,
               title,
               objective,
               allowedLanes: lanesSelected,
-              confirmationRequiredLanes: confirmationLanes,
+              confirmationRequiredLanes: flagForReview ? lanesSelected : [],
               expiresInMinutes: minutes,
             }),
-          )
-        }
+          );
+        }}
       >
-        Create draft objective
-      </button>
-      <div className="action-card">
-        {snapshot?.objectives.map((item) => (
-          <article key={item.id}>
-            <h3>{item.title}</h3>
-            <p>{item.objective}</p>
-            <p>
-              {item.state} · expires{" "}
-              {new Date(item.expiresAtMs).toLocaleString()}
-            </p>
-            <p>{item.allowedLanes.join(", ")}</p>
-            <ul className="objective-authority__inspect-lanes">
-              {item.allowedLanes.map((lane) => (
-                <li key={lane}>
-                  <span aria-hidden="true">🔒 </span>
-                  {lane}: locked future scope only; this lane requires its own
-                  approval when available.
-                </li>
-              ))}
-            </ul>
-            <button
-              type="button"
-              disabled={busy || item.state !== "draft"}
-              onClick={() =>
-                void apply(() =>
-                  activateObjectiveAuthority({ objectiveId: item.id }),
-                )
-              }
-            >
-              Activate
-            </button>
-            <button
-              type="button"
-              disabled={busy || !["draft", "active"].includes(item.state)}
-              onClick={() =>
-                void apply(() =>
-                  revokeObjectiveAuthority({ objectiveId: item.id }),
-                )
-              }
-            >
-              Revoke
-            </button>
-          </article>
-        ))}
-      </div>
+        <div>
+          <p className="eyebrow">New objective</p>
+          <h3>Describe the work you want to plan</h3>
+        </div>
+        <label>
+          Title
+          <input
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
+            maxLength={240}
+          />
+        </label>
+        <label>
+          Objective
+          <textarea
+            value={objective}
+            onChange={(event) => setObjective(event.target.value)}
+            maxLength={8192}
+            rows={3}
+          />
+        </label>
+        <fieldset>
+          <legend>Future scope</legend>
+          <p>
+            Choose broad areas to record for this project. 🔒 No capability
+            executes from these choices.
+          </p>
+          {scopeGroups.map((group) => {
+            const selected =
+              selectedGroupLanes(lanesSelected, group.id).length ===
+              group.lanes.length;
+            return (
+              <div className="objective-authority__scope-group" key={group.id}>
+                <input
+                  type="checkbox"
+                  aria-label={group.label}
+                  checked={selected}
+                  onChange={() => toggleGroup(group.id)}
+                />
+                <span>
+                  <strong>🔒 {group.label}</strong>
+                  <small>{group.description}</small>
+                </span>
+                <details className="objective-authority__scope-details">
+                  <summary>See included future scope</summary>
+                  <ul>
+                    {group.lanes.map((lane) => (
+                      <li key={lane}>🔒 {scopeLaneLabels[lane]}</li>
+                    ))}
+                  </ul>
+                </details>
+              </div>
+            );
+          })}
+        </fieldset>
+        <div className="objective-authority__review-flag">
+          <input
+            type="checkbox"
+            aria-label="Flag this scope for review when it becomes available"
+            checked={flagForReview}
+            onChange={(event) => setFlagForReview(event.target.checked)}
+          />
+          <span>
+            <strong>
+              Flag this scope for review when it becomes available
+            </strong>
+            <small>
+              This only highlights a future Action Card; it never grants or
+              lowers approval.
+            </small>
+          </span>
+        </div>
+        <label>
+          Expiry in minutes
+          <input
+            type="number"
+            min={1}
+            max={10080}
+            value={minutes}
+            onChange={(event) => setMinutes(Number(event.target.value))}
+          />
+        </label>
+        <button
+          type="submit"
+          disabled={
+            busy || !title.trim() || !objective.trim() || !lanesSelected.length
+          }
+        >
+          Create draft objective
+        </button>
+      </form>
     </section>
   );
 }

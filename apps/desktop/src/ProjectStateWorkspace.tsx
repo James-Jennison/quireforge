@@ -9,6 +9,7 @@ interface ProjectStateWorkspaceProps {
   snapshot: RepositoryStateReadSnapshot | null;
   busy: boolean;
   onRefresh: () => void;
+  onManageAuthority?: () => void;
 }
 
 function shortCommit(commit: string | null) {
@@ -25,6 +26,7 @@ export function ProjectStateWorkspace({
   snapshot,
   busy,
   onRefresh,
+  onManageAuthority,
 }: ProjectStateWorkspaceProps) {
   const repository = snapshot?.state.repository;
   const milestone = snapshot?.state.milestone;
@@ -51,14 +53,25 @@ export function ProjectStateWorkspace({
             This workspace does not fetch, edit, approve, or resolve anything.
           </p>
         </div>
-        <button
-          className="auth-button"
-          type="button"
-          disabled={!projectName || busy || availability === "preview"}
-          onClick={onRefresh}
-        >
-          Refresh local evidence
-        </button>
+        <div className="project-state-workspace__actions">
+          {projectName && onManageAuthority && (
+            <button
+              className="auth-button"
+              type="button"
+              onClick={onManageAuthority}
+            >
+              Manage project authority
+            </button>
+          )}
+          <button
+            className="auth-button"
+            type="button"
+            disabled={!projectName || busy || availability === "preview"}
+            onClick={onRefresh}
+          >
+            Refresh local evidence
+          </button>
+        </div>
       </div>
 
       <div className="project-workspace__status" aria-live="polite">

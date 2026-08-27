@@ -2431,7 +2431,7 @@ test("Local Chat opens the separate Google research review", async ({
   ).toBeVisible();
 });
 
-test("Local Chat keeps objective lanes inert through draft, activation, and revocation", async ({
+test("Project authority is project-first and stays inert through draft, activation, and revocation", async ({
   page,
 }) => {
   const requests: string[] = [];
@@ -2470,20 +2470,34 @@ test("Local Chat keeps objective lanes inert through draft, activation, and revo
   });
   await page.goto("/");
 
-  await openWorkspace(page, "Advisor");
-  const chat = page.locator('[data-workspace-view="advisor"]');
-  await chat
-    .getByRole("button", { name: "Manage authority objectives" })
+  const advisor = page.locator('[data-workspace-view="advisor"]');
+  await expect(
+    advisor.getByRole("button", { name: "Manage authority objectives" }),
+  ).toHaveCount(0);
+  await openWorkspace(page, "Project state");
+  const projectState = page.locator('[data-workspace-view="project-state"]');
+  await projectState
+    .getByRole("button", { name: "Manage project authority" })
     .click();
-  const workbench = chat.getByRole("dialog", { name: "Authority objectives" });
+  const workbench = projectState.getByRole("dialog", {
+    name: "Authority objectives for QuireForge",
+  });
   await expect(
     workbench.locator(".objective-authority__inert-notice"),
-  ).toHaveText(/Lane selections describe future scope only/u);
+  ).toHaveText(/Scope choices describe future work only/u);
   await expect(
-    workbench.getByText(
-      "Locked — no capability executes from this selection. This lane requires its own approval when available.",
-    ),
-  ).toHaveCount(8);
+    workbench.getByRole("checkbox", { name: /Work on this project/u }),
+  ).toBeChecked();
+  await expect(
+    workbench.getByRole("checkbox", { name: /Research and project data/u }),
+  ).not.toBeChecked();
+  await workbench
+    .locator(".objective-authority__scope-details summary")
+    .nth(1)
+    .click();
+  await expect(
+    workbench.getByText("Use a private browser workspace"),
+  ).toBeVisible();
   const commandsBeforeLifecycle = await page.evaluate(
     () =>
       (
@@ -2501,12 +2515,10 @@ test("Local Chat keeps objective lanes inert through draft, activation, and revo
     .click();
   await workbench.getByRole("button", { name: "Activate" }).click();
   await workbench.getByRole("button", { name: "Revoke" }).click();
-  await expect(workbench.getByText(/revoked · expires/u)).toBeVisible();
+  await expect(workbench.getByText("Review future scope")).toBeVisible();
   await expect(
-    workbench.getByText(
-      "browser-workspace: locked future scope only; this lane requires its own approval when available.",
-    ),
-  ).toBeVisible();
+    workbench.locator(".objective-authority__lifecycle details"),
+  ).not.toHaveAttribute("open", "");
   expect(
     await page.evaluate(
       (before) =>
