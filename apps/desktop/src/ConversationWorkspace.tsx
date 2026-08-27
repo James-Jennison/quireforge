@@ -20,6 +20,7 @@ import {
 } from "./lib/conversation";
 import {
   buildConversationActivityViews,
+  coalesceConversationMessageDeltas,
   type ConversationActivityView,
 } from "./lib/conversationView";
 import type { ProjectWorkspaceSnapshot } from "./lib/project";
@@ -346,6 +347,10 @@ export function ConversationWorkspace({
 
   const activities = useMemo(
     () => buildConversationActivityViews(events),
+    [events],
+  );
+  const displayEvents = useMemo(
+    () => coalesceConversationMessageDeltas(events),
     [events],
   );
   const activitiesByFirstSequence = useMemo(
@@ -904,13 +909,13 @@ export function ConversationWorkspace({
                 </small>
               </section>
             )}
-            {events.length === 0 ? (
+            {displayEvents.length === 0 ? (
               <div className="conversation-empty">
                 <span aria-hidden="true">›</span>
                 <p>Normalized progress and response text will appear here.</p>
               </div>
             ) : (
-              events.map((event) => {
+              displayEvents.map((event) => {
                 if (
                   event.type === "activity" ||
                   event.type === "activity-output-delta"

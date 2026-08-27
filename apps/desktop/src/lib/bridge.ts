@@ -3032,10 +3032,20 @@ export async function pollConversation(
   invokeFunction: InvokeFunction = invokeTauri,
 ): Promise<ConversationSnapshot> {
   const reviewedId = conversationIdSchema.parse(conversationId);
-  const payload = await invokeFunction(CONVERSATION_POLL_COMMAND, {
-    conversationId: reviewedId,
-  });
-  return conversationSnapshotSchema.parse(payload);
+  let payload: unknown;
+  try {
+    payload = await invokeFunction(CONVERSATION_POLL_COMMAND, {
+      conversationId: reviewedId,
+    });
+  } catch {
+    throw new ConversationActionFailure("native-command-failed");
+  }
+
+  const snapshot = conversationSnapshotSchema.safeParse(payload);
+  if (!snapshot.success) {
+    throw new ConversationActionFailure("native-response-invalid");
+  }
+  return snapshot.data;
 }
 
 export async function interruptConversation(

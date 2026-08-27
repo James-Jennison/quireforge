@@ -81,3 +81,9 @@ local installer daemon. The installed-host validator passed package state,
 version mapping, protected-file ownership, permissions, and integrity; the
 installed `/usr/bin/quireforge` process was then launched. Owner acceptance of
 the visible profile controls remains required before M87 is marked validated.
+
+`0.1.0-beta.109` supersedes beta.108 for owner acceptance. It keeps M87's
+closed Direct/Conversational and authority contracts unchanged while rendering
+contiguous managed-conversation assistant deltas as one bounded response and
+clearing a stale transient poll error after a successful displayed-task poll.
+Its required evidence gates are the same as beta.108.

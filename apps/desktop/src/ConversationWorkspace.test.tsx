@@ -276,6 +276,22 @@ describe("ConversationWorkspace", () => {
     expect(onInterrupt).toHaveBeenCalledWith(conversationId);
   });
 
+  it("renders streamed assistant text as one message instead of one card per delta", () => {
+    renderWorkspace({
+      snapshot: runningConversation,
+      events: [
+        ...runningConversation.events,
+        { type: "agent-message-delta", sequence: 2, delta: "Three" },
+        { type: "agent-message-delta", sequence: 3, delta: "-part" },
+        { type: "agent-message-delta", sequence: 4, delta: " completion" },
+      ],
+    });
+
+    expect(screen.getByText("Three-part completion")).toBeInTheDocument();
+    expect(screen.queryByText("Three")).not.toBeInTheDocument();
+    expect(screen.queryByText("-part")).not.toBeInTheDocument();
+  });
+
   it("submits only the exact pending approval decision", async () => {
     const approvalId = "018f0000-0000-7000-8000-000000000011";
     const activityId = "018f0000-0000-7000-8000-000000000012";

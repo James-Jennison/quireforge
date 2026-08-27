@@ -1563,6 +1563,65 @@ describe("QuireForge desktop shell", () => {
     expect(notifyConversationTask).toHaveBeenCalledWith(conversationId);
   });
 
+  it("clears a transient poll failure after the displayed task polls successfully", async () => {
+    const conversationId = "018f0000-0000-7000-8000-000000000010";
+    const running = conversationSnapshotSchema.parse({
+      schemaVersion: 3,
+      state: "running",
+      conversationId,
+      projectId,
+      modelId: "gpt-5.6-sol",
+      reasoningEffort: "high",
+      modelSelection: modelSelection(),
+      sandboxMode: "workspace-write",
+      approvalPolicy: "on-request",
+      pendingApproval: null,
+      events: [],
+      diagnosticCode: null,
+    });
+    const streamed = conversationSnapshotSchema.parse({
+      ...running,
+      events: [
+        { type: "agent-message-delta", sequence: 1, delta: "Recovered." },
+      ],
+    });
+    const startConversationTask = vi.fn().mockResolvedValue(running);
+    const pollConversationTask = vi
+      .fn()
+      .mockRejectedValueOnce(
+        new ConversationActionFailure("native-response-invalid"),
+      )
+      .mockResolvedValue(streamed);
+
+    render(
+      <App
+        loadBootstrap={() => Promise.resolve(scaffoldBootstrap)}
+        loadRuntime={() => Promise.resolve(scaffoldCodexRuntime)}
+        loadAuth={() => Promise.resolve(authenticatedAuth)}
+        loadProjects={() => Promise.resolve(attachedProject)}
+        loadConversation={() => Promise.resolve(scaffoldConversation)}
+        startConversationTask={startConversationTask}
+        pollConversationTask={pollConversationTask}
+      />,
+    );
+
+    await navigateTo("New task");
+    fireEvent.change(screen.getByLabelText("Message"), {
+      target: { value: "Recover the task poll." },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+
+    await waitFor(() =>
+      expect(
+        screen.getByText(/native conversation service returned an unsupported response/iu),
+      ).toBeInTheDocument(),
+    );
+    await waitFor(() => expect(screen.getByText("Recovered.")).toBeInTheDocument());
+    expect(
+      screen.queryByText(/native conversation service returned an unsupported response/iu),
+    ).not.toBeInTheDocument();
+  });
+
   it("preserves the task and explains a native conversation start failure", async () => {
     const startConversationTask = vi
       .fn()

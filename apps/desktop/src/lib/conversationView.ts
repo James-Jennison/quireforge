@@ -3,6 +3,7 @@ import type { ConversationEvent } from "./conversation";
 const MAX_CONVERSATION_EVENTS = 256;
 const MAX_ACTIVITY_VIEWS = 64;
 const MAX_ACTIVITY_OUTPUT_CHARACTERS = 32 * 1024;
+const MAX_MESSAGE_CHARACTERS = 32 * 1024;
 const OMITTED_OUTPUT_MARKER = "… earlier output omitted …\n";
 
 type ActivityEvent = Extract<ConversationEvent, { type: "activity" }>;
@@ -31,11 +32,37 @@ export function mergeConversationEvents(
     .slice(-MAX_CONVERSATION_EVENTS);
 }
 
+/**
+ * The app-server sends assistant text as small streaming deltas. Keep those
+ * deltas intact in state so polling can still deduplicate by sequence, but
+ * present contiguous assistant text as one bounded message to the user.
+ */
+export function coalesceConversationMessageDeltas(
+  events: ConversationEvent[],
+): ConversationEvent[] {
+  const coalesced: ConversationEvent[] = [];
+
+  for (const event of events) {
+    const previous = coalesced.at(-1);
+    if (
+      event.type === "agent-message-delta" &&
+      previous?.type === "agent-message-delta"
+    ) {
+      previous.delta = appendBoundedOutput(previous.delta, event.delta);
+      previous.sequence = event.sequence;
+      continue;
+    }
+    coalesced.push({ ...event });
+  }
+
+  return coalesced;
+}
+
 function appendBoundedOutput(current: string, delta: string): string {
   const combined = `${current}${delta}`;
-  if (combined.length <= MAX_ACTIVITY_OUTPUT_CHARACTERS) return combined;
+  if (combined.length <= MAX_MESSAGE_CHARACTERS) return combined;
   const retainedLength =
-    MAX_ACTIVITY_OUTPUT_CHARACTERS - OMITTED_OUTPUT_MARKER.length;
+    MAX_MESSAGE_CHARACTERS - OMITTED_OUTPUT_MARKER.length;
   return `${OMITTED_OUTPUT_MARKER}${combined.slice(-retainedLength)}`;
 }
 
@@ -72,7 +99,7 @@ export function buildConversationActivityViews(
         detail: current?.detail ?? null,
         status: current?.status ?? "started",
         exitCode: current?.exitCode ?? null,
-        output: appendBoundedOutput(current?.output ?? "", event.delta),
+        output: appendBoundedActivityOutput(current?.output ?? "", event.delta),
         firstSequence: current?.firstSequence ?? event.sequence,
         lastSequence: event.sequence,
       });
@@ -82,4 +109,12 @@ export function buildConversationActivityViews(
   return [...activities.values()]
     .sort((left, right) => left.firstSequence - right.firstSequence)
     .slice(-MAX_ACTIVITY_VIEWS);
+}
+
+function appendBoundedActivityOutput(current: string, delta: string): string {
+  const combined = `${current}${delta}`;
+  if (combined.length <= MAX_ACTIVITY_OUTPUT_CHARACTERS) return combined;
+  const retainedLength =
+    MAX_ACTIVITY_OUTPUT_CHARACTERS - OMITTED_OUTPUT_MARKER.length;
+  return `${OMITTED_OUTPUT_MARKER}${combined.slice(-retainedLength)}`;
 }

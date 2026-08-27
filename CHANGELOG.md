@@ -2,6 +2,15 @@
 
 ## Unreleased — authoritative feature-parity roadmap
 
+### 0.1.0-beta.109 — managed-conversation stream recovery candidate
+
+- Presents contiguous assistant streaming deltas as one bounded response card,
+  while retaining normalized event sequencing for polling and activity history.
+- Distinguishes an invalid native poll response from a failed native command,
+  and clears a transient polling diagnostic after the displayed task has
+  successfully recovered. This changes neither conversation authority nor
+  native execution scope.
+
 ### 0.1.0-beta.108 — M87 interaction-profile candidate
 
 - Adds closed Direct and Conversational interaction profiles to Appearance,

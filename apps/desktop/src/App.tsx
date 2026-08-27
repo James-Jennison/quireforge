@@ -1817,8 +1817,14 @@ export default function App({
           ? [result.value]
           : [],
       );
-      if (settled.some((result) => result.status === "rejected"))
-        setConversationActionError("native-command-failed");
+      const rejectedPoll = settled.find(
+        (result): result is PromiseRejectedResult => result.status === "rejected",
+      );
+      if (rejectedPoll) {
+        setConversationActionError(
+          conversationActionFailureCode(rejectedPoll.reason),
+        );
+      }
 
       for (const result of results) {
         if (!result.conversationId) continue;
@@ -1863,6 +1869,7 @@ export default function App({
         (result) => result.conversationId === conversation.conversationId,
       );
       if (displayed) {
+        setConversationActionError(null);
         setConversation(displayed);
         setConversationEvents((current) =>
           mergeConversationEvents(current, displayed.events),

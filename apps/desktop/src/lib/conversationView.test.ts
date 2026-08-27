@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { ConversationEvent } from "./conversation";
 import {
   buildConversationActivityViews,
+  coalesceConversationMessageDeltas,
   mergeConversationEvents,
 } from "./conversationView";
 
@@ -38,6 +39,28 @@ describe("conversation event view", () => {
     expect(result).toHaveLength(256);
     expect(result[0]?.sequence).toBe(45);
     expect(result.at(-1)?.sequence).toBe(300);
+  });
+
+  it("presents contiguous assistant streaming deltas as one bounded message", () => {
+    const result = coalesceConversationMessageDeltas([
+      { type: "lifecycle", sequence: 1, phase: "running" },
+      { type: "agent-message-delta", sequence: 2, delta: "Three" },
+      { type: "agent-message-delta", sequence: 3, delta: "-part" },
+      { type: "agent-message-delta", sequence: 4, delta: " completion" },
+      { type: "reasoning-summary-delta", sequence: 5, delta: "Checking." },
+      { type: "agent-message-delta", sequence: 6, delta: "Done." },
+    ]);
+
+    expect(result).toEqual([
+      { type: "lifecycle", sequence: 1, phase: "running" },
+      {
+        type: "agent-message-delta",
+        sequence: 4,
+        delta: "Three-part completion",
+      },
+      { type: "reasoning-summary-delta", sequence: 5, delta: "Checking." },
+      { type: "agent-message-delta", sequence: 6, delta: "Done." },
+    ]);
   });
 
   it("groups lifecycle updates and output under one stable activity", () => {

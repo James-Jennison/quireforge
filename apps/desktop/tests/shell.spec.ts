@@ -3248,6 +3248,39 @@ test("native activity fixture renders bounded real-time approval detail", async 
   expect(overflow).toBeLessThanOrEqual(1);
 });
 
+test("native conversation presents streamed assistant fragments as one response", async ({
+  page,
+}) => {
+  const streamedConversation = {
+    ...approvalConversation,
+    state: "running",
+    pendingApproval: null,
+    events: [
+      { type: "agent-message-delta", sequence: 1, delta: "Three" },
+      { type: "agent-message-delta", sequence: 2, delta: "-part" },
+      { type: "agent-message-delta", sequence: 3, delta: " completion" },
+    ],
+    diagnosticCode: null,
+  } as const;
+  await installNativeFixture(page, {
+    ...nativeResponses,
+    conversation_status: streamedConversation,
+    conversation_active: {
+      schemaVersion: 1,
+      capacity: 4,
+      conversations: [{ ...streamedConversation, events: [] }],
+    },
+    conversation_poll: streamedConversation,
+  });
+  await page.goto("/");
+
+  await openWorkspace(page, "New task");
+  await expect(page.getByText("Three-part completion")).toBeVisible();
+  await expect(
+    page.locator(".conversation-event--agent-message-delta"),
+  ).toHaveCount(1);
+});
+
 test("desktop preview has no automatically detectable accessibility violations", async ({
   page,
 }) => {
