@@ -229,6 +229,13 @@ installation, supervised launch, and canonical installed-host validation
 passed. The immutable receipt reports beta.94, two artifacts, `passed`, and
 completed validation.
 
+The `0.1.0-beta.95` candidate corrects the Local Chat/project mismatch without
+creating ambient context transfer: Local Chat states that project context is
+not attached, and its explicit linked-project action opens the pre-existing
+managed Codex project conversation. The transient Local Chat transcript is not
+transferred. Full validation, package, installation, and supervised acceptance
+evidence is recorded only after the new candidate passes every gate.
+
 The `0.1.0-beta.92` M69C Action Card candidate adds the accessible Local Chat
 renderer to the already-accepted non-executing Action Card foundation. Its
 closed Actions menu prepares only one of four visible proposal classes, and its

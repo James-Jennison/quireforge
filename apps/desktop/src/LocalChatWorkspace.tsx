@@ -15,6 +15,7 @@ interface LocalChatWorkspaceProps {
   onRevokeActionCard: (request: {
     cardId: string;
   }) => Promise<ActionCardSnapshot>;
+  onOpenLinkedProjectChat: () => void;
 }
 
 interface LocalChatTurn {
@@ -46,6 +47,7 @@ export function LocalChatWorkspace({
   onPrepareActionCard,
   onApproveActionCard,
   onRevokeActionCard,
+  onOpenLinkedProjectChat,
 }: LocalChatWorkspaceProps) {
   const [message, setMessage] = useState("");
   const [snapshot, setSnapshot] = useState<LocalChatSnapshot | null>(null);
@@ -125,7 +127,14 @@ export function LocalChatWorkspace({
         <div>
           <p className="eyebrow">Local Chat</p>
           <h1 id="local-chat-title">Start a conversation.</h1>
-          <p>Local runtime · No project · Ephemeral</p>
+          <p>Local runtime · Project context not attached · Ephemeral</p>
+          <button type="button" onClick={onOpenLinkedProjectChat}>
+            Continue with linked project
+          </button>
+          <p>
+            Opens a separate managed project conversation. This Local Chat
+            transcript is not transferred automatically.
+          </p>
         </div>
       </header>
       {turns.length > 0 && (

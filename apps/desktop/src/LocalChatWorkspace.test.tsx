@@ -34,6 +34,7 @@ describe("LocalChatWorkspace", () => {
         onPrepareActionCard={vi.fn()}
         onApproveActionCard={vi.fn()}
         onRevokeActionCard={vi.fn()}
+        onOpenLinkedProjectChat={vi.fn()}
       />,
     );
     fireEvent.change(
@@ -65,6 +66,7 @@ describe("LocalChatWorkspace", () => {
         onPrepareActionCard={vi.fn()}
         onApproveActionCard={vi.fn()}
         onRevokeActionCard={vi.fn()}
+        onOpenLinkedProjectChat={vi.fn()}
       />,
     );
     const composer = screen.getByRole("textbox", {
@@ -90,6 +92,7 @@ describe("LocalChatWorkspace", () => {
         onPrepareActionCard={onPrepareActionCard}
         onApproveActionCard={onApproveActionCard}
         onRevokeActionCard={vi.fn()}
+        onOpenLinkedProjectChat={vi.fn()}
       />,
     );
 
@@ -121,5 +124,29 @@ describe("LocalChatWorkspace", () => {
     expect(onApproveActionCard).toHaveBeenCalledWith({
       cardId: actionCard.cardId,
     });
+  });
+
+  it("offers an explicit path to the linked project conversation", () => {
+    const onOpenLinkedProjectChat = vi.fn();
+    render(
+      <LocalChatWorkspace
+        onRun={vi.fn()}
+        onCancel={vi.fn()}
+        onPrepareActionCard={vi.fn()}
+        onApproveActionCard={vi.fn()}
+        onRevokeActionCard={vi.fn()}
+        onOpenLinkedProjectChat={onOpenLinkedProjectChat}
+      />,
+    );
+
+    expect(
+      screen.getByText(
+        "Local runtime · Project context not attached · Ephemeral",
+      ),
+    ).toBeVisible();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Continue with linked project" }),
+    );
+    expect(onOpenLinkedProjectChat).toHaveBeenCalledOnce();
   });
 });

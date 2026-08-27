@@ -2396,7 +2396,10 @@ test("Local Chat completes an ordinary no-project local-only turn", async ({
     chat.getByRole("heading", { name: "Start a conversation." }),
   ).toBeVisible();
   await expect(
-    chat.getByText("Local runtime · No project · Ephemeral"),
+    chat.getByText("Local runtime · Project context not attached · Ephemeral"),
+  ).toBeVisible();
+  await expect(
+    chat.getByRole("button", { name: "Continue with linked project" }),
   ).toBeVisible();
   await expect(
     chat.getByRole("button", { name: /attach|settings|tools/i }),

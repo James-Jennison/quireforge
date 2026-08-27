@@ -4359,6 +4359,9 @@ export default function App({
                   onPrepareActionCard={prepareActionCard}
                   onApproveActionCard={approveActionCard}
                   onRevokeActionCard={revokeActionCard}
+                  onOpenLinkedProjectChat={() =>
+                    requestConversationWorkspace("conversation")
+                  }
                 />
               ) : (
                 <AdvisorWorkspace

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.0-beta.95 — Explicit linked-project chat bridge candidate
+
+- Local Chat now names its actual scope as “Project context not attached” and
+  offers a visible, user-initiated Continue with linked project action.
+- That action opens the existing managed Codex project conversation and never
+  transfers the Local Chat transcript implicitly.
+
 ## 0.1.0-beta.94 — Chat-first entry candidate
 
 - When the persisted workspace route is Threads and the user has selected Chat
