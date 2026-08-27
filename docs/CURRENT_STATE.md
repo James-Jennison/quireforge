@@ -103,14 +103,18 @@ recovery. M70 is approved for implementation as a new private native service;
 it does not alter the existing M66 content-free ledger or make QuireForge's
 own ADR/CURRENT_STATE process ledger-backed.
 
-The `0.1.0-beta.101` M76 candidate adds an isolated, read-only browser-research
+The validated `0.1.0-beta.101` M76 candidate adds an isolated, read-only browser-research
 controller for the owner-approved exact scope `https://google.com/` at
 `https://google.com`. It uses a fresh WebKitGTK context, disables JavaScript,
 requires an expiring one-use confirmation, retains digest-only bounded
 provenance in memory, and stops on redirect/origin drift or prompt-injection
 indicators. It has no ambient sessions, credentials, downloads, mutation,
-agent access, or automatic M60/M71 transfer. Full validation and package gates
-remain required before M76 is validated; owner acceptance is separate.
+agent access, or automatic M60/M71 transfer. Full validation, desktop/website
+E2E, and the clean pinned Linux package/visible-launch gate have passed. The
+one owner-authorized packaged launch to `https://google.com/` stopped at
+`origin_drift` when Google redirected outside the approved origin; no content,
+digest, or byte count was retained. A distinct `www.google.com` observation
+requires a new exact-origin approval; owner acceptance remains separate.
 
 The validated `0.1.0-beta.100` M71 release candidate extends the validated M70 private native
 Knowledge Ledger with immutable claim → evidence → conclusion linkage. It

@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0-beta.101 — M76 isolated browser-research candidate
+## 0.1.0-beta.101 — M76 isolated browser-research
 
 - Adds a separate native, owner-confirmed browser-research controller scoped
   exactly to `https://google.com/` at `https://google.com`.
@@ -8,6 +8,10 @@
   digest provenance in memory, and stops on redirect/origin drift or
   prompt-injection indicators. It has no ambient browser session, credentials,
   downloads, mutation, automatic context transfer, or agent access.
+- Passed full source validation, desktop/website E2E, and the clean pinned
+  Linux package/visible-launch gate. The one owner-authorized packaged Google
+  launch returned `origin_drift` after a redirect beyond the exact approved
+  origin, retaining no content, digest, or byte count.
 
 ## 0.1.0-beta.100 — M71 Evidence Linkage candidate
 

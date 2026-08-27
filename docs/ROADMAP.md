@@ -2000,13 +2000,17 @@ and visible Debian-package launch have passed; owner acceptance remains
 separate.
 
 [M76 -- Isolated Read-Only Browser Research](MILESTONE_76_ISOLATED_BROWSER_RESEARCH.md)
-is implemented in the `0.1.0-beta.101` candidate for the exact owner-approved
+is validated in the `0.1.0-beta.101` candidate for the exact owner-approved
 scope `https://google.com/` at `https://google.com`. It is a separate native
 controller, not a generalization of M58: an ephemeral JavaScript-disabled
 WebKitGTK profile may make one confirmed HTTPS observation and reports only
 bounded digest provenance. Redirect/origin drift, prompt-injection indicators,
-timeout, cancellation, and revocation are terminal. It adds no ambient
-session, credential, transfer, agent, connector, or execution capability.
+timeout, cancellation, and revocation are terminal. Full validation,
+desktop/website E2E, and the clean pinned Linux package/visible-launch gate
+passed. The one authorized packaged launch stopped at `origin_drift` after
+Google redirected beyond `https://google.com`; no content, digest, or byte
+count was retained. It adds no ambient session, credential, transfer, agent,
+connector, or execution capability.
 
 ### Deferred capability gates
 

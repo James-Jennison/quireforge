@@ -33,3 +33,12 @@ accepted scope is exactly `https://google.com/` at the exact origin
   loading a target.
 - Full source validation, desktop/website E2E, and the clean pinned Linux
   package/visible-launch gate are required before an installed-host claim.
+- `pnpm validate` passed with 431 desktop, 7 website, and 462 Rust tests;
+  `pnpm test:e2e` passed with 80 desktop and 8 website tests; the clean Ubuntu
+  package/visible-launch gate passed for `0.1.0-beta.101`.
+- The one owner-authorized packaged launch on 2026-08-27 used the exact
+  `https://google.com/` target and `https://google.com` origin. Its result was
+  terminal `origin_drift`, with no content digest, observed byte count, or
+  timestamp, after Google redirected outside that approved origin. A later
+  `www.google.com` observation is outside this approval and requires a new
+  exact-origin authorization.
