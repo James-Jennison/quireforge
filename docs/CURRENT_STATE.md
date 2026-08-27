@@ -107,8 +107,8 @@ The `0.1.0-beta.99` M70 candidate adds the private native Knowledge Ledger:
 closed record kinds, bounded storage, immutable event history, owner-only
 decision/constraint activation, and strict native/TypeScript contracts. Source
 validation, desktop E2E, pinned Linux package lifecycle, and visible
-Debian-package launch are being rerun after final contract completion. Owner
-acceptance remains separate.
+Debian-package launch have passed. M70 is validated; owner acceptance remains
+separate.
 
 M65's metadata-only artifact-reference vertical slice is implemented in the
 unreleased `0.1.0-beta.75` candidate. Migration 27 persists only a confirmed
