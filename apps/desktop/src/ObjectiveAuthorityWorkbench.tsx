@@ -82,6 +82,7 @@ export function ObjectiveAuthorityWorkbench({
   const [minutes, setMinutes] = useState(60);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("Loading authority objectives…");
+  const [formNotice, setFormNotice] = useState<string | null>(null);
 
   useEffect(() => {
     closeRef.current?.focus();
@@ -101,7 +102,9 @@ export function ObjectiveAuthorityWorkbench({
       );
   }, [projectId]);
 
-  const apply = async (action: () => Promise<ObjectiveAuthoritySnapshot>) => {
+  const apply = async (
+    action: () => Promise<ObjectiveAuthoritySnapshot>,
+  ): Promise<boolean> => {
     setBusy(true);
     try {
       const next = await action();
@@ -109,10 +112,12 @@ export function ObjectiveAuthorityWorkbench({
       setNotice(
         next.diagnosticCode ?? "Objective updated. No capability has started.",
       );
+      return true;
     } catch {
       setNotice(
         "Authority objectives are unavailable; no capability has started.",
       );
+      return false;
     } finally {
       setBusy(false);
     }
@@ -246,6 +251,7 @@ export function ObjectiveAuthorityWorkbench({
             !lanesSelected.length
           )
             return;
+          setFormNotice(null);
           void apply(() =>
             createObjectiveAuthority({
               projectId,
@@ -255,7 +261,14 @@ export function ObjectiveAuthorityWorkbench({
               confirmationRequiredLanes: flagForReview ? lanesSelected : [],
               expiresInMinutes: minutes,
             }),
-          );
+          ).then((created) => {
+            if (!created) return;
+            setTitle("");
+            setObjective("");
+            setFormNotice(
+              "Draft created. It is listed under Current objectives above; no capability has started.",
+            );
+          });
         }}
       >
         <div>
@@ -348,6 +361,11 @@ export function ObjectiveAuthorityWorkbench({
         >
           Create draft objective
         </button>
+        {formNotice ? (
+          <p className="objective-authority__form-notice" role="status">
+            {formNotice}
+          </p>
+        ) : null}
       </form>
     </section>
   );

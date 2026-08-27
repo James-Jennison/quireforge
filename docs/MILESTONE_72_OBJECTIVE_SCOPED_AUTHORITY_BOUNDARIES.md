@@ -65,5 +65,7 @@ after a project is attached, never from an unattached Local Chat. An owner can
 create a draft, select grouped future scope and an optional review flag,
 activate it, inspect individual locked lanes, and revoke it. The interface
 states explicitly that these records do not start a browser, agent, connector,
-or external action. Clean package, installed-host launch, and owner acceptance
-remain required before M72 is marked validated.
+or external action. A successful draft creation clears the form and confirms
+the draft beside the submit control, preventing an off-screen lifecycle update
+from looking like a failed click. Clean package, installed-host launch, and
+owner acceptance remain required before M72 is marked validated.

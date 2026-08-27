@@ -116,6 +116,14 @@ describe("ObjectiveAuthorityWorkbench", () => {
     expect(
       screen.getByRole("heading", { name: "Current objectives" }),
     ).toBeInTheDocument();
+    expect(screen.getByText(/Draft created\. It is listed/u)).toHaveTextContent(
+      "Draft created. It is listed under Current objectives above",
+    );
+    expect(screen.getByLabelText("Title")).toHaveValue("");
+    expect(screen.getByLabelText("Objective")).toHaveValue("");
+    expect(
+      screen.getByRole("button", { name: "Create draft objective" }),
+    ).toBeDisabled();
     fireEvent.click(screen.getByRole("button", { name: "Activate" }));
     await waitFor(() =>
       expect(operations.activate).toHaveBeenCalledWith({ objectiveId }),

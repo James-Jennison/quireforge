@@ -10,6 +10,12 @@
   implementation milestone. This planning record does not claim a new browser,
   connector, provider, or computer-use capability has shipped.
 
+## 0.1.0-beta.107 — M72 draft-creation feedback candidate
+
+- Clears the completed draft form and reports its successful creation directly
+  beside the submit control, so the owner does not mistake a newly created
+  inert objective for a failed click or create duplicate drafts.
+
 ## 0.1.0-beta.106 — M72 invalid-attachment boundary candidate
 
 - Treats an identity-changed attached project as unavailable rather than
