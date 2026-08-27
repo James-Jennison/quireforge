@@ -108,10 +108,10 @@ function renderWorkspace(
 describe("ConversationWorkspace", () => {
   it("submits bounded runtime-derived controls for a verified project", async () => {
     const { onStart } = renderWorkspace();
-    const start = screen.getByRole("button", { name: "Start task" });
+    const start = screen.getByRole("button", { name: "Send" });
     expect(start).toBeDisabled();
 
-    fireEvent.change(screen.getByLabelText("Task"), {
+    fireEvent.change(screen.getByLabelText("Message"), {
       target: { value: "Review the conversation UI." },
     });
     fireEvent.change(screen.getByLabelText("Reasoning"), {
@@ -137,7 +137,7 @@ describe("ConversationWorkspace", () => {
         integrationEntryIds: [],
       }),
     );
-    expect(screen.getByLabelText("Task")).toHaveValue("");
+    expect(screen.getByLabelText("Message")).toHaveValue("");
   });
 
   it("submits a multiline task once as one unchanged prompt", async () => {
@@ -152,7 +152,7 @@ describe("ConversationWorkspace", () => {
     renderWorkspace({ onStart });
     const task =
       "Inspect the native action.\n\n- Preserve this list.\n- Run one task.";
-    const textarea = screen.getByLabelText("Task");
+    const textarea = screen.getByLabelText("Message");
     const form = textarea.closest("form");
     expect(form).not.toBeNull();
 
@@ -187,10 +187,10 @@ describe("ConversationWorkspace", () => {
     fireEvent.click(
       screen.getByRole("checkbox", { name: "Fixture calendar connector" }),
     );
-    fireEvent.change(screen.getByLabelText("Task"), {
+    fireEvent.change(screen.getByLabelText("Message"), {
       target: { value: "Check my calendar." },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Start task" }));
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
 
     await waitFor(() =>
       expect(onStart).toHaveBeenCalledWith(
@@ -204,7 +204,7 @@ describe("ConversationWorkspace", () => {
 
   it("blocks an unrestricted no-approval combination before IPC", () => {
     const { onStart } = renderWorkspace();
-    fireEvent.change(screen.getByLabelText("Task"), {
+    fireEvent.change(screen.getByLabelText("Message"), {
       target: { value: "Make a change." },
     });
     fireEvent.change(screen.getByLabelText("Filesystem access"), {
@@ -219,7 +219,7 @@ describe("ConversationWorkspace", () => {
         "Unrestricted execution cannot be combined with disabled approvals.",
       ),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Start task" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Send" })).toBeDisabled();
     expect(onStart).not.toHaveBeenCalled();
   });
 
@@ -364,7 +364,7 @@ describe("ConversationWorkspace", () => {
         "Browser preview cannot start or simulate a Codex task.",
       ),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Start task" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Send" })).toBeDisabled();
   });
 
   it("requires the advertised native conversation capability", () => {
@@ -376,7 +376,7 @@ describe("ConversationWorkspace", () => {
         ),
       },
     });
-    fireEvent.change(screen.getByLabelText("Task"), {
+    fireEvent.change(screen.getByLabelText("Message"), {
       target: { value: "Review the task." },
     });
 
@@ -385,6 +385,6 @@ describe("ConversationWorkspace", () => {
         "A ready Codex conversation capability and model catalog are required.",
       ),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Start task" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Send" })).toBeDisabled();
   });
 });

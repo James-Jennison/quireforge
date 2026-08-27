@@ -561,7 +561,8 @@ impl PackageValidationController {
                 Stage::VisibleLaunch,
             ] {
                 let result_file = session.channel_dir.join(format!("{}.json", stage.name()));
-                let mut child = Command::new("python3")
+                let mut command = Command::new("python3");
+                command
                     .arg("scripts/package_validation_stage_adapter.py")
                     .arg("--stage")
                     .arg(stage.name())
@@ -578,7 +579,17 @@ impl PackageValidationController {
                     .env("PATH", "/usr/bin:/bin")
                     .stdin(Stdio::null())
                     .stdout(Stdio::null())
-                    .stderr(Stdio::null())
+                    .stderr(Stdio::null());
+                // The visible-launch stage opens the packaged desktop app on
+                // the already-selected local display. Keep the child closed
+                // to every other ambient variable; these two values are used
+                // only for that local X11 connection and are never recorded.
+                for key in ["DISPLAY", "XAUTHORITY"] {
+                    if let Some(value) = std::env::var_os(key) {
+                        command.env(key, value);
+                    }
+                }
+                let mut child = command
                     .spawn()
                     .map_err(|_| PackageValidationControllerError::Unavailable)?;
                 let status = wait_for_stage(&mut child)?;

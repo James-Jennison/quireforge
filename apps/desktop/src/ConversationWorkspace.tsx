@@ -521,7 +521,7 @@ export function ConversationWorkspace({
         <div>
           <p className="eyebrow">Native conversation</p>
           <h1 id="conversation-title" data-workspace-heading tabIndex={-1}>
-            Start a focused Codex task.
+            Start a conversation with your project.
           </h1>
         </div>
         <p>
@@ -563,14 +563,20 @@ export function ConversationWorkspace({
             void beginTask();
           }}
         >
-          <label htmlFor="conversation-prompt">Task</label>
+          <label htmlFor="conversation-prompt">Message</label>
           <textarea
             id="conversation-prompt"
             maxLength={64 * 1024}
-            placeholder="Describe the change, investigation, or review…"
+            placeholder="Ask QuireForge to investigate, change, explain, or build…"
             value={prompt}
             disabled={active || busy}
             onChange={(event) => setPrompt(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && !event.shiftKey) {
+                event.preventDefault();
+                void beginTask();
+              }
+            }}
           />
           <ConversationAttachmentTray
             availability={availability}
@@ -583,152 +589,159 @@ export function ConversationWorkspace({
             onDrop={onAttachmentDrop}
             onCancel={onAttachmentCancel}
           />
-          <fieldset className="conversation-integrations">
-            <legend>Connected integrations</legend>
-            {availableConnectors.length ? (
-              availableConnectors.map((entry) => (
-                <label key={entry.id}>
-                  <input
-                    type="checkbox"
-                    checked={effectiveSelectedConnectorIds.has(entry.id)}
-                    disabled={
-                      active ||
-                      busy ||
-                      availability !== "native" ||
-                      (!effectiveSelectedConnectorIds.has(entry.id) &&
-                        integrationEntryIds.length >= 8)
-                    }
-                    onChange={(event) => {
-                      setSelectedConnectorIds((current) => {
-                        const next = new Set(
-                          [...current].filter((entryId) =>
-                            availableConnectorIds.has(entryId),
-                          ),
-                        );
-                        if (event.target.checked) next.add(entry.id);
-                        else next.delete(entry.id);
-                        return next;
-                      });
-                    }}
-                  />
-                  <span>{entry.displayName}</span>
-                </label>
-              ))
-            ) : (
-              <p>
-                No authorized, enabled, and healthy connector is available for
-                this task.
-              </p>
-            )}
-          </fieldset>
-          <div className="conversation-controls">
-            <label>
-              <span>Model</span>
-              <select
-                aria-label="Model"
-                value={effectiveModelId}
-                disabled={active || busy || !runtimeReady}
-                onChange={(event) => {
-                  const nextModel = runtime.models.find(
-                    (model) => model.id === event.target.value,
-                  );
-                  setModelId(event.target.value);
-                  if (nextModel) {
-                    setReasoningEffort(nextModel.defaultReasoningEffort);
-                    setSelectionPolicy((current) =>
-                      current.ownership === "automatic"
-                        ? {
-                            ...current,
-                            allowedModelIds: [
-                              ...new Set([
-                                ...current.allowedModelIds,
-                                nextModel.id,
-                              ]),
-                            ].slice(0, 32),
-                          }
-                        : current,
+          <details className="conversation-options">
+            <summary>Actions and conversation settings</summary>
+            <p>
+              Your message starts the conversation. Adjust tools, model, or
+              access only when this turn needs them.
+            </p>
+            <fieldset className="conversation-integrations">
+              <legend>Connected integrations</legend>
+              {availableConnectors.length ? (
+                availableConnectors.map((entry) => (
+                  <label key={entry.id}>
+                    <input
+                      type="checkbox"
+                      checked={effectiveSelectedConnectorIds.has(entry.id)}
+                      disabled={
+                        active ||
+                        busy ||
+                        availability !== "native" ||
+                        (!effectiveSelectedConnectorIds.has(entry.id) &&
+                          integrationEntryIds.length >= 8)
+                      }
+                      onChange={(event) => {
+                        setSelectedConnectorIds((current) => {
+                          const next = new Set(
+                            [...current].filter((entryId) =>
+                              availableConnectorIds.has(entryId),
+                            ),
+                          );
+                          if (event.target.checked) next.add(entry.id);
+                          else next.delete(entry.id);
+                          return next;
+                        });
+                      }}
+                    />
+                    <span>{entry.displayName}</span>
+                  </label>
+                ))
+              ) : (
+                <p>
+                  No authorized, enabled, and healthy connector is available for
+                  this task.
+                </p>
+              )}
+            </fieldset>
+            <div className="conversation-controls">
+              <label>
+                <span>Model</span>
+                <select
+                  aria-label="Model"
+                  value={effectiveModelId}
+                  disabled={active || busy || !runtimeReady}
+                  onChange={(event) => {
+                    const nextModel = runtime.models.find(
+                      (model) => model.id === event.target.value,
                     );
+                    setModelId(event.target.value);
+                    if (nextModel) {
+                      setReasoningEffort(nextModel.defaultReasoningEffort);
+                      setSelectionPolicy((current) =>
+                        current.ownership === "automatic"
+                          ? {
+                              ...current,
+                              allowedModelIds: [
+                                ...new Set([
+                                  ...current.allowedModelIds,
+                                  nextModel.id,
+                                ]),
+                              ].slice(0, 32),
+                            }
+                          : current,
+                      );
+                    }
+                  }}
+                >
+                  {runtime.models.map((model) => (
+                    <option value={model.id} key={model.id}>
+                      {model.displayName}
+                      {model.isDefault ? " — default" : ""}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>Reasoning</span>
+                <select
+                  aria-label="Reasoning"
+                  value={effectiveReasoningEffort}
+                  disabled={active || busy || !selectedModel}
+                  onChange={(event) => setReasoningEffort(event.target.value)}
+                >
+                  {selectedModel?.supportedReasoningEfforts.map((effort) => (
+                    <option value={effort} key={effort}>
+                      {effort}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>Filesystem</span>
+                <select
+                  aria-label="Filesystem access"
+                  value={sandboxMode}
+                  disabled={active || busy}
+                  onChange={(event) =>
+                    setSandboxMode(
+                      event.target
+                        .value as ConversationStartRequest["sandboxMode"],
+                    )
                   }
-                }}
-              >
-                {runtime.models.map((model) => (
-                  <option value={model.id} key={model.id}>
-                    {model.displayName}
-                    {model.isDefault ? " — default" : ""}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              <span>Reasoning</span>
-              <select
-                aria-label="Reasoning"
-                value={effectiveReasoningEffort}
-                disabled={active || busy || !selectedModel}
-                onChange={(event) => setReasoningEffort(event.target.value)}
-              >
-                {selectedModel?.supportedReasoningEfforts.map((effort) => (
-                  <option value={effort} key={effort}>
-                    {effort}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              <span>Filesystem</span>
-              <select
-                aria-label="Filesystem access"
-                value={sandboxMode}
-                disabled={active || busy}
-                onChange={(event) =>
-                  setSandboxMode(
-                    event.target
-                      .value as ConversationStartRequest["sandboxMode"],
-                  )
-                }
-              >
-                {sandboxOptions.map((option) => (
-                  <option value={option.value} key={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              <span>Approvals</span>
-              <select
-                aria-label="Approval policy"
-                value={approvalPolicy}
-                disabled={active || busy}
-                onChange={(event) =>
-                  setApprovalPolicy(
-                    event.target
-                      .value as ConversationStartRequest["approvalPolicy"],
-                  )
-                }
-              >
-                {approvalOptions.map((option) => (
-                  <option value={option.value} key={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
+                >
+                  {sandboxOptions.map((option) => (
+                    <option value={option.value} key={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>Approvals</span>
+                <select
+                  aria-label="Approval policy"
+                  value={approvalPolicy}
+                  disabled={active || busy}
+                  onChange={(event) =>
+                    setApprovalPolicy(
+                      event.target
+                        .value as ConversationStartRequest["approvalPolicy"],
+                    )
+                  }
+                >
+                  {approvalOptions.map((option) => (
+                    <option value={option.value} key={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
 
-          {selectedModel && (
-            <ModelSelectionPolicyFields
-              idPrefix="conversation-start-selection"
-              policy={selectionPolicy}
-              effectiveChoice={{
-                modelId: effectiveModelId,
-                reasoningEffort: effectiveReasoningEffort,
-              }}
-              models={runtime.models}
-              disabled={active || busy || !runtimeReady}
-              onChange={setSelectionPolicy}
-            />
-          )}
+            {selectedModel && (
+              <ModelSelectionPolicyFields
+                idPrefix="conversation-start-selection"
+                policy={selectionPolicy}
+                effectiveChoice={{
+                  modelId: effectiveModelId,
+                  reasoningEffort: effectiveReasoningEffort,
+                }}
+                models={runtime.models}
+                disabled={active || busy || !runtimeReady}
+                onChange={setSelectionPolicy}
+              />
+            )}
+          </details>
 
           <div className="conversation-prerequisite" aria-live="polite">
             {availability === "checking" &&
@@ -753,7 +766,7 @@ export function ConversationWorkspace({
                 type="submit"
                 disabled={!canStart}
               >
-                Start task
+                Send
               </button>
             ) : (
               <button
@@ -766,7 +779,9 @@ export function ConversationWorkspace({
               </button>
             )}
             <span>
-              {projectReady ? project.displayName : "No runnable project"}
+              {projectReady
+                ? `${project.displayName} · Enter to send · Shift+Enter for a new line`
+                : "No runnable project"}
             </span>
           </div>
         </form>
@@ -777,7 +792,7 @@ export function ConversationWorkspace({
         >
           <div className="conversation-stream__header">
             <div>
-              <span>Current task</span>
+              <span>Conversation</span>
               <strong
                 id="conversation-stream-title"
                 role="status"

@@ -1217,10 +1217,10 @@ describe("QuireForge desktop shell", () => {
     await waitFor(() => expect(chooseImages).toBeEnabled());
     fireEvent.click(chooseImages);
     expect(await screen.findByText("review.png")).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText("Task"), {
+    fireEvent.change(screen.getByLabelText("Message"), {
       target: { value: "Review the attached image." },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Start task" }));
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
 
     await waitFor(() =>
       expect(startConversationTask).toHaveBeenCalledWith(
@@ -1539,8 +1539,8 @@ describe("QuireForge desktop shell", () => {
     );
 
     await navigateTo("New task");
-    const start = await screen.findByRole("button", { name: "Start task" });
-    fireEvent.change(screen.getByLabelText("Task"), {
+    const start = await screen.findByRole("button", { name: "Send" });
+    fireEvent.change(screen.getByLabelText("Message"), {
       target: { value: "Review the shell wiring." },
     });
     fireEvent.change(screen.getByLabelText("Reasoning"), {
@@ -1582,9 +1582,9 @@ describe("QuireForge desktop shell", () => {
 
     await navigateTo("New task");
     const prompt = "Keep this task available after the failed action.";
-    const task = screen.getByLabelText("Task");
+    const task = screen.getByLabelText("Message");
     fireEvent.change(task, { target: { value: prompt } });
-    fireEvent.click(screen.getByRole("button", { name: "Start task" }));
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
 
     expect(
       await screen.findByText(
