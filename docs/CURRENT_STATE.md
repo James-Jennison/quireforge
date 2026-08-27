@@ -211,7 +211,12 @@ closed Actions menu prepares only one of four visible proposal classes, and its
 card approves or revokes only an opaque card ID. It explicitly states that no
 project, source, artifact, code, provider, or tool data is selected and that
 approval runs no action. It has no capability-specific receipt consumer. Full
-validation, package, installation, and supervised acceptance are in progress.
+validation passed: 424 desktop tests, 455 Rust tests, package-contract checks,
+lint/format/build/dist gates, 80 desktop E2E tests, and eight website E2E
+tests. The pinned Ubuntu package and release-artifact gates, root-owned staging,
+installer-daemon installation, supervised launch, and canonical installed-host
+validation passed. The immutable receipt reports beta.92, two artifacts,
+`passed` installed-host state, and completed validation.
 
 The `0.1.0-beta.91` M69C Action Card candidate completes the non-executing
 native foundation: a closed prepare, approve, revoke, and opaque content-free

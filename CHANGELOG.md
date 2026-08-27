@@ -7,6 +7,11 @@
 - A card can prepare, approve, or revoke only its opaque native ID. It names
   its boundary in the UI: no data is selected, and approval does not run an
   action. No receipt consumer or capability is introduced.
+- The fresh candidate passed full validation, desktop and website E2E, the
+  pinned Ubuntu package/release-artifact gate, root-owned staging,
+  installer-daemon installation, supervised launch, and canonical
+  installed-host validation. Its immutable content-free receipt reports two
+  artifacts and completed validation.
 
 ## 0.1.0-beta.91 — M69C Action Card authority candidate
 

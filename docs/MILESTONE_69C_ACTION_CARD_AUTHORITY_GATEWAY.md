@@ -69,3 +69,11 @@ proposals, and the card can approve or revoke the same opaque lifecycle. The
 renderer explicitly states that no project, source, artifact, code, provider,
 or tool data is selected or used, and that approval runs no action. It does not
 add a receipt consumer or any data/execution capability.
+
+The beta.92 candidate passed full validation (424 desktop tests, 455 Rust
+tests, package-contract checks, lint/format/build/dist gates), 80 desktop E2E
+tests, and eight website E2E tests. Its fresh pinned Ubuntu package passed the
+release-artifact gate and was installed through root-owned staging and the
+installer daemon. The supervised installed-host launcher was active, running,
+and successful under the fixed 6 GiB boundary; the canonical immutable receipt
+records beta.92, two artifacts, `passed`, and completed validation.
