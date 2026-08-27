@@ -26,10 +26,14 @@ accepted scope is exactly `https://google.com/` at the exact origin
 
 ## Acceptance
 
-- The `0.1.0-beta.102` follow-up candidate adds the previously missing visible
-  user control: Local Chat can open, but cannot invoke, a separate Google-only
-  research review. Prepare and Confirm once remain explicit user actions;
-  beta.102 validation, package, and installed-host UI acceptance are pending.
+- The `0.1.0-beta.102` follow-up candidate passed source, browser E2E, clean
+  package, passwordless installation, and bounded installed-host helper checks,
+  but failed owner UI acceptance because its review mounted in a hidden
+  workspace. It is immutable failed candidate evidence. The `0.1.0-beta.103`
+  replacement mounts the Google-only review in visible Local Chat and adds an
+  end-to-end assertion for that route. Prepare and Confirm once remain explicit
+  user actions; beta.103 validation, package, and installed-host UI acceptance
+  remain required.
 - Strict native and TypeScript contracts permit only the owner-approved exact
   Google target/origin and bounded observation limit.
 - The packaged Linux application exposes a separate helper with no ambient

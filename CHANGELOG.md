@@ -10,6 +10,12 @@
   implementation milestone. This planning record does not claim a new browser,
   connector, provider, or computer-use capability has shipped.
 
+## 0.1.0-beta.103 — M76 research-review visibility correction
+
+- Mounts the separate Google research review in the visible Local Chat
+  workspace rather than the hidden Code conversation workspace.
+- Adds a browser E2E assertion that the Local Chat control opens that review.
+
 ## 0.1.0-beta.102 — M76 research review UI candidate
 
 - Adds the missing user-controlled entry point for the existing isolated Google
@@ -19,6 +25,10 @@
 - The review requires Prepare then Confirm once, exposes cancel/revoke, and
   reports terminal redirect/origin-drift outcomes without rendering or
   retaining page content.
+- Passed source, browser E2E, clean package, passwordless installation, and
+  bounded installed-host helper checks, but failed owner UI acceptance because
+  the review was mounted in a hidden workspace. It is immutable failed
+  candidate evidence.
 
 ## 0.1.0-beta.101 — M76 isolated browser-research
 

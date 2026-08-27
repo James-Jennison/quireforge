@@ -2411,6 +2411,22 @@ test("Local Chat completes an ordinary no-project local-only turn", async ({
   await expect(chat.getByText("A bounded local answer.")).toBeVisible();
 });
 
+test("Local Chat opens the separate Google research review", async ({
+  page,
+}) => {
+  await installNativeFixture(page);
+  await page.goto("/");
+
+  await openWorkspace(page, "Advisor");
+  const chat = page.locator('[data-workspace-view="advisor"]');
+  await chat
+    .getByRole("button", { name: "Research Google (read only)" })
+    .click();
+  await expect(
+    chat.getByRole("heading", { name: "Google research review" }),
+  ).toBeVisible();
+});
+
 test("Advisor presents a bounded chat-first conversation with safe summaries", async ({
   page,
 }, testInfo) => {

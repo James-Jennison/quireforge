@@ -109,12 +109,15 @@ explicit, destination-scoped context projection rather than manual copy/paste
 or ambient sharing. This does not alter M66's content-free ledger or make
 QuireForge's own ADR/CURRENT_STATE process ledger-backed.
 
-The `0.1.0-beta.102` M76 follow-up candidate adds the missing user-controlled
-research-review UI to Local Chat. It provides an explicit **Research Google
-(read only)** entry point that opens a separate prepare/confirm/cancel/revoke
-dialog for the fixed Google scope; it does not give Local Chat browser access
-or page content. Validation, packaging, installation, and installed-host UI
-acceptance remain required for beta.102.
+The `0.1.0-beta.102` M76 follow-up candidate passed source, browser E2E, clean
+package, passwordless installation, and bounded installed-host helper checks,
+but failed owner UI acceptance: its research review was mounted in the hidden
+Code conversation workspace. It is immutable failed candidate evidence.
+
+The `0.1.0-beta.103` replacement mounts the explicit **Research Google (read
+only)** review in visible Local Chat and adds browser E2E coverage for that
+route. It still gives Local Chat no browser access or page content; clean
+package, installation, installed-host, and owner acceptance remain required.
 
 The validated `0.1.0-beta.101` M76 candidate adds an isolated, read-only browser-research
 controller for the owner-approved exact scope `https://google.com/` at

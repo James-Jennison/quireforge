@@ -4415,6 +4415,37 @@ export default function App({
                   }
                 />
               )}
+              {browserResearchOpen && (
+                <Suspense
+                  fallback={
+                    <section
+                      className="mock-inference-workbench"
+                      aria-label="Isolated browser research"
+                    >
+                      <p role="status">Loading isolated browser research…</p>
+                    </section>
+                  }
+                >
+                  <IsolatedBrowserResearchWorkbench
+                    projectId={currentProject?.id ?? null}
+                    onClose={() => setBrowserResearchOpen(false)}
+                  />
+                </Suspense>
+              )}
+              {objectiveAuthorityOpen && (
+                <Suspense
+                  fallback={
+                    <section className="mock-inference-workbench">
+                      <p role="status">Loading authority objectives…</p>
+                    </section>
+                  }
+                >
+                  <ObjectiveAuthorityWorkbench
+                    projectId={currentProject?.id ?? null}
+                    onClose={() => setObjectiveAuthorityOpen(false)}
+                  />
+                </Suspense>
+              )}
             </WorkspaceView>
 
             <WorkspaceView
@@ -4744,39 +4775,6 @@ export default function App({
                         onClose={() =>
                           setControlledBrowserVerificationOpen(false)
                         }
-                      />
-                    </Suspense>
-                  )}
-                  {browserResearchOpen && (
-                    <Suspense
-                      fallback={
-                        <section
-                          className="mock-inference-workbench"
-                          aria-label="Isolated browser research"
-                        >
-                          <p role="status">
-                            Loading isolated browser research…
-                          </p>
-                        </section>
-                      }
-                    >
-                      <IsolatedBrowserResearchWorkbench
-                        projectId={currentProject?.id ?? null}
-                        onClose={() => setBrowserResearchOpen(false)}
-                      />
-                    </Suspense>
-                  )}
-                  {objectiveAuthorityOpen && (
-                    <Suspense
-                      fallback={
-                        <section className="mock-inference-workbench">
-                          <p role="status">Loading authority objectives…</p>
-                        </section>
-                      }
-                    >
-                      <ObjectiveAuthorityWorkbench
-                        projectId={currentProject?.id ?? null}
-                        onClose={() => setObjectiveAuthorityOpen(false)}
                       />
                     </Suspense>
                   )}
