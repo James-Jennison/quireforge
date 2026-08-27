@@ -205,13 +205,17 @@ explicit governed local-only attempt. The evidence record remains content-free:
 no model location, content, loader output, filesystem observation, or generated
 response is retained. M48, M55, and M60 remain preserved.
 
-The `0.1.0-beta.91` M69C Action Card candidate is in source validation. It
-adds only a native, closed Action Card lifecycle: prepare, approve, revoke, and
-an opaque content-free receipt. Every card states that no data scope or
-execution is authorized. It cannot attach a project, read/admit a source,
-claim/create an artifact, run code, reserve the local runtime, or use a
-provider, filesystem, terminal, Git, browser, connector, or network. Its
-renderer and all capability-specific receipt consumers remain future work.
+The `0.1.0-beta.91` M69C Action Card candidate completes the non-executing
+native foundation: a closed prepare, approve, revoke, and opaque content-free
+receipt lifecycle. Every card states that no data scope or execution is
+authorized. It cannot attach a project, read/admit a source, claim/create an
+artifact, run code, reserve the local runtime, or use a provider, filesystem,
+terminal, Git, browser, connector, or network. `pnpm validate`, desktop/mobile
+E2E, the pinned package/release-artifact gate, root-owned staging, daemon
+installation, supervised launch, and canonical installed-host validation
+passed. The immutable receipt reports beta.91, two artifacts, passed
+installed-host state, and completed validation. Its renderer and all
+capability-specific receipt consumers remain future work.
 
 The `0.1.0-beta.90` M69B Threads-first candidate completed source, package,
 staging, daemon-installation, supervised-launch, and canonical installed-host

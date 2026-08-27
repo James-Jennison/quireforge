@@ -8,9 +8,13 @@
 - Cards carry no user text, project/source/artifact identity, path, provider,
   credential, tool, or execution argument. Approval creates only an opaque,
   process-local content-free receipt; it has no data or execution authority.
-- This is a fresh candidate. A renderer, receipt consumer, package, and
-  installed-host acceptance evidence remain required before any M69C completion
-  claim.
+- The fresh candidate passed `pnpm validate` (423 desktop tests, 455 Rust
+  tests, and two sandbox tests), desktop/mobile E2E, the pinned package and
+  release-artifact gates, root-owned staging, daemon installation, supervised
+  launch, and canonical installed-host validation. The immutable receipt is
+  content-free and reports two artifacts with all phases passed.
+- This completes only M69C's non-executing native foundation. Its accessible
+  renderer and any capability-specific receipt consumer remain future work.
 
 ## 0.1.0-beta.90 — M69B Threads-first candidate
 

@@ -63,6 +63,12 @@ connector, terminal, Git, or database dependency.
 ## Candidate implementation
 
 The beta.91 candidate adds the native service, strict Tauri commands, and
-TypeScript bridge contracts described above. It intentionally has no Action
-Card renderer yet: no chat surface can invoke the new commands until the visual
-card preserves the same closed lifecycle and accessibility semantics.
+TypeScript bridge contracts described above. `pnpm validate`, desktop/mobile
+E2E, the pinned package/release-artifact gate, root-owned staging, daemon
+installation, supervised launch, and the canonical installed-host receipt all
+passed. The installed receipt is content-free and records two validated
+artifacts. This completes the non-executing gateway foundation.
+
+The candidate intentionally has no Action Card renderer yet: no chat surface
+can invoke the new commands until the visual card preserves the same closed
+lifecycle and accessibility semantics.
