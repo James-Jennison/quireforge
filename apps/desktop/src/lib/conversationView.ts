@@ -27,9 +27,14 @@ export function mergeConversationEvents(
   const bySequence = new Map(
     [...current, ...incoming].map((event) => [event.sequence, event]),
   );
-  return [...bySequence.values()]
-    .sort((left, right) => left.sequence - right.sequence)
-    .slice(-MAX_CONVERSATION_EVENTS);
+  // Retain complete assistant messages rather than a fixed number of their
+  // transport fragments. A long token-by-token response could otherwise lose
+  // its opening text before the view had a chance to join the deltas.
+  return coalesceConversationMessageDeltas(
+    [...bySequence.values()].sort(
+      (left, right) => left.sequence - right.sequence,
+    ),
+  ).slice(-MAX_CONVERSATION_EVENTS);
 }
 
 /**

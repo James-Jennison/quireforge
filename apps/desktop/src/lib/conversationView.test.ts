@@ -41,6 +41,22 @@ describe("conversation event view", () => {
     expect(result.at(-1)?.sequence).toBe(300);
   });
 
+  it("retains the beginning of a long streamed assistant response", () => {
+    const fragments = Array.from({ length: 300 }, (_, index) => ({
+      type: "agent-message-delta" as const,
+      sequence: index + 1,
+      delta: `[${index}]`,
+    }));
+
+    expect(mergeConversationEvents([], fragments)).toEqual([
+      {
+        type: "agent-message-delta",
+        sequence: 300,
+        delta: fragments.map(({ delta }) => delta).join(""),
+      },
+    ]);
+  });
+
   it("presents contiguous assistant streaming deltas as one bounded message", () => {
     const result = coalesceConversationMessageDeltas([
       { type: "lifecycle", sequence: 1, phase: "running" },

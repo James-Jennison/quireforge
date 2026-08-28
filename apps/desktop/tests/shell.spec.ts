@@ -2760,6 +2760,14 @@ test("visual polish keeps the branded shell and composer accessible", async ({
       (element) => getComputedStyle(element).borderRadius,
     ),
   ).toBe("16px");
+  await page.getByText("Controls", { exact: true }).click();
+  const controls = page.locator(".conversation-options[open]");
+  await expect(controls).toBeVisible();
+  expect(
+    await controls.evaluate(
+      (element) => getComputedStyle(element).backgroundColor,
+    ),
+  ).toMatch(/^rgb\(/u);
   await page.getByRole("textbox", { name: "Message" }).focus();
   await expect(page.getByRole("textbox", { name: "Message" })).toBeFocused();
   await expect(page.locator(".sidebar .nav-item--active")).toContainText(

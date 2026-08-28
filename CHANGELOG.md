@@ -2,6 +2,12 @@
 
 ## Unreleased — M87 chat workspace refinement
 
+- Defines the previously missing opaque raised-surface token, preventing the
+  compact Controls popover, attachment tray, Action menus, and other raised
+  workbench surfaces from becoming transparent and exposing background text.
+- Coalesces assistant stream deltas before applying transcript retention, so a
+  long normal response keeps its opening text instead of dropping it after 256
+  raw transport fragments.
 - Standardizes Escape dismissal across workbench dialogs, Advisor pickers and
   confirmations, durable-source reviews, Local Review destructive
   confirmations, and the conversation-mode confirmation, so every audited

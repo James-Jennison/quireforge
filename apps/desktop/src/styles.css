@@ -13,6 +13,7 @@
   --bg: #101010;
   --surface: #171717;
   --sr: #1e1e1e;
+  --surface-raised: var(--sr);
   --ss: #262626;
   --border: rgba(255, 255, 255, 0.09);
   --bs: rgba(255, 255, 255, 0.16);
