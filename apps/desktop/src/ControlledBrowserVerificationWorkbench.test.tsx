@@ -67,6 +67,18 @@ vi.mock("./lib/bridge", () => ({
 import { ControlledBrowserVerificationWorkbench } from "./ControlledBrowserVerificationWorkbench";
 
 describe("ControlledBrowserVerificationWorkbench", () => {
+  it("closes its dialog with Escape", () => {
+    const onClose = vi.fn();
+    render(
+      <ControlledBrowserVerificationWorkbench
+        projectId={id}
+        onClose={onClose}
+      />,
+    );
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
   it("keeps fictional/local-only/read-only scope visible and prevents duplicate confirmation", async () => {
     render(
       <ControlledBrowserVerificationWorkbench

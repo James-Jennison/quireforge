@@ -2,6 +2,12 @@
 
 ## Unreleased — M87 chat workspace refinement
 
+- Standardizes Escape dismissal across workbench dialogs, Advisor pickers and
+  confirmations, durable-source reviews, Local Review destructive
+  confirmations, and the conversation-mode confirmation, so every audited
+  closable control has a keyboard recovery path.
+- Restricts compact New task composer layout rules to the native conversation
+  workspace, preserving Advisor's natural read-only notice and send order.
 - Replaces the permanently expanded attachment/drop-zone form with a compact
   composer affordance. Attachments appear only after selection, directly above
   the message row; no generic file support or attachment authority changed.

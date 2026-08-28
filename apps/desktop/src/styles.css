@@ -2248,7 +2248,7 @@ button:disabled {
   background: transparent;
 }
 
-.conversation-composer {
+.conversation-workspace .conversation-composer {
   order: 2;
   position: sticky;
   bottom: 0;
@@ -5494,11 +5494,11 @@ button:disabled {
 
 /* The task composer stays one compact control row; expanded controls overlay
  * the transcript instead of permanently consuming workspace height. */
-.conversation-composer > .conversation-attachments {
+.conversation-workspace .conversation-composer > .conversation-attachments {
   display: contents;
 }
 
-.conversation-attachments__trigger {
+.conversation-workspace .conversation-attachments__trigger {
   grid-column: 1;
   grid-row: 1;
   width: 38px;
@@ -5510,13 +5510,13 @@ button:disabled {
   line-height: 1;
 }
 
-.conversation-composer > .conversation-options {
+.conversation-workspace .conversation-composer > .conversation-options {
   grid-column: 3;
   grid-row: 1;
   position: relative;
 }
 
-.conversation-options > summary {
+.conversation-workspace .conversation-options > summary {
   padding: 9px 10px;
   border: 1px solid var(--border);
   border-radius: 999px;
@@ -5526,11 +5526,13 @@ button:disabled {
   list-style: none;
 }
 
-.conversation-options > summary::-webkit-details-marker {
+.conversation-workspace
+  .conversation-options
+  > summary::-webkit-details-marker {
   display: none;
 }
 
-.conversation-options[open] {
+.conversation-workspace .conversation-options[open] {
   position: absolute;
   z-index: 4;
   right: 52px;
@@ -5543,11 +5545,11 @@ button:disabled {
   box-shadow: 0 18px 48px color-mix(in srgb, #000 38%, transparent);
 }
 
-.conversation-options[open] > summary {
+.conversation-workspace .conversation-options[open] > summary {
   margin-bottom: 12px;
 }
 
-.conversation-options__close {
+.conversation-workspace .conversation-options__close {
   position: absolute;
   top: 19px;
   right: 24px;
@@ -5558,7 +5560,7 @@ button:disabled {
   font-size: 10px;
 }
 
-.conversation-composer .conversation-attachment-list {
+.conversation-workspace .conversation-composer .conversation-attachment-list {
   position: absolute;
   z-index: 4;
   bottom: calc(100% + 8px);
@@ -5575,17 +5577,23 @@ button:disabled {
   box-shadow: 0 14px 34px color-mix(in srgb, #000 34%, transparent);
 }
 
-.conversation-composer .conversation-attachment-list li {
+.conversation-workspace
+  .conversation-composer
+  .conversation-attachment-list
+  li {
   min-width: 150px;
   padding: 7px 8px;
 }
 
-.conversation-composer .conversation-attachment-list button {
+.conversation-workspace
+  .conversation-composer
+  .conversation-attachment-list
+  button {
   min-height: 26px;
   padding: 0 7px;
 }
 
-.conversation-composer > .conversation-prerequisite {
+.conversation-workspace .conversation-composer > .conversation-prerequisite {
   grid-column: 1 / -1;
   grid-row: 2;
   min-height: 0;
@@ -5593,14 +5601,14 @@ button:disabled {
   font-size: 10px;
 }
 
-.conversation-composer > .conversation-actions {
+.conversation-workspace .conversation-composer > .conversation-actions {
   grid-column: 4;
   grid-row: 1;
   padding: 0;
   border: 0;
 }
 
-.conversation-actions > span {
+.conversation-workspace .conversation-actions > span {
   display: none;
 }
 

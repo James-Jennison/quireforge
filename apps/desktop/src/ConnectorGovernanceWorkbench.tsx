@@ -55,6 +55,13 @@ export function ConnectorGovernanceWorkbench({
   useEffect(() => {
     closeRef.current?.focus();
   }, []);
+  useEffect(() => {
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [onClose]);
   const nativeOperations = useMemo<Operations | null>(
     () =>
       projectId

@@ -72,6 +72,15 @@ function snapshot(state: string, overrides: Record<string, unknown> = {}) {
 }
 
 describe("ConnectorGovernanceWorkbench", () => {
+  it("closes its dialog with Escape", () => {
+    const onClose = vi.fn();
+    render(
+      <ConnectorGovernanceWorkbench projectId={projectId} onClose={onClose} />,
+    );
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
   it("keeps fictional labeling and explicit read/mutation authority distinct", async () => {
     const prepare = vi.fn().mockResolvedValue(
       snapshot("succeeded", {

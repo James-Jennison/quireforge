@@ -102,6 +102,13 @@ function ContextAssemblyWorkbenchScope({
     };
   }, []);
   useEffect(() => {
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !runtimeRunning) onClose();
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [onClose, runtimeRunning]);
+  useEffect(() => {
     let current = true;
     projectScope.current = projectId;
     if (!projectId)

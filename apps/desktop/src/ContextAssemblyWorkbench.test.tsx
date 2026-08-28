@@ -43,6 +43,13 @@ const bridge = vi.hoisted(() => ({
 vi.mock("./lib/bridge", () => bridge);
 
 describe("ContextAssemblyWorkbench", () => {
+  it("closes with Escape while no local runtime is running", () => {
+    const onClose = vi.fn();
+    render(<ContextAssemblyWorkbench projectId={null} onClose={onClose} />);
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
   it("keeps the one-time local action unavailable until runtime preflight completes", async () => {
     let resolveAvailability!: (value: {
       schemaVersion: 1;

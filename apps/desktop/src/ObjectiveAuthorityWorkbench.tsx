@@ -102,6 +102,14 @@ export function ObjectiveAuthorityWorkbench({
       );
   }, [projectId]);
 
+  useEffect(() => {
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [onClose]);
+
   const apply = async (
     action: () => Promise<ObjectiveAuthoritySnapshot>,
   ): Promise<boolean> => {

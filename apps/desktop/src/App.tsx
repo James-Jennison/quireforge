@@ -2058,6 +2058,17 @@ export default function App({
     };
   }, [mobileNavigationOpen]);
 
+  useEffect(() => {
+    if (!pendingConversationMode) return undefined;
+    const cancelOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      cancelConversationModeChange();
+    };
+    window.addEventListener("keydown", cancelOnEscape);
+    return () => window.removeEventListener("keydown", cancelOnEscape);
+  }, [pendingConversationMode]);
+
   const bridgeLabel = {
     connecting: "Checking native bridge",
     native: "Native IPC verified",

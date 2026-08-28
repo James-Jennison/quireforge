@@ -2930,9 +2930,11 @@ test("native conversation attachments expose only bounded draft metadata", async
   await openWorkspace(page, "New task");
   await page.getByRole("button", { name: "Choose images" }).click();
   await expect(page.getByText("review.png")).toBeVisible();
-  await expect(page.getByText(/67 B · 1 × 1 · drag drop/u)).toBeVisible();
+  await expect(page.getByText(/67 B · 1 × 1/u)).toBeVisible();
   await expect(
-    page.getByText(/sent only with Start, Resume, or Fork/u),
+    page.getByText(
+      /Files are copied into private, short-lived native staging only after review/u,
+    ),
   ).toBeVisible();
   await page.getByRole("button", { name: "Remove review.png" }).click();
   await expect(page.getByText("review.png")).not.toBeVisible();

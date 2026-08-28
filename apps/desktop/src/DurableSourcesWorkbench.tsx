@@ -133,6 +133,21 @@ export function DurableSourcesWorkbench({
       setBusy(false);
     }
   };
+  const cancelPreparation = async () => {
+    if (!preparation || busy) return;
+    setBusy(true);
+    try {
+      await cancelDurableSource({
+        preparationId: preparation.preparationId,
+        nonce: preparation.nonce,
+      });
+    } catch {
+      setError("Admission cancellation is unavailable.");
+    } finally {
+      setPreparation(null);
+      setBusy(false);
+    }
+  };
   const studio = surface === "studio";
   return (
     <section
@@ -227,7 +242,20 @@ export function DurableSourcesWorkbench({
           </div>
           {error && <p role="alert">{error}</p>}
           {preparation && (
-            <dialog open aria-labelledby="durable-source-review-title">
+            <dialog
+              open
+              aria-labelledby="durable-source-review-title"
+              onKeyDown={(event) => {
+                if (event.key === "Escape") {
+                  event.preventDefault();
+                  void cancelPreparation();
+                }
+              }}
+              onCancel={(event) => {
+                event.preventDefault();
+                void cancelPreparation();
+              }}
+            >
               <h3 id="durable-source-review-title">
                 Review durable source admission
               </h3>
@@ -260,30 +288,27 @@ export function DurableSourcesWorkbench({
               <button
                 type="button"
                 disabled={busy}
-                onClick={() =>
-                  void (async () => {
-                    setBusy(true);
-                    try {
-                      await cancelDurableSource({
-                        preparationId: preparation.preparationId,
-                        nonce: preparation.nonce,
-                      });
-                      setPreparation(null);
-                    } catch {
-                      setError("Admission cancellation is unavailable.");
-                      setPreparation(null);
-                    } finally {
-                      setBusy(false);
-                    }
-                  })()
-                }
+                onClick={() => void cancelPreparation()}
               >
                 Cancel
               </button>
             </dialog>
           )}
           {referencePreparation && (
-            <dialog open aria-labelledby="artifact-reference-review-title">
+            <dialog
+              open
+              aria-labelledby="artifact-reference-review-title"
+              onKeyDown={(event) => {
+                if (event.key === "Escape") {
+                  event.preventDefault();
+                  setReferencePreparation(null);
+                }
+              }}
+              onCancel={(event) => {
+                event.preventDefault();
+                setReferencePreparation(null);
+              }}
+            >
               <h3 id="artifact-reference-review-title">
                 Review artifact reference
               </h3>

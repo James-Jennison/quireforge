@@ -64,6 +64,15 @@ vi.mock("./lib/bridge", () => ({
 import { IsolatedBrowserResearchWorkbench } from "./IsolatedBrowserResearchWorkbench";
 
 describe("IsolatedBrowserResearchWorkbench", () => {
+  it("closes its dialog with Escape", () => {
+    const onClose = vi.fn();
+    render(
+      <IsolatedBrowserResearchWorkbench projectId={id} onClose={onClose} />,
+    );
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
   it("keeps Google research separate from chat and requires one explicit confirmation", async () => {
     render(
       <IsolatedBrowserResearchWorkbench projectId={id} onClose={vi.fn()} />,

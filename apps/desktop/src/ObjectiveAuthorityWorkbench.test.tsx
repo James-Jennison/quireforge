@@ -38,6 +38,19 @@ const snapshot = (state: "draft" | "active" | "revoked") => ({
 });
 
 describe("ObjectiveAuthorityWorkbench", () => {
+  it("closes its dialog with Escape", () => {
+    const onClose = vi.fn();
+    render(
+      <ObjectiveAuthorityWorkbench
+        projectId={null}
+        projectName={null}
+        onClose={onClose}
+      />,
+    );
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
   it("requires a project before exposing authority choices", () => {
     render(
       <ObjectiveAuthorityWorkbench

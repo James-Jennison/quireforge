@@ -527,6 +527,20 @@ describe("AdvisorWorkspace", () => {
     ).not.toHaveBeenCalled();
   });
 
+  it("dismisses the attachment picker with Escape", () => {
+    render(<AdvisorWorkspace {...props} />);
+    fireEvent.click(screen.getByRole("button", { name: "Attach a file" }));
+    expect(
+      screen.getByRole("dialog", { name: "Choose attachment type" }),
+    ).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: "Escape" });
+
+    expect(
+      screen.queryByRole("dialog", { name: "Choose attachment type" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("requires explicit confirmation before sending one bounded text attachment", async () => {
     const attachment = {
       schemaVersion: 1,

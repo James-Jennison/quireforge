@@ -1152,6 +1152,18 @@ export default function LocalReviewPane({
       0,
     );
   };
+  useEffect(() => {
+    if (!deletingAnnotationId && !deletingComparisonId) return undefined;
+    const cancelOnEscape = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      if (deletingAnnotationId) cancelAnnotationDelete(deletingAnnotationId);
+      else if (deletingComparisonId)
+        cancelComparisonDiscard(deletingComparisonId);
+    };
+    window.addEventListener("keydown", cancelOnEscape);
+    return () => window.removeEventListener("keydown", cancelOnEscape);
+  }, [deletingAnnotationId, deletingComparisonId]);
   const preparePromotion = () => {
     const collection = snapshot?.selectedCollection;
     if (!collection || !selectedItemId) return;

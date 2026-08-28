@@ -361,7 +361,14 @@ export function AdvisorWorkspace({
   }, [conversation.events, followLatest]);
 
   useEffect(() => {
-    if (!detailsOpen) return undefined;
+    if (
+      !detailsOpen ||
+      confirmAttachmentSend ||
+      confirmContextSend ||
+      attachmentPickerOpen ||
+      selectionState === "confirming"
+    )
+      return undefined;
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
       event.preventDefault();
@@ -370,7 +377,40 @@ export function AdvisorWorkspace({
     };
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
-  }, [detailsOpen]);
+  }, [
+    attachmentPickerOpen,
+    confirmAttachmentSend,
+    confirmContextSend,
+    detailsOpen,
+    selectionState,
+  ]);
+
+  useEffect(() => {
+    const dismissTopmostDialog = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      if (confirmAttachmentSend) {
+        event.preventDefault();
+        setConfirmAttachmentSend(false);
+      } else if (confirmContextSend) {
+        event.preventDefault();
+        setConfirmContextSend(false);
+      } else if (attachmentPickerOpen) {
+        event.preventDefault();
+        setAttachmentPickerOpen(false);
+      } else if (selectionState === "confirming") {
+        event.preventDefault();
+        onCancelProjectState();
+      }
+    };
+    window.addEventListener("keydown", dismissTopmostDialog);
+    return () => window.removeEventListener("keydown", dismissTopmostDialog);
+  }, [
+    attachmentPickerOpen,
+    confirmAttachmentSend,
+    confirmContextSend,
+    onCancelProjectState,
+    selectionState,
+  ]);
 
   function updateViewportPosition() {
     const viewport = conversationViewportRef.current;
