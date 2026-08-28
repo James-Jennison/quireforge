@@ -22,7 +22,9 @@ an external provider.
 
 ## Authority invariants
 
-- Profiles affect conversational prose only.
+- Profiles affect assistant conversational prose only. Action Card content,
+  authority and disclosure copy, lock labels, and failure messages are
+  byte-identical across profiles.
 - They never change objective lifecycle, objective scope, approval policy,
   Action Card requirements, sandbox choice, project access, or external
   capability availability.
@@ -82,24 +84,31 @@ version mapping, protected-file ownership, permissions, and integrity; the
 installed `/usr/bin/quireforge` process was then launched. Owner acceptance of
 the visible profile controls remains required before M87 is marked validated.
 
-`0.1.0-beta.111` supersedes beta.110 for owner acceptance. It keeps M87's
+`0.1.0-beta.112` supersedes beta.111 for owner acceptance. It keeps M87's
 closed Direct/Conversational and authority contracts unchanged while making the
 actual New task workspace a chat-first surface for both profiles: the transcript
 is the main workspace, the composer stays at its bottom, and task settings are
-collapsed supporting controls. Direct and Conversational change language only;
-they never select a different workspace layout. It also ignores streaming
+collapsed supporting controls. Direct and Conversational change assistant prose
+only; they never select a different workspace layout or change Action Card
+content, authority/disclosure copy, lock labels, or failure messages. It also
+ignores streaming
 frames made only of whitespace or invisible Unicode formatting markers before
 strict native protocol validation, while still rejecting a marker mixed with
-visible text. Beta.110's package and installed-host evidence remains historical
-evidence only. Beta.111 has passed full validation, desktop and website E2E,
-the clean pinned Ubuntu package gate, restricted staged installation,
-installed-host integrity validation, and the bounded installed-binary launch
-check. Owner acceptance remains required.
+visible text. Beta.110 and beta.111 package and installed-host evidence remain
+historical evidence only. Beta.112 requires fresh validation, package,
+installed-host evidence, and owner acceptance.
 
-## Owner acceptance procedure — beta.111
+The chat-first presentation has one functional visual boundary: ordinary
+assistant prose, passive progress/evidence, and open clarifying questions stay
+in the reading flow. Only a concrete, bounded action that is actually awaiting
+an explicit yes/no decision interrupts that flow with the existing semantic
+approval surface. Passive activity remains a lightweight, expandable timeline
+row; it is not an Action Card and conveys no authority.
+
+## Owner acceptance procedure — beta.112
 
 This is a one-shot owner review, not a new capability or a new application
-surface. Use the installed `0.1.0-beta.111` application and its New task chat
+surface. Use the installed `0.1.0-beta.112` application and its New task chat
 workspace:
 
 1. Test both **Direct** and **Conversational** profiles. For each profile, the
@@ -111,10 +120,17 @@ workspace:
 2. For each profile, observe a transient polling failure and then a successful
    displayed-task poll. The diagnostic must remain until that success and then
    clear; a persistent failure must remain visible rather than being hidden.
-3. Confirm that changing profiles changes conversational presentation only:
-   approval prompts, authority scope, and execution capability remain
-   unchanged.
-4. Record one terminal owner decision in this report: **accepted** or
+3. Confirm that changing profiles changes assistant conversational prose only:
+   the layout, Action Card content, authority/disclosure copy, lock labels,
+   failure messages, approval prompts, authority scope, and execution
+   capability remain unchanged. Trigger one fixed confirm-tier Action Card in
+   each profile and compare its content byte-for-byte.
+4. Confirm that ordinary responses, passive activity, and open clarifying
+   questions read as part of the transcript; activity may be expanded for
+   evidence, but it must not resemble a permission prompt. A concrete pending
+   approval must remain semantically and visually distinct, with its explicit
+   decisions available.
+5. Record one terminal owner decision in this report: **accepted** or
    **rejected**, with a concise defect note on rejection. A rejection reopens
    M87; it is not a partial pass and does not start M73.
 

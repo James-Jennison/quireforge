@@ -2,6 +2,22 @@
 
 ## Unreleased — authoritative feature-parity roadmap
 
+### 0.1.0-beta.112 — familiar chat workspace candidate
+
+- Reframes the New task conversation as a calm, centered reading flow: native
+  assistant prose is the transcript rather than a stack of response cards,
+  user prompts are quiet right-aligned bubbles, and the composer remains
+  anchored below the conversation.
+- Keeps task settings and operational detail deliberately outside the reading
+  flow. Both profiles retain the identical chat layout; only assistant prose
+  may vary.
+- States and tests the M87 text invariant explicitly: Action Cards,
+  authority/disclosure copy, lock labels, and failure messages are fixed and
+  byte-identical across Direct and Conversational profiles.
+- Keeps passive tool/session evidence as compact, expandable timeline rows in
+  the reading flow. Only a concrete action actually awaiting a yes/no decision
+  uses the distinct approval surface.
+
 ### 0.1.0-beta.111 — chat-first workspace candidate
 
 - Makes the New task workspace a single, persistent conversation surface: a

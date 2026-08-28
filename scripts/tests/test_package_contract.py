@@ -209,7 +209,7 @@ class PackageContractTests(unittest.TestCase):
                 prior_bytes,
             )
     def test_all_source_versions_match_the_beta_candidate(self) -> None:
-        self.assertEqual(source_version(), "0.1.0-beta.111")
+        self.assertEqual(source_version(), "0.1.0-beta.112")
 
     def test_sandbox_worker_uses_the_aligned_release_version_contract(self) -> None:
         source = (ROOT / "scripts/package_sandboxd.py").read_text(encoding="utf-8")

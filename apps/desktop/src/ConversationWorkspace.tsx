@@ -579,7 +579,9 @@ export function ConversationWorkspace({
             void beginTask();
           }}
         >
-          <label htmlFor="conversation-prompt">Message</label>
+          <label className="conversation-composer__label" htmlFor="conversation-prompt">
+            Message
+          </label>
           <textarea
             id="conversation-prompt"
             maxLength={64 * 1024}
@@ -614,8 +616,9 @@ export function ConversationWorkspace({
             <fieldset className="conversation-profile">
               <legend>Conversation style</legend>
               <p>
-                This changes how QuireForge talks — not what it is allowed to
-                do.
+                This changes assistant prose only. Action Cards, authority and
+                disclosure copy, lock labels, and failure messages stay exactly
+                the same.
               </p>
               {interactionProfiles.map((profile) => (
                 <label key={profile.id}>

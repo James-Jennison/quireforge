@@ -212,6 +212,17 @@ describe("ConversationWorkspace", () => {
     expect(message).toHaveTextContent("Make this workspace feel like chat.");
   });
 
+  it("limits conversation style to assistant prose", () => {
+    renderWorkspace();
+    fireEvent.click(screen.getByText("Conversation and task settings"));
+
+    expect(
+      screen.getByText(
+        /This changes assistant prose only\. Action Cards, authority and disclosure copy, lock labels, and failure messages stay exactly the same\./u,
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("shows a bounded actionable native response diagnostic", () => {
     renderWorkspace({ actionError: "native-response-invalid" });
 
