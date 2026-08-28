@@ -100,17 +100,21 @@ research, and M72 objective-scoped authority are completed foundations. M72
 is validated in `0.1.0-beta.107`: full validation, desktop/mobile E2E, clean
 package, installed-host launch, and owner acceptance of the inert
 draft-to-active-to-revoked lifecycle passed. The next product foundation is
-M87 interaction profiles. The `0.1.0-beta.113` candidate supersedes beta.112
+M87 interaction profiles. The `0.1.0-beta.114` candidate supersedes beta.113
 for owner acceptance. It makes the New task work area a single chat-first
 workspace for both Direct and Conversational profiles: a flexible transcript,
-submitted-message bubble, and bottom composer; settings are supportive and
-collapsed by default. Profile selection affects assistant prose only, never the
+submitted-message bubble, and a compact bottom composer. Attachment selection,
+controls, and policy copy are progressive disclosure rather than permanent
+stacked panels. Profile selection affects assistant prose only, never the
 workspace shape, Action Card content, authority/disclosure copy, lock labels,
 failure messages, approval, or native execution scope. It also
 ignores streaming frames made only of whitespace or invisible formatting marks
 before strict protocol validation, preventing those non-semantic frames from
 ending a managed conversation while retaining rejection for mixed visible and
-invisible content. Beta.113 also normalizes an empty optional native plan
+invisible content. Beta.114 preserves partial rendered content and offers a
+bounded existing-conversation retry when strict snapshot recovery fails; it
+does not misstate that condition as a version mismatch. Beta.113 also
+normalizes an empty optional native plan
 explanation to `null` before it reaches the typed desktop snapshot, preventing
 non-semantic framing from producing a frontend contract error. Ordinary prose,
 passive activity, and clarifying questions

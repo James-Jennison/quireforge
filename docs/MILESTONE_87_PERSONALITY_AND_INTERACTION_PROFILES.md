@@ -84,11 +84,12 @@ version mapping, protected-file ownership, permissions, and integrity; the
 installed `/usr/bin/quireforge` process was then launched. Owner acceptance of
 the visible profile controls remains required before M87 is marked validated.
 
-`0.1.0-beta.113` supersedes beta.112 for owner acceptance. It keeps M87's
+`0.1.0-beta.114` supersedes beta.113 for owner acceptance. It keeps M87's
 closed Direct/Conversational and authority contracts unchanged while making the
 actual New task workspace a chat-first surface for both profiles: the transcript
-is the main workspace, the composer stays at its bottom, and task settings are
-collapsed supporting controls. Direct and Conversational change assistant prose
+is the main workspace, the composer stays at its bottom as one compact row,
+and task settings are collapsed supporting controls. Attachments and boundary
+copy appear only when used or explicitly opened. Direct and Conversational change assistant prose
 only; they never select a different workspace layout or change Action Card
 content, authority/disclosure copy, lock labels, or failure messages. It also
 ignores streaming
@@ -96,8 +97,10 @@ frames made only of whitespace or invisible Unicode formatting markers before
 strict native protocol validation, while still rejecting a marker mixed with
 visible text. It also normalizes an empty optional native plan explanation to
 `null`, so non-semantic protocol framing cannot invalidate the typed frontend
-snapshot. Beta.110 through beta.112 package and installed-host evidence remain
-historical evidence only. Beta.113 requires fresh validation, package,
+snapshot. The strict snapshot-recovery path preserves any already rendered
+response and can retry only the existing conversation poll; it does not claim
+an undetected frontend/native version mismatch. Beta.110 through beta.113
+package and installed-host evidence remain historical evidence only. Beta.114 requires fresh validation, package,
 installed-host evidence, and owner acceptance.
 
 The chat-first presentation has one functional visual boundary: ordinary
@@ -107,10 +110,10 @@ an explicit yes/no decision interrupts that flow with the existing semantic
 approval surface. Passive activity remains a lightweight, expandable timeline
 row; it is not an Action Card and conveys no authority.
 
-## Owner acceptance procedure — beta.113
+## Owner acceptance procedure — beta.114
 
 This is a one-shot owner review, not a new capability or a new application
-surface. Use the installed `0.1.0-beta.113` application and its New task chat
+surface. Use the installed `0.1.0-beta.114` application and its New task chat
 workspace:
 
 1. Test both **Direct** and **Conversational** profiles. For each profile, the
