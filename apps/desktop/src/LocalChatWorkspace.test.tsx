@@ -126,6 +126,57 @@ describe("LocalChatWorkspace", () => {
     });
   });
 
+  it("dismisses only the Actions picker with Escape or an outside pointer", () => {
+    render(
+      <LocalChatWorkspace
+        onRun={vi.fn()}
+        onCancel={vi.fn()}
+        onPrepareActionCard={vi.fn()}
+        onApproveActionCard={vi.fn()}
+        onRevokeActionCard={vi.fn()}
+        onOpenLinkedProjectChat={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Actions" }));
+    expect(screen.getByRole("menu")).toBeVisible();
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Actions" }));
+    fireEvent.pointerDown(document.body);
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+  });
+
+  it("keeps a prepared Action Card until its explicit resolution", async () => {
+    const onPrepareActionCard = vi.fn().mockResolvedValue(actionCard);
+    const onApproveActionCard = vi.fn();
+    const onRevokeActionCard = vi.fn();
+    render(
+      <LocalChatWorkspace
+        onRun={vi.fn()}
+        onCancel={vi.fn()}
+        onPrepareActionCard={onPrepareActionCard}
+        onApproveActionCard={onApproveActionCard}
+        onRevokeActionCard={onRevokeActionCard}
+        onOpenLinkedProjectChat={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Actions" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Attach a project" }));
+    expect(
+      await screen.findByRole("heading", { name: "Attach a project" }),
+    ).toBeVisible();
+
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(
+      screen.getByRole("heading", { name: "Attach a project" }),
+    ).toBeVisible();
+    expect(onApproveActionCard).not.toHaveBeenCalled();
+    expect(onRevokeActionCard).not.toHaveBeenCalled();
+  });
+
   it("offers an explicit path to the linked project conversation", () => {
     const onOpenLinkedProjectChat = vi.fn();
     render(

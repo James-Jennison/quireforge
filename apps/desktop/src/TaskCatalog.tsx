@@ -23,10 +23,34 @@ function CreateTaskDialog({
 }) {
   const [title, setTitle] = useState("");
   const titleRef = useRef<HTMLInputElement>(null);
+  const panelRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     titleRef.current?.focus();
   }, []);
+
+  function handleKeyDown(event: KeyboardEvent<HTMLDialogElement>) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      onCancel();
+      return;
+    }
+    if (event.key !== "Tab") return;
+    const controls =
+      panelRef.current?.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      ) ?? [];
+    if (!controls.length) return;
+    const first = controls[0];
+    const last = controls[controls.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last?.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first?.focus();
+    }
+  }
 
   return (
     <dialog
@@ -34,6 +58,11 @@ function CreateTaskDialog({
       className="task-catalog-dialog"
       aria-modal="true"
       aria-labelledby="create-task-dialog-title"
+      onKeyDown={handleKeyDown}
+      onCancel={(event) => {
+        event.preventDefault();
+        onCancel();
+      }}
     >
       <button
         className="task-catalog-dialog__backdrop"
@@ -42,6 +71,7 @@ function CreateTaskDialog({
         onClick={onCancel}
       />
       <form
+        ref={panelRef}
         className="task-catalog-dialog__panel"
         onSubmit={(event) => {
           event.preventDefault();
@@ -144,6 +174,10 @@ function ConfirmationDialog({
       aria-modal="true"
       aria-labelledby="task-catalog-dialog-title"
       onKeyDown={handleKeyDown}
+      onCancel={(event) => {
+        event.preventDefault();
+        onCancel();
+      }}
     >
       <button
         className="task-catalog-dialog__backdrop"

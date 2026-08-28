@@ -156,6 +156,11 @@ describe("IntegrationCenter", () => {
     expect(cancel).toHaveFocus();
     fireEvent.keyDown(window, { key: "Escape" });
     expect(props.onCancel).toHaveBeenCalledOnce();
+    fireEvent(
+      screen.getByRole("dialog"),
+      new Event("cancel", { cancelable: true }),
+    );
+    expect(props.onCancel).toHaveBeenCalledTimes(2);
     fireEvent.click(confirm);
     await waitFor(() =>
       expect(props.onConfirm).toHaveBeenCalledWith(

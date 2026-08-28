@@ -173,6 +173,10 @@ function Dialog({
       aria-modal="true"
       aria-labelledby={titleId}
       onKeyDown={onKeyDown}
+      onCancel={(event) => {
+        event.preventDefault();
+        close();
+      }}
     >
       <button
         className="task-template-dialog__backdrop"

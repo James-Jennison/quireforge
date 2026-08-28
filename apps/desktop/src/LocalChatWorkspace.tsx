@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type { ActionCardAction, ActionCardSnapshot } from "./lib/actionCard";
 import type { LocalChatSnapshot } from "./lib/localChat";
@@ -58,6 +58,26 @@ export function LocalChatWorkspace({
   const [actionPickerOpen, setActionPickerOpen] = useState(false);
   const [actionCard, setActionCard] = useState<ActionCardSnapshot | null>(null);
   const [actionBusy, setActionBusy] = useState(false);
+  const actionPickerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!actionPickerOpen) return undefined;
+    const closePicker = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      setActionPickerOpen(false);
+    };
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      if (actionPickerRef.current?.contains(event.target as Node)) return;
+      setActionPickerOpen(false);
+    };
+    window.addEventListener("keydown", closePicker);
+    document.addEventListener("pointerdown", closeOnOutsidePointer);
+    return () => {
+      window.removeEventListener("keydown", closePicker);
+      document.removeEventListener("pointerdown", closeOnOutsidePointer);
+    };
+  }, [actionPickerOpen]);
 
   async function run() {
     if (busy || !message.trim()) return;
@@ -246,7 +266,7 @@ export function LocalChatWorkspace({
             </button>
           ) : (
             <>
-              <div className="action-card-picker">
+              <div className="action-card-picker" ref={actionPickerRef}>
                 <button
                   type="button"
                   aria-expanded={actionPickerOpen}

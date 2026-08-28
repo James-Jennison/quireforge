@@ -349,5 +349,13 @@ describe("task template management workbench", () => {
     fireEvent.keyDown(dialog, { key: "Escape" });
     await waitFor(() => expect(trigger).toHaveFocus());
     expect(api.delete).not.toHaveBeenCalled();
+
+    fireEvent.click(trigger);
+    fireEvent(
+      screen.getByRole("dialog", { name: /delete local template/i }),
+      new Event("cancel", { cancelable: true }),
+    );
+    await waitFor(() => expect(trigger).toHaveFocus());
+    expect(api.delete).not.toHaveBeenCalled();
   });
 });

@@ -1498,6 +1498,10 @@ export default function LocalReviewPane({
                         cancelComparisonChooser();
                       }
                     }}
+                    onCancel={(event) => {
+                      event.preventDefault();
+                      cancelComparisonChooser();
+                    }}
                   >
                     <h5>Compare {left.title}</h5>
                     <p>
@@ -2003,6 +2007,10 @@ export default function LocalReviewPane({
                             cancelPromotion();
                           }
                         }}
+                        onCancel={(event) => {
+                          event.preventDefault();
+                          cancelPromotion();
+                        }}
                       >
                         <h5 ref={promotionDialogHeading} tabIndex={-1}>
                           Create transient generated artifact
@@ -2130,6 +2138,10 @@ export default function LocalReviewPane({
                     cancelArtifactCopy();
                   }
                 }}
+                onCancel={(event) => {
+                  event.preventDefault();
+                  cancelArtifactCopy();
+                }}
               >
                 <h5>Copy live generated artifact</h5>
                 <p>
@@ -2204,6 +2216,10 @@ export default function LocalReviewPane({
                     cancelArtifactMetadata();
                   }
                 }}
+                onCancel={(event) => {
+                  event.preventDefault();
+                  cancelArtifactMetadata();
+                }}
               >
                 <h5>Capture generated-artifact metadata</h5>
                 <p>
@@ -2271,6 +2287,10 @@ export default function LocalReviewPane({
                     event.preventDefault();
                     cancelSafePreviewMetadata();
                   }
+                }}
+                onCancel={(event) => {
+                  event.preventDefault();
+                  cancelSafePreviewMetadata();
                 }}
               >
                 <h5>Capture safe-preview metadata</h5>

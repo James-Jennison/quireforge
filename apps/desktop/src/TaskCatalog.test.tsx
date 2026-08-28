@@ -316,4 +316,27 @@ describe("durable task catalogue", () => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
     );
   });
+
+  it("cancels local task creation with Escape without creating a task", () => {
+    const create = vi.fn();
+    render(
+      <TaskCatalog
+        {...props(
+          taskCatalogSchema.parse({
+            ...scaffoldTaskCatalog,
+            state: "empty",
+            diagnosticCode: null,
+          }),
+        )}
+        onCreate={create}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "New task" }));
+    const dialog = screen.getByRole("dialog");
+    fireEvent.keyDown(dialog, { key: "Escape" });
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(create).not.toHaveBeenCalled();
+  });
 });

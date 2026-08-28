@@ -6,6 +6,12 @@
   confirmations, durable-source reviews, Local Review destructive
   confirmations, and the conversation-mode confirmation, so every audited
   closable control has a keyboard recovery path.
+- Completes the related native-dialog recovery audit: local task creation,
+  task-template, integration, and Local Review dialogs now handle browser
+  cancel events through their existing explicit cancellation paths, while a
+  prepared Action Card remains visible until it is explicitly approved or
+  revoked. Escape and outside-pointer dismissal apply only to the non-executing
+  Actions proposal picker.
 - Restricts compact New task composer layout rules to the native conversation
   workspace, preserving Advisor's natural read-only notice and send order.
 - Replaces the permanently expanded attachment/drop-zone form with a compact

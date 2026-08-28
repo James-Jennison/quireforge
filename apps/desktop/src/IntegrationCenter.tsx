@@ -746,6 +746,10 @@ export function IntegrationCenter({
             aria-labelledby="integration-dialog-title"
             aria-describedby="integration-dialog-summary"
             onKeyDown={trapDialogFocus}
+            onCancel={(event) => {
+              event.preventDefault();
+              onCancel();
+            }}
           >
             <p className="eyebrow">Fresh native preview</p>
             <h3 id="integration-dialog-title">
@@ -841,6 +845,10 @@ export function IntegrationCenter({
             aria-labelledby="integration-control-dialog-title"
             aria-describedby="integration-control-dialog-summary"
             onKeyDown={trapDialogFocus}
+            onCancel={(event) => {
+              event.preventDefault();
+              onCancel();
+            }}
           >
             <p className="eyebrow">Fresh native control preview</p>
             <h3 id="integration-control-dialog-title">
