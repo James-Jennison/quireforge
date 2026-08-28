@@ -119,10 +119,12 @@ explanation to `null` before it reaches the typed desktop snapshot, preventing
 non-semantic framing from producing a frontend contract error. Ordinary prose,
 passive activity, and clarifying questions
 remain in the transcript; only a concrete pending yes/no action interrupts it
-with a distinct approval surface. Full validation, desktop/mobile E2E, clean packaging,
-restricted staged installation, installed-host integrity validation, and the
-bounded installed-binary launch check passed for beta.111; beta.113 requires
-the same fresh package and installed-host evidence before owner acceptance.
+with a distinct approval surface. Focused conversation tests, desktop/mobile
+E2E, clean packaging, restricted staged installation, installed-host integrity
+validation, and the bounded installed-binary launch check passed for beta.114.
+Repository-wide validation is presently blocked only by pre-existing formatting
+drift outside this candidate in `App.tsx`, `App.test.tsx`, and
+`lib/conversationView.ts`; owner acceptance remains required.
 It is
 followed by M73 context assembly,
 M74 completion, and M86 acceptance; later browser, connector,
