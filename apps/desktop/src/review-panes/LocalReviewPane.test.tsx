@@ -1616,6 +1616,22 @@ describe("local review image pane", () => {
       expect(
         screen.queryByRole("option", { name: new RegExp(forbidden, "i") }),
       ).toBeNull();
+    const comparisonDialog = screen.getByRole("dialog", {
+      name: "Create comparison",
+    });
+    const rightSide = screen.getByRole("combobox", { name: "Right side" });
+    const cancelComparison = screen.getByRole("button", { name: "Cancel" });
+    cancelComparison.focus();
+    fireEvent.keyDown(cancelComparison, { key: "Tab" });
+    expect(rightSide).toHaveFocus();
+    fireEvent.keyDown(comparisonDialog, { key: "Escape" });
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Compare" })).toHaveFocus(),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Compare" }));
+    expect(
+      screen.getByRole("dialog", { name: "Create comparison" }),
+    ).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
     await waitFor(() =>
       expect(screen.getByRole("button", { name: "Compare" })).toHaveFocus(),

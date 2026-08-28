@@ -161,6 +161,31 @@ export default function LocalReviewPane({
   const artifactMetadataTrigger = useRef<HTMLButtonElement>(null);
   const safePreviewMetadataTrigger = useRef<HTMLButtonElement>(null);
   const textPreviewRequest = useRef(0);
+
+  function handleReviewDialogKeyDown(
+    event: KeyboardEvent<HTMLDialogElement>,
+    onCancel: () => void,
+  ) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      onCancel();
+      return;
+    }
+    if (event.key !== "Tab") return;
+    const controls = event.currentTarget.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    );
+    if (!controls.length) return;
+    const first = controls[0];
+    const last = controls[controls.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last?.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first?.focus();
+    }
+  }
   const previewCollectionId =
     snapshot?.selectedCollection?.collectionId ?? null;
   const previewItem = selectedItemId
@@ -1492,12 +1517,9 @@ export default function LocalReviewPane({
                   <dialog
                     open
                     aria-label="Create comparison"
-                    onKeyDown={(event) => {
-                      if (event.key === "Escape") {
-                        event.preventDefault();
-                        cancelComparisonChooser();
-                      }
-                    }}
+                    onKeyDown={(event) =>
+                      handleReviewDialogKeyDown(event, cancelComparisonChooser)
+                    }
                     onCancel={(event) => {
                       event.preventDefault();
                       cancelComparisonChooser();
@@ -2001,12 +2023,9 @@ export default function LocalReviewPane({
                       <dialog
                         open
                         aria-label="Create transient generated artifact confirmation"
-                        onKeyDown={(event) => {
-                          if (event.key === "Escape") {
-                            event.preventDefault();
-                            cancelPromotion();
-                          }
-                        }}
+                        onKeyDown={(event) =>
+                          handleReviewDialogKeyDown(event, cancelPromotion)
+                        }
                         onCancel={(event) => {
                           event.preventDefault();
                           cancelPromotion();
@@ -2132,12 +2151,9 @@ export default function LocalReviewPane({
               <dialog
                 open
                 aria-label="Copy live generated artifact"
-                onKeyDown={(event) => {
-                  if (event.key === "Escape") {
-                    event.preventDefault();
-                    cancelArtifactCopy();
-                  }
-                }}
+                onKeyDown={(event) =>
+                  handleReviewDialogKeyDown(event, cancelArtifactCopy)
+                }
                 onCancel={(event) => {
                   event.preventDefault();
                   cancelArtifactCopy();
@@ -2210,12 +2226,9 @@ export default function LocalReviewPane({
               <dialog
                 open
                 aria-label="Capture generated-artifact metadata"
-                onKeyDown={(event) => {
-                  if (event.key === "Escape") {
-                    event.preventDefault();
-                    cancelArtifactMetadata();
-                  }
-                }}
+                onKeyDown={(event) =>
+                  handleReviewDialogKeyDown(event, cancelArtifactMetadata)
+                }
                 onCancel={(event) => {
                   event.preventDefault();
                   cancelArtifactMetadata();
@@ -2282,12 +2295,9 @@ export default function LocalReviewPane({
               <dialog
                 open
                 aria-label="Capture safe-preview metadata"
-                onKeyDown={(event) => {
-                  if (event.key === "Escape") {
-                    event.preventDefault();
-                    cancelSafePreviewMetadata();
-                  }
-                }}
+                onKeyDown={(event) =>
+                  handleReviewDialogKeyDown(event, cancelSafePreviewMetadata)
+                }
                 onCancel={(event) => {
                   event.preventDefault();
                   cancelSafePreviewMetadata();

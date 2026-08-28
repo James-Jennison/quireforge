@@ -11,7 +11,8 @@
   cancel events through their existing explicit cancellation paths, while a
   prepared Action Card remains visible until it is explicitly approved or
   revoked. Escape and outside-pointer dismissal apply only to the non-executing
-  Actions proposal picker.
+  Actions proposal picker. Local Review dialogs now also wrap keyboard focus
+  within their active decision surface.
 - Restricts compact New task composer layout rules to the native conversation
   workspace, preserving Advisor's natural read-only notice and send order.
 - Replaces the permanently expanded attachment/drop-zone form with a compact
