@@ -82,29 +82,30 @@ version mapping, protected-file ownership, permissions, and integrity; the
 installed `/usr/bin/quireforge` process was then launched. Owner acceptance of
 the visible profile controls remains required before M87 is marked validated.
 
-`0.1.0-beta.110` supersedes beta.109 for owner acceptance. It keeps M87's
-closed Direct/Conversational and authority contracts unchanged while rendering
-contiguous managed-conversation assistant deltas as one bounded response and
-clearing a stale transient poll error after a successful displayed-task poll.
-It also ignores blank stream frames before strict native protocol validation,
-so a framing-only delta cannot fail the managed conversation. The clean pinned
-Ubuntu package gate produced and validated both beta.110 Debian packages. They
-were staged through the restricted root-owned boundary and installed through
-the local installer daemon; the installed-host validator passed package state,
-version mapping, protected-file ownership, permissions, and integrity. The
-installed `/usr/bin/quireforge` remained running for the bounded launch check.
-Owner acceptance remains required for beta.110.
+`0.1.0-beta.111` supersedes beta.110 for owner acceptance. It keeps M87's
+closed Direct/Conversational and authority contracts unchanged while making the
+actual New task workspace a chat-first surface for both profiles: the transcript
+is the main workspace, the composer stays at its bottom, and task settings are
+collapsed supporting controls. Direct and Conversational change language only;
+they never select a different workspace layout. It also ignores streaming
+frames made only of whitespace or invisible Unicode formatting markers before
+strict native protocol validation, while still rejecting a marker mixed with
+visible text. Beta.110's package and installed-host evidence remains historical
+evidence only; full validation, desktop E2E, clean package, installed-host, and
+owner-acceptance evidence must be collected again for beta.111.
 
-## Owner acceptance procedure — beta.110
+## Owner acceptance procedure — beta.111
 
 This is a one-shot owner review, not a new capability or a new application
-surface. Use the installed `0.1.0-beta.110` application and the existing
-managed conversation surface:
+surface. Use the installed `0.1.0-beta.111` application and its New task chat
+workspace:
 
-1. Test both **Direct** and **Conversational** profiles. For each profile,
-   observe at least three representative multi-fragment managed-assistant
-   responses; each must remain one bounded response card rather than a card
-   for every fragment.
+1. Test both **Direct** and **Conversational** profiles. For each profile, the
+   work area must remain the same chat-first transcript with a bottom composer;
+   it must not become a split dashboard or operator-console layout. Observe at
+   least three representative multi-fragment managed-assistant responses; each
+   must remain one bounded response bubble rather than a card for every
+   fragment.
 2. For each profile, observe a transient polling failure and then a successful
    displayed-task poll. The diagnostic must remain until that success and then
    clear; a persistent failure must remain visible rather than being hidden.

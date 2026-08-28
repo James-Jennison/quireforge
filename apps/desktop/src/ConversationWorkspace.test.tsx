@@ -192,6 +192,26 @@ describe("ConversationWorkspace", () => {
     );
   });
 
+  it("keeps controls collapsed and places the submitted message in the chat transcript", async () => {
+    renderWorkspace();
+    const settings = screen
+      .getByText("Conversation and task settings")
+      .closest("details");
+    expect(settings).not.toBeNull();
+    expect(settings).not.toHaveAttribute("open");
+
+    fireEvent.change(screen.getByLabelText("Message"), {
+      target: { value: "Make this workspace feel like chat." },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+
+    await screen.findByText("Make this workspace feel like chat.");
+    const message = document.querySelector(
+      ".conversation-event--user-message",
+    );
+    expect(message).toHaveTextContent("Make this workspace feel like chat.");
+  });
+
   it("shows a bounded actionable native response diagnostic", () => {
     renderWorkspace({ actionError: "native-response-invalid" });
 

@@ -753,7 +753,7 @@ fn parse_notification(message: &Value) -> Result<Option<AppServerNotification>, 
             // is streaming. It has no display or lifecycle meaning, so ignore
             // it before the strict text contract rather than terminating the
             // whole conversation as a protocol failure.
-            if params.delta.trim().is_empty() {
+            if is_framing_only_stream_delta(&params.delta) {
                 return Ok(None);
             }
             validate_stream_text(&params.delta, 64 * 1024)?;
@@ -1678,6 +1678,23 @@ fn validate_stream_text(value: &str, max_bytes: usize) -> Result<(), CodexAdapte
     Ok(())
 }
 
+/// Codex may emit a non-semantic streaming frame made solely of whitespace or
+/// invisible Unicode formatting markers. It has no text to present and must
+/// not convert an otherwise valid turn into a protocol failure. A marker mixed
+/// with visible text still goes through `validate_stream_text` and is rejected.
+pub(crate) fn is_framing_only_stream_delta(value: &str) -> bool {
+    value.chars().all(|character| {
+        character.is_whitespace()
+            || matches!(
+                character,
+                '\u{200B}'..='\u{200F}'
+                    | '\u{202A}'..='\u{202E}'
+                    | '\u{2060}'..='\u{206F}'
+                    | '\u{FEFF}'
+            )
+    })
+}
+
 pub(crate) fn validate_protocol_identifier(
     value: &str,
     max_bytes: usize,
@@ -1937,24 +1954,34 @@ mod tests {
 
     #[test]
     fn ignores_empty_streaming_deltas_without_relaxing_text_validation() {
-        for method in [
-            "item/agentMessage/delta",
-            "item/reasoning/summaryTextDelta",
-        ] {
-            let empty_delta = json!({
+        for method in ["item/agentMessage/delta", "item/reasoning/summaryTextDelta"] {
+            for delta in ["   ", "\u{200B}\u{2060}"] {
+                let empty_delta = json!({
+                    "method": method,
+                    "params": {
+                        "threadId": "018f0000-0000-7000-8000-000000000020",
+                        "turnId": "018f0000-0000-7000-8000-000000000030",
+                        "itemId": "item-1",
+                        "delta": delta
+                    }
+                });
+
+                assert_eq!(
+                    parse_notification(&empty_delta).expect("framing delta must be ignored"),
+                    None
+                );
+            }
+
+            let mixed_delta = json!({
                 "method": method,
                 "params": {
                     "threadId": "018f0000-0000-7000-8000-000000000020",
                     "turnId": "018f0000-0000-7000-8000-000000000030",
                     "itemId": "item-1",
-                    "delta": "   "
+                    "delta": "visible\u{200B} text"
                 }
             });
-
-            assert_eq!(
-                parse_notification(&empty_delta).expect("framing delta must be ignored"),
-                None
-            );
+            assert!(parse_notification(&mixed_delta).is_err());
         }
     }
 

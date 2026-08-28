@@ -2161,9 +2161,12 @@ button:disabled {
 }
 
 .conversation-workspace {
+  display: flex;
   max-width: 1180px;
+  min-height: min(760px, calc(100dvh - 164px));
   margin: 0 auto 42px;
   padding: 40px 44px 44px;
+  flex-direction: column;
   border: 1px solid color-mix(in srgb, var(--bs) 72%, transparent);
   border-radius: 18px;
   background:
@@ -2191,10 +2194,12 @@ button:disabled {
 }
 
 .conversation-layout {
-  display: grid;
-  grid-template-columns: minmax(310px, 0.92fr) minmax(340px, 1.08fr);
-  gap: 16px;
-  margin-top: 28px;
+  display: flex;
+  min-height: 0;
+  margin-top: 22px;
+  flex: 1;
+  flex-direction: column;
+  gap: 14px;
 }
 
 .conversation-composer,
@@ -2204,6 +2209,12 @@ button:disabled {
   border: 1px solid var(--border);
   border-radius: 16px;
   background: color-mix(in srgb, var(--sr) 94%, transparent);
+}
+
+.conversation-composer {
+  order: 2;
+  padding: 16px;
+  border-radius: 16px;
 }
 
 .conversation-composer > label:first-child,
@@ -2234,7 +2245,8 @@ button:disabled {
 }
 
 .conversation-composer textarea {
-  min-height: 154px;
+  min-height: 88px;
+  max-height: 240px;
   resize: vertical;
   padding: 14px 15px;
   font-size: 11px;
@@ -2585,10 +2597,6 @@ button:disabled {
   margin: 17px 0;
 }
 
-.conversation-stream > .model-selection-panel {
-  margin-top: 14px;
-}
-
 .model-selection-panel__heading {
   display: flex;
   align-items: start;
@@ -2848,9 +2856,12 @@ button:disabled {
 }
 
 .conversation-stream {
+  order: 1;
   display: flex;
-  min-height: 410px;
+  min-height: 360px;
   flex-direction: column;
+  flex: 1;
+  border-radius: 16px;
 }
 
 .conversation-stream__header {
@@ -2891,7 +2902,8 @@ button:disabled {
 
 .conversation-events {
   display: flex;
-  max-height: 430px;
+  max-height: none;
+  min-height: 0;
   flex: 1;
   flex-direction: column;
   gap: 9px;
@@ -3026,10 +3038,18 @@ button:disabled {
 }
 
 .conversation-event {
+  max-width: min(760px, 86%);
   padding: 10px 11px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 14px 14px 14px 4px;
   background: color-mix(in srgb, var(--ss) 76%, transparent);
+}
+
+.conversation-event--user-message {
+  align-self: flex-end;
+  border-color: color-mix(in srgb, var(--ab) 48%, var(--border));
+  border-radius: 14px 14px 4px 14px;
+  background: color-mix(in srgb, var(--ab) 20%, var(--sr));
 }
 
 .conversation-event p,

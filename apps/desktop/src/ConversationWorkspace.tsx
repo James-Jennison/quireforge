@@ -319,6 +319,7 @@ export function ConversationWorkspace({
   const defaultModel =
     runtime.models.find((model) => model.isDefault) ?? runtime.models[0];
   const [prompt, setPrompt] = useState(handoffBrief ?? "");
+  const [submittedPrompt, setSubmittedPrompt] = useState<string | null>(null);
   const [receiptSummary, setReceiptSummary] = useState("");
   const [modelId, setModelId] = useState(defaultModel?.id ?? "");
   const [reasoningEffort, setReasoningEffort] = useState(
@@ -463,7 +464,10 @@ export function ConversationWorkspace({
     startInFlight.current = true;
     try {
       const result = await onStart(request);
-      if (result.state === "running") setPrompt("");
+      if (result.state === "running") {
+        setSubmittedPrompt(prompt.trim());
+        setPrompt("");
+      }
     } catch {
       // The bounded action message is owned by App state.
     } finally {
@@ -601,31 +605,32 @@ export function ConversationWorkspace({
             onDrop={onAttachmentDrop}
             onCancel={onAttachmentCancel}
           />
-          <fieldset className="conversation-profile">
-            <legend>Conversation style</legend>
-            <p>
-              This changes how QuireForge talks — not what it is allowed to do.
-            </p>
-            {interactionProfiles.map((profile) => (
-              <label key={profile.id}>
-                <input
-                  type="radio"
-                  name="conversation-interaction-profile"
-                  value={profile.id}
-                  checked={selectedInteractionProfile === profile.id}
-                  disabled={active || busy}
-                  onChange={() => setSelectedInteractionProfile(profile.id)}
-                />
-                <span>{profile.label}</span>
-              </label>
-            ))}
-          </fieldset>
           <details className="conversation-options">
-            <summary>Actions and conversation settings</summary>
+            <summary>Conversation and task settings</summary>
             <p>
-              Your message starts the conversation. Adjust tools, model, or
-              access only when this turn needs them.
+              The workspace stays a chat. Adjust style, tools, model, or access
+              only when this turn needs them.
             </p>
+            <fieldset className="conversation-profile">
+              <legend>Conversation style</legend>
+              <p>
+                This changes how QuireForge talks — not what it is allowed to
+                do.
+              </p>
+              {interactionProfiles.map((profile) => (
+                <label key={profile.id}>
+                  <input
+                    type="radio"
+                    name="conversation-interaction-profile"
+                    value={profile.id}
+                    checked={selectedInteractionProfile === profile.id}
+                    disabled={active || busy}
+                    onChange={() => setSelectedInteractionProfile(profile.id)}
+                  />
+                  <span>{profile.label}</span>
+                </label>
+              ))}
+            </fieldset>
             <fieldset className="conversation-integrations">
               <legend>Connected integrations</legend>
               {availableConnectors.length ? (
@@ -772,6 +777,26 @@ export function ConversationWorkspace({
                 onChange={setSelectionPolicy}
               />
             )}
+            {snapshot.conversationId && snapshot.modelSelection && (
+              <ModelSelectionPanel
+                key={[
+                  snapshot.conversationId,
+                  snapshot.modelSelection.availability,
+                  snapshot.modelSelection.effective.modelId,
+                  snapshot.modelSelection.effective.reasoningEffort,
+                  snapshot.modelSelection.pending?.requestedAtMs ?? "none",
+                  snapshot.modelSelection.policy.ownership,
+                  snapshot.modelSelection.policy.userLocked,
+                  snapshot.modelSelection.policy.allowedModelIds.join(","),
+                  snapshot.modelSelection.policy.reasoningCeiling ?? "none",
+                ].join(":")}
+                conversationId={snapshot.conversationId}
+                selection={snapshot.modelSelection}
+                models={runtime.models}
+                disabled={busy || availability !== "native"}
+                onUpdate={onUpdateModelSelection}
+              />
+            )}
           </details>
 
           <div className="conversation-prerequisite" aria-live="polite">
@@ -837,32 +862,16 @@ export function ConversationWorkspace({
             )}
           </div>
 
-          {snapshot.conversationId && snapshot.modelSelection && (
-            <ModelSelectionPanel
-              key={[
-                snapshot.conversationId,
-                snapshot.modelSelection.availability,
-                snapshot.modelSelection.effective.modelId,
-                snapshot.modelSelection.effective.reasoningEffort,
-                snapshot.modelSelection.pending?.requestedAtMs ?? "none",
-                snapshot.modelSelection.policy.ownership,
-                snapshot.modelSelection.policy.userLocked,
-                snapshot.modelSelection.policy.allowedModelIds.join(","),
-                snapshot.modelSelection.policy.reasoningCeiling ?? "none",
-              ].join(":")}
-              conversationId={snapshot.conversationId}
-              selection={snapshot.modelSelection}
-              models={runtime.models}
-              disabled={busy || availability !== "native"}
-              onUpdate={onUpdateModelSelection}
-            />
-          )}
-
           <div
             className="conversation-events"
             aria-live="polite"
             aria-relevant="additions"
           >
+            {submittedPrompt && (
+              <article className="conversation-event conversation-event--user-message">
+                <p className="conversation-event__message">{submittedPrompt}</p>
+              </article>
+            )}
             {snapshot.pendingApproval && (
               <section
                 className="conversation-approval"

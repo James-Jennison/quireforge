@@ -2,6 +2,18 @@
 
 ## Unreleased — authoritative feature-parity roadmap
 
+### 0.1.0-beta.111 — chat-first workspace candidate
+
+- Makes the New task workspace a single, persistent conversation surface: a
+  flexible transcript above a bottom composer, with the submitted user message
+  rendered in the chat and assistant output kept as bounded response bubbles.
+- Keeps both Direct and Conversational profiles on that same chat-first
+  workspace. Profile choice affects language only; model, permission, connector,
+  and task settings are compact and collapsed until deliberately opened.
+- Ignores streaming frames made solely of whitespace or invisible Unicode
+  formatting markers, while continuing to reject an invisible marker mixed with
+  visible text.
+
 ### 0.1.0-beta.110 — blank stream-frame recovery candidate
 
 - Treats empty or whitespace-only assistant and reasoning stream frames as

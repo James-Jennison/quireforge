@@ -100,16 +100,18 @@ research, and M72 objective-scoped authority are completed foundations. M72
 is validated in `0.1.0-beta.107`: full validation, desktop/mobile E2E, clean
 package, installed-host launch, and owner acceptance of the inert
 draft-to-active-to-revoked lifecycle passed. The next product foundation is
-M87 interaction profiles. The `0.1.0-beta.110` recovery candidate restores a
-coherent managed-conversation response view: contiguous assistant stream
-deltas render as one bounded response, and a stale transient poll diagnostic
-clears only after the displayed task polls successfully. It does not change
-authority, approval, or native execution scope. The clean package gate,
-restricted staged installation, installed-host integrity validation, and the
-bounded installed-binary launch check have passed for beta.110; owner
-acceptance remains required. It also ignores framing-only empty stream deltas
-before strict protocol validation, preventing them from ending a managed
-conversation. It is
+M87 interaction profiles. The `0.1.0-beta.111` candidate supersedes beta.110
+for owner acceptance. It makes the New task work area a single chat-first
+workspace for both Direct and Conversational profiles: a flexible transcript,
+submitted-message bubble, and bottom composer; settings are supportive and
+collapsed by default. Profile selection affects language only, never the
+workspace shape, authority, approval, or native execution scope. It also
+ignores streaming frames made only of whitespace or invisible formatting marks
+before strict protocol validation, preventing those non-semantic frames from
+ending a managed conversation while retaining rejection for mixed visible and
+invisible content. Full validation, desktop/mobile E2E, clean packaging,
+restricted staged installation, installed-host integrity validation,
+installed-binary launch, and owner acceptance remain required for beta.111. It is
 followed by M73 context assembly,
 M74 completion, and M86 acceptance; later browser, connector,
 schedule, provider, and remote capabilities follow their explicit authority

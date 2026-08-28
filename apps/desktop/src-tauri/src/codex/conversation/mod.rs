@@ -26,8 +26,8 @@ use crate::{
 
 use super::{
     app_server::{
-        validate_uuid_v7, AppServerCommand, AppServerNotification, AppServerProcess,
-        ConversationActivityDeltaKind as WireActivityDeltaKind,
+        is_framing_only_stream_delta, validate_uuid_v7, AppServerCommand, AppServerNotification,
+        AppServerProcess, ConversationActivityDeltaKind as WireActivityDeltaKind,
         ConversationErrorCode as WireErrorCode, ConversationItemDetail as WireItemDetail,
         ConversationItemKind as WireItemKind, ConversationItemStatus as WireItemStatus,
         ConversationNotification, ConversationPlanStepStatus as WirePlanStepStatus,
@@ -1339,7 +1339,7 @@ fn apply_notification(
             delta,
         } => {
             ensure_turn(active, &thread_id, &turn_id)?;
-            if delta.trim().is_empty() {
+            if is_framing_only_stream_delta(&delta) {
                 return Ok((None, None));
             }
             Ok((
@@ -1356,7 +1356,7 @@ fn apply_notification(
             delta,
         } => {
             ensure_turn(active, &thread_id, &turn_id)?;
-            if delta.trim().is_empty() {
+            if is_framing_only_stream_delta(&delta) {
                 return Ok((None, None));
             }
             Ok((
@@ -2323,6 +2323,7 @@ mod tests {
             r#"
 printf '%s\n' '{{"method":"item/agentMessage/delta","params":{{"threadId":"{THREAD_ID}","turnId":"{TURN_ID}","itemId":"item-1","delta":"Review complete."}}}}'
 printf '%s\n' '{{"method":"item/agentMessage/delta","params":{{"threadId":"{THREAD_ID}","turnId":"{TURN_ID}","itemId":"item-1","delta":""}}}}'
+printf '%s\n' '{{"method":"item/agentMessage/delta","params":{{"threadId":"{THREAD_ID}","turnId":"{TURN_ID}","itemId":"item-1","delta":"\\u200B"}}}}'
 printf '%s\n' '{{"method":"turn/plan/updated","params":{{"threadId":"{THREAD_ID}","turnId":"{TURN_ID}","explanation":"Checked safely.","plan":[{{"step":"Inspect project","status":"completed"}}]}}}}'
 printf '%s\n' '{{"method":"item/started","params":{{"threadId":"{THREAD_ID}","turnId":"{TURN_ID}","startedAtMs":1,"item":{{"id":"item-2","type":"commandExecution","command":"git status","commandActions":[],"cwd":{cwd_json},"status":"inProgress"}}}}}}'
 printf '%s\n' '{{"method":"item/commandExecution/outputDelta","params":{{"threadId":"{THREAD_ID}","turnId":"{TURN_ID}","itemId":"item-2","delta":"OPENAI_API_KEY="}}}}'
@@ -2368,7 +2369,8 @@ printf '%s\n' '{{"method":"turn/completed","params":{{"threadId":"{THREAD_ID}","
         )));
         assert!(completed.events.iter().all(|event| !matches!(
             event,
-            ConversationEvent::AgentMessageDelta { delta, .. } if delta.trim().is_empty()
+            ConversationEvent::AgentMessageDelta { delta, .. }
+                if is_framing_only_stream_delta(delta)
         )));
         let activity_ids = completed
             .events
