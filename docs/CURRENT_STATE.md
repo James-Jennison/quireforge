@@ -104,11 +104,12 @@ M87 interaction profiles. The `0.1.0-beta.110` recovery candidate restores a
 coherent managed-conversation response view: contiguous assistant stream
 deltas render as one bounded response, and a stale transient poll diagnostic
 clears only after the displayed task polls successfully. It does not change
-authority, approval, or native execution scope. Full validation, desktop/mobile
-E2E, clean packaging, restricted staged installation, installed-host integrity
-validation, installed-binary launch, and owner acceptance remain required for
-beta.110. It also ignores framing-only empty stream deltas before strict
-protocol validation, preventing them from ending a managed conversation. It is
+authority, approval, or native execution scope. The clean package gate,
+restricted staged installation, installed-host integrity validation, and the
+bounded installed-binary launch check have passed for beta.110; owner
+acceptance remains required. It also ignores framing-only empty stream deltas
+before strict protocol validation, preventing them from ending a managed
+conversation. It is
 followed by M73 context assembly,
 M74 completion, and M86 acceptance; later browser, connector,
 schedule, provider, and remote capabilities follow their explicit authority

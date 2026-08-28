@@ -87,8 +87,13 @@ closed Direct/Conversational and authority contracts unchanged while rendering
 contiguous managed-conversation assistant deltas as one bounded response and
 clearing a stale transient poll error after a successful displayed-task poll.
 It also ignores blank stream frames before strict native protocol validation,
-so a framing-only delta cannot fail the managed conversation. Required package,
-installed-host, and owner-acceptance evidence remains open for beta.110.
+so a framing-only delta cannot fail the managed conversation. The clean pinned
+Ubuntu package gate produced and validated both beta.110 Debian packages. They
+were staged through the restricted root-owned boundary and installed through
+the local installer daemon; the installed-host validator passed package state,
+version mapping, protected-file ownership, permissions, and integrity. The
+installed `/usr/bin/quireforge` remained running for the bounded launch check.
+Owner acceptance remains required for beta.110.
 
 ## Owner acceptance procedure — beta.110
 
