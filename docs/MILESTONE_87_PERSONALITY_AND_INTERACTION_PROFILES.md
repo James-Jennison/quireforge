@@ -82,19 +82,18 @@ version mapping, protected-file ownership, permissions, and integrity; the
 installed `/usr/bin/quireforge` process was then launched. Owner acceptance of
 the visible profile controls remains required before M87 is marked validated.
 
-`0.1.0-beta.109` supersedes beta.108 for owner acceptance. It keeps M87's
+`0.1.0-beta.110` supersedes beta.109 for owner acceptance. It keeps M87's
 closed Direct/Conversational and authority contracts unchanged while rendering
 contiguous managed-conversation assistant deltas as one bounded response and
 clearing a stale transient poll error after a successful displayed-task poll.
-Full validation, desktop/mobile E2E, the clean pinned Ubuntu package gate,
-restricted staged installation, installed-host integrity validation, and an
-unprivileged installed-binary launch passed. Owner acceptance of the repaired
-managed-conversation path remains the final M87 gate.
+It also ignores blank stream frames before strict native protocol validation,
+so a framing-only delta cannot fail the managed conversation. Required package,
+installed-host, and owner-acceptance evidence remains open for beta.110.
 
-## Owner acceptance procedure — beta.109
+## Owner acceptance procedure — beta.110
 
 This is a one-shot owner review, not a new capability or a new application
-surface. Use the installed `0.1.0-beta.109` application and the existing
+surface. Use the installed `0.1.0-beta.110` application and the existing
 managed conversation surface:
 
 1. Test both **Direct** and **Conversational** profiles. For each profile,

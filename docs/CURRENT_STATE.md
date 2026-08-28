@@ -100,15 +100,16 @@ research, and M72 objective-scoped authority are completed foundations. M72
 is validated in `0.1.0-beta.107`: full validation, desktop/mobile E2E, clean
 package, installed-host launch, and owner acceptance of the inert
 draft-to-active-to-revoked lifecycle passed. The next product foundation is
-M87 interaction profiles. The `0.1.0-beta.109` recovery candidate restores a
+M87 interaction profiles. The `0.1.0-beta.110` recovery candidate restores a
 coherent managed-conversation response view: contiguous assistant stream
 deltas render as one bounded response, and a stale transient poll diagnostic
 clears only after the displayed task polls successfully. It does not change
 authority, approval, or native execution scope. Full validation, desktop/mobile
 E2E, clean packaging, restricted staged installation, installed-host integrity
-validation, and installed-binary launch passed for beta.109. Owner acceptance
-of the repaired managed conversation remains required before M87 can be marked
-validated. It is followed by M73 context assembly,
+validation, installed-binary launch, and owner acceptance remain required for
+beta.110. It also ignores framing-only empty stream deltas before strict
+protocol validation, preventing them from ending a managed conversation. It is
+followed by M73 context assembly,
 M74 completion, and M86 acceptance; later browser, connector,
 schedule, provider, and remote capabilities follow their explicit authority
 dependencies in `docs/ROADMAP.md`. M91 is the human-led roundtable: the owner

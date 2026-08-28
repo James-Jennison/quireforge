@@ -1,6 +1,6 @@
 {
   "name": "@quireforge/desktop",
-  "version": "0.1.0-beta.109",
+  "version": "0.1.0-beta.110",
   "private": true,
   "type": "module",
   "description": "The native QuireForge Linux desktop workspace.",

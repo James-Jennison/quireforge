@@ -1339,6 +1339,9 @@ fn apply_notification(
             delta,
         } => {
             ensure_turn(active, &thread_id, &turn_id)?;
+            if delta.trim().is_empty() {
+                return Ok((None, None));
+            }
             Ok((
                 Some(ConversationEvent::AgentMessageDelta {
                     sequence: active.take_sequence(),
@@ -1353,6 +1356,9 @@ fn apply_notification(
             delta,
         } => {
             ensure_turn(active, &thread_id, &turn_id)?;
+            if delta.trim().is_empty() {
+                return Ok((None, None));
+            }
             Ok((
                 Some(ConversationEvent::ReasoningSummaryDelta {
                     sequence: active.take_sequence(),
@@ -2316,6 +2322,7 @@ mod tests {
         let trailing = format!(
             r#"
 printf '%s\n' '{{"method":"item/agentMessage/delta","params":{{"threadId":"{THREAD_ID}","turnId":"{TURN_ID}","itemId":"item-1","delta":"Review complete."}}}}'
+printf '%s\n' '{{"method":"item/agentMessage/delta","params":{{"threadId":"{THREAD_ID}","turnId":"{TURN_ID}","itemId":"item-1","delta":""}}}}'
 printf '%s\n' '{{"method":"turn/plan/updated","params":{{"threadId":"{THREAD_ID}","turnId":"{TURN_ID}","explanation":"Checked safely.","plan":[{{"step":"Inspect project","status":"completed"}}]}}}}'
 printf '%s\n' '{{"method":"item/started","params":{{"threadId":"{THREAD_ID}","turnId":"{TURN_ID}","startedAtMs":1,"item":{{"id":"item-2","type":"commandExecution","command":"git status","commandActions":[],"cwd":{cwd_json},"status":"inProgress"}}}}}}'
 printf '%s\n' '{{"method":"item/commandExecution/outputDelta","params":{{"threadId":"{THREAD_ID}","turnId":"{TURN_ID}","itemId":"item-2","delta":"OPENAI_API_KEY="}}}}'
@@ -2358,6 +2365,10 @@ printf '%s\n' '{{"method":"turn/completed","params":{{"threadId":"{THREAD_ID}","
         assert!(completed.events.iter().any(|event| matches!(
             event,
             ConversationEvent::AgentMessageDelta { delta, .. } if delta == "Review complete."
+        )));
+        assert!(completed.events.iter().all(|event| !matches!(
+            event,
+            ConversationEvent::AgentMessageDelta { delta, .. } if delta.trim().is_empty()
         )));
         let activity_ids = completed
             .events

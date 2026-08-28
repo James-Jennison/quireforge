@@ -2,6 +2,14 @@
 
 ## Unreleased — authoritative feature-parity roadmap
 
+### 0.1.0-beta.110 — blank stream-frame recovery candidate
+
+- Treats empty or whitespace-only assistant and reasoning stream frames as
+  non-events before the native bridge validates them, so they cannot terminate
+  a managed conversation or invalidate its poll snapshot.
+- Preserves strict validation for nonblank stream content and retains a second
+  native safeguard against emitting a blank event.
+
 ### 0.1.0-beta.109 — managed-conversation stream recovery candidate
 
 - Presents contiguous assistant streaming deltas as one bounded response card,

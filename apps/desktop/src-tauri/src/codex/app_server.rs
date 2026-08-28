@@ -749,6 +749,13 @@ fn parse_notification(message: &Value) -> Result<Option<AppServerNotification>, 
             }
             let params: Params = notification_params(message)?;
             validate_conversation_ids(&params.thread_id, &params.turn_id)?;
+            // The Codex app server may emit a framing-only delta while a turn
+            // is streaming. It has no display or lifecycle meaning, so ignore
+            // it before the strict text contract rather than terminating the
+            // whole conversation as a protocol failure.
+            if params.delta.trim().is_empty() {
+                return Ok(None);
+            }
             validate_stream_text(&params.delta, 64 * 1024)?;
             let notification = if method == "item/agentMessage/delta" {
                 ConversationNotification::AgentMessageDelta {
@@ -1926,6 +1933,29 @@ mod tests {
 
         assert!(parse_notification(&unsafe_delta).is_err());
         assert!(parse_notification(&invalid_thread).is_err());
+    }
+
+    #[test]
+    fn ignores_empty_streaming_deltas_without_relaxing_text_validation() {
+        for method in [
+            "item/agentMessage/delta",
+            "item/reasoning/summaryTextDelta",
+        ] {
+            let empty_delta = json!({
+                "method": method,
+                "params": {
+                    "threadId": "018f0000-0000-7000-8000-000000000020",
+                    "turnId": "018f0000-0000-7000-8000-000000000030",
+                    "itemId": "item-1",
+                    "delta": "   "
+                }
+            });
+
+            assert_eq!(
+                parse_notification(&empty_delta).expect("framing delta must be ignored"),
+                None
+            );
+        }
     }
 
     #[test]
