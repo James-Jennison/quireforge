@@ -90,3 +90,28 @@ Full validation, desktop/mobile E2E, the clean pinned Ubuntu package gate,
 restricted staged installation, installed-host integrity validation, and an
 unprivileged installed-binary launch passed. Owner acceptance of the repaired
 managed-conversation path remains the final M87 gate.
+
+## Owner acceptance procedure — beta.109
+
+This is a one-shot owner review, not a new capability or a new application
+surface. Use the installed `0.1.0-beta.109` application and the existing
+managed conversation surface:
+
+1. Test both **Direct** and **Conversational** profiles. For each profile,
+   observe at least three representative multi-fragment managed-assistant
+   responses; each must remain one bounded response card rather than a card
+   for every fragment.
+2. For each profile, observe a transient polling failure and then a successful
+   displayed-task poll. The diagnostic must remain until that success and then
+   clear; a persistent failure must remain visible rather than being hidden.
+3. Confirm that changing profiles changes conversational presentation only:
+   approval prompts, authority scope, and execution capability remain
+   unchanged.
+4. Record one terminal owner decision in this report: **accepted** or
+   **rejected**, with a concise defect note on rejection. A rejection reopens
+   M87; it is not a partial pass and does not start M73.
+
+No provider dispatch, browser access, connector call, context transmission,
+approval-policy change, sandbox change, or native execution expansion is part
+of this review. M73 design and implementation remain deferred until this
+terminal decision is recorded.
