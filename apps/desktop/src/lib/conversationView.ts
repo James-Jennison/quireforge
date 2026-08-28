@@ -61,8 +61,7 @@ export function coalesceConversationMessageDeltas(
 function appendBoundedOutput(current: string, delta: string): string {
   const combined = `${current}${delta}`;
   if (combined.length <= MAX_MESSAGE_CHARACTERS) return combined;
-  const retainedLength =
-    MAX_MESSAGE_CHARACTERS - OMITTED_OUTPUT_MARKER.length;
+  const retainedLength = MAX_MESSAGE_CHARACTERS - OMITTED_OUTPUT_MARKER.length;
   return `${OMITTED_OUTPUT_MARKER}${combined.slice(-retainedLength)}`;
 }
 

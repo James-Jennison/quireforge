@@ -5547,6 +5547,17 @@ button:disabled {
   margin-bottom: 12px;
 }
 
+.conversation-options__close {
+  position: absolute;
+  top: 19px;
+  right: 24px;
+  padding: 4px 7px;
+  border: 0;
+  background: transparent;
+  color: var(--tm);
+  font-size: 10px;
+}
+
 .conversation-composer .conversation-attachment-list {
   position: absolute;
   z-index: 4;

@@ -122,9 +122,7 @@ remain in the transcript; only a concrete pending yes/no action interrupts it
 with a distinct approval surface. Focused conversation tests, desktop/mobile
 E2E, clean packaging, restricted staged installation, installed-host integrity
 validation, and the bounded installed-binary launch check passed for beta.114.
-Repository-wide validation is presently blocked only by pre-existing formatting
-drift outside this candidate in `App.tsx`, `App.test.tsx`, and
-`lib/conversationView.ts`; owner acceptance remains required.
+Full repository validation now passes; owner acceptance remains required.
 It is
 followed by M73 context assembly,
 M74 completion, and M86 acceptance; later browser, connector,

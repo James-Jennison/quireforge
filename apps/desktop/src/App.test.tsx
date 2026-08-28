@@ -1616,7 +1616,9 @@ describe("QuireForge desktop shell", () => {
         screen.getByText(/could not finish reading this response/iu),
       ).toBeInTheDocument(),
     );
-    await waitFor(() => expect(screen.getByText("Recovered.")).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText("Recovered.")).toBeInTheDocument(),
+    );
     expect(
       screen.queryByText(/could not finish reading this response/iu),
     ).not.toBeInTheDocument();

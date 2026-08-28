@@ -1818,7 +1818,8 @@ export default function App({
           : [],
       );
       const rejectedPoll = settled.find(
-        (result): result is PromiseRejectedResult => result.status === "rejected",
+        (result): result is PromiseRejectedResult =>
+          result.status === "rejected",
       );
       if (rejectedPoll) {
         setConversationActionError(

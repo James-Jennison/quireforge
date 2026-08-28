@@ -12,9 +12,7 @@
   header remains the single status surface, while approvals, failures, and
   other bounded action evidence retain their distinct treatment.
 - Focused conversation coverage (63 tests) and the desktop/mobile browser
-  suite (88 tests) pass. The repository-wide validation gate remains blocked
-  by pre-existing formatting drift outside this change in `App.tsx`,
-  `App.test.tsx`, and `lib/conversationView.ts`.
+  suite (88 tests) pass. Full repository validation now passes.
 
 ## Unreleased — authoritative feature-parity roadmap
 

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { ConversationAttachmentTray } from "./ConversationAttachmentTray";
 import {
@@ -316,6 +316,8 @@ export function ConversationWorkspace({
   handoffBrief = null,
   onReturnTaskReceipt,
 }: ConversationWorkspaceProps) {
+  const controlsRef = useRef<HTMLDetailsElement>(null);
+  const [controlsOpen, setControlsOpen] = useState(false);
   const defaultModel =
     runtime.models.find((model) => model.isDefault) ?? runtime.models[0];
   const [prompt, setPrompt] = useState(handoffBrief ?? "");
@@ -345,6 +347,26 @@ export function ConversationWorkspace({
   >(null);
   const startInFlight = useRef(false);
   const decisionInFlight = useRef(false);
+
+  useEffect(() => {
+    if (!controlsOpen) return undefined;
+
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      if (!controlsRef.current?.contains(event.target as Node)) {
+        setControlsOpen(false);
+      }
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setControlsOpen(false);
+    };
+
+    document.addEventListener("pointerdown", closeOnOutsidePointer);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsidePointer);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [controlsOpen]);
 
   const activities = useMemo(
     () => buildConversationActivityViews(events),
@@ -613,8 +635,28 @@ export function ConversationWorkspace({
             onDrop={onAttachmentDrop}
             onCancel={onAttachmentCancel}
           />
-          <details className="conversation-options">
-            <summary>Controls</summary>
+          <details
+            ref={controlsRef}
+            className="conversation-options"
+            open={controlsOpen}
+          >
+            <summary
+              onClick={(event) => {
+                event.preventDefault();
+                setControlsOpen((current) => !current);
+              }}
+            >
+              Controls
+            </summary>
+            {controlsOpen && (
+              <button
+                className="conversation-options__close"
+                type="button"
+                onClick={() => setControlsOpen(false)}
+              >
+                Close controls
+              </button>
+            )}
             <p>
               The workspace stays a chat. Adjust style, tools, model, or access
               only when this turn needs them.

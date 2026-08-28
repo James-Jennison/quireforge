@@ -103,10 +103,8 @@ an undetected frontend/native version mismatch. Beta.110 through beta.113
 package and installed-host evidence remain historical evidence only. Beta.114
 passed focused conversation tests, desktop/mobile E2E, the clean pinned package
 lifecycle, restricted staged installation, installed-host integrity validation,
-and bounded installed-binary launch. Repository-wide validation is blocked only
-by pre-existing formatting drift outside this candidate in `App.tsx`,
-`App.test.tsx`, and `lib/conversationView.ts`. Owner acceptance remains
-required.
+and bounded installed-binary launch. Full repository validation now passes.
+Owner acceptance remains required.
 
 The chat-first presentation has one functional visual boundary: ordinary
 assistant prose, passive progress/evidence, and open clarifying questions stay

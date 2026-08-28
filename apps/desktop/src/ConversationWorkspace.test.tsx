@@ -228,6 +228,25 @@ describe("ConversationWorkspace", () => {
     ).toBeInTheDocument();
   });
 
+  it("closes controls from its explicit action, outside click, or Escape", () => {
+    renderWorkspace();
+    const controls = screen.getByText("Controls").closest("details");
+    expect(controls).not.toHaveAttribute("open");
+
+    fireEvent.click(screen.getByText("Controls"));
+    expect(controls).toHaveAttribute("open");
+    fireEvent.click(screen.getByRole("button", { name: "Close controls" }));
+    expect(controls).not.toHaveAttribute("open");
+
+    fireEvent.click(screen.getByText("Controls"));
+    fireEvent.pointerDown(document.body);
+    expect(controls).not.toHaveAttribute("open");
+
+    fireEvent.click(screen.getByText("Controls"));
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(controls).not.toHaveAttribute("open");
+  });
+
   it("preserves the displayed response and offers a bounded retry for an invalid native snapshot", () => {
     const { onRetryPoll } = renderWorkspace({
       actionError: "native-response-invalid",
