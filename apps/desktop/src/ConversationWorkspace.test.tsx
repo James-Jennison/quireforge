@@ -79,6 +79,7 @@ function renderWorkspace(
   overrides: Partial<React.ComponentProps<typeof ConversationWorkspace>> = {},
 ) {
   const onStart = vi.fn().mockResolvedValue(runningConversation);
+  const onRetryPoll = vi.fn().mockResolvedValue(runningConversation);
   const onInterrupt = vi.fn().mockResolvedValue({
     ...runningConversation,
     state: "interrupted",
@@ -99,6 +100,7 @@ function renderWorkspace(
     actionError: null,
     attachmentActionError: false,
     onStart,
+    onRetryPoll,
     onInterrupt,
     onDecideApproval,
     onUpdateModelSelection,
@@ -108,7 +110,7 @@ function renderWorkspace(
     ...overrides,
   };
   render(<ConversationWorkspace {...props} />);
-  return { onStart, onInterrupt, onDecideApproval };
+  return { onStart, onRetryPoll, onInterrupt, onDecideApproval };
 }
 
 describe("ConversationWorkspace", () => {
@@ -223,16 +225,21 @@ describe("ConversationWorkspace", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows a bounded actionable native response diagnostic", () => {
-    renderWorkspace({ actionError: "native-response-invalid" });
+  it("preserves the displayed response and offers a bounded retry for an invalid native snapshot", () => {
+    const { onRetryPoll } = renderWorkspace({
+      actionError: "native-response-invalid",
+      snapshot: runningConversation,
+    });
 
     const alert = screen.getByRole("alert");
     expect(alert).toHaveTextContent(
-      /native conversation service returned an unsupported response/iu,
+      /could not finish reading this response/iu,
     );
     expect(alert).toHaveTextContent(
-      /matching QuireForge frontend and native versions/iu,
+      /response already shown is still available/iu,
     );
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(onRetryPoll).toHaveBeenCalledWith(conversationId);
   });
 
   it("submits a selected healthy connector by normalized catalog ID", async () => {

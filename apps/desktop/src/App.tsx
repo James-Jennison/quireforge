@@ -2890,6 +2890,27 @@ export default function App({
     }
   }
 
+  async function retryConversationPoll(
+    conversationId: string,
+  ): Promise<ConversationSnapshot> {
+    setConversationBusy(true);
+    setConversationActionError(null);
+    try {
+      const result = await pollConversationTask(conversationId);
+      setConversation(result);
+      setConversationEvents((current) =>
+        mergeConversationEvents(current, result.events),
+      );
+      trackConversation(result, false);
+      return result;
+    } catch (error) {
+      setConversationActionError(conversationActionFailureCode(error));
+      throw error;
+    } finally {
+      setConversationBusy(false);
+    }
+  }
+
   async function dispatchApprovedAdvisorRequest(
     request: Parameters<typeof dispatchAdvisorOnce>[0],
   ) {
@@ -4859,6 +4880,7 @@ export default function App({
                     attachmentActionError={conversationAttachmentActionError}
                     interactionProfile={interactionProfile}
                     onStart={beginConversation}
+                    onRetryPoll={retryConversationPoll}
                     onInterrupt={stopConversation}
                     onDecideApproval={applyConversationApproval}
                     onUpdateModelSelection={applyModelSelection}

@@ -52,6 +52,7 @@ interface ConversationWorkspaceProps {
   attachmentActionError: boolean;
   interactionProfile?: InteractionProfileId;
   onStart: (request: ConversationStartRequest) => Promise<ConversationSnapshot>;
+  onRetryPoll: (conversationId: string) => Promise<ConversationSnapshot>;
   onInterrupt: (conversationId: string) => Promise<ConversationSnapshot>;
   onDecideApproval: (
     request: ConversationApprovalDecisionRequest,
@@ -134,7 +135,7 @@ const actionFailureMessages: Record<ConversationActionFailureCode, string> = {
   "native-command-failed":
     "QuireForge could not reach the native conversation service. Verify the native bridge and Codex runtime, then try again.",
   "native-response-invalid":
-    "The native conversation service returned an unsupported response. Restart matching QuireForge frontend and native versions, then try again.",
+    "QuireForge could not finish reading this response. The response already shown is still available.",
 };
 
 const activityLabels: Record<
@@ -307,6 +308,7 @@ export function ConversationWorkspace({
   attachmentActionError,
   interactionProfile = "direct",
   onStart,
+  onRetryPoll,
   onInterrupt,
   onDecideApproval,
   onUpdateModelSelection,
@@ -966,9 +968,19 @@ export function ConversationWorkspace({
             </p>
           )}
           {actionError && (
-            <p className="conversation-diagnostic" role="alert">
+            <div className="conversation-diagnostic" role="alert">
               {actionFailureMessages[actionError]}
-            </p>
+              {actionError === "native-response-invalid" &&
+                snapshot.conversationId && (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void onRetryPoll(snapshot.conversationId!)}
+                  >
+                    Retry
+                  </button>
+                )}
+            </div>
           )}
         </div>
       </div>

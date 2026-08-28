@@ -1613,12 +1613,12 @@ describe("QuireForge desktop shell", () => {
 
     await waitFor(() =>
       expect(
-        screen.getByText(/native conversation service returned an unsupported response/iu),
+        screen.getByText(/could not finish reading this response/iu),
       ).toBeInTheDocument(),
     );
     await waitFor(() => expect(screen.getByText("Recovered.")).toBeInTheDocument());
     expect(
-      screen.queryByText(/native conversation service returned an unsupported response/iu),
+      screen.queryByText(/could not finish reading this response/iu),
     ).not.toBeInTheDocument();
   });
 
