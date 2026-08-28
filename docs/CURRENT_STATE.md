@@ -110,8 +110,9 @@ ignores streaming frames made only of whitespace or invisible formatting marks
 before strict protocol validation, preventing those non-semantic frames from
 ending a managed conversation while retaining rejection for mixed visible and
 invisible content. Full validation, desktop/mobile E2E, clean packaging,
-restricted staged installation, installed-host integrity validation,
-installed-binary launch, and owner acceptance remain required for beta.111. It is
+restricted staged installation, installed-host integrity validation, and the
+bounded installed-binary launch check have passed for beta.111. Owner
+acceptance remains required. It is
 followed by M73 context assembly,
 M74 completion, and M86 acceptance; later browser, connector,
 schedule, provider, and remote capabilities follow their explicit authority

@@ -91,8 +91,10 @@ they never select a different workspace layout. It also ignores streaming
 frames made only of whitespace or invisible Unicode formatting markers before
 strict native protocol validation, while still rejecting a marker mixed with
 visible text. Beta.110's package and installed-host evidence remains historical
-evidence only; full validation, desktop E2E, clean package, installed-host, and
-owner-acceptance evidence must be collected again for beta.111.
+evidence only. Beta.111 has passed full validation, desktop and website E2E,
+the clean pinned Ubuntu package gate, restricted staged installation,
+installed-host integrity validation, and the bounded installed-binary launch
+check. Owner acceptance remains required.
 
 ## Owner acceptance procedure — beta.111
 
