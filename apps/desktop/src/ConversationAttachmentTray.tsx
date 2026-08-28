@@ -122,50 +122,46 @@ export function ConversationAttachmentTray({
   }
 
   return (
-    <div className="conversation-attachments">
-      <div className="conversation-attachments__heading">
-        <div>
-          <strong>Images for this turn</strong>
-          <span>Private draft · maximum 4 · 4 MiB each</span>
-        </div>
-        <button
-          type="button"
-          disabled={!enabled || attachments.length >= 4}
-          onClick={() => projectId && void onPick(projectId)}
-        >
-          Choose images
-        </button>
-      </div>
-
-      <div
-        className={`conversation-drop-zone${dragActive ? " is-active" : ""}`}
-        aria-disabled={!enabled}
-        onDragEnter={(event) => {
-          if (!enabled) return;
-          event.preventDefault();
-          setDragActive(true);
-        }}
-        onDragOver={(event) => {
-          if (!enabled) return;
-          event.preventDefault();
-          event.dataTransfer.dropEffect = "copy";
-        }}
-        onDragLeave={(event) => {
-          if (
-            !event.currentTarget.contains(event.relatedTarget as Node | null)
-          ) {
-            setDragActive(false);
-          }
-        }}
-        onDrop={(event) => void stageDrop(event)}
+    <div
+      className={`conversation-attachments${
+        attachments.length > 0 ? " has-attachments" : ""
+      }${dragActive ? " is-drag-active" : ""}`}
+      aria-disabled={!enabled}
+      onDragEnter={(event) => {
+        if (!enabled) return;
+        event.preventDefault();
+        setDragActive(true);
+      }}
+      onDragOver={(event) => {
+        if (!enabled) return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect = "copy";
+      }}
+      onDragLeave={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+          setDragActive(false);
+        }
+      }}
+      onDrop={(event) => void stageDrop(event)}
+    >
+      <button
+        className="conversation-attachments__trigger"
+        type="button"
+        aria-label="Choose images"
+        title="Attach PNG or JPEG images"
+        disabled={!enabled || attachments.length >= 4}
+        onClick={() => projectId && void onPick(projectId)}
       >
-        <span>Drop PNG/JPEG images here</span>
-        <small>
-          {availability === "preview"
-            ? "Browser preview never reads dropped files."
-            : "Files are copied into private, short-lived native staging only after review."}
-        </small>
-      </div>
+        +
+      </button>
+      <span className="conversation-composer__label">
+        Drop PNG/JPEG images here
+      </span>
+      <span className="conversation-composer__label">
+        {availability === "preview"
+          ? "Browser preview never reads dropped files."
+          : "Files are copied into private, short-lived native staging only after review."}
+      </span>
 
       {attachments.length > 0 && (
         <ul className="conversation-attachment-list" aria-label="Staged images">
@@ -175,8 +171,7 @@ export function ConversationAttachmentTray({
                 <strong>{attachment.displayName}</strong>
                 <span>
                   {formatBytes(attachment.byteSize)} · {attachment.imageWidth} ×{" "}
-                  {attachment.imageHeight} ·{" "}
-                  {attachment.source.replace("-", " ")}
+                  {attachment.imageHeight}
                 </span>
               </div>
               <button
@@ -210,11 +205,6 @@ export function ConversationAttachmentTray({
           existing drafts remain held.
         </p>
       )}
-      <p className="conversation-attachments__policy">
-        Images are sent only with Start, Resume, or Fork. Cancelled, consumed,
-        expired, and startup-stale copies are removed; generic files remain
-        unsupported by the reviewed Codex interface.
-      </p>
     </div>
   );
 }

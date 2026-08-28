@@ -285,12 +285,10 @@ function EventCard({ event }: { event: ConversationEvent }) {
       </p>
     );
   }
-  if (event.type === "lifecycle")
-    return (
-      <p className="conversation-event__lifecycle">
-        {event.phase.split("-").join(" ")}
-      </p>
-    );
+  // The live header is the single source for passive lifecycle state. Repeating
+  // individual STARTING/RUNNING frames in the transcript turns progress into
+  // stacked system captions rather than a conversation.
+  if (event.type === "lifecycle") return null;
   return null;
 }
 
@@ -542,12 +540,15 @@ export function ConversationWorkspace({
             Start a conversation with your project.
           </h1>
         </div>
-        <p>
-          Work stays scoped to the attached directory. QuireForge displays a
-          normalized event stream and does not persist transcript content.
-          Background approval, completion, and failure alerts use fixed text
-          without project names, prompts, paths, or task output.
-        </p>
+        <details className="conversation-boundary-disclosure">
+          <summary>About this workspace</summary>
+          <p>
+            Work stays scoped to the attached directory. QuireForge displays a
+            normalized event stream and does not persist transcript content.
+            Background approval, completion, and failure alerts use fixed text
+            without project names, prompts, paths, or task output.
+          </p>
+        </details>
       </div>
 
       <div className="conversation-layout">
@@ -613,7 +614,7 @@ export function ConversationWorkspace({
             onCancel={onAttachmentCancel}
           />
           <details className="conversation-options">
-            <summary>Conversation and task settings</summary>
+            <summary>Controls</summary>
             <p>
               The workspace stays a chat. Adjust style, tools, model, or access
               only when this turn needs them.

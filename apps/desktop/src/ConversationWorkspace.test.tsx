@@ -196,9 +196,7 @@ describe("ConversationWorkspace", () => {
 
   it("keeps controls collapsed and places the submitted message in the chat transcript", async () => {
     renderWorkspace();
-    const settings = screen
-      .getByText("Conversation and task settings")
-      .closest("details");
+    const settings = screen.getByText("Controls").closest("details");
     expect(settings).not.toBeNull();
     expect(settings).not.toHaveAttribute("open");
 
@@ -208,15 +206,20 @@ describe("ConversationWorkspace", () => {
     fireEvent.click(screen.getByRole("button", { name: "Send" }));
 
     await screen.findByText("Make this workspace feel like chat.");
-    const message = document.querySelector(
-      ".conversation-event--user-message",
-    );
+    const message = document.querySelector(".conversation-event--user-message");
     expect(message).toHaveTextContent("Make this workspace feel like chat.");
+  });
+
+  it("keeps lifecycle frames out of the transcript while the live header reports status", () => {
+    renderWorkspace({ snapshot: runningConversation });
+
+    expect(screen.getByRole("status")).toHaveTextContent("Codex is working");
+    expect(document.querySelector(".conversation-event__lifecycle")).toBeNull();
   });
 
   it("limits conversation style to assistant prose", () => {
     renderWorkspace();
-    fireEvent.click(screen.getByText("Conversation and task settings"));
+    fireEvent.click(screen.getByText("Controls"));
 
     expect(
       screen.getByText(
@@ -232,9 +235,7 @@ describe("ConversationWorkspace", () => {
     });
 
     const alert = screen.getByRole("alert");
-    expect(alert).toHaveTextContent(
-      /could not finish reading this response/iu,
-    );
+    expect(alert).toHaveTextContent(/could not finish reading this response/iu);
     expect(alert).toHaveTextContent(
       /response already shown is still available/iu,
     );

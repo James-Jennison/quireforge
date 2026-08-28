@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased — M87 chat workspace refinement
+
+- Replaces the permanently expanded attachment/drop-zone form with a compact
+  composer affordance. Attachments appear only after selection, directly above
+  the message row; no generic file support or attachment authority changed.
+- Moves conversation controls into an inline, collapsed Controls pill and
+  collapses the workspace-boundary explanation behind an explicit info
+  affordance, preserving its content without consuming the reading area.
+- Keeps passive lifecycle frames out of the transcript. The live conversation
+  header remains the single status surface, while approvals, failures, and
+  other bounded action evidence retain their distinct treatment.
+- Focused conversation coverage (63 tests) and the desktop/mobile browser
+  suite (88 tests) pass. The repository-wide validation gate remains blocked
+  by pre-existing formatting drift outside this change in `App.tsx`,
+  `App.test.tsx`, and `lib/conversationView.ts`.
+
 ## Unreleased — authoritative feature-parity roadmap
 
 ### 0.1.0-beta.113 — managed conversation compatibility fix
