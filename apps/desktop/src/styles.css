@@ -2220,6 +2220,7 @@ button:disabled {
   bottom: 0;
   z-index: 2;
   padding: 14px 0 max(14px, env(safe-area-inset-bottom));
+  border-radius: 16px;
   background: linear-gradient(
     to bottom,
     color-mix(in srgb, var(--surface) 0%, transparent),

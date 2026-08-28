@@ -579,7 +579,10 @@ export function ConversationWorkspace({
             void beginTask();
           }}
         >
-          <label className="conversation-composer__label" htmlFor="conversation-prompt">
+          <label
+            className="conversation-composer__label"
+            htmlFor="conversation-prompt"
+          >
             Message
           </label>
           <textarea
@@ -881,9 +884,9 @@ export function ConversationWorkspace({
                 aria-labelledby={`approval-${snapshot.pendingApproval.approvalId}`}
               >
                 <p className="eyebrow">Action required</p>
-                <h3 id={`approval-${snapshot.pendingApproval.approvalId}`}>
+                <h2 id={`approval-${snapshot.pendingApproval.approvalId}`}>
                   {snapshot.pendingApproval.title}
-                </h3>
+                </h2>
                 <span className="conversation-approval__kind">
                   {snapshot.pendingApproval.kind.split("-").join(" ")} approval
                 </span>

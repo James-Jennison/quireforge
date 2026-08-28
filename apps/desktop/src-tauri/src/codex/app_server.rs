@@ -792,9 +792,7 @@ fn parse_notification(message: &Value) -> Result<Option<AppServerNotification>, 
             if params.plan.len() > 128 {
                 return Err(CodexAdapterError::InvalidProtocolMessage);
             }
-            if let Some(explanation) = params.explanation.as_deref() {
-                validate_stream_text(explanation, 4096)?;
-            }
+            let explanation = normalize_optional_stream_text(params.explanation, 4096)?;
             let steps = params
                 .plan
                 .into_iter()
@@ -816,7 +814,7 @@ fn parse_notification(message: &Value) -> Result<Option<AppServerNotification>, 
                 ConversationNotification::PlanUpdated {
                     thread_id: params.thread_id,
                     turn_id: params.turn_id,
-                    explanation: params.explanation,
+                    explanation,
                     steps,
                 },
             )))
@@ -1695,6 +1693,20 @@ pub(crate) fn is_framing_only_stream_delta(value: &str) -> bool {
     })
 }
 
+fn normalize_optional_stream_text(
+    value: Option<String>,
+    max_bytes: usize,
+) -> Result<Option<String>, CodexAdapterError> {
+    let Some(value) = value else {
+        return Ok(None);
+    };
+    if is_framing_only_stream_delta(&value) {
+        return Ok(None);
+    }
+    validate_stream_text(&value, max_bytes)?;
+    Ok(Some(value))
+}
+
 pub(crate) fn validate_protocol_identifier(
     value: &str,
     max_bytes: usize,
@@ -1983,6 +1995,42 @@ mod tests {
             });
             assert!(parse_notification(&mixed_delta).is_err());
         }
+    }
+
+    #[test]
+    fn normalizes_empty_optional_plan_explanations_to_none() {
+        for explanation in ["", "   ", "\u{200B}\u{2060}"] {
+            let plan = json!({
+                "method": "turn/plan/updated",
+                "params": {
+                    "threadId": "018f0000-0000-7000-8000-000000000020",
+                    "turnId": "018f0000-0000-7000-8000-000000000030",
+                    "explanation": explanation,
+                    "plan": [{"step": "Inspect safely.", "status": "inProgress"}]
+                }
+            });
+
+            assert!(matches!(
+                parse_notification(&plan),
+                Ok(Some(AppServerNotification::Conversation(
+                    ConversationNotification::PlanUpdated {
+                        explanation: None,
+                        ..
+                    }
+                )))
+            ));
+        }
+
+        let unsafe_explanation = json!({
+            "method": "turn/plan/updated",
+            "params": {
+                "threadId": "018f0000-0000-7000-8000-000000000020",
+                "turnId": "018f0000-0000-7000-8000-000000000030",
+                "explanation": "visible\u{200B} text",
+                "plan": []
+            }
+        });
+        assert!(parse_notification(&unsafe_explanation).is_err());
     }
 
     #[test]

@@ -2,6 +2,14 @@
 
 ## Unreleased — authoritative feature-parity roadmap
 
+### 0.1.0-beta.113 — managed conversation compatibility fix
+
+- Normalizes empty, whitespace-only, or invisible-only optional native plan
+  explanations to `null` before they cross the typed desktop bridge. This keeps
+  non-semantic protocol framing from invalidating an otherwise valid streamed
+  conversation snapshot, while visible text containing unsafe invisible
+  formatting remains rejected.
+
 ### 0.1.0-beta.112 — familiar chat workspace candidate
 
 - Reframes the New task conversation as a calm, centered reading flow: native
