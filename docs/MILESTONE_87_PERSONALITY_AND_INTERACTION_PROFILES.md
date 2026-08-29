@@ -84,7 +84,7 @@ version mapping, protected-file ownership, permissions, and integrity; the
 installed `/usr/bin/quireforge` process was then launched. Owner acceptance of
 the visible profile controls remains required before M87 is marked validated.
 
-`0.1.0-beta.115` supersedes failed beta.114 for owner acceptance. It keeps M87's
+`0.1.0-beta.116` supersedes failed beta.115 and beta.114 for owner acceptance. It keeps M87's
 closed Direct/Conversational and authority contracts unchanged while making the
 actual New task workspace a chat-first surface for both profiles: the transcript
 is the main workspace, the composer stays at its bottom as one compact row,
@@ -104,12 +104,14 @@ package and installed-host evidence remain historical evidence only. Beta.114
 is immutable failed acceptance evidence because the installed app dropped the
 opening fragments of a reply and then surfaced a terminal native-response
 diagnostic. Beta.115 reconciles each stream with the completed assistant message
-and keeps passive item-schema drift from terminating the response. Full
-repository validation, all 88 desktop/mobile E2E cases, the clean pinned Ubuntu
-22.04 package lifecycle, restricted staging and passwordless installation of
-both Debian packages, installed-host integrity validation, and an active launch
-of the installed `/usr/bin/quireforge` process pass. Owner acceptance remains
-required.
+and keeps passive item-schema drift from terminating the response, but it is
+immutable failed acceptance evidence because one malformed passive event could
+still reject an entire already-consumed poll batch. Beta.116 recovers only that
+explicitly classified passive member while preserving ordered assistant text;
+its exhaustive event classification keeps assistant, lifecycle, approval,
+model-selection, error, envelope, and unknown-event failures closed. Full
+repository validation, all 88 desktop/mobile E2E cases, and all eight website
+E2E cases pass. Clean package and installed-host acceptance remain pending.
 
 The chat-first presentation has one functional visual boundary: ordinary
 assistant prose, passive progress/evidence, and open clarifying questions stay
@@ -118,10 +120,10 @@ an explicit yes/no decision interrupts that flow with the existing semantic
 approval surface. Passive activity remains a lightweight, expandable timeline
 row; it is not an Action Card and conveys no authority.
 
-## Owner acceptance procedure — beta.115
+## Owner acceptance procedure — beta.116
 
 This is a one-shot owner review, not a new capability or a new application
-surface. Use the installed `0.1.0-beta.115` application and its New task chat
+surface. Use the installed `0.1.0-beta.116` application and its New task chat
 workspace:
 
 1. Test both **Direct** and **Conversational** profiles. For each profile, the

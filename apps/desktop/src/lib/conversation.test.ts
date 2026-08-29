@@ -3,12 +3,14 @@ import { describe, expect, it } from "vitest";
 
 import {
   conversationRegistrySchema,
+  parseConversationSnapshotResponse,
   conversationSnapshotSchema,
   conversationStartRequestSchema,
   conversationApprovalDecisionRequestSchema,
   scaffoldConversationRegistry,
   scaffoldConversation,
 } from "./conversation";
+import { mergeConversationEvents } from "./conversationView";
 
 const conversationId = "018f0000-0000-7000-8000-000000000010";
 const projectId = "018f0000-0000-7000-8000-000000000001";
@@ -124,6 +126,127 @@ describe("conversation contract", () => {
         events: snapshot.events.toReversed(),
       }),
     ).toThrow();
+  });
+
+  it("preserves a consumed completed reply when passive evidence is unpresentable", () => {
+    const payload = {
+      schemaVersion: 3,
+      state: "completed",
+      conversationId,
+      projectId,
+      modelId: "gpt-5.6-sol",
+      reasoningEffort: "high",
+      modelSelection,
+      sandboxMode: "read-only",
+      approvalPolicy: "untrusted",
+      pendingApproval: null,
+      events: [
+        { type: "lifecycle", sequence: 1, phase: "starting" },
+        {
+          type: "activity",
+          sequence: 2,
+          activityId: "unpresentable-passive-id",
+          kind: "command-execution",
+          status: "completed",
+          title: "Run command",
+          detail: null,
+          exitCode: 0,
+        },
+        {
+          type: "agent-message-completed",
+          sequence: 3,
+          itemId: "item_status_reply",
+          text: "Here is the complete project status.",
+        },
+        { type: "lifecycle", sequence: 4, phase: "completed" },
+      ],
+      diagnosticCode: null,
+    };
+
+    expect(conversationSnapshotSchema.safeParse(payload).success).toBe(false);
+    expect(parseConversationSnapshotResponse(payload)?.events).toEqual([
+      payload.events[0],
+      payload.events[2],
+      payload.events[3],
+    ]);
+  });
+
+  it("never recovers an invalid actionable event", () => {
+    const payload = {
+      schemaVersion: 3,
+      state: "completed",
+      conversationId,
+      projectId,
+      modelId: "gpt-5.6-sol",
+      reasoningEffort: "high",
+      modelSelection,
+      sandboxMode: "read-only",
+      approvalPolicy: "untrusted",
+      pendingApproval: null,
+      events: [
+        {
+          type: "approval-requested",
+          sequence: 1,
+          approvalId: "invalid",
+          activityId: "invalid",
+          kind: "command-execution",
+        },
+      ],
+      diagnosticCode: null,
+    };
+
+    expect(parseConversationSnapshotResponse(payload)).toBeNull();
+  });
+
+  it("preserves assistant delta order around an unpresentable passive event", () => {
+    const payload = {
+      schemaVersion: 3,
+      state: "running",
+      conversationId,
+      projectId,
+      modelId: "gpt-5.6-sol",
+      reasoningEffort: "high",
+      modelSelection,
+      sandboxMode: "read-only",
+      approvalPolicy: "untrusted",
+      pendingApproval: null,
+      events: [
+        {
+          type: "agent-message-delta",
+          sequence: 1,
+          itemId: "item_interleaved_reply",
+          delta: "Opening ",
+        },
+        {
+          type: "activity",
+          sequence: 2,
+          activityId: "unpresentable-passive-id",
+          kind: "command-execution",
+          status: "completed",
+          title: "Run command",
+          detail: null,
+          exitCode: 0,
+        },
+        {
+          type: "agent-message-delta",
+          sequence: 3,
+          itemId: "item_interleaved_reply",
+          delta: "continues.",
+        },
+      ],
+      diagnosticCode: null,
+    };
+
+    const recovered = parseConversationSnapshotResponse(payload);
+    expect(recovered).not.toBeNull();
+    expect(mergeConversationEvents([], recovered?.events ?? [])).toEqual([
+      {
+        type: "agent-message-delta",
+        sequence: 3,
+        itemId: "item_interleaved_reply",
+        delta: "Opening continues.",
+      },
+    ]);
   });
 
   it("bounds the active registry and requires unique app-owned projects", () => {

@@ -140,6 +140,7 @@ import {
 } from "./modelSelection";
 import {
   ConversationActionFailure,
+  parseConversationSnapshotResponse,
   conversationSnapshotSchema,
   conversationRegistrySchema,
   conversationStartRequestSchema,
@@ -2981,7 +2982,9 @@ export async function loadConversationStatus(
   invokeFunction: InvokeFunction = invokeTauri,
 ): Promise<ConversationSnapshot> {
   const payload = await invokeFunction(CONVERSATION_STATUS_COMMAND);
-  return conversationSnapshotSchema.parse(payload);
+  const snapshot = parseConversationSnapshotResponse(payload);
+  if (!snapshot) throw new ConversationActionFailure("native-response-invalid");
+  return snapshot;
 }
 
 export async function notifyConversation(
@@ -3020,11 +3023,11 @@ export async function startConversation(
     throw new ConversationActionFailure("native-command-failed");
   }
 
-  const snapshot = conversationSnapshotSchema.safeParse(payload);
-  if (!snapshot.success) {
+  const snapshot = parseConversationSnapshotResponse(payload);
+  if (!snapshot) {
     throw new ConversationActionFailure("native-response-invalid");
   }
-  return snapshot.data;
+  return snapshot;
 }
 
 export async function pollConversation(
@@ -3041,11 +3044,11 @@ export async function pollConversation(
     throw new ConversationActionFailure("native-command-failed");
   }
 
-  const snapshot = conversationSnapshotSchema.safeParse(payload);
-  if (!snapshot.success) {
+  const snapshot = parseConversationSnapshotResponse(payload);
+  if (!snapshot) {
     throw new ConversationActionFailure("native-response-invalid");
   }
-  return snapshot.data;
+  return snapshot;
 }
 
 export async function interruptConversation(
@@ -3056,7 +3059,9 @@ export async function interruptConversation(
   const payload = await invokeFunction(CONVERSATION_INTERRUPT_COMMAND, {
     conversationId: reviewedId,
   });
-  return conversationSnapshotSchema.parse(payload);
+  const snapshot = parseConversationSnapshotResponse(payload);
+  if (!snapshot) throw new ConversationActionFailure("native-response-invalid");
+  return snapshot;
 }
 
 export async function decideConversationApproval(
@@ -3068,7 +3073,9 @@ export async function decideConversationApproval(
   const payload = await invokeFunction(CONVERSATION_APPROVAL_DECIDE_COMMAND, {
     request: reviewedRequest,
   });
-  return conversationSnapshotSchema.parse(payload);
+  const snapshot = parseConversationSnapshotResponse(payload);
+  if (!snapshot) throw new ConversationActionFailure("native-response-invalid");
+  return snapshot;
 }
 
 export async function updateModelSelection(

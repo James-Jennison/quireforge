@@ -100,8 +100,8 @@ research, and M72 objective-scoped authority are completed foundations. M72
 is validated in `0.1.0-beta.107`: full validation, desktop/mobile E2E, clean
 package, installed-host launch, and owner acceptance of the inert
 draft-to-active-to-revoked lifecycle passed. The next product foundation is
-M87 interaction profiles. The `0.1.0-beta.115` candidate supersedes failed beta.114
-for owner acceptance. It makes the New task work area a single chat-first
+M87 interaction profiles. The `0.1.0-beta.116` candidate supersedes failed
+beta.115 and beta.114 for owner acceptance. It makes the New task work area a single chat-first
 workspace for both Direct and Conversational profiles: a flexible transcript,
 submitted-message bubble, and a compact bottom composer. Attachment selection,
 controls, and policy copy are progressive disclosure rather than permanent
@@ -115,18 +115,24 @@ invisible content. Beta.115 reconciles streamed deltas with the authoritative
 completed assistant message and ignores unpresentable passive lifecycle schema
 drift. It preserves partial rendered content and offers a
 bounded existing-conversation retry when strict snapshot recovery fails; it
-does not misstate that condition as a version mismatch. Beta.113 also
+does not misstate that condition as a version mismatch. Beta.116 repairs the
+remaining atomic-poll defect: strict validation of one unpresentable passive
+progress event no longer discards valid assistant text consumed in the same
+native poll. Its passive/consequential event classification is exhaustive at
+compile time; assistant text, lifecycle, approvals, model selection, errors,
+unknown events, and the snapshot envelope remain fail-closed. Beta.113 also
 normalizes an empty optional native plan
 explanation to `null` before it reaches the typed desktop snapshot, preventing
 non-semantic framing from producing a frontend contract error. Ordinary prose,
 passive activity, and clarifying questions
 remain in the transcript; only a concrete pending yes/no action interrupts it
-with a distinct approval surface. Full repository validation (including 458
-desktop tests), all 88 desktop/mobile E2E cases, the clean pinned Ubuntu 22.04
-package lifecycle, restricted staging and passwordless installation of both
-Debian packages, installed-host integrity validation, and an active launch of
-the installed `/usr/bin/quireforge` process pass for beta.115. Owner acceptance
-of the complete-response repair remains pending. Beta.114 is immutable failed
+with a distinct approval surface. Full repository validation (including 462
+desktop tests and 466 passing Rust tests), all 88 desktop/mobile E2E cases, and
+all eight website E2E cases pass for beta.116. Clean package and installed-host
+acceptance remain pending. Beta.115 is immutable failed acceptance evidence:
+the owner reproduced a poll failure followed by terminal completion with no
+assistant response because one invalid passive event caused the renderer to
+reject the entire already-consumed batch. Beta.114 is also immutable failed
 acceptance evidence: the owner reproduced
 a reply with missing opening fragments and a terminal native-response diagnostic.
 It is

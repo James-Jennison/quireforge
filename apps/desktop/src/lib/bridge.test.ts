@@ -849,6 +849,65 @@ describe("desktop bridge", () => {
     ]);
   });
 
+  it("keeps a completed response when the same poll has invalid passive evidence", async () => {
+    const conversationId = "018f0000-0000-7000-8000-000000000010";
+    const payload = {
+      schemaVersion: 3,
+      state: "running",
+      conversationId,
+      projectId: "018f0000-0000-7000-8000-000000000001",
+      modelId: "gpt-5.6-sol",
+      reasoningEffort: "high",
+      modelSelection: {
+        schemaVersion: 1,
+        availability: "ready",
+        effective: { modelId: "gpt-5.6-sol", reasoningEffort: "high" },
+        pending: null,
+        policy: {
+          ownership: "manual",
+          userLocked: false,
+          allowedModelIds: [],
+          reasoningCeiling: null,
+        },
+        diagnosticCode: null,
+      },
+      sandboxMode: "workspace-write",
+      approvalPolicy: "on-request",
+      pendingApproval: null,
+      events: [
+        {
+          type: "activity",
+          sequence: 1,
+          activityId: "unpresentable-passive-id",
+          kind: "command-execution",
+          status: "completed",
+          title: "Run command",
+          detail: null,
+          exitCode: 0,
+        },
+        {
+          type: "agent-message-completed",
+          sequence: 2,
+          itemId: "message-1",
+          text: "Complete project status.",
+        },
+      ],
+      diagnosticCode: null,
+    };
+    const invoke = vi.fn().mockResolvedValue(payload);
+
+    await expect(
+      pollConversation(conversationId, invoke),
+    ).resolves.toMatchObject({
+      events: [
+        {
+          type: "agent-message-completed",
+          text: "Complete project status.",
+        },
+      ],
+    });
+  });
+
   it("preserves a multiline task as one native conversation request", async () => {
     const prompt =
       "Inspect the native action.\n\n- Preserve this list.\n- Run one task.";

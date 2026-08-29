@@ -487,6 +487,86 @@ export type ConversationRegistrySnapshot = z.infer<
 >;
 export type ConversationEvent = ConversationSnapshot["events"][number];
 
+type ConversationEventRecoveryClass = "passive" | "consequential";
+
+const conversationEventRecoveryClasses = {
+  lifecycle: "consequential",
+  "agent-message-delta": "consequential",
+  "agent-message-completed": "consequential",
+  "reasoning-summary-delta": "passive",
+  "plan-updated": "passive",
+  activity: "passive",
+  "activity-output-delta": "passive",
+  "approval-requested": "consequential",
+  "approval-resolved": "consequential",
+  "model-selection-requested": "consequential",
+  error: "consequential",
+} as const satisfies Record<
+  ConversationEvent["type"],
+  ConversationEventRecoveryClass
+>;
+
+/**
+ * Polling consumes a native event batch before the renderer receives it. Keep
+ * strict validation for the snapshot envelope, assistant text, lifecycle,
+ * approvals, model selection, and errors, but do not discard an entire batch
+ * when one optional presentation-only event cannot be rendered. Otherwise a
+ * later successful terminal poll has no way to replay the assistant response
+ * that was consumed alongside the passive event.
+ */
+export function parseConversationSnapshotResponse(
+  payload: unknown,
+): ConversationSnapshot | null {
+  const strict = conversationSnapshotSchema.safeParse(payload);
+  if (strict.success) return strict.data;
+  if (
+    typeof payload !== "object" ||
+    payload === null ||
+    !("events" in payload) ||
+    !Array.isArray(payload.events)
+  ) {
+    return null;
+  }
+
+  const envelope = conversationSnapshotSchema.safeParse({
+    ...payload,
+    events: [],
+  });
+  if (!envelope.success) return null;
+
+  const events: ConversationEvent[] = [];
+  const candidates = payload.events as unknown[];
+  for (const candidate of candidates) {
+    const parsed = conversationEventSchema.safeParse(candidate);
+    if (parsed.success) {
+      events.push(parsed.data);
+      continue;
+    }
+    const type =
+      typeof candidate === "object" &&
+      candidate !== null &&
+      "type" in candidate &&
+      typeof candidate.type === "string"
+        ? candidate.type
+        : null;
+    if (type === null || !(type in conversationEventRecoveryClasses)) {
+      return null;
+    }
+    if (
+      conversationEventRecoveryClasses[type as ConversationEvent["type"]] !==
+      "passive"
+    ) {
+      return null;
+    }
+  }
+
+  const recovered = conversationSnapshotSchema.safeParse({
+    ...payload,
+    events,
+  });
+  return recovered.success ? recovered.data : null;
+}
+
 export const scaffoldConversation =
   conversationSnapshotSchema.parse(conversationFixture);
 export const scaffoldConversationRegistry = conversationRegistrySchema.parse(

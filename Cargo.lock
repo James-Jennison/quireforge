@@ -2907,7 +2907,7 @@ dependencies = [
 
 [[package]]
 name = "quireforge"
-version = "0.1.0-beta.115"
+version = "0.1.0-beta.116"
 dependencies = [
  "base64 0.22.1",
  "dirs",
@@ -2938,7 +2938,7 @@ dependencies = [
 
 [[package]]
 name = "quireforge-sandboxd"
-version = "0.1.0-beta.115"
+version = "0.1.0-beta.116"
 dependencies = [
  "libc",
  "serde",

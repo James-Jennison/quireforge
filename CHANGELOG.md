@@ -2,6 +2,14 @@
 
 ## Unreleased — M87 chat workspace refinement
 
+- Adds atomic renderer recovery for native poll batches: a malformed passive
+  progress event can be omitted without losing valid assistant text consumed in
+  the same poll, while malformed assistant, lifecycle, approval,
+  model-selection, error, envelope, and unknown events still fail closed.
+- Makes the passive/consequential split exhaustive at compile time, so every
+  new conversation event type must be classified deliberately before the
+  desktop can build. Regression coverage preserves ordered assistant deltas
+  around omitted passive evidence and complete assistant text beside it.
 - Reconciles streamed assistant deltas with Codex's authoritative completed
   message text, so a dropped opening fragment can no longer leave a response
   beginning mid-sentence (for example, `, roadmap`).
@@ -36,10 +44,10 @@
 - Keeps passive lifecycle frames out of the transcript. The live conversation
   header remains the single status surface, while approvals, failures, and
   other bounded action evidence retain their distinct treatment.
-- Full repository validation (including 458 desktop tests), the desktop/mobile
-  browser suite (88 tests), clean pinned Ubuntu 22.04 packaging, restricted
-  passwordless installation of both Debian packages, installed-host integrity
-  validation, and installed-binary launch pass.
+- Full repository validation (including 462 desktop tests and 466 passing Rust
+  tests), the desktop/mobile browser suite (88 tests), and the website browser
+  suite (eight tests) pass for beta.116. Clean package and installed-host
+  acceptance remain pending.
 
 ## Unreleased — authoritative feature-parity roadmap
 

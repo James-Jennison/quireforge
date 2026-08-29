@@ -3258,7 +3258,7 @@ test("native activity fixture renders bounded real-time approval detail", async 
   expect(overflow).toBeLessThanOrEqual(1);
 });
 
-test("native conversation reconciles incomplete fragments with the completed response", async ({
+test("native conversation preserves a completed response beside unpresentable passive evidence", async ({
   page,
 }) => {
   const streamedConversation = {
@@ -3273,8 +3273,18 @@ test("native conversation reconciles incomplete fragments with the completed res
         delta: ", roadmap, recent history",
       },
       {
-        type: "agent-message-completed",
+        type: "activity",
         sequence: 2,
+        activityId: "unpresentable-passive-id",
+        kind: "command-execution",
+        status: "completed",
+        title: "Run command",
+        detail: null,
+        exitCode: 0,
+      },
+      {
+        type: "agent-message-completed",
+        sequence: 3,
         itemId: "message-1",
         text: "I’ll inspect the current state, roadmap, recent history",
       },
