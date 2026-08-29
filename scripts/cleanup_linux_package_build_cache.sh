@@ -4,7 +4,17 @@ set -Eeuo pipefail
 
 umask 077
 
-readonly build_root="/mnt/faststorage/quireforge-build"
+readonly repository_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
+readonly package_build_root_file="$repository_root/packaging/linux/package-build-root"
+[[ -f "$package_build_root_file" && ! -L "$package_build_root_file" ]] || {
+  printf 'Trusted QuireForge package-build root definition is unavailable.\n' >&2
+  exit 1
+}
+readonly build_root="$(<"$package_build_root_file")"
+[[ "$build_root" == /* && "$build_root" != / ]] || {
+  printf 'Trusted QuireForge package-build root must be an absolute non-root path.\n' >&2
+  exit 1
+}
 readonly build_marker="$build_root/.quireforge-linux-packaging-root"
 readonly temporary_root="$build_root/tmp"
 readonly run_marker='.quireforge-linux-packaging-run'

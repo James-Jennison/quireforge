@@ -2,6 +2,14 @@
 
 ## Unreleased — M87 chat workspace refinement
 
+- Beta.122 supersedes beta.121 as the next owner-acceptance candidate. It
+  corrects the native installed-host validator's producer/consumer package-root
+  contract: the package builder, cache cleanup, restricted staging helper, and
+  native validator now use one version-controlled, build-time trusted host
+  root. The strict manifest, checksum, direct-regular-file, and no-symlink
+  checks remain fail closed; beta.121's failed installed-host result remains
+  immutable evidence. Fresh source, package, installed-host, and owner-
+  interaction evidence is required.
 - Beta.121 supersedes beta.120 as the next owner-acceptance candidate. It puts
   the native Direct/Conversational selector directly in the compact New task
   composer, retaining the existing closed radio group and its shared

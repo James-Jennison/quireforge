@@ -147,9 +147,14 @@ an explicit yes/no decision interrupts that flow with the existing semantic
 approval surface. Passive activity remains a lightweight, expandable timeline
 row; it is not an Action Card and conveys no authority.
 
-`0.1.0-beta.121` supersedes beta.120 as the current owner-acceptance candidate
-without replacing beta.120, beta.119, or beta.118's immutable acceptance
-evidence. It keeps the profile request and all M87 authority invariants intact
+`0.1.0-beta.122` supersedes beta.121 as the current owner-acceptance candidate
+without replacing beta.121, beta.120, beta.119, or beta.118's immutable
+acceptance evidence. Beta.121 failed its installed-host validator because the
+native consumer read stale checkout artifacts instead of the builder's trusted
+persistent output root. Beta.122 gives the builder, cleanup, restricted staging
+helper, and native validator one version-controlled build-time root definition
+while retaining strict manifest, checksum, direct-file, and no-symlink checks.
+It keeps the profile request and all M87 authority invariants intact
 while moving the native Direct/Conversational radio group into the compact New
 task composer, where it shares the same active-task disable boundary as the
 message box and send action. It removes the four deterministic fictional
@@ -172,10 +177,10 @@ mapping, protected-file ownership, permissions, and integrity, and
 `quireforge-installed-beta120` user service. Owner-acceptance evidence remains
 required before this candidate is accepted.
 
-## Owner acceptance procedure — beta.121
+## Owner acceptance procedure — beta.122
 
 This is a one-shot owner review, not a new capability or a new application
-surface. Use the installed `0.1.0-beta.121` application and its New task chat
+surface. Use the installed `0.1.0-beta.122` application and its New task chat
 workspace:
 
 1. Test both **Direct** and **Conversational** profiles using the selector in

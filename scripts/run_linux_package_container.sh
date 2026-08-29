@@ -12,9 +12,19 @@ if [[ "$(pwd -P)" != "$(cd "$repository_root" && pwd -P)" ]]; then
   exit 1
 fi
 
+readonly package_build_root_file="$repository_root/packaging/linux/package-build-root"
+[[ -f "$package_build_root_file" && ! -L "$package_build_root_file" ]] || {
+  echo "Trusted QuireForge package-build root definition is unavailable." >&2
+  exit 1
+}
+readonly build_root="$(<"$package_build_root_file")"
+[[ "$build_root" == /* && "$build_root" != / ]] || {
+  echo "Trusted QuireForge package-build root must be an absolute non-root path." >&2
+  exit 1
+}
+
 builder_image="quireforge-packaging:ubuntu-22.04"
 builder_source="ubuntu:22.04@sha256:0e0a0fc6d18feda9db1590da249ac93e8d5abfea8f4c3c0c849ce512b5ef8982"
-build_root="/mnt/faststorage/quireforge-build"
 build_marker="$build_root/.quireforge-linux-packaging-root"
 cache_root="$build_root/cache"
 target_root="$build_root/target"

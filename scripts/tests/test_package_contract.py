@@ -209,7 +209,7 @@ class PackageContractTests(unittest.TestCase):
                 prior_bytes,
             )
     def test_all_source_versions_match_the_beta_candidate(self) -> None:
-        self.assertEqual(source_version(), "0.1.0-beta.121")
+        self.assertEqual(source_version(), "0.1.0-beta.122")
 
     def test_sandbox_worker_uses_the_aligned_release_version_contract(self) -> None:
         source = (ROOT / "scripts/package_sandboxd.py").read_text(encoding="utf-8")
@@ -366,7 +366,17 @@ class PackageContractTests(unittest.TestCase):
         builder = (ROOT / "scripts/run_linux_package_container.sh").read_text(encoding="utf-8")
         cleanup = (ROOT / "scripts/cleanup_linux_package_build_cache.sh").read_text(encoding="utf-8")
         stage_helper = (ROOT / "scripts/quireforge_stage_deb.sh").read_text(encoding="utf-8")
-        self.assertIn('build_root="/mnt/faststorage/quireforge-build"', builder)
+        setup_helper = (ROOT / "scripts/setup_quireforge_stage_deb.sh").read_text(encoding="utf-8")
+        package_root = ROOT / "packaging/linux/package-build-root"
+        native_validator = (ROOT / "apps/desktop/src-tauri/src/project/package_validation.rs").read_text(
+            encoding="utf-8"
+        )
+        self.assertEqual(package_root.read_text(encoding="utf-8"), "/mnt/faststorage/quireforge-build\n")
+        self.assertIn('package-build-root', builder)
+        self.assertIn('package-build-root', cleanup)
+        self.assertIn('package-build-root', setup_helper)
+        self.assertIn('package-build-root', native_validator)
+        self.assertNotIn('build_root="/mnt/faststorage/quireforge-build"', builder)
         self.assertIn('--volume "$target_root:/workspace/target"', builder)
         self.assertIn('--volume "$temporary_build:/build-tmp"', builder)
         self.assertIn('--env TMPDIR=/build-tmp', builder)
@@ -375,7 +385,8 @@ class PackageContractTests(unittest.TestCase):
         self.assertIn('minimum_free_inodes=', builder)
         self.assertIn('maximum_retained_bytes', cleanup)
         self.assertIn('maximum_age_seconds', cleanup)
-        self.assertIn('persistent_build_pattern=', stage_helper)
+        self.assertIn('package_build_root_file=/etc/quireforge/package-build-root', stage_helper)
+        self.assertIn('persistent_build_output=', stage_helper)
         timer = ROOT / "packaging/systemd-user/quireforge-package-build-cleanup.timer"
         self.assertTrue(timer.is_file())
         self.assertIn("Persistent=true", timer.read_text(encoding="utf-8"))

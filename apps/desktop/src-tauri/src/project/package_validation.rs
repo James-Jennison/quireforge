@@ -40,6 +40,19 @@ const CANDIDATE_IDENTITY_DOMAIN: &str = "quireforge-package-candidate-identity-v
 const INSTALLED_HOST_HELPER: &str = "/usr/local/sbin/quireforge-validate-deb";
 const SUDO: &str = "/usr/bin/sudo";
 const DPKG_QUERY: &str = "/usr/bin/dpkg-query";
+const LINUX_PACKAGE_BUILD_ROOT: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../../../packaging/linux/package-build-root"
+));
+const LINUX_PACKAGE_OUTPUT_SUFFIX: &str = "target/ubuntu-22.04/release/packages";
+
+fn trusted_package_candidate_root() -> Result<PathBuf, PackageValidationControllerError> {
+    let build_root = Path::new(LINUX_PACKAGE_BUILD_ROOT.trim());
+    if !build_root.is_absolute() || build_root == Path::new("/") {
+        return Err(PackageValidationControllerError::InvalidResult);
+    }
+    Ok(build_root.join(LINUX_PACKAGE_OUTPUT_SUFFIX))
+}
 
 #[derive(Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -547,10 +560,7 @@ impl PackageValidationController {
     ) -> Result<PackageValidationRecordOutcome, PackageValidationControllerError> {
         let mut session = self.begin(context)?;
         let result = (|| {
-            let candidate_root = session
-                .context
-                .project_root
-                .join("target/ubuntu-22.04/release/packages");
+            let candidate_root = trusted_package_candidate_root()?;
             let verified_candidate = verify_package_candidate(&candidate_root)?;
             let mut accepted = Vec::new();
             for stage in [
@@ -1080,16 +1090,10 @@ impl ValidationSession {
         {
             return Err(PackageValidationControllerError::InvalidStageOrder);
         }
-        // Candidate roots are resolved solely by this trusted context. A real
-        // adapter must verify this layout before a recorder call is permitted.
-        if !self
-            .context
-            .project_root
-            .join("target/ubuntu-22.04/release/packages")
-            .starts_with(&self.context.project_root)
-        {
-            return Err(PackageValidationControllerError::InvalidResult);
-        }
+        // The production candidate root is derived only from the compiled,
+        // version-controlled package-build definition. The verifier has
+        // already rejected missing, non-directory, symlink, and escaped
+        // candidates before any stage can be recorded.
         Ok(result)
     }
 }
@@ -1191,6 +1195,14 @@ mod tests {
             "artifacts": artifacts,
         })).expect("manifest")).expect("write manifest");
         root
+    }
+
+    #[test]
+    fn package_validation_uses_the_versioned_trusted_package_output_root() {
+        assert_eq!(
+            trusted_package_candidate_root().expect("trusted package root"),
+            PathBuf::from("/mnt/faststorage/quireforge-build/target/ubuntu-22.04/release/packages")
+        );
     }
 
     fn rewrite_manifest(root: &Path, update: impl FnOnce(&mut serde_json::Value)) {

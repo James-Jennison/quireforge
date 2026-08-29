@@ -100,9 +100,14 @@ research, and M72 objective-scoped authority are completed foundations. M72
 is validated in `0.1.0-beta.107`: full validation, desktop/mobile E2E, clean
 package, installed-host launch, and owner acceptance of the inert
 draft-to-active-to-revoked lifecycle passed. The next product foundation is
-M87 interaction profiles. The `0.1.0-beta.121` candidate supersedes beta.120
-for the compact passive-status-strip repair in `559515e`; beta.119 and beta.118
-remain immutable prior owner-acceptance evidence. It makes the New task work area a single chat-first
+M87 interaction profiles. The `0.1.0-beta.122` candidate supersedes beta.121
+after beta.121's installed-host validator read stale artifacts from the checkout
+instead of the builder's trusted persistent output root. Beta.122 makes that
+root a single version-controlled build-time definition for the builder, cleanup,
+restricted staging helper, and native validator while retaining strict
+manifest/checksum/direct-file/no-symlink verification. Beta.121 remains immutable
+failed installed-host evidence; beta.119 and beta.118 remain immutable prior
+owner-acceptance evidence. It makes the New task work area a single chat-first
 workspace for both Direct and Conversational profiles: a flexible transcript,
 submitted-message bubble, and a compact bottom composer. Attachment selection,
 controls, and policy copy are progressive disclosure rather than permanent
@@ -110,9 +115,9 @@ stacked panels. Profile selection affects assistant prose only, never the
 workspace shape, Action Card content, authority/disclosure copy, lock labels,
 failure messages, approval, or native execution scope. It also
 passed fresh isolated source validation, the clean pinned Ubuntu 22.04 package
-gate, and content-free installed-host verification at `c1d176b`. Both
-The beta.120 package and installed-host evidence remain immutable. Beta.121
-requires fresh source, package, installed-host, and owner-interaction evidence
+gate, and content-free installed-host verification at `c1d176b`. The beta.120
+package and installed-host evidence remain immutable. Beta.122 requires fresh
+source, package, installed-host, and owner-interaction evidence
 before it can replace that candidate. Owner interaction acceptance remains a
 separate pending gate.
 Beta.119 additionally retains an outstanding event batch through a later
