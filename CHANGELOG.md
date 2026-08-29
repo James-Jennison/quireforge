@@ -36,8 +36,10 @@
 - Keeps passive lifecycle frames out of the transcript. The live conversation
   header remains the single status surface, while approvals, failures, and
   other bounded action evidence retain their distinct treatment.
-- Focused conversation coverage (63 tests) and the desktop/mobile browser
-  suite (88 tests) pass. Full repository validation now passes.
+- Full repository validation (including 458 desktop tests), the desktop/mobile
+  browser suite (88 tests), clean pinned Ubuntu 22.04 packaging, restricted
+  passwordless installation of both Debian packages, installed-host integrity
+  validation, and installed-binary launch pass.
 
 ## Unreleased — authoritative feature-parity roadmap
 

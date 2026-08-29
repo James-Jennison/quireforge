@@ -121,10 +121,13 @@ explanation to `null` before it reaches the typed desktop snapshot, preventing
 non-semantic framing from producing a frontend contract error. Ordinary prose,
 passive activity, and clarifying questions
 remain in the transcript; only a concrete pending yes/no action interrupts it
-with a distinct approval surface. Focused conversation tests, desktop/mobile
-E2E, clean packaging, restricted staged installation, installed-host integrity
-validation, packaging, installation, and owner acceptance are pending for
-beta.115. Beta.114 is immutable failed acceptance evidence: the owner reproduced
+with a distinct approval surface. Full repository validation (including 458
+desktop tests), all 88 desktop/mobile E2E cases, the clean pinned Ubuntu 22.04
+package lifecycle, restricted staging and passwordless installation of both
+Debian packages, installed-host integrity validation, and an active launch of
+the installed `/usr/bin/quireforge` process pass for beta.115. Owner acceptance
+of the complete-response repair remains pending. Beta.114 is immutable failed
+acceptance evidence: the owner reproduced
 a reply with missing opening fragments and a terminal native-response diagnostic.
 It is
 followed by M73 context assembly,

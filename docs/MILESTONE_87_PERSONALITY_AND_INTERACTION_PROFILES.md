@@ -104,8 +104,12 @@ package and installed-host evidence remain historical evidence only. Beta.114
 is immutable failed acceptance evidence because the installed app dropped the
 opening fragments of a reply and then surfaced a terminal native-response
 diagnostic. Beta.115 reconciles each stream with the completed assistant message
-and keeps passive item-schema drift from terminating the response. Its package
-and installed-host gates are pending. Owner acceptance remains required.
+and keeps passive item-schema drift from terminating the response. Full
+repository validation, all 88 desktop/mobile E2E cases, the clean pinned Ubuntu
+22.04 package lifecycle, restricted staging and passwordless installation of
+both Debian packages, installed-host integrity validation, and an active launch
+of the installed `/usr/bin/quireforge` process pass. Owner acceptance remains
+required.
 
 The chat-first presentation has one functional visual boundary: ordinary
 assistant prose, passive progress/evidence, and open clarifying questions stay
