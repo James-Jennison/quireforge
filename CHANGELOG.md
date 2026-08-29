@@ -2,6 +2,13 @@
 
 ## Unreleased — M87 chat workspace refinement
 
+- Beta.119 supersedes beta.118 as the current candidate under test while
+  preserving beta.118 as immutable failed owner-acceptance evidence. It aligns
+  native `ConversationEvent` multiword fields with the existing strict
+  frontend camelCase contract (`itemId`, `activityId`, `exitCode`,
+  `approvalId`, and `willRetry`) while retaining kebab-case event types and
+  fail-closed consequential validation. Fresh package, installed-host, and
+  owner-acceptance gates remain required.
 - Beta.118 preserves the original opaque delivery token when a terminal native
   snapshot follows an unacknowledged event batch, appending the verified
   monotonic terminal suffix rather than replacing the batch. It does not

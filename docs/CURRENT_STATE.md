@@ -100,20 +100,24 @@ research, and M72 objective-scoped authority are completed foundations. M72
 is validated in `0.1.0-beta.107`: full validation, desktop/mobile E2E, clean
 package, installed-host launch, and owner acceptance of the inert
 draft-to-active-to-revoked lifecycle passed. The next product foundation is
-M87 interaction profiles. The `0.1.0-beta.118` candidate supersedes failed
-beta.116, beta.115, and beta.114 for owner acceptance. It makes the New task work area a single chat-first
+M87 interaction profiles. The `0.1.0-beta.119` candidate supersedes beta.118
+as the current candidate under test; beta.118 remains immutable failed
+owner-acceptance evidence. It makes the New task work area a single chat-first
 workspace for both Direct and Conversational profiles: a flexible transcript,
 submitted-message bubble, and a compact bottom composer. Attachment selection,
 controls, and policy copy are progressive disclosure rather than permanent
 stacked panels. Profile selection affects assistant prose only, never the
 workspace shape, Action Card content, authority/disclosure copy, lock labels,
 failure messages, approval, or native execution scope. It also
-Beta.118 additionally retains an outstanding event batch through a later
+Beta.119 additionally retains an outstanding event batch through a later
 terminal suffix under the original delivery token, and exposes only a
 content-free validation classification in the existing failure surface so the
 next owner test can identify the producer/consumer contract path without
-revealing event values. Its source gate is pending fresh package,
-installed-host, and owner-acceptance evidence. It ignores streaming frames made only of whitespace or invisible formatting marks
+revealing event values. It also serializes every native conversation-event
+field at the existing strict frontend camelCase boundary while retaining
+kebab-case event types and strict validation. Its package, installed-host, and
+owner-acceptance gates remain pending. It ignores streaming frames made only
+of whitespace or invisible formatting marks
 before strict protocol validation, preventing those non-semantic frames from
 ending a managed conversation while retaining rejection for mixed visible and
 invisible content. Beta.115 reconciles streamed deltas with the authoritative
