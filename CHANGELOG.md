@@ -10,7 +10,8 @@
   now 64; regression coverage proves records 1–64 remain paired and that the
   65th fails without leaving either summary or identity residue. Beta.122's
   failed installed-host result remains immutable evidence. Fresh source,
-  package, installed-host, and owner-interaction evidence is required.
+  clean-package, and installed-host mechanical evidence passed for `de57f0e`;
+  owner interaction acceptance remains required.
 - Beta.122 supersedes beta.121 as the next owner-acceptance candidate. It
   corrects the native installed-host validator's producer/consumer package-root
   contract: the package builder, cache cleanup, restricted staging helper, and

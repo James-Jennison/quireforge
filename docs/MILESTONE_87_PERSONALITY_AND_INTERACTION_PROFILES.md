@@ -168,6 +168,12 @@ summary or identity record. The fixtures remain
 manual test workflows only; they do not contact a provider, browser,
 connector, or external service.
 
+Beta.123 passed fresh source validation, desktop and website E2E, the clean
+pinned Ubuntu 22.04 package/visible-launch gate, and content-free installed-host
+validation for `de57f0e`: both Debian packages are installed with clean package
+verification and the native completion receipt returned `created`. Those
+mechanical gates do not replace the owner-interaction acceptance procedure below.
+
 `0.1.0-beta.120` supersedes beta.119 as the prior owner-acceptance candidate
 without replacing beta.119 or beta.118's immutable acceptance evidence. It
 contains the compact passive-status-strip repair from `559515e` and fixes the

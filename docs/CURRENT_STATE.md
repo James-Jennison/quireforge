@@ -118,13 +118,14 @@ submitted-message bubble, and a compact bottom composer. Attachment selection,
 controls, and policy copy are progressive disclosure rather than permanent
 stacked panels. Profile selection affects assistant prose only, never the
 workspace shape, Action Card content, authority/disclosure copy, lock labels,
-failure messages, approval, or native execution scope. It also
-passed fresh isolated source validation, the clean pinned Ubuntu 22.04 package
-gate, and content-free installed-host verification at `c1d176b`. The beta.120
-package and installed-host evidence remain immutable. Beta.123 requires fresh
-source, package, installed-host, and owner-interaction evidence
-before it can replace that candidate. Owner interaction acceptance remains a
-separate pending gate.
+failure messages, approval, or native execution scope. It passed fresh isolated
+source validation, desktop and website E2E, the clean pinned Ubuntu 22.04
+package gate and visible package launch, and content-free installed-host
+verification for `de57f0e`: both beta.123 Debian packages are installed,
+`dpkg --verify` is clean, and the native completion receipt returned `created`.
+These mechanical gates do not replace owner interaction acceptance, which
+remains a separate pending gate. The beta.120 package and installed-host
+evidence remain immutable.
 Beta.119 additionally retains an outstanding event batch through a later
 terminal suffix under the original delivery token, and exposes only a
 content-free validation classification in the existing failure surface so the
