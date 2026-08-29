@@ -49,6 +49,7 @@ interface ConversationWorkspaceProps {
   busy: boolean;
   attachmentBusy: boolean;
   actionError: ConversationActionFailureCode | null;
+  actionErrorDetail?: string | null;
   attachmentActionError: boolean;
   interactionProfile?: InteractionProfileId;
   onStart: (request: ConversationStartRequest) => Promise<ConversationSnapshot>;
@@ -306,6 +307,7 @@ export function ConversationWorkspace({
   busy,
   attachmentBusy,
   actionError,
+  actionErrorDetail = null,
   attachmentActionError,
   interactionProfile = "direct",
   onStart,
@@ -1016,6 +1018,10 @@ export function ConversationWorkspace({
           {actionError && (
             <div className="conversation-diagnostic" role="alert">
               {actionFailureMessages[actionError]}
+              {actionError === "native-response-invalid" &&
+                actionErrorDetail && (
+                  <p>Validation detail: {actionErrorDetail}</p>
+                )}
               {actionError === "native-response-invalid" &&
                 snapshot.conversationId && (
                   <button

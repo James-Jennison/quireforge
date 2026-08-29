@@ -76,6 +76,14 @@ export function conversationActionFailureCode(
     : "native-command-failed";
 }
 
+export function conversationActionFailureClassification(
+  error: unknown,
+): string | null {
+  return error instanceof ConversationActionFailure
+    ? error.validationClassification
+    : null;
+}
+
 export const conversationSandboxModeSchema = z.enum([
   "read-only",
   "workspace-write",

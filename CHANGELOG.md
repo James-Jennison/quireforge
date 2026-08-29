@@ -2,6 +2,15 @@
 
 ## Unreleased — M87 chat workspace refinement
 
+- Beta.118 preserves the original opaque delivery token when a terminal native
+  snapshot follows an unacknowledged event batch, appending the verified
+  monotonic terminal suffix rather than replacing the batch. It does not
+  acknowledge, clear, or relax validation for the retained batch.
+- Makes the existing content-free rejected-snapshot classification visible in
+  the native-response failure surface. It contains only contract scope, event
+  index/recovery class, Zod code, and schema path; it never exposes response,
+  prompt, identifier, credential, or payload values. This is diagnostic only:
+  consequential and unknown events remain fail closed.
 - Makes native conversation delivery transactional across the Rust/TypeScript
   boundary. Every non-empty normalized batch receives an opaque token and is
   replayed unchanged until the committed React conversation state acknowledges

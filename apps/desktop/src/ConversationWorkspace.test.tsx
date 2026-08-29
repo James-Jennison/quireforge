@@ -262,6 +262,17 @@ describe("ConversationWorkspace", () => {
     expect(onRetryPoll).toHaveBeenCalledWith(conversationId);
   });
 
+  it("shows only the content-free validation classification", () => {
+    renderWorkspace({
+      actionError: "native-response-invalid",
+      actionErrorDetail: "event.2.consequential:invalid_type:events.2.phase",
+    });
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Validation detail: event.2.consequential:invalid_type:events.2.phase",
+    );
+  });
+
   it("submits a selected healthy connector by normalized catalog ID", async () => {
     const { onStart } = renderWorkspace();
     fireEvent.click(

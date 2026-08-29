@@ -253,6 +253,24 @@ pub enum ConversationEvent {
     },
 }
 
+impl ConversationEvent {
+    pub(crate) const fn sequence(&self) -> u64 {
+        match self {
+            Self::Lifecycle { sequence, .. }
+            | Self::AgentMessageDelta { sequence, .. }
+            | Self::AgentMessageCompleted { sequence, .. }
+            | Self::ReasoningSummaryDelta { sequence, .. }
+            | Self::PlanUpdated { sequence, .. }
+            | Self::Activity { sequence, .. }
+            | Self::ActivityOutputDelta { sequence, .. }
+            | Self::ApprovalRequested { sequence, .. }
+            | Self::ApprovalResolved { sequence, .. }
+            | Self::ModelSelectionRequested { sequence, .. }
+            | Self::Error { sequence, .. } => *sequence,
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum ConversationLifecyclePhase {

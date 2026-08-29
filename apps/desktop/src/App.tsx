@@ -182,6 +182,7 @@ import {
 } from "./lib/filePreview";
 import type { DesktopNotificationResult } from "./lib/desktopIntegration";
 import {
+  conversationActionFailureClassification,
   conversationActionFailureCode,
   scaffoldConversation,
   type ConversationActionFailureCode,
@@ -1172,6 +1173,8 @@ export default function App({
   const [conversationBusy, setConversationBusy] = useState(false);
   const [conversationActionError, setConversationActionError] =
     useState<ConversationActionFailureCode | null>(null);
+  const [conversationActionErrorDetail, setConversationActionErrorDetail] =
+    useState<string | null>(null);
   const [pendingConversationDeliveryAcks, setPendingConversationDeliveryAcks] =
     useState<Record<string, { conversationId: string; deliveryId: string }>>(
       {},
@@ -1890,6 +1893,9 @@ export default function App({
         setConversationActionError(
           conversationActionFailureCode(rejectedPoll.reason),
         );
+        setConversationActionErrorDetail(
+          conversationActionFailureClassification(rejectedPoll.reason),
+        );
       }
 
       for (const result of results) {
@@ -1936,6 +1942,7 @@ export default function App({
       );
       if (displayed) {
         setConversationActionError(null);
+        setConversationActionErrorDetail(null);
         setConversation(displayed);
         setConversationEvents((current) =>
           mergeConversationEvents(current, displayed.events),
@@ -2949,6 +2956,7 @@ export default function App({
   ): Promise<ConversationSnapshot> {
     setConversationBusy(true);
     setConversationActionError(null);
+    setConversationActionErrorDetail(null);
     try {
       const result = await startConversationTask({
         ...request,
@@ -2963,6 +2971,9 @@ export default function App({
       return result;
     } catch (error) {
       setConversationActionError(conversationActionFailureCode(error));
+      setConversationActionErrorDetail(
+        conversationActionFailureClassification(error),
+      );
       throw error;
     } finally {
       setConversationBusy(false);
@@ -2974,6 +2985,7 @@ export default function App({
   ): Promise<ConversationSnapshot> {
     setConversationBusy(true);
     setConversationActionError(null);
+    setConversationActionErrorDetail(null);
     try {
       const result = await pollConversationTask(conversationId);
       setConversation(result);
@@ -2985,6 +2997,9 @@ export default function App({
       return result;
     } catch (error) {
       setConversationActionError(conversationActionFailureCode(error));
+      setConversationActionErrorDetail(
+        conversationActionFailureClassification(error),
+      );
       throw error;
     } finally {
       setConversationBusy(false);
@@ -4961,6 +4976,7 @@ export default function App({
                     busy={conversationBusy}
                     attachmentBusy={conversationAttachmentBusy}
                     actionError={conversationActionError}
+                    actionErrorDetail={conversationActionErrorDetail}
                     attachmentActionError={conversationAttachmentActionError}
                     interactionProfile={interactionProfile}
                     onStart={beginConversation}

@@ -186,6 +186,29 @@ impl ConversationServiceState {
             snapshot.delivery_id = None;
             return;
         };
+        if let Some(existing) = self.pending_deliveries.get_mut(&conversation_id) {
+            let existing_last = existing
+                .events
+                .last()
+                .expect("retained deliveries always contain an event")
+                .sequence();
+            debug_assert!(snapshot
+                .events
+                .iter()
+                .all(|event| event.sequence() > existing_last));
+            debug_assert!(snapshot
+                .events
+                .windows(2)
+                .all(|events| events[0].sequence() < events[1].sequence()));
+
+            let mut merged = snapshot.clone();
+            merged.delivery_id = existing.delivery_id.clone();
+            merged.events = existing.events.clone();
+            merged.events.extend(snapshot.events.iter().cloned());
+            *existing = merged.clone();
+            *snapshot = merged;
+            return;
+        }
         let delivery_id = Uuid::now_v7().to_string();
         snapshot.delivery_id = Some(delivery_id);
         self.pending_deliveries
@@ -2378,6 +2401,62 @@ mod tests {
             .recent_or_not_found(&conversation_id);
         assert!(recent.events.is_empty());
         assert!(recent.delivery_id.is_none());
+    }
+
+    #[tokio::test]
+    async fn terminal_delivery_merges_with_an_unacknowledged_batch() {
+        let service = ConversationService::default();
+        let conversation_id = Uuid::now_v7().to_string();
+        let first = service
+            .remember_snapshot(ConversationSnapshot {
+                state: ConversationState::WaitingForApproval,
+                conversation_id: Some(conversation_id.clone()),
+                pending_approval: Some(ConversationApproval {
+                    approval_id: Uuid::now_v7().to_string(),
+                    activity_id: "activity-1".to_owned(),
+                    kind: ConversationApprovalKind::Permissions,
+                    title: "Approval".to_owned(),
+                    reason: None,
+                    details: Vec::new(),
+                    decisions: vec![ConversationApprovalDecision::Approve],
+                }),
+                events: vec![ConversationEvent::AgentMessageDelta {
+                    sequence: 1,
+                    item_id: "message-1".to_owned(),
+                    delta: "Visible reply.".to_owned(),
+                }],
+                ..ConversationSnapshot::empty()
+            })
+            .await;
+        let delivery_id = first.delivery_id.clone().expect("delivery token");
+        let merged = service
+            .remember_snapshot(ConversationSnapshot {
+                state: ConversationState::Completed,
+                conversation_id: Some(conversation_id.clone()),
+                pending_approval: None,
+                events: vec![ConversationEvent::Lifecycle {
+                    sequence: 2,
+                    phase: ConversationLifecyclePhase::Completed,
+                }],
+                ..ConversationSnapshot::empty()
+            })
+            .await;
+        assert_eq!(merged.delivery_id.as_deref(), Some(delivery_id.as_str()));
+        assert_eq!(merged.state, ConversationState::Completed);
+        assert!(merged.pending_approval.is_none());
+        assert_eq!(
+            merged
+                .events
+                .iter()
+                .map(ConversationEvent::sequence)
+                .collect::<Vec<_>>(),
+            vec![1, 2]
+        );
+        assert!(
+            service
+                .acknowledge_delivery(conversation_id, delivery_id)
+                .await
+        );
     }
 
     #[tokio::test]
