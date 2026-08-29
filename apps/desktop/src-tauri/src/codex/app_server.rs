@@ -162,7 +162,14 @@ pub(crate) enum ConversationNotification {
     AgentMessageDelta {
         thread_id: String,
         turn_id: String,
+        item_id: String,
         delta: String,
+    },
+    AgentMessageCompleted {
+        thread_id: String,
+        turn_id: String,
+        item_id: String,
+        text: String,
     },
     ReasoningSummaryDelta {
         thread_id: String,
@@ -745,10 +752,12 @@ fn parse_notification(message: &Value) -> Result<Option<AppServerNotification>, 
             struct Params {
                 thread_id: String,
                 turn_id: String,
+                item_id: String,
                 delta: String,
             }
             let params: Params = notification_params(message)?;
             validate_conversation_ids(&params.thread_id, &params.turn_id)?;
+            validate_protocol_identifier(&params.item_id, 128)?;
             // The Codex app server may emit a framing-only delta while a turn
             // is streaming. It has no display or lifecycle meaning, so ignore
             // it before the strict text contract rather than terminating the
@@ -761,6 +770,7 @@ fn parse_notification(message: &Value) -> Result<Option<AppServerNotification>, 
                 ConversationNotification::AgentMessageDelta {
                     thread_id: params.thread_id,
                     turn_id: params.turn_id,
+                    item_id: params.item_id,
                     delta: params.delta,
                 }
             } else {
@@ -829,12 +839,38 @@ fn parse_notification(message: &Value) -> Result<Option<AppServerNotification>, 
             }
             let params: Params = notification_params(message)?;
             validate_conversation_ids(&params.thread_id, &params.turn_id)?;
+            let item_type = params.item.get("type").and_then(Value::as_str);
+            if method == "item/completed" && item_type == Some("agentMessage") {
+                let item = params
+                    .item
+                    .as_object()
+                    .ok_or(CodexAdapterError::InvalidProtocolMessage)?;
+                let item_id = required_string(item.get("id"), 128)?;
+                validate_protocol_identifier(&item_id, 128)?;
+                let text = required_bounded_text(item.get("text"), 256 * 1024)?;
+                validate_stream_text(&text, 256 * 1024)?;
+                return Ok(Some(AppServerNotification::Conversation(
+                    ConversationNotification::AgentMessageCompleted {
+                        thread_id: params.thread_id,
+                        turn_id: params.turn_id,
+                        item_id,
+                        text,
+                    },
+                )));
+            }
             let status = if method == "item/started" {
                 ConversationItemStatus::Started
             } else {
                 ConversationItemStatus::Completed
             };
-            let item = parse_conversation_item(params.item, status)?;
+            let Ok(item) = parse_conversation_item(params.item, status) else {
+                // Item lifecycle frames are passive transcript evidence. Codex may
+                // add fields or item variants independently of QuireForge. A shape
+                // QuireForge cannot yet present must not terminate an otherwise
+                // valid assistant response; actionable server requests remain on
+                // their separate strict parser.
+                return Ok(None);
+            };
             Ok(Some(AppServerNotification::Conversation(
                 ConversationNotification::ItemLifecycle {
                     thread_id: params.thread_id,
@@ -1995,6 +2031,61 @@ mod tests {
             });
             assert!(parse_notification(&mixed_delta).is_err());
         }
+    }
+
+    #[test]
+    fn retains_completed_agent_text_and_ignores_unpresentable_passive_items() {
+        let thread_id = "018f0000-0000-7000-8000-000000000020";
+        let turn_id = "018f0000-0000-7000-8000-000000000030";
+        let completed = json!({
+            "method": "item/completed",
+            "params": {
+                "threadId": thread_id,
+                "turnId": turn_id,
+                "completedAtMs": 2,
+                "item": {
+                    "id": "message-1",
+                    "type": "agentMessage",
+                    "text": "I’ll inspect the current state, roadmap, and recent history.",
+                    "phase": null,
+                    "memoryCitation": null,
+                    "delivery": null
+                }
+            }
+        });
+        let parsed = parse_notification(&completed).expect("completion must parse");
+        assert!(matches!(
+            parsed,
+            Some(AppServerNotification::Conversation(
+                ConversationNotification::AgentMessageCompleted {
+                    thread_id: parsed_thread_id,
+                    turn_id: parsed_turn_id,
+                    item_id,
+                    text,
+                }
+            )) if parsed_thread_id == thread_id
+                && parsed_turn_id == turn_id
+                && item_id == "message-1"
+                && text == "I’ll inspect the current state, roadmap, and recent history."
+        ));
+
+        let passive_schema_drift = json!({
+            "method": "item/completed",
+            "params": {
+                "threadId": thread_id,
+                "turnId": turn_id,
+                "completedAtMs": 2,
+                "item": {
+                    "id": "command-1",
+                    "type": "commandExecution",
+                    "status": "completed"
+                }
+            }
+        });
+        assert!(matches!(
+            parse_notification(&passive_schema_drift),
+            Ok(None)
+        ));
     }
 
     #[test]

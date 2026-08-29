@@ -712,6 +712,7 @@ fn apply_notification(
         ConversationNotification::AgentMessageDelta {
             thread_id,
             turn_id,
+            item_id: _,
             delta,
         } => {
             ensure_turn(active, &thread_id, &turn_id)?;
@@ -721,6 +722,9 @@ fn apply_notification(
                     delta,
                 },
             ))
+        }
+        ConversationNotification::AgentMessageCompleted { .. } => {
+            Ok(AdvisorNotificationOutcome::None)
         }
         ConversationNotification::ReasoningSummaryDelta {
             thread_id,

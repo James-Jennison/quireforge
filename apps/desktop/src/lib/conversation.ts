@@ -166,7 +166,16 @@ const conversationEventSchema = z.discriminatedUnion("type", [
     .object({
       type: z.literal("agent-message-delta"),
       sequence: sequenceSchema,
+      itemId: boundedTextSchema(128).optional(),
       delta: boundedTextSchema(64 * 1024),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("agent-message-completed"),
+      sequence: sequenceSchema,
+      itemId: boundedTextSchema(128),
+      text: boundedTextSchema(256 * 1024),
     })
     .strict(),
   z

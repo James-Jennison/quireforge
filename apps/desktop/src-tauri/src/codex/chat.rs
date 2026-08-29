@@ -515,6 +515,7 @@ fn apply_chat_notification(
         ConversationNotification::AgentMessageDelta {
             thread_id,
             turn_id,
+            item_id: _,
             delta,
         } => {
             ensure_turn(active, &thread_id, &turn_id)?;
@@ -525,6 +526,7 @@ fn apply_chat_notification(
                 },
             ))
         }
+        ConversationNotification::AgentMessageCompleted { .. } => Ok(ChatNotificationOutcome::None),
         ConversationNotification::ReasoningSummaryDelta {
             thread_id,
             turn_id,

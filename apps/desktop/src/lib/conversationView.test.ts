@@ -57,6 +57,36 @@ describe("conversation event view", () => {
     ]);
   });
 
+  it("replaces incomplete deltas with the authoritative completed message", () => {
+    expect(
+      mergeConversationEvents(
+        [
+          {
+            type: "agent-message-delta",
+            sequence: 3,
+            itemId: "message-1",
+            delta: ", roadmap, recent history",
+          },
+        ],
+        [
+          {
+            type: "agent-message-completed",
+            sequence: 4,
+            itemId: "message-1",
+            text: "I’ll inspect the current state, roadmap, recent history",
+          },
+        ],
+      ),
+    ).toEqual([
+      {
+        type: "agent-message-completed",
+        sequence: 4,
+        itemId: "message-1",
+        text: "I’ll inspect the current state, roadmap, recent history",
+      },
+    ]);
+  });
+
   it("presents contiguous assistant streaming deltas as one bounded message", () => {
     const result = coalesceConversationMessageDeltas([
       { type: "lifecycle", sequence: 1, phase: "running" },

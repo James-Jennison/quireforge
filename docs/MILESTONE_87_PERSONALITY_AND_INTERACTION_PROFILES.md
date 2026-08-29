@@ -84,7 +84,7 @@ version mapping, protected-file ownership, permissions, and integrity; the
 installed `/usr/bin/quireforge` process was then launched. Owner acceptance of
 the visible profile controls remains required before M87 is marked validated.
 
-`0.1.0-beta.114` supersedes beta.113 for owner acceptance. It keeps M87's
+`0.1.0-beta.115` supersedes failed beta.114 for owner acceptance. It keeps M87's
 closed Direct/Conversational and authority contracts unchanged while making the
 actual New task workspace a chat-first surface for both profiles: the transcript
 is the main workspace, the composer stays at its bottom as one compact row,
@@ -101,10 +101,11 @@ snapshot. The strict snapshot-recovery path preserves any already rendered
 response and can retry only the existing conversation poll; it does not claim
 an undetected frontend/native version mismatch. Beta.110 through beta.113
 package and installed-host evidence remain historical evidence only. Beta.114
-passed focused conversation tests, desktop/mobile E2E, the clean pinned package
-lifecycle, restricted staged installation, installed-host integrity validation,
-and bounded installed-binary launch. Full repository validation now passes.
-Owner acceptance remains required.
+is immutable failed acceptance evidence because the installed app dropped the
+opening fragments of a reply and then surfaced a terminal native-response
+diagnostic. Beta.115 reconciles each stream with the completed assistant message
+and keeps passive item-schema drift from terminating the response. Its package
+and installed-host gates are pending. Owner acceptance remains required.
 
 The chat-first presentation has one functional visual boundary: ordinary
 assistant prose, passive progress/evidence, and open clarifying questions stay
@@ -113,10 +114,10 @@ an explicit yes/no decision interrupts that flow with the existing semantic
 approval surface. Passive activity remains a lightweight, expandable timeline
 row; it is not an Action Card and conveys no authority.
 
-## Owner acceptance procedure — beta.114
+## Owner acceptance procedure — beta.115
 
 This is a one-shot owner review, not a new capability or a new application
-surface. Use the installed `0.1.0-beta.114` application and its New task chat
+surface. Use the installed `0.1.0-beta.115` application and its New task chat
 workspace:
 
 1. Test both **Direct** and **Conversational** profiles. For each profile, the

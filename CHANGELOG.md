@@ -2,6 +2,12 @@
 
 ## Unreleased — M87 chat workspace refinement
 
+- Reconciles streamed assistant deltas with Codex's authoritative completed
+  message text, so a dropped opening fragment can no longer leave a response
+  beginning mid-sentence (for example, `, roadmap`).
+- Treats unpresentable passive item-lifecycle schema additions as omitted
+  activity evidence rather than terminating an otherwise valid assistant turn;
+  actionable approval requests remain on their separate strict parser.
 - Defines the previously missing opaque raised-surface token, preventing the
   compact Controls popover, attachment tray, Action menus, and other raised
   workbench surfaces from becoming transparent and exposing background text.

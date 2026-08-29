@@ -30,11 +30,23 @@ export function mergeConversationEvents(
   // Retain complete assistant messages rather than a fixed number of their
   // transport fragments. A long token-by-token response could otherwise lose
   // its opening text before the view had a chance to join the deltas.
-  return coalesceConversationMessageDeltas(
-    [...bySequence.values()].sort(
-      (left, right) => left.sequence - right.sequence,
-    ),
-  ).slice(-MAX_CONVERSATION_EVENTS);
+  const ordered = [...bySequence.values()].sort(
+    (left, right) => left.sequence - right.sequence,
+  );
+  const completedItems = new Set(
+    ordered
+      .filter((event) => event.type === "agent-message-completed")
+      .map((event) => event.itemId),
+  );
+  const reconciled = ordered.filter(
+    (event) =>
+      event.type !== "agent-message-delta" ||
+      !event.itemId ||
+      !completedItems.has(event.itemId),
+  );
+  return coalesceConversationMessageDeltas(reconciled).slice(
+    -MAX_CONVERSATION_EVENTS,
+  );
 }
 
 /**
@@ -51,7 +63,8 @@ export function coalesceConversationMessageDeltas(
     const previous = coalesced.at(-1);
     if (
       event.type === "agent-message-delta" &&
-      previous?.type === "agent-message-delta"
+      previous?.type === "agent-message-delta" &&
+      previous.itemId === event.itemId
     ) {
       previous.delta = appendBoundedOutput(previous.delta, event.delta);
       previous.sequence = event.sequence;

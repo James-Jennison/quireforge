@@ -3258,7 +3258,7 @@ test("native activity fixture renders bounded real-time approval detail", async 
   expect(overflow).toBeLessThanOrEqual(1);
 });
 
-test("native conversation presents streamed assistant fragments as one response", async ({
+test("native conversation reconciles incomplete fragments with the completed response", async ({
   page,
 }) => {
   const streamedConversation = {
@@ -3266,9 +3266,18 @@ test("native conversation presents streamed assistant fragments as one response"
     state: "running",
     pendingApproval: null,
     events: [
-      { type: "agent-message-delta", sequence: 1, delta: "Three" },
-      { type: "agent-message-delta", sequence: 2, delta: "-part" },
-      { type: "agent-message-delta", sequence: 3, delta: " completion" },
+      {
+        type: "agent-message-delta",
+        sequence: 1,
+        itemId: "message-1",
+        delta: ", roadmap, recent history",
+      },
+      {
+        type: "agent-message-completed",
+        sequence: 2,
+        itemId: "message-1",
+        text: "I’ll inspect the current state, roadmap, recent history",
+      },
     ],
     diagnosticCode: null,
   } as const;
@@ -3285,9 +3294,14 @@ test("native conversation presents streamed assistant fragments as one response"
   await page.goto("/");
 
   await openWorkspace(page, "New task");
-  await expect(page.getByText("Three-part completion")).toBeVisible();
+  await expect(
+    page.getByText("I’ll inspect the current state, roadmap, recent history"),
+  ).toBeVisible();
   await expect(
     page.locator(".conversation-event--agent-message-delta"),
+  ).toHaveCount(0);
+  await expect(
+    page.locator(".conversation-event--agent-message-completed"),
   ).toHaveCount(1);
 });
 

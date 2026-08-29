@@ -196,7 +196,13 @@ pub enum ConversationEvent {
     },
     AgentMessageDelta {
         sequence: u64,
+        item_id: String,
         delta: String,
+    },
+    AgentMessageCompleted {
+        sequence: u64,
+        item_id: String,
+        text: String,
     },
     ReasoningSummaryDelta {
         sequence: u64,

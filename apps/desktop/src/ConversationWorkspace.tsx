@@ -227,6 +227,9 @@ function ActivityCard({
 }
 
 function EventCard({ event }: { event: ConversationEvent }) {
+  if (event.type === "agent-message-completed") {
+    return <p className="conversation-event__message">{event.text}</p>;
+  }
   if (event.type === "agent-message-delta") {
     return <p className="conversation-event__message">{event.delta}</p>;
   }

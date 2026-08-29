@@ -100,7 +100,7 @@ research, and M72 objective-scoped authority are completed foundations. M72
 is validated in `0.1.0-beta.107`: full validation, desktop/mobile E2E, clean
 package, installed-host launch, and owner acceptance of the inert
 draft-to-active-to-revoked lifecycle passed. The next product foundation is
-M87 interaction profiles. The `0.1.0-beta.114` candidate supersedes beta.113
+M87 interaction profiles. The `0.1.0-beta.115` candidate supersedes failed beta.114
 for owner acceptance. It makes the New task work area a single chat-first
 workspace for both Direct and Conversational profiles: a flexible transcript,
 submitted-message bubble, and a compact bottom composer. Attachment selection,
@@ -111,7 +111,9 @@ failure messages, approval, or native execution scope. It also
 ignores streaming frames made only of whitespace or invisible formatting marks
 before strict protocol validation, preventing those non-semantic frames from
 ending a managed conversation while retaining rejection for mixed visible and
-invisible content. Beta.114 preserves partial rendered content and offers a
+invisible content. Beta.115 reconciles streamed deltas with the authoritative
+completed assistant message and ignores unpresentable passive lifecycle schema
+drift. It preserves partial rendered content and offers a
 bounded existing-conversation retry when strict snapshot recovery fails; it
 does not misstate that condition as a version mismatch. Beta.113 also
 normalizes an empty optional native plan
@@ -121,8 +123,9 @@ passive activity, and clarifying questions
 remain in the transcript; only a concrete pending yes/no action interrupts it
 with a distinct approval surface. Focused conversation tests, desktop/mobile
 E2E, clean packaging, restricted staged installation, installed-host integrity
-validation, and the bounded installed-binary launch check passed for beta.114.
-Full repository validation now passes; owner acceptance remains required.
+validation, packaging, installation, and owner acceptance are pending for
+beta.115. Beta.114 is immutable failed acceptance evidence: the owner reproduced
+a reply with missing opening fragments and a terminal native-response diagnostic.
 It is
 followed by M73 context assembly,
 M74 completion, and M86 acceptance; later browser, connector,

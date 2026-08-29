@@ -1336,6 +1336,7 @@ fn apply_notification(
         ConversationNotification::AgentMessageDelta {
             thread_id,
             turn_id,
+            item_id,
             delta,
         } => {
             ensure_turn(active, &thread_id, &turn_id)?;
@@ -1345,7 +1346,24 @@ fn apply_notification(
             Ok((
                 Some(ConversationEvent::AgentMessageDelta {
                     sequence: active.take_sequence(),
+                    item_id,
                     delta,
+                }),
+                None,
+            ))
+        }
+        ConversationNotification::AgentMessageCompleted {
+            thread_id,
+            turn_id,
+            item_id,
+            text,
+        } => {
+            ensure_turn(active, &thread_id, &turn_id)?;
+            Ok((
+                Some(ConversationEvent::AgentMessageCompleted {
+                    sequence: active.take_sequence(),
+                    item_id,
+                    text,
                 }),
                 None,
             ))
@@ -2324,6 +2342,7 @@ mod tests {
 printf '%s\n' '{{"method":"item/agentMessage/delta","params":{{"threadId":"{THREAD_ID}","turnId":"{TURN_ID}","itemId":"item-1","delta":"Review complete."}}}}'
 printf '%s\n' '{{"method":"item/agentMessage/delta","params":{{"threadId":"{THREAD_ID}","turnId":"{TURN_ID}","itemId":"item-1","delta":""}}}}'
 printf '%s\n' '{{"method":"item/agentMessage/delta","params":{{"threadId":"{THREAD_ID}","turnId":"{TURN_ID}","itemId":"item-1","delta":"\\u200B"}}}}'
+printf '%s\n' '{{"method":"item/completed","params":{{"threadId":"{THREAD_ID}","turnId":"{TURN_ID}","completedAtMs":1,"item":{{"id":"item-1","type":"agentMessage","text":"Full review complete.","phase":null,"memoryCitation":null,"delivery":null}}}}}}'
 printf '%s\n' '{{"method":"turn/plan/updated","params":{{"threadId":"{THREAD_ID}","turnId":"{TURN_ID}","explanation":"Checked safely.","plan":[{{"step":"Inspect project","status":"completed"}}]}}}}'
 printf '%s\n' '{{"method":"item/started","params":{{"threadId":"{THREAD_ID}","turnId":"{TURN_ID}","startedAtMs":1,"item":{{"id":"item-2","type":"commandExecution","command":"git status","commandActions":[],"cwd":{cwd_json},"status":"inProgress"}}}}}}'
 printf '%s\n' '{{"method":"item/commandExecution/outputDelta","params":{{"threadId":"{THREAD_ID}","turnId":"{TURN_ID}","itemId":"item-2","delta":"OPENAI_API_KEY="}}}}'
@@ -2366,6 +2385,11 @@ printf '%s\n' '{{"method":"turn/completed","params":{{"threadId":"{THREAD_ID}","
         assert!(completed.events.iter().any(|event| matches!(
             event,
             ConversationEvent::AgentMessageDelta { delta, .. } if delta == "Review complete."
+        )));
+        assert!(completed.events.iter().any(|event| matches!(
+            event,
+            ConversationEvent::AgentMessageCompleted { item_id, text, .. }
+                if item_id == "item-1" && text == "Full review complete."
         )));
         assert!(completed.events.iter().all(|event| !matches!(
             event,
