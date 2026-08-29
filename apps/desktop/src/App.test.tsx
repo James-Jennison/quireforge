@@ -1563,6 +1563,142 @@ describe("QuireForge desktop shell", () => {
     expect(notifyConversationTask).toHaveBeenCalledWith(conversationId);
   });
 
+  it("acknowledges event batches only after their conversation state is committed", async () => {
+    const conversationId = "018f0000-0000-7000-8000-000000000010";
+    const startDeliveryId = "018f0000-0000-7000-8000-000000000091";
+    const terminalDeliveryId = "018f0000-0000-7000-8000-000000000092";
+    const running = conversationSnapshotSchema.parse({
+      schemaVersion: 3,
+      deliveryId: startDeliveryId,
+      state: "running",
+      conversationId,
+      projectId,
+      modelId: "gpt-5.6-sol",
+      reasoningEffort: "high",
+      modelSelection: modelSelection(),
+      sandboxMode: "workspace-write",
+      approvalPolicy: "on-request",
+      pendingApproval: null,
+      events: [
+        {
+          type: "agent-message-delta",
+          sequence: 1,
+          delta: "Committed response.",
+        },
+      ],
+      diagnosticCode: null,
+    });
+    const completed = conversationSnapshotSchema.parse({
+      ...running,
+      deliveryId: terminalDeliveryId,
+      state: "completed",
+      events: [
+        {
+          type: "agent-message-completed",
+          sequence: 2,
+          itemId: "message-1",
+          text: "Committed response.",
+        },
+        { type: "lifecycle", sequence: 3, phase: "completed" },
+      ],
+    });
+    const acknowledgeConversationDeliveryTask = vi.fn(() => {
+      expect(screen.getByText("Committed response.")).toBeInTheDocument();
+      return Promise.resolve();
+    });
+
+    render(
+      <App
+        loadBootstrap={() => Promise.resolve(scaffoldBootstrap)}
+        loadRuntime={() => Promise.resolve(scaffoldCodexRuntime)}
+        loadAuth={() => Promise.resolve(authenticatedAuth)}
+        loadProjects={() => Promise.resolve(attachedProject)}
+        loadConversation={() => Promise.resolve(scaffoldConversation)}
+        startConversationTask={() => Promise.resolve(running)}
+        pollConversationTask={() => Promise.resolve(completed)}
+        acknowledgeConversationDeliveryTask={
+          acknowledgeConversationDeliveryTask
+        }
+      />,
+    );
+
+    await navigateTo("New task");
+    fireEvent.change(screen.getByLabelText("Message"), {
+      target: { value: "Verify committed delivery." },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+
+    await waitFor(() =>
+      expect(acknowledgeConversationDeliveryTask).toHaveBeenCalledWith(
+        conversationId,
+        startDeliveryId,
+      ),
+    );
+    await waitFor(() =>
+      expect(acknowledgeConversationDeliveryTask).toHaveBeenCalledWith(
+        conversationId,
+        terminalDeliveryId,
+      ),
+    );
+    expect(await screen.findByText("Task completed")).toBeInTheDocument();
+  });
+
+  it("replays and acknowledges a retained terminal batch after renderer reload", async () => {
+    const conversationId = "018f0000-0000-7000-8000-000000000010";
+    const deliveryId = "018f0000-0000-7000-8000-000000000093";
+    const retainedTerminal = conversationSnapshotSchema.parse({
+      schemaVersion: 3,
+      deliveryId,
+      state: "completed",
+      conversationId,
+      projectId,
+      modelId: "gpt-5.6-sol",
+      reasoningEffort: "high",
+      modelSelection: modelSelection(),
+      sandboxMode: "workspace-write",
+      approvalPolicy: "on-request",
+      pendingApproval: null,
+      events: [
+        {
+          type: "agent-message-completed",
+          sequence: 1,
+          itemId: "message-reloaded",
+          text: "Recovered after renderer reload.",
+        },
+        { type: "lifecycle", sequence: 2, phase: "completed" },
+      ],
+      diagnosticCode: null,
+    });
+    const acknowledgeConversationDeliveryTask = vi.fn(() => {
+      expect(
+        screen.getByText("Recovered after renderer reload."),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Task completed")).toBeInTheDocument();
+      return Promise.resolve();
+    });
+
+    render(
+      <App
+        loadBootstrap={() => Promise.resolve(scaffoldBootstrap)}
+        loadRuntime={() => Promise.resolve(scaffoldCodexRuntime)}
+        loadAuth={() => Promise.resolve(authenticatedAuth)}
+        loadProjects={() => Promise.resolve(attachedProject)}
+        loadConversation={() => Promise.resolve(retainedTerminal)}
+        acknowledgeConversationDeliveryTask={
+          acknowledgeConversationDeliveryTask
+        }
+      />,
+    );
+
+    await navigateTo("New task");
+    await waitFor(() =>
+      expect(acknowledgeConversationDeliveryTask).toHaveBeenCalledWith(
+        conversationId,
+        deliveryId,
+      ),
+    );
+  });
+
   it("clears a transient poll failure after the displayed task polls successfully", async () => {
     const conversationId = "018f0000-0000-7000-8000-000000000010";
     const running = conversationSnapshotSchema.parse({

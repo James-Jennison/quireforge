@@ -2,6 +2,15 @@
 
 ## Unreleased — M87 chat workspace refinement
 
+- Makes native conversation delivery transactional across the Rust/TypeScript
+  boundary. Every non-empty normalized batch receives an opaque token and is
+  replayed unchanged until the committed React conversation state acknowledges
+  that exact token; terminal lifecycle and co-batched assistant text therefore
+  cannot be replaced by a later eventless completion snapshot.
+- Adds content-free validation classification for rejected poll snapshots. It
+  records only the failed contract scope, recovery class, issue code, and field
+  path; it never records prompt, response, project, credential, or protocol
+  values and does not weaken consequential-event validation.
 - Adds atomic renderer recovery for native poll batches: a malformed passive
   progress event can be omitted without losing valid assistant text consumed in
   the same poll, while malformed assistant, lifecycle, approval,
@@ -44,15 +53,12 @@
 - Keeps passive lifecycle frames out of the transcript. The live conversation
   header remains the single status surface, while approvals, failures, and
   other bounded action evidence retain their distinct treatment.
-- Full repository validation (including 462 desktop tests and 466 passing Rust
-  tests), the desktop/mobile browser suite (88 tests), and the website browser
-  suite (eight tests) pass for beta.116. The clean pinned Ubuntu 22.04 package
-  gate passed for both Debian packages, both were installed through the
-  restricted local installer, installed-host package/version/ownership/
-  permission/integrity validation passed, and the installed
-  `/usr/bin/quireforge` process launched successfully under the bounded
-  `quireforge-installed-beta116` user service. Owner interaction acceptance
-  remains pending.
+- Beta.116 source, package, and installed-host gates passed, but owner
+  acceptance failed: the installed app rejected a consumed poll batch,
+  displayed no assistant response, and later showed a clean terminal
+  completion. Beta.117 is the transactional-delivery correction; its source,
+  package, installed-host, and owner-acceptance gates remain distinct and are
+  recorded only when performed.
 
 ## Unreleased — authoritative feature-parity roadmap
 

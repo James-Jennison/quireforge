@@ -58,6 +58,7 @@ import {
   approveActionCard,
   cancelFilePreview,
   cancelConversationAttachments,
+  acknowledgeConversationDelivery,
   cancelCodexAuth,
   cancelLocalChat,
   acceptTaskHandoff,
@@ -477,6 +478,10 @@ interface AppProps {
   pollConversationTask?: (
     conversationId: string,
   ) => Promise<ConversationSnapshot>;
+  acknowledgeConversationDeliveryTask?: (
+    conversationId: string,
+    deliveryId: string,
+  ) => Promise<void>;
   notifyConversationTask?: (
     conversationId: string,
   ) => Promise<DesktopNotificationResult>;
@@ -1048,6 +1053,7 @@ export default function App({
   startConversationTask = startConversation,
   dispatchAdvisorOnceTask = dispatchAdvisorOnce,
   pollConversationTask = pollConversation,
+  acknowledgeConversationDeliveryTask = acknowledgeConversationDelivery,
   notifyConversationTask = notifyConversation,
   interruptConversationTask = interruptConversation,
   loadAdvisorConversationTask = loadAdvisorConversation,
@@ -1166,6 +1172,10 @@ export default function App({
   const [conversationBusy, setConversationBusy] = useState(false);
   const [conversationActionError, setConversationActionError] =
     useState<ConversationActionFailureCode | null>(null);
+  const [pendingConversationDeliveryAcks, setPendingConversationDeliveryAcks] =
+    useState<Record<string, { conversationId: string; deliveryId: string }>>(
+      {},
+    );
   const [conversationMode, setConversationMode] = useState<ConversationMode>(
     initialConversationMode,
   );
@@ -1428,6 +1438,7 @@ export default function App({
             [result.projectId!]: { snapshot: result, events: result.events },
           }));
         }
+        queueConversationDeliveryAck(result);
         setConversationState("native");
       })
       .catch(() => {
@@ -1784,6 +1795,60 @@ export default function App({
     .sort();
   const activeTaskProjectKey = activeTaskProjectIds.join(",");
 
+  function queueConversationDeliveryAck(snapshot: ConversationSnapshot) {
+    if (!snapshot.conversationId || !snapshot.deliveryId) return;
+    setPendingConversationDeliveryAcks((current) => {
+      if (snapshot.deliveryId! in current) return current;
+      return {
+        ...current,
+        [snapshot.deliveryId!]: {
+          conversationId: snapshot.conversationId!,
+          deliveryId: snapshot.deliveryId!,
+        },
+      };
+    });
+  }
+
+  useEffect(() => {
+    const pending = Object.values(pendingConversationDeliveryAcks);
+    if (pending.length === 0) return;
+    let active = true;
+    let retryTimer: number | undefined;
+
+    async function flushCommittedDeliveries() {
+      for (const delivery of pending) {
+        try {
+          await acknowledgeConversationDeliveryTask(
+            delivery.conversationId,
+            delivery.deliveryId,
+          );
+        } catch {
+          if (active) {
+            setConversationActionError("native-command-failed");
+            retryTimer = window.setTimeout(
+              () => void flushCommittedDeliveries(),
+              500,
+            );
+          }
+          return;
+        }
+        if (!active) return;
+        setPendingConversationDeliveryAcks((current) => {
+          if (!(delivery.deliveryId in current)) return current;
+          const next = { ...current };
+          delete next[delivery.deliveryId];
+          return next;
+        });
+      }
+    }
+
+    void flushCommittedDeliveries();
+    return () => {
+      active = false;
+      if (retryTimer !== undefined) window.clearTimeout(retryTimer);
+    };
+  }, [acknowledgeConversationDeliveryTask, pendingConversationDeliveryAcks]);
+
   useEffect(() => {
     if (!activeConversationKey) return;
 
@@ -1876,6 +1941,7 @@ export default function App({
           mergeConversationEvents(current, displayed.events),
         );
       }
+      for (const result of results) queueConversationDeliveryAck(result);
       if (
         results.some(
           (result) =>
@@ -2893,6 +2959,7 @@ export default function App({
       setConversation(result);
       setConversationEvents(result.events);
       trackConversation(result, true);
+      queueConversationDeliveryAck(result);
       return result;
     } catch (error) {
       setConversationActionError(conversationActionFailureCode(error));
@@ -2914,6 +2981,7 @@ export default function App({
         mergeConversationEvents(current, result.events),
       );
       trackConversation(result, false);
+      queueConversationDeliveryAck(result);
       return result;
     } catch (error) {
       setConversationActionError(conversationActionFailureCode(error));
@@ -2932,6 +3000,7 @@ export default function App({
       setConversation(snapshot);
       setConversationEvents(snapshot.events);
       trackConversation(snapshot, true);
+      queueConversationDeliveryAck(snapshot);
       navigateWorkspace("conversation");
     }
     return result;
@@ -2951,6 +3020,7 @@ export default function App({
         mergeConversationEvents(current, result.events),
       );
       trackConversation(result, false);
+      queueConversationDeliveryAck(result);
       return result;
     } catch (error) {
       setConversationActionError(conversationActionFailureCode(error));
@@ -3013,6 +3083,7 @@ export default function App({
         mergeConversationEvents(current, result.events),
       );
       trackConversation(result, false);
+      queueConversationDeliveryAck(result);
       return result;
     } catch (error) {
       setConversationActionError(conversationActionFailureCode(error));
@@ -3107,6 +3178,7 @@ export default function App({
       setConversation(result);
       setConversationEvents(result.events);
       trackConversation(result, true);
+      queueConversationDeliveryAck(result);
       if (result.state === "unavailable") setSessionActionError(true);
       return result;
     } catch (error) {

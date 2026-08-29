@@ -2,6 +2,7 @@ import fixture from "../../fixtures/conversation.json";
 import { describe, expect, it } from "vitest";
 
 import {
+  classifyConversationSnapshotResponse,
   conversationRegistrySchema,
   parseConversationSnapshotResponse,
   conversationSnapshotSchema,
@@ -196,6 +197,9 @@ describe("conversation contract", () => {
     };
 
     expect(parseConversationSnapshotResponse(payload)).toBeNull();
+    expect(classifyConversationSnapshotResponse(payload)).toMatch(
+      /^event\.0\.consequential:/u,
+    );
   });
 
   it("preserves assistant delta order around an unpresentable passive event", () => {

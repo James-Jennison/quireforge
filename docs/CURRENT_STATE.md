@@ -100,8 +100,8 @@ research, and M72 objective-scoped authority are completed foundations. M72
 is validated in `0.1.0-beta.107`: full validation, desktop/mobile E2E, clean
 package, installed-host launch, and owner acceptance of the inert
 draft-to-active-to-revoked lifecycle passed. The next product foundation is
-M87 interaction profiles. The `0.1.0-beta.116` candidate supersedes failed
-beta.115 and beta.114 for owner acceptance. It makes the New task work area a single chat-first
+M87 interaction profiles. The `0.1.0-beta.117` candidate supersedes failed
+beta.116, beta.115, and beta.114 for owner acceptance. It makes the New task work area a single chat-first
 workspace for both Direct and Conversational profiles: a flexible transcript,
 submitted-message bubble, and a compact bottom composer. Attachment selection,
 controls, and policy copy are progressive disclosure rather than permanent
@@ -134,7 +134,17 @@ restricted local installer. Installed-host package state, version mapping,
 protected-file ownership, permissions, and integrity validation passed, and
 the installed `/usr/bin/quireforge` process launched successfully under the
 bounded `quireforge-installed-beta116` user service. Owner interaction
-acceptance remains pending. Beta.115 is immutable failed acceptance evidence:
+acceptance failed: the installed app rejected a native poll, displayed no
+assistant response, then surfaced a clean **Task completed** state. Beta.117
+retains each exact non-empty native batch under an opaque delivery token until
+the parsed events have committed to React conversation state and that token is
+explicitly acknowledged. A rejected batch is replayed instead of being
+replaced by newer notifications or an eventless terminal snapshot. Content-free
+classification records only contract scope, recovery class, issue code, and
+field path; it does not record response content or relax consequential-event
+validation. Beta.117 source, package, installed-host, and owner-acceptance gates
+remain pending until performed. Beta.116 is immutable failed acceptance
+evidence despite its passing source/package/installed-host gates. Beta.115 is immutable failed acceptance evidence:
 the owner reproduced a poll failure followed by terminal completion with no
 assistant response because one invalid passive event caused the renderer to
 reject the entire already-consumed batch. Beta.114 is also immutable failed

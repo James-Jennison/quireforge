@@ -139,6 +139,7 @@ import {
   type ModelSelectionUpdateRequest,
 } from "./modelSelection";
 import {
+  classifyConversationSnapshotResponse,
   ConversationActionFailure,
   parseConversationSnapshotResponse,
   conversationSnapshotSchema,
@@ -724,6 +725,7 @@ export const CONVERSATION_ACTIVE_COMMAND = "conversation_active";
 export const CONVERSATION_NOTIFY_COMMAND = "conversation_notify";
 export const CONVERSATION_START_COMMAND = "conversation_start";
 export const CONVERSATION_POLL_COMMAND = "conversation_poll";
+export const CONVERSATION_ACK_COMMAND = "conversation_ack";
 export const CONVERSATION_INTERRUPT_COMMAND = "conversation_interrupt";
 export const CONVERSATION_APPROVAL_DECIDE_COMMAND =
   "conversation_approval_decide";
@@ -3046,9 +3048,32 @@ export async function pollConversation(
 
   const snapshot = parseConversationSnapshotResponse(payload);
   if (!snapshot) {
-    throw new ConversationActionFailure("native-response-invalid");
+    const classification = classifyConversationSnapshotResponse(payload);
+    console.error("QuireForge conversation response classification", {
+      classification,
+    });
+    throw new ConversationActionFailure(
+      "native-response-invalid",
+      classification,
+    );
   }
   return snapshot;
+}
+
+export async function acknowledgeConversationDelivery(
+  conversationId: string,
+  deliveryId: string,
+  invokeFunction: InvokeFunction = invokeTauri,
+): Promise<void> {
+  const reviewedConversationId = conversationIdSchema.parse(conversationId);
+  const reviewedDeliveryId = conversationIdSchema.parse(deliveryId);
+  const acknowledged = await invokeFunction(CONVERSATION_ACK_COMMAND, {
+    conversationId: reviewedConversationId,
+    deliveryId: reviewedDeliveryId,
+  });
+  if (acknowledged !== true) {
+    throw new ConversationActionFailure("native-command-failed");
+  }
 }
 
 export async function interruptConversation(

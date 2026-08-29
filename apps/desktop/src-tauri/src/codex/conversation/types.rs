@@ -130,6 +130,7 @@ pub enum ConversationDiagnosticCode {
 #[serde(rename_all = "camelCase")]
 pub struct ConversationSnapshot {
     pub schema_version: u16,
+    pub delivery_id: Option<String>,
     pub state: ConversationState,
     pub conversation_id: Option<String>,
     pub project_id: Option<String>,
@@ -155,6 +156,7 @@ impl ConversationSnapshot {
     pub(crate) fn empty() -> Self {
         Self {
             schema_version: CONVERSATION_SCHEMA_VERSION,
+            delivery_id: None,
             state: ConversationState::Empty,
             conversation_id: None,
             project_id: None,

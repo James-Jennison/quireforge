@@ -50,6 +50,7 @@ import {
   CONVERSATION_ATTACHMENT_STAGE_NATIVE_DROP_COMMAND,
   CONVERSATION_ATTACHMENT_STATUS_COMMAND,
   CONVERSATION_ACTIVE_COMMAND,
+  CONVERSATION_ACK_COMMAND,
   CONVERSATION_INTERRUPT_COMMAND,
   CONVERSATION_NOTIFY_COMMAND,
   CONVERSATION_ARCHIVE_COMMAND,
@@ -77,6 +78,7 @@ import {
   loadCodexUsage,
   loadCodexRuntime,
   loadConversationStatus,
+  acknowledgeConversationDelivery,
   loadActiveConversations,
   loadConversationSessions,
   loadConversationAttachments,
@@ -906,6 +908,25 @@ describe("desktop bridge", () => {
         },
       ],
     });
+  });
+
+  it("acknowledges only an exact app-owned conversation delivery token", async () => {
+    const conversationId = "018f0000-0000-7000-8000-000000000010";
+    const deliveryId = "018f0000-0000-7000-8000-000000000099";
+    const invoke = vi.fn().mockResolvedValue(true);
+
+    await expect(
+      acknowledgeConversationDelivery(conversationId, deliveryId, invoke),
+    ).resolves.toBeUndefined();
+    expect(invoke).toHaveBeenCalledWith(CONVERSATION_ACK_COMMAND, {
+      conversationId,
+      deliveryId,
+    });
+
+    invoke.mockResolvedValueOnce(false);
+    await expect(
+      acknowledgeConversationDelivery(conversationId, deliveryId, invoke),
+    ).rejects.toMatchObject({ code: "native-command-failed" });
   });
 
   it("preserves a multiline task as one native conversation request", async () => {

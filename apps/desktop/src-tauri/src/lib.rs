@@ -3425,6 +3425,17 @@ async fn conversation_poll(
 }
 
 #[tauri::command]
+async fn conversation_ack(
+    conversation_id: String,
+    delivery_id: String,
+    service: tauri::State<'_, ConversationService>,
+) -> Result<bool, ()> {
+    Ok(service
+        .acknowledge_delivery(conversation_id, delivery_id)
+        .await)
+}
+
+#[tauri::command]
 async fn conversation_interrupt(
     conversation_id: String,
     service: tauri::State<'_, ConversationService>,
@@ -3932,6 +3943,7 @@ pub fn run() {
             conversation_notify,
             conversation_start,
             conversation_poll,
+            conversation_ack,
             conversation_interrupt,
             conversation_approval_decide,
             model_selection_update,

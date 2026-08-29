@@ -55,11 +55,16 @@ export type ConversationActionFailureCode = z.infer<
 
 export class ConversationActionFailure extends Error {
   readonly code: ConversationActionFailureCode;
+  readonly validationClassification: string | null;
 
-  constructor(code: ConversationActionFailureCode) {
+  constructor(
+    code: ConversationActionFailureCode,
+    validationClassification: string | null = null,
+  ) {
     super(code);
     this.name = "ConversationActionFailure";
     this.code = code;
+    this.validationClassification = validationClassification;
   }
 }
 
@@ -329,6 +334,7 @@ const conversationApprovalSchema = z
 export const conversationSnapshotSchema = z
   .object({
     schemaVersion: z.literal(3),
+    deliveryId: conversationIdSchema.nullable().optional().default(null),
     state: z.enum([
       "empty",
       "running",
@@ -486,6 +492,55 @@ export type ConversationRegistrySnapshot = z.infer<
   typeof conversationRegistrySchema
 >;
 export type ConversationEvent = ConversationSnapshot["events"][number];
+
+function zodIssueClassification(scope: string, issues: z.ZodIssue[]): string {
+  const issue = issues[0];
+  const path = issue?.path.length ? issue.path.join(".") : "root";
+  return `${scope}:${issue?.code ?? "unknown"}:${path}`;
+}
+
+export function classifyConversationSnapshotResponse(payload: unknown): string {
+  const strict = conversationSnapshotSchema.safeParse(payload);
+  if (strict.success) return "valid";
+  if (
+    typeof payload !== "object" ||
+    payload === null ||
+    !("events" in payload) ||
+    !Array.isArray(payload.events)
+  ) {
+    return zodIssueClassification("envelope", strict.error.issues);
+  }
+
+  const envelope = conversationSnapshotSchema.safeParse({
+    ...payload,
+    events: [],
+  });
+  if (!envelope.success) {
+    return zodIssueClassification("envelope", envelope.error.issues);
+  }
+
+  for (const [index, candidate] of payload.events.entries()) {
+    const parsed = conversationEventSchema.safeParse(candidate);
+    if (parsed.success) continue;
+    const candidateType =
+      typeof candidate === "object" && candidate !== null && "type" in candidate
+        ? (candidate as { type?: unknown }).type
+        : null;
+    const type =
+      typeof candidateType === "string" &&
+      candidateType in conversationEventRecoveryClasses
+        ? (candidateType as ConversationEvent["type"])
+        : null;
+    const recoveryClass =
+      type === null ? "unknown" : conversationEventRecoveryClasses[type];
+    return zodIssueClassification(
+      `event.${index}.${recoveryClass}`,
+      parsed.error.issues,
+    );
+  }
+
+  return zodIssueClassification("snapshot", strict.error.issues);
+}
 
 type ConversationEventRecoveryClass = "passive" | "consequential";
 

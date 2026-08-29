@@ -74,6 +74,7 @@ pub struct ConversationService {
 struct ConversationServiceState {
     active: HashMap<String, Arc<Mutex<ActiveConversation>>>,
     starting_projects: HashSet<String>,
+    pending_deliveries: HashMap<String, ConversationSnapshot>,
     recent: HashMap<String, ConversationSnapshot>,
     last: ConversationSnapshot,
 }
@@ -139,6 +140,7 @@ impl ConversationServiceState {
         Self {
             active: HashMap::new(),
             starting_projects: HashSet::new(),
+            pending_deliveries: HashMap::new(),
             recent: HashMap::new(),
             last: ConversationSnapshot::empty(),
         }
@@ -169,9 +171,42 @@ impl ConversationServiceState {
             }
             let mut recent = snapshot.clone();
             recent.events.clear();
+            recent.delivery_id = None;
             self.recent.insert(conversation_id, recent);
         }
         self.last = snapshot;
+    }
+
+    fn retain_delivery(&mut self, snapshot: &mut ConversationSnapshot) {
+        if snapshot.events.is_empty() {
+            snapshot.delivery_id = None;
+            return;
+        }
+        let Some(conversation_id) = snapshot.conversation_id.clone() else {
+            snapshot.delivery_id = None;
+            return;
+        };
+        let delivery_id = Uuid::now_v7().to_string();
+        snapshot.delivery_id = Some(delivery_id);
+        self.pending_deliveries
+            .insert(conversation_id, snapshot.clone());
+    }
+
+    fn pending_delivery(&self, conversation_id: &str) -> Option<ConversationSnapshot> {
+        self.pending_deliveries.get(conversation_id).cloned()
+    }
+
+    fn acknowledge_delivery(&mut self, conversation_id: &str, delivery_id: &str) -> bool {
+        if !self
+            .pending_deliveries
+            .get(conversation_id)
+            .and_then(|snapshot| snapshot.delivery_id.as_deref())
+            .is_some_and(|pending_id| pending_id == delivery_id)
+        {
+            return false;
+        }
+        self.pending_deliveries.remove(conversation_id);
+        true
     }
 
     fn recent_or_not_found(&self, conversation_id: &str) -> ConversationSnapshot {
@@ -204,8 +239,14 @@ impl ConversationService {
 
     pub async fn status(&self) -> ConversationSnapshot {
         let state = self.state.lock().await;
+        if let Some(conversation_id) = state.last.conversation_id.as_deref() {
+            if let Some(pending) = state.pending_delivery(conversation_id) {
+                return pending;
+            }
+        }
         let mut snapshot = state.last.clone();
         snapshot.events.clear();
+        snapshot.delivery_id = None;
         snapshot
     }
 
@@ -266,16 +307,19 @@ impl ConversationService {
             .ok_or_else(|| state.recent_or_not_found(conversation_id))
     }
 
-    async fn remember_snapshot(&self, snapshot: ConversationSnapshot) {
-        self.state.lock().await.remember(snapshot);
+    async fn remember_snapshot(&self, mut snapshot: ConversationSnapshot) -> ConversationSnapshot {
+        let mut state = self.state.lock().await;
+        state.retain_delivery(&mut snapshot);
+        state.remember(snapshot.clone());
+        snapshot
     }
 
     async fn complete_slot(
         &self,
         conversation_id: &str,
         slot: &Arc<Mutex<ActiveConversation>>,
-        snapshot: ConversationSnapshot,
-    ) {
+        mut snapshot: ConversationSnapshot,
+    ) -> ConversationSnapshot {
         let mut state = self.state.lock().await;
         if state
             .active
@@ -284,7 +328,9 @@ impl ConversationService {
         {
             state.active.remove(conversation_id);
         }
-        state.remember(snapshot);
+        state.retain_delivery(&mut snapshot);
+        state.remember(snapshot.clone());
+        snapshot
     }
 
     #[cfg(test)]
@@ -293,8 +339,36 @@ impl ConversationService {
         request: ConversationStartRequest,
         projects: &ProjectService,
     ) -> ConversationSnapshot {
-        self.start_with_mentions(request, projects, Vec::new(), Vec::new())
-            .await
+        let snapshot = self
+            .start_with_mentions(request, projects, Vec::new(), Vec::new())
+            .await;
+        self.acknowledge_test_delivery(&snapshot).await;
+        snapshot
+    }
+
+    #[cfg(test)]
+    async fn acknowledge_test_delivery(&self, snapshot: &ConversationSnapshot) {
+        let (Some(conversation_id), Some(delivery_id)) =
+            (&snapshot.conversation_id, &snapshot.delivery_id)
+        else {
+            return;
+        };
+        assert!(
+            self.acknowledge_delivery(conversation_id.clone(), delivery_id.clone())
+                .await,
+            "test renderer must acknowledge the exact retained delivery"
+        );
+    }
+
+    #[cfg(test)]
+    async fn poll_and_ack_for_test(
+        &self,
+        conversation_id: String,
+        projects: &ProjectService,
+    ) -> ConversationSnapshot {
+        let snapshot = self.poll(conversation_id, projects).await;
+        self.acknowledge_test_delivery(&snapshot).await;
+        snapshot
     }
 
     pub(crate) async fn start_with_mentions(
@@ -353,13 +427,14 @@ impl ConversationService {
                         phase: ConversationLifecyclePhase::Running,
                     },
                 ];
-                let snapshot = active.snapshot(events, None);
+                let mut snapshot = active.snapshot(events, None);
                 let conversation_id = active.conversation_id.clone();
                 let mut state = self.state.lock().await;
                 state.finish_start(&request.project_id);
                 state
                     .active
                     .insert(conversation_id, Arc::new(Mutex::new(active)));
+                state.retain_delivery(&mut snapshot);
                 state.remember(snapshot.clone());
                 snapshot
             }
@@ -517,6 +592,9 @@ impl ConversationService {
                 ConversationDiagnosticCode::ConversationNotFound,
             );
         }
+        if let Some(snapshot) = self.state.lock().await.pending_delivery(&conversation_id) {
+            return snapshot;
+        }
         let slot = match self.active_slot(&conversation_id).await {
             Ok(slot) => slot,
             Err(snapshot) => return snapshot,
@@ -588,14 +666,21 @@ impl ConversationService {
         if let Some(terminal) = terminal {
             let snapshot = finish_active(&mut active, projects, terminal, events).await;
             drop(active);
-            self.complete_slot(&conversation_id, &slot, snapshot.clone())
-                .await;
-            return snapshot;
+            return self.complete_slot(&conversation_id, &slot, snapshot).await;
         }
         let snapshot = active.snapshot(events, None);
         drop(active);
-        self.remember_snapshot(snapshot.clone()).await;
-        snapshot
+        self.remember_snapshot(snapshot).await
+    }
+
+    pub async fn acknowledge_delivery(&self, conversation_id: String, delivery_id: String) -> bool {
+        if validate_uuid_v7(&conversation_id).is_err() || validate_uuid_v7(&delivery_id).is_err() {
+            return false;
+        }
+        self.state
+            .lock()
+            .await
+            .acknowledge_delivery(&conversation_id, &delivery_id)
     }
 
     pub async fn interrupt(
@@ -638,9 +723,7 @@ impl ConversationService {
                 )
                 .await;
                 drop(active);
-                self.complete_slot(&conversation_id, &slot, snapshot.clone())
-                    .await;
-                return snapshot;
+                return self.complete_slot(&conversation_id, &slot, snapshot).await;
             }
             active.pending_approval = None;
             events.push(ConversationEvent::ApprovalResolved {
@@ -675,9 +758,7 @@ impl ConversationService {
             };
             let snapshot = finish_active(&mut active, projects, terminal, events).await;
             drop(active);
-            self.complete_slot(&conversation_id, &slot, snapshot.clone())
-                .await;
-            return snapshot;
+            return self.complete_slot(&conversation_id, &slot, snapshot).await;
         }
 
         events.push(active.lifecycle_event(ConversationLifecyclePhase::Stopping));
@@ -694,14 +775,11 @@ impl ConversationService {
             )
             .await;
             drop(active);
-            self.complete_slot(&conversation_id, &slot, snapshot.clone())
-                .await;
-            return snapshot;
+            return self.complete_slot(&conversation_id, &slot, snapshot).await;
         }
         let snapshot = active.snapshot(events, None);
         drop(active);
-        self.remember_snapshot(snapshot.clone()).await;
-        snapshot
+        self.remember_snapshot(snapshot).await
     }
 
     pub async fn decide_approval(
@@ -761,9 +839,7 @@ impl ConversationService {
             )
             .await;
             drop(active);
-            self.complete_slot(&conversation_id, &slot, snapshot.clone())
-                .await;
-            return snapshot;
+            return self.complete_slot(&conversation_id, &slot, snapshot).await;
         }
 
         active.pending_approval = None;
@@ -800,9 +876,7 @@ impl ConversationService {
                 )
                 .await;
                 drop(active);
-                self.complete_slot(&conversation_id, &slot, snapshot.clone())
-                    .await;
-                return snapshot;
+                return self.complete_slot(&conversation_id, &slot, snapshot).await;
             }
             events.push(active.lifecycle_event(ConversationLifecyclePhase::Stopping));
             active.state = ConversationState::Stopping;
@@ -818,9 +892,7 @@ impl ConversationService {
                 )
                 .await;
                 drop(active);
-                self.complete_slot(&conversation_id, &slot, snapshot.clone())
-                    .await;
-                return snapshot;
+                return self.complete_slot(&conversation_id, &slot, snapshot).await;
             }
         } else {
             active.state = ConversationState::Running;
@@ -828,8 +900,7 @@ impl ConversationService {
 
         let snapshot = active.snapshot(events, None);
         drop(active);
-        self.remember_snapshot(snapshot.clone()).await;
-        snapshot
+        self.remember_snapshot(snapshot).await
     }
 }
 
@@ -1017,6 +1088,7 @@ impl ActiveConversation {
     ) -> ConversationSnapshot {
         ConversationSnapshot {
             schema_version: CONVERSATION_SCHEMA_VERSION,
+            delivery_id: None,
             state: self.state,
             conversation_id: Some(self.conversation_id.clone()),
             project_id: Some(self.project_id.clone()),
@@ -2250,6 +2322,65 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn retained_delivery_replays_until_the_exact_token_is_acknowledged() {
+        let service = ConversationService::default();
+        let conversation_id = Uuid::now_v7().to_string();
+        let delivered = service
+            .remember_snapshot(ConversationSnapshot {
+                state: ConversationState::Completed,
+                conversation_id: Some(conversation_id.clone()),
+                events: vec![ConversationEvent::AgentMessageCompleted {
+                    sequence: 1,
+                    item_id: "message-1".to_owned(),
+                    text: "Complete response.".to_owned(),
+                }],
+                ..ConversationSnapshot::empty()
+            })
+            .await;
+        let delivery_id = delivered
+            .delivery_id
+            .clone()
+            .expect("event-bearing snapshots must receive a delivery token");
+
+        let replayed = service
+            .state
+            .lock()
+            .await
+            .pending_delivery(&conversation_id)
+            .expect("unacknowledged delivery must remain replayable");
+        assert_eq!(replayed, delivered);
+        assert!(
+            !service
+                .acknowledge_delivery(conversation_id.clone(), Uuid::now_v7().to_string())
+                .await
+        );
+        assert!(service
+            .state
+            .lock()
+            .await
+            .pending_delivery(&conversation_id)
+            .is_some());
+        assert!(
+            service
+                .acknowledge_delivery(conversation_id.clone(), delivery_id)
+                .await
+        );
+        assert!(service
+            .state
+            .lock()
+            .await
+            .pending_delivery(&conversation_id)
+            .is_none());
+        let recent = service
+            .state
+            .lock()
+            .await
+            .recent_or_not_found(&conversation_id);
+        assert!(recent.events.is_empty());
+        assert!(recent.delivery_id.is_none());
+    }
+
+    #[tokio::test]
     async fn notification_candidates_require_fresh_eligible_native_state() {
         let service = ConversationService::default();
         let conversation_id = Uuid::now_v7().to_string();
@@ -2506,6 +2637,7 @@ esac"#,
             )
             .await;
         assert_eq!(started.state, ConversationState::Running);
+        service.acknowledge_test_delivery(&started).await;
         let completed = service
             .poll(
                 started
@@ -2562,6 +2694,7 @@ esac"#
             )
             .await;
         assert_eq!(started.state, ConversationState::Running);
+        service.acknowledge_test_delivery(&started).await;
         let completed = service
             .poll(
                 started
@@ -2596,7 +2729,10 @@ printf '%s\n' '{{"method":"turn/completed","params":{{"threadId":"{THREAD_ID}","
 
         let stopping = service.interrupt(conversation_id.clone(), &projects).await;
         assert_eq!(stopping.state, ConversationState::Stopping);
-        let interrupted = service.poll(conversation_id, &projects).await;
+        service.acknowledge_test_delivery(&stopping).await;
+        let interrupted = service
+            .poll_and_ack_for_test(conversation_id, &projects)
+            .await;
         assert_eq!(interrupted.state, ConversationState::Interrupted);
 
         fs::remove_dir_all(directory).expect("temporary project must be removed");
@@ -2637,24 +2773,28 @@ printf '%s\n' '{{"method":"turn/completed","params":{{"threadId":"{THREAD_ID}","
             Some(ConversationDiagnosticCode::ProjectBusy)
         );
 
+        let first_stopping = service.interrupt(first_id.clone(), &projects).await;
+        assert_eq!(first_stopping.state, ConversationState::Stopping);
+        service.acknowledge_test_delivery(&first_stopping).await;
         assert_eq!(
-            service.interrupt(first_id.clone(), &projects).await.state,
-            ConversationState::Stopping
-        );
-        assert_eq!(
-            service.poll(first_id, &projects).await.state,
+            service
+                .poll_and_ack_for_test(first_id, &projects)
+                .await
+                .state,
             ConversationState::Interrupted
         );
         assert_eq!(
             service.poll(second_id.clone(), &projects).await.state,
             ConversationState::Running
         );
+        let second_stopping = service.interrupt(second_id.clone(), &projects).await;
+        assert_eq!(second_stopping.state, ConversationState::Stopping);
+        service.acknowledge_test_delivery(&second_stopping).await;
         assert_eq!(
-            service.interrupt(second_id.clone(), &projects).await.state,
-            ConversationState::Stopping
-        );
-        assert_eq!(
-            service.poll(second_id, &projects).await.state,
+            service
+                .poll_and_ack_for_test(second_id, &projects)
+                .await
+                .state,
             ConversationState::Interrupted
         );
 
@@ -2701,15 +2841,14 @@ printf '%s\n' '{{"method":"turn/completed","params":{{"threadId":"{THREAD_ID}","
         );
 
         for conversation_id in active_ids {
+            let stopping = service.interrupt(conversation_id.clone(), &projects).await;
+            assert_eq!(stopping.state, ConversationState::Stopping);
+            service.acknowledge_test_delivery(&stopping).await;
             assert_eq!(
                 service
-                    .interrupt(conversation_id.clone(), &projects)
+                    .poll_and_ack_for_test(conversation_id, &projects)
                     .await
                     .state,
-                ConversationState::Stopping
-            );
-            assert_eq!(
-                service.poll(conversation_id, &projects).await.state,
                 ConversationState::Interrupted
             );
         }
@@ -2743,7 +2882,9 @@ printf '%s\n' '{{"method":"turn/completed","params":{{"threadId":"{THREAD_ID}","
             .await;
         let conversation_id = started.conversation_id.expect("conversation ID must exist");
 
-        let waiting = service.poll(conversation_id.clone(), &projects).await;
+        let waiting = service
+            .poll_and_ack_for_test(conversation_id.clone(), &projects)
+            .await;
         assert_eq!(waiting.state, ConversationState::WaitingForApproval);
         let approval = waiting
             .pending_approval
@@ -2785,8 +2926,11 @@ printf '%s\n' '{{"method":"turn/completed","params":{{"threadId":"{THREAD_ID}","
                 ..
             }
         )));
+        service.acknowledge_test_delivery(&resumed).await;
 
-        let completed = service.poll(conversation_id, &projects).await;
+        let completed = service
+            .poll_and_ack_for_test(conversation_id, &projects)
+            .await;
         assert_eq!(completed.state, ConversationState::Completed);
         assert_ne!(
             projects.archive(project_id).diagnostic_code,
@@ -2946,7 +3090,9 @@ printf '%s\n' '{{"method":"turn/completed","params":{{"threadId":"{THREAD_ID}","
             ConversationService::with_command(AppServerCommand::test("sh", &["-c", &script]));
         let started = service.start(start_request(project_id), &projects).await;
         let conversation_id = started.conversation_id.expect("conversation ID must exist");
-        let waiting = service.poll(conversation_id.clone(), &projects).await;
+        let waiting = service
+            .poll_and_ack_for_test(conversation_id.clone(), &projects)
+            .await;
         let approval = waiting
             .pending_approval
             .expect("approval must remain pending");
@@ -2973,6 +3119,7 @@ printf '%s\n' '{{"method":"turn/completed","params":{{"threadId":"{THREAD_ID}","
                 .map(|value| &value.approval_id),
             Some(&approval.approval_id)
         );
+        service.acknowledge_test_delivery(&unavailable).await;
 
         let stale = service
             .decide_approval(
@@ -2989,6 +3136,7 @@ printf '%s\n' '{{"method":"turn/completed","params":{{"threadId":"{THREAD_ID}","
             stale.diagnostic_code,
             Some(ConversationDiagnosticCode::ApprovalNotFound)
         );
+        service.acknowledge_test_delivery(&stale).await;
 
         let resumed = service
             .decide_approval(
@@ -3001,8 +3149,12 @@ printf '%s\n' '{{"method":"turn/completed","params":{{"threadId":"{THREAD_ID}","
             )
             .await;
         assert_eq!(resumed.state, ConversationState::Running);
+        service.acknowledge_test_delivery(&resumed).await;
         assert_eq!(
-            service.poll(conversation_id, &projects).await.state,
+            service
+                .poll_and_ack_for_test(conversation_id, &projects)
+                .await
+                .state,
             ConversationState::Completed
         );
 
@@ -3037,7 +3189,10 @@ printf '%s\n' '{{"method":"turn/completed","params":{{"threadId":"{THREAD_ID}","
         let started = service.start(start_request(project_id), &projects).await;
         let conversation_id = started.conversation_id.expect("conversation ID must exist");
         assert_eq!(
-            service.poll(conversation_id.clone(), &projects).await.state,
+            service
+                .poll_and_ack_for_test(conversation_id.clone(), &projects)
+                .await
+                .state,
             ConversationState::WaitingForApproval
         );
 
@@ -3051,8 +3206,12 @@ printf '%s\n' '{{"method":"turn/completed","params":{{"threadId":"{THREAD_ID}","
                 ..
             }
         )));
+        service.acknowledge_test_delivery(&stopping).await;
         assert_eq!(
-            service.poll(conversation_id, &projects).await.state,
+            service
+                .poll_and_ack_for_test(conversation_id, &projects)
+                .await
+                .state,
             ConversationState::Interrupted
         );
 
