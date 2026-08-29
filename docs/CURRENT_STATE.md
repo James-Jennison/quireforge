@@ -109,6 +109,11 @@ controls, and policy copy are progressive disclosure rather than permanent
 stacked panels. Profile selection affects assistant prose only, never the
 workspace shape, Action Card content, authority/disclosure copy, lock labels,
 failure messages, approval, or native execution scope. It also
+passed fresh isolated source validation, the clean pinned Ubuntu 22.04 package
+gate, and content-free installed-host verification at `c1d176b`. Both
+`0.1.0~beta.120` Debian packages are installed, and `/usr/bin/quireforge` is
+running under the bounded `quireforge-installed-beta120` user service. Owner
+interaction acceptance remains a separate pending gate.
 Beta.119 additionally retains an outstanding event batch through a later
 terminal suffix under the original delivery token, and exposes only a
 content-free validation classification in the existing failure surface so the

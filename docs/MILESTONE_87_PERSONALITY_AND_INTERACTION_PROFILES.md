@@ -149,8 +149,13 @@ contains the compact passive-status-strip repair from `559515e` and fixes the
 native Rust/TypeScript conversation-event wire contract so multiword event
 fields serialize as the existing strict frontend camelCase keys, while event
 types remain kebab-case and consequential-event validation remains fail closed.
-Fresh source validation, package, installed-host, and owner-acceptance evidence
-is required before this candidate is accepted.
+Fresh isolated source validation and the clean pinned Ubuntu 22.04 package
+gate passed at `c1d176b`. Both `0.1.0~beta.120` Debian packages are installed;
+the content-free installed-host receipt passed package state, exact version
+mapping, protected-file ownership, permissions, and integrity, and
+`/usr/bin/quireforge` is running under the bounded
+`quireforge-installed-beta120` user service. Owner-acceptance evidence remains
+required before this candidate is accepted.
 
 ## Owner acceptance procedure — beta.120
 

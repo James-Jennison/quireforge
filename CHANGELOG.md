@@ -4,8 +4,11 @@
 
 - Beta.120 supersedes beta.119 as the next owner-acceptance candidate for the
   compact passive-status-strip repair in `559515e`. Beta.119 and earlier
-  acceptance evidence remain immutable; this candidate requires fresh source,
-  package, installed-host, and owner-acceptance evidence.
+  acceptance evidence remain immutable. Fresh isolated source validation,
+  pinned Ubuntu 22.04 package validation, and installed-host verification now
+  passed for `c1d176b`; both beta.120 Debian packages are installed and the
+  app runs under the bounded `quireforge-installed-beta120` user service.
+  Owner interaction acceptance remains the separate pending gate.
 - Beta.119 supersedes beta.118 as the current candidate under test while
   preserving beta.118 as immutable failed owner-acceptance evidence. It aligns
   native `ConversationEvent` multiword fields with the existing strict
