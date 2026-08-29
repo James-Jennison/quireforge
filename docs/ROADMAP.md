@@ -2006,7 +2006,10 @@ M70, M71, M76, and M72 are completed historical foundations. M72 is validated
 in `0.1.0-beta.107`: its project-first authority workspace passed full source
 validation, desktop/mobile E2E, clean packaging, installed-host launch, and
 owner acceptance of an inert draft-to-active-to-revoked lifecycle. M87 is now
-active. Every later milestone remains separately scoped and must pass its native/unit,
+active in its `0.1.0-beta.123` candidate, which increases only the bounded,
+immutable package-validation history allowance from 32 to 64 records so repeated
+installed-host validation remains fail-closed without blocking a healthy next run.
+Every later milestone remains separately scoped and must pass its native/unit,
 desktop/browser E2E where applicable, clean package, installed-host, and
 owner-acceptance gates before it is marked validated.
 

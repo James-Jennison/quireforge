@@ -147,8 +147,8 @@ an explicit yes/no decision interrupts that flow with the existing semantic
 approval surface. Passive activity remains a lightweight, expandable timeline
 row; it is not an Action Card and conveys no authority.
 
-`0.1.0-beta.122` supersedes beta.121 as the current owner-acceptance candidate
-without replacing beta.121, beta.120, beta.119, or beta.118's immutable
+`0.1.0-beta.123` supersedes beta.122 as the current owner-acceptance candidate
+without replacing beta.122, beta.121, beta.120, beta.119, or beta.118's immutable
 acceptance evidence. Beta.121 failed its installed-host validator because the
 native consumer read stale checkout artifacts instead of the builder's trusted
 persistent output root. Beta.122 gives the builder, cleanup, restricted staging
@@ -159,7 +159,12 @@ while moving the native Direct/Conversational radio group into the compact New
 task composer, where it shares the same active-task disable boundary as the
 message box and send action. It removes the four deterministic fictional
 fixture launchers from the normal chat surface and places them under a clearly
-labeled local-only fixture catalogue in Task Catalog. The fixtures remain
+labeled local-only fixture catalogue in Task Catalog. Beta.122 subsequently
+failed its native completion receipt at the immutable 32-record package-
+validation history ceiling: each summary is atomically identity-bound, so the
+existing prune path correctly cannot delete it. Beta.123 raises that single
+bounded, fail-closed ceiling to 64 and proves the 65th write leaves no partial
+summary or identity record. The fixtures remain
 manual test workflows only; they do not contact a provider, browser,
 connector, or external service.
 
@@ -177,10 +182,10 @@ mapping, protected-file ownership, permissions, and integrity, and
 `quireforge-installed-beta120` user service. Owner-acceptance evidence remains
 required before this candidate is accepted.
 
-## Owner acceptance procedure — beta.122
+## Owner acceptance procedure — beta.123
 
 This is a one-shot owner review, not a new capability or a new application
-surface. Use the installed `0.1.0-beta.122` application and its New task chat
+surface. Use the installed `0.1.0-beta.123` application and its New task chat
 workspace:
 
 1. Test both **Direct** and **Conversational** profiles using the selector in

@@ -1345,7 +1345,10 @@ pub(crate) struct ArtifactReferenceInsert<'a> {
     pub display_label: &'a str,
 }
 
-const PACKAGE_VALIDATION_RECORD_LIMIT: usize = 32;
+// Immutable validation history is append-only because every committed summary
+// is atomically bound to a candidate identity. Keep a bounded, fail-closed
+// allowance for completed package and installed-host validation chains.
+const PACKAGE_VALIDATION_RECORD_LIMIT: usize = 64;
 const PACKAGE_VALIDATION_PROTECTION_MS: i64 = 180 * 24 * 60 * 60 * 1000;
 const PACKAGE_ARTIFACT_COUNT_LIMIT: u8 = 2;
 pub(crate) const TEMPLATE_APPLICATION_RESERVATION_TTL_MS: i64 = 5 * 60 * 1000;
@@ -9672,8 +9675,8 @@ mod tests {
         valid_task_id, PackageValidationInstalledHostFacts, PackageValidationPhase,
         PackageValidationRecordInput, PackageValidationRecordOutcome, PackageValidationSummary,
         ProjectRepository, StorageError, INITIAL_MIGRATION, MIGRATIONS,
-        PACKAGE_VALIDATION_PROTECTION_MS, TASK_CLEANUP_AGE_MS, TASK_COUNT_LIMIT,
-        TASK_PAYLOAD_LIMIT,
+        PACKAGE_VALIDATION_PROTECTION_MS, PACKAGE_VALIDATION_RECORD_LIMIT, TASK_CLEANUP_AGE_MS,
+        TASK_COUNT_LIMIT, TASK_PAYLOAD_LIMIT,
     };
     use crate::project::task_template::{
         builtins, canonical as canonical_template, digest as template_digest, TaskTemplate,
@@ -11696,7 +11699,7 @@ mod tests {
 
         let old = PACKAGE_VALIDATION_PROTECTION_MS + 1_000;
         let mut first = None;
-        for timestamp in 0..32 {
+        for timestamp in 0..PACKAGE_VALIDATION_RECORD_LIMIT as i64 {
             let receipt = package_validation_created(
                 repository
                     .record_package_validation_summary_at_for_test(
@@ -11727,7 +11730,7 @@ mod tests {
                 |row| row.get(0),
             )
             .expect("count");
-        assert_eq!(count, 32);
+        assert_eq!(count, PACKAGE_VALIDATION_RECORD_LIMIT as i64);
 
         repository
             .connection
@@ -11766,7 +11769,7 @@ mod tests {
                 .record_package_validation_summary_at_for_test(project_id, complete_input, 1)
                 .expect("complete history"),
         );
-        for timestamp in 2..32 {
+        for timestamp in 2..PACKAGE_VALIDATION_RECORD_LIMIT as i64 {
             repository
                 .record_package_validation_summary_at_for_test(
                     project_id,
@@ -11794,7 +11797,7 @@ mod tests {
             "018f0000-0000-7000-8000-000000000214",
         );
         let recent = PACKAGE_VALIDATION_PROTECTION_MS.saturating_mul(2);
-        for timestamp in 0..32 {
+        for timestamp in 0..PACKAGE_VALIDATION_RECORD_LIMIT as i64 {
             repository
                 .record_package_validation_summary_at_for_test(
                     recent_project,
@@ -11807,7 +11810,7 @@ mod tests {
             repository.record_package_validation_summary_at_for_test(
                 recent_project,
                 package_validation_input(false, None),
-                recent + 32,
+                recent + PACKAGE_VALIDATION_RECORD_LIMIT as i64,
             ),
             Err(StorageError::TaskCapacity)
         ));
@@ -11820,7 +11823,7 @@ mod tests {
                     |row| row.get::<_, i64>(0),
                 )
                 .expect("no partial insert"),
-            32
+            PACKAGE_VALIDATION_RECORD_LIMIT as i64
         );
     }
 
@@ -12505,7 +12508,7 @@ mod tests {
             protected_project,
             "018f0000-0000-7000-8000-000000000712",
         );
-        for index in 0..32 {
+        for index in 0..PACKAGE_VALIDATION_RECORD_LIMIT {
             package_validation_created(
                 repository
                     .record_package_validation_summary_at_for_test(
@@ -12524,6 +12527,22 @@ mod tests {
             ),
             Err(StorageError::TaskCapacity)
         ));
+        for table in [
+            "project_package_validation_summaries",
+            "project_package_validation_candidate_identities",
+        ] {
+            assert_eq!(
+                repository
+                    .connection
+                    .query_row(
+                        &format!("SELECT count(*) FROM {table} WHERE project_id = ?1"),
+                        [protected_project],
+                        |row| row.get::<_, i64>(0),
+                    )
+                    .expect("bounded history count"),
+                PACKAGE_VALIDATION_RECORD_LIMIT as i64
+            );
+        }
         repository
             .connection
             .execute(

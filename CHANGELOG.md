@@ -2,6 +2,15 @@
 
 ## Unreleased — M87 chat workspace refinement
 
+- Beta.123 supersedes beta.122 as the next owner-acceptance candidate. It
+  corrects the installed-host validation-history ceiling: every committed
+  summary is atomically identity-bound and therefore intentionally immutable,
+  so the prior 32-record allowance could fail closed before a normal repeated
+  validation chain could record its next receipt. The bounded immutable cap is
+  now 64; regression coverage proves records 1–64 remain paired and that the
+  65th fails without leaving either summary or identity residue. Beta.122's
+  failed installed-host result remains immutable evidence. Fresh source,
+  package, installed-host, and owner-interaction evidence is required.
 - Beta.122 supersedes beta.121 as the next owner-acceptance candidate. It
   corrects the native installed-host validator's producer/consumer package-root
   contract: the package builder, cache cleanup, restricted staging helper, and
