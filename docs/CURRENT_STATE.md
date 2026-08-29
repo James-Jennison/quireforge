@@ -128,8 +128,13 @@ passive activity, and clarifying questions
 remain in the transcript; only a concrete pending yes/no action interrupts it
 with a distinct approval surface. Full repository validation (including 462
 desktop tests and 466 passing Rust tests), all 88 desktop/mobile E2E cases, and
-all eight website E2E cases pass for beta.116. Clean package and installed-host
-acceptance remain pending. Beta.115 is immutable failed acceptance evidence:
+all eight website E2E cases pass for beta.116. The clean pinned Ubuntu 22.04
+package gate passed for both Debian packages; both were installed through the
+restricted local installer. Installed-host package state, version mapping,
+protected-file ownership, permissions, and integrity validation passed, and
+the installed `/usr/bin/quireforge` process launched successfully under the
+bounded `quireforge-installed-beta116` user service. Owner interaction
+acceptance remains pending. Beta.115 is immutable failed acceptance evidence:
 the owner reproduced a poll failure followed by terminal completion with no
 assistant response because one invalid passive event caused the renderer to
 reject the entire already-consumed batch. Beta.114 is also immutable failed

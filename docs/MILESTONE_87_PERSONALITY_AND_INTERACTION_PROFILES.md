@@ -111,7 +111,13 @@ explicitly classified passive member while preserving ordered assistant text;
 its exhaustive event classification keeps assistant, lifecycle, approval,
 model-selection, error, envelope, and unknown-event failures closed. Full
 repository validation, all 88 desktop/mobile E2E cases, and all eight website
-E2E cases pass. Clean package and installed-host acceptance remain pending.
+E2E cases pass. The clean pinned Ubuntu 22.04 package gate passed for both
+Debian packages; both were installed through the restricted local installer.
+Installed-host package state, version mapping, protected-file ownership,
+permissions, and integrity validation passed, and the installed
+`/usr/bin/quireforge` process launched successfully under the bounded
+`quireforge-installed-beta116` user service. Owner interaction acceptance
+remains pending.
 
 The chat-first presentation has one functional visual boundary: ordinary
 assistant prose, passive progress/evidence, and open clarifying questions stay

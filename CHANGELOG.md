@@ -46,8 +46,13 @@
   other bounded action evidence retain their distinct treatment.
 - Full repository validation (including 462 desktop tests and 466 passing Rust
   tests), the desktop/mobile browser suite (88 tests), and the website browser
-  suite (eight tests) pass for beta.116. Clean package and installed-host
-  acceptance remain pending.
+  suite (eight tests) pass for beta.116. The clean pinned Ubuntu 22.04 package
+  gate passed for both Debian packages, both were installed through the
+  restricted local installer, installed-host package/version/ownership/
+  permission/integrity validation passed, and the installed
+  `/usr/bin/quireforge` process launched successfully under the bounded
+  `quireforge-installed-beta116` user service. Owner interaction acceptance
+  remains pending.
 
 ## Unreleased — authoritative feature-parity roadmap
 
