@@ -3201,6 +3201,10 @@ test("parallel worktree monitor opens live activity and reports conflicts", asyn
   await expect(page.getByText("1 conflict")).toBeVisible();
   await page.getByRole("button", { name: "View live activity" }).click();
   await expect(page.getByText("Codex is waiting for approval")).toBeVisible();
+  await expect(
+    page.getByRole("status", { name: "Working · Run command" }),
+  ).toBeVisible();
+  await page.locator(".conversation-status-strip > summary").click();
   const activity = page.getByRole("button", { name: /Run command/u });
   await expect(activity).toBeVisible();
   await activity.click();
@@ -3235,6 +3239,10 @@ test("native activity fixture renders bounded real-time approval detail", async 
   ).toBeVisible();
   await expect(page.getByRole("button", { name: "Decline" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Cancel task" })).toBeVisible();
+  await expect(
+    page.getByRole("status", { name: "Working · Run command" }),
+  ).toBeVisible();
+  await page.locator(".conversation-status-strip > summary").click();
   const activity = page.getByRole("button", { name: /Run command/u });
   await expect(activity).toHaveAttribute("aria-expanded", "false");
   await activity.click();
@@ -3245,6 +3253,8 @@ test("native activity fixture renders bounded real-time approval detail", async 
   ).toBeVisible();
   await expect(page.getByRole("button", { name: "Stop task" })).toBeEnabled();
 
+  await page.locator(".conversation-status-strip > summary").click();
+  await expect(activity).toBeHidden();
   await page.getByRole("button", { name: "Approve once" }).click();
   await expect(page.getByText("Task completed")).toBeVisible();
   await expect(page.getByText("Approval approved.")).toBeVisible();

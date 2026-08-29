@@ -2250,7 +2250,7 @@ button:disabled {
 }
 
 .conversation-workspace .conversation-composer {
-  order: 2;
+  order: 3;
   position: sticky;
   bottom: 0;
   z-index: 2;
@@ -5497,6 +5497,91 @@ button:disabled {
  * the transcript instead of permanently consuming workspace height. */
 .conversation-workspace .conversation-composer > .conversation-attachments {
   display: contents;
+}
+
+.conversation-workspace .conversation-status-strip {
+  order: 2;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.conversation-workspace .conversation-status-strip > summary {
+  min-width: 0;
+  cursor: pointer;
+  list-style: none;
+}
+
+.conversation-workspace
+  .conversation-status-strip
+  > summary::-webkit-details-marker {
+  display: none;
+}
+
+.conversation-workspace .conversation-status-strip__summary {
+  display: flex;
+  min-width: 0;
+  min-height: 26px;
+  align-items: center;
+  gap: 7px;
+  color: var(--tm);
+  font-size: 10px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.conversation-workspace .conversation-status-strip__dot {
+  width: 6px;
+  height: 6px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--as);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--as) 24%, transparent);
+}
+
+.conversation-workspace
+  .conversation-status-strip__dot[data-status="completed"] {
+  background: var(--green);
+  box-shadow: none;
+}
+
+.conversation-workspace .conversation-status-strip__latest {
+  overflow: hidden;
+  color: var(--tm);
+  font-weight: 650;
+  text-overflow: ellipsis;
+}
+
+.conversation-workspace .conversation-status-strip__count,
+.conversation-workspace .conversation-status-strip__hint {
+  flex: 0 0 auto;
+  color: var(--ts);
+}
+
+.conversation-workspace .conversation-status-strip__hint {
+  margin-left: auto;
+  font-size: 9px;
+}
+
+.conversation-workspace .conversation-status-strip__details {
+  display: grid;
+  width: 100%;
+  max-height: min(360px, 50dvh);
+  gap: 4px;
+  overflow: auto;
+  margin: 8px 0 0;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-raised);
+  box-shadow: 0 18px 48px color-mix(in srgb, #000 38%, transparent);
+}
+
+.conversation-workspace .conversation-status-strip__details > span {
+  color: var(--ts);
+  font-size: 8px;
+  font-weight: 750;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
 }
 
 .conversation-workspace .conversation-attachments__trigger {

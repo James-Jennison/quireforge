@@ -227,6 +227,95 @@ function ActivityCard({
   );
 }
 
+function ConversationStatusStrip({
+  activities,
+  expandedActivities,
+  onToggleActivity,
+}: {
+  activities: ConversationActivityView[];
+  expandedActivities: Set<string>;
+  onToggleActivity: (activityId: string) => void;
+}) {
+  const statusRef = useRef<HTMLDetailsElement>(null);
+  const [open, setOpen] = useState(false);
+  const latest = activities.at(-1);
+
+  useEffect(() => {
+    if (!open) return undefined;
+
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      const target = event.target as Element;
+      const remainsInteractive = Boolean(
+        target.closest("summary, button, a, input, select, textarea"),
+      );
+      if (!statusRef.current?.contains(target) || !remainsInteractive) {
+        setOpen(false);
+      }
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+
+    document.addEventListener("pointerdown", closeOnOutsidePointer);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsidePointer);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [open]);
+
+  if (!latest) return null;
+
+  const latestLabel = latest.title || activityLabels[latest.kind];
+  const statusLabel = latest.status === "started" ? "Working" : "Completed";
+  const additionalCount = activities.length - 1;
+  const summary = `${statusLabel} · ${latestLabel}`;
+
+  return (
+    <details ref={statusRef} className="conversation-status-strip" open={open}>
+      <summary
+        onClick={(event) => {
+          event.preventDefault();
+          setOpen((current) => !current);
+        }}
+      >
+        <span
+          className="conversation-status-strip__summary"
+          role="status"
+          aria-live="polite"
+          aria-label={summary}
+        >
+          <span
+            className="conversation-status-strip__dot"
+            data-status={latest.status}
+            aria-hidden="true"
+          />
+          <span className="conversation-status-strip__latest">{summary}</span>
+          {additionalCount > 0 && (
+            <span className="conversation-status-strip__count">
+              {additionalCount} earlier update{additionalCount === 1 ? "" : "s"}
+            </span>
+          )}
+          <span className="conversation-status-strip__hint" aria-hidden="true">
+            Details
+          </span>
+        </span>
+      </summary>
+      <div className="conversation-status-strip__details">
+        <span>Activity details</span>
+        {activities.map((activity) => (
+          <ActivityCard
+            key={activity.activityId}
+            activity={activity}
+            expanded={expandedActivities.has(activity.activityId)}
+            onToggle={() => onToggleActivity(activity.activityId)}
+          />
+        ))}
+      </div>
+    </details>
+  );
+}
+
 function EventCard({ event }: { event: ConversationEvent }) {
   if (event.type === "agent-message-completed") {
     return <p className="conversation-event__message">{event.text}</p>;
@@ -380,11 +469,6 @@ export function ConversationWorkspace({
   const displayEvents = useMemo(
     () => coalesceConversationMessageDeltas(events),
     [events],
-  );
-  const activitiesByFirstSequence = useMemo(
-    () =>
-      new Map(activities.map((activity) => [activity.firstSequence, activity])),
-    [activities],
   );
 
   const selectedModel =
@@ -985,18 +1069,7 @@ export function ConversationWorkspace({
                   event.type === "activity" ||
                   event.type === "activity-output-delta"
                 ) {
-                  const activity = activitiesByFirstSequence.get(
-                    event.sequence,
-                  );
-                  if (!activity) return null;
-                  return (
-                    <ActivityCard
-                      key={activity.activityId}
-                      activity={activity}
-                      expanded={expandedActivities.has(activity.activityId)}
-                      onToggle={() => toggleActivity(activity.activityId)}
-                    />
-                  );
+                  return null;
                 }
                 return (
                   <article
@@ -1035,6 +1108,11 @@ export function ConversationWorkspace({
             </div>
           )}
         </div>
+        <ConversationStatusStrip
+          activities={activities}
+          expandedActivities={expandedActivities}
+          onToggleActivity={toggleActivity}
+        />
       </div>
     </section>
   );

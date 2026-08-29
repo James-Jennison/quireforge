@@ -1665,13 +1665,28 @@ describe("QuireForge desktop shell", () => {
           itemId: "message-reloaded",
           text: "Recovered after renderer reload.",
         },
-        { type: "lifecycle", sequence: 2, phase: "completed" },
+        {
+          type: "activity",
+          sequence: 2,
+          activityId: "018f0000-0000-7000-8000-000000000094",
+          kind: "command-execution",
+          status: "completed",
+          title: "Run recovery checks",
+          detail: "pnpm validate",
+          exitCode: 0,
+        },
+        { type: "lifecycle", sequence: 3, phase: "completed" },
       ],
       diagnosticCode: null,
     });
     const acknowledgeConversationDeliveryTask = vi.fn(() => {
       expect(
         screen.getByText("Recovered after renderer reload."),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("status", {
+          name: "Completed · Run recovery checks",
+        }),
       ).toBeInTheDocument();
       expect(screen.getByText("Task completed")).toBeInTheDocument();
       return Promise.resolve();

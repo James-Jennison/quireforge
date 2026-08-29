@@ -304,7 +304,7 @@ describe("ConversationWorkspace", () => {
     expect(onStart).not.toHaveBeenCalled();
   });
 
-  it("renders normalized events and interrupts only the app conversation ID", () => {
+  it("keeps activity updates in one expandable composer status strip", () => {
     const { onInterrupt } = renderWorkspace({
       snapshot: runningConversation,
       events: [
@@ -334,6 +334,17 @@ describe("ConversationWorkspace", () => {
     });
 
     expect(screen.getByText("The UI is ready for review.")).toBeInTheDocument();
+    expect(
+      screen.getByRole("status", { name: "Completed · Run command" }),
+    ).toBeInTheDocument();
+    expect(
+      document.querySelector(".conversation-events .conversation-activity"),
+    ).toBeNull();
+    const strip = document.querySelector(".conversation-status-strip");
+    expect(strip).not.toBeNull();
+    expect(strip).not.toHaveAttribute("open");
+    fireEvent.click(strip!.querySelector("summary")!);
+    expect(strip).toHaveAttribute("open");
     const activity = screen.getByRole("button", { name: /Run command/u });
     expect(activity).toHaveAttribute("aria-expanded", "false");
     expect(screen.queryByText("pnpm check")).not.toBeInTheDocument();
@@ -341,6 +352,8 @@ describe("ConversationWorkspace", () => {
     expect(activity).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByText("pnpm check")).toBeInTheDocument();
     expect(screen.getByText("Checks passed.")).toBeInTheDocument();
+    fireEvent.pointerDown(document.body);
+    expect(strip).not.toHaveAttribute("open");
     fireEvent.click(screen.getByRole("button", { name: "Stop task" }));
     expect(onInterrupt).toHaveBeenCalledWith(conversationId);
   });
