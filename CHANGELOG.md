@@ -2,6 +2,14 @@
 
 ## Unreleased — M87 chat workspace refinement
 
+- Beta.121 supersedes beta.120 as the next owner-acceptance candidate. It puts
+  the native Direct/Conversational selector directly in the compact New task
+  composer, retaining the existing closed radio group and its shared
+  active-task disable boundary. It removes the four deterministic fictional
+  fixture launchers from normal chat and groups them under a clearly labeled
+  local-only fixture catalogue in Task Catalog; no provider, browser,
+  connector, authority, or execution capability changed. Fresh source,
+  package, installed-host, and owner-interaction evidence is required.
 - Beta.120 supersedes beta.119 as the next owner-acceptance candidate for the
   compact passive-status-strip repair in `559515e`. Beta.119 and earlier
   acceptance evidence remain immutable. Fresh isolated source validation,

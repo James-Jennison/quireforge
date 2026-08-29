@@ -4850,6 +4850,16 @@ export default function App({
                       onOpenMockInference={() =>
                         setMockInferenceWorkbenchOpen(true)
                       }
+                      onOpenConnectorGovernance={() =>
+                        setConnectorGovernanceWorkbenchOpen(true)
+                      }
+                      onOpenControlledBrowserVerification={() =>
+                        setControlledBrowserVerificationOpen(true)
+                      }
+                      onOpenContextAssembly={() =>
+                        setContextAssemblyWorkbenchOpen(true)
+                      }
+                      mockInferenceTriggerRef={mockInferenceLauncherRef}
                     />
                   )}
                   {taskTemplateWorkbenchOpen && (
@@ -4990,36 +5000,6 @@ export default function App({
                     handoffBrief={acceptedTaskHandoff?.brief ?? null}
                     onReturnTaskReceipt={returnTaskHandoffToAdvisor}
                   />
-                  <section
-                    className="mock-inference-launcher"
-                    aria-label="Fictional local mock workflow"
-                  >
-                    <button
-                      ref={mockInferenceLauncherRef}
-                      type="button"
-                      onClick={() => setMockInferenceWorkbenchOpen(true)}
-                    >
-                      Fictional mock inference
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setConnectorGovernanceWorkbenchOpen(true)}
-                    >
-                      Fictional connector governance
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setControlledBrowserVerificationOpen(true)}
-                    >
-                      Fictional browser verification
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setContextAssemblyWorkbenchOpen(true)}
-                    >
-                      Governed context review
-                    </button>
-                  </section>
                 </>
                 {conversationMode === "codex" && (
                   <section

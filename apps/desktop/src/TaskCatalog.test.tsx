@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -102,6 +108,54 @@ describe("durable task catalogue", () => {
       screen.getByRole("button", { name: "Fictional mock inference" }),
     );
     expect(onOpenMockInference).toHaveBeenCalledTimes(1);
+  });
+
+  it("groups every fixture-only workflow outside the normal task actions", () => {
+    const onOpenMockInference = vi.fn();
+    const onOpenConnectorGovernance = vi.fn();
+    const onOpenControlledBrowserVerification = vi.fn();
+    const onOpenContextAssembly = vi.fn();
+    render(
+      <TaskCatalog
+        {...props()}
+        onOpenMockInference={onOpenMockInference}
+        onOpenConnectorGovernance={onOpenConnectorGovernance}
+        onOpenControlledBrowserVerification={
+          onOpenControlledBrowserVerification
+        }
+        onOpenContextAssembly={onOpenContextAssembly}
+      />,
+    );
+
+    const catalogue = screen.getByRole("region", {
+      name: "Local fixture catalogue",
+    });
+    expect(catalogue).toHaveTextContent(/deterministic local test workflows/i);
+    fireEvent.click(
+      within(catalogue).getByRole("button", {
+        name: "Fictional mock inference",
+      }),
+    );
+    fireEvent.click(
+      within(catalogue).getByRole("button", {
+        name: "Fictional connector governance",
+      }),
+    );
+    fireEvent.click(
+      within(catalogue).getByRole("button", {
+        name: "Fictional browser verification",
+      }),
+    );
+    fireEvent.click(
+      within(catalogue).getByRole("button", {
+        name: "Governed context review",
+      }),
+    );
+
+    expect(onOpenMockInference).toHaveBeenCalledTimes(1);
+    expect(onOpenConnectorGovernance).toHaveBeenCalledTimes(1);
+    expect(onOpenControlledBrowserVerification).toHaveBeenCalledTimes(1);
+    expect(onOpenContextAssembly).toHaveBeenCalledTimes(1);
   });
 
   it("renders bounded local-only semantics, cleanup, and accessible plan state", () => {

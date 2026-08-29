@@ -770,6 +770,11 @@ async function openWorkspace(
   await expect(destination).toHaveAttribute("aria-current", "page");
 }
 
+async function openFixtureCatalogue(page: import("@playwright/test").Page) {
+  await page.getByRole("button", { name: "Task Catalog" }).click();
+  return page.getByRole("region", { name: "Local fixture catalogue" });
+}
+
 async function openAccountSettings(page: import("@playwright/test").Page) {
   const account = page.getByRole("button", {
     name: "Open Codex account and connection settings",
@@ -1393,9 +1398,7 @@ test("governed context review runs one visible local-only model attempt", async 
   });
   await page.goto("/");
   await openWorkspace(page, "New task");
-  const workflow = page.getByRole("region", {
-    name: "Fictional local mock workflow",
-  });
+  const workflow = await openFixtureCatalogue(page);
   await workflow
     .getByRole("button", { name: "Governed context review" })
     .click();
@@ -1435,7 +1438,8 @@ test("governed context review runs one visible local-only model attempt", async 
   // completed local attempt from the previous view.
   await page.reload();
   await openWorkspace(page, "New task");
-  await workflow
+  const reloadedWorkflow = await openFixtureCatalogue(page);
+  await reloadedWorkflow
     .getByRole("button", { name: "Governed context review" })
     .click();
   await expect(page.getByLabel("Local runtime result")).toHaveCount(0);
@@ -1501,8 +1505,9 @@ test("governed context review keeps a busy local-only review available for a man
   });
   await page.goto("/");
   await openWorkspace(page, "New task");
-  await page
-    .getByRole("region", { name: "Fictional local mock workflow" })
+  await (
+    await openFixtureCatalogue(page)
+  )
     .getByRole("button", { name: "Governed context review" })
     .click();
   await page
@@ -1552,8 +1557,9 @@ test("governed context review visibly rechecks unavailable local runtime without
   });
   await page.goto("/");
   await openWorkspace(page, "New task");
-  await page
-    .getByRole("region", { name: "Fictional local mock workflow" })
+  await (
+    await openFixtureCatalogue(page)
+  )
     .getByRole("button", { name: "Governed context review" })
     .click();
   await expect(
@@ -1657,8 +1663,9 @@ test("governed context review recovers an acknowledged review after native avail
   });
   await page.goto("/");
   await openWorkspace(page, "New task");
-  await page
-    .getByRole("region", { name: "Fictional local mock workflow" })
+  await (
+    await openFixtureCatalogue(page)
+  )
     .getByRole("button", { name: "Governed context review" })
     .click();
   await page
@@ -1746,8 +1753,9 @@ test("governed context review cancels only its pending local-only attempt", asyn
   });
   await page.goto("/");
   await openWorkspace(page, "New task");
-  await page
-    .getByRole("region", { name: "Fictional local mock workflow" })
+  await (
+    await openFixtureCatalogue(page)
+  )
     .getByRole("button", { name: "Governed context review" })
     .click();
   await page
@@ -1920,6 +1928,9 @@ test("mock inference clears a prepared review when its bound input changes", asy
   const primaryWorkspace = page.locator(
     '[data-workspace-view="conversation"] .conversation-mode-workspace',
   );
+  await expect(
+    primaryWorkspace.getByRole("button", { name: "Fictional mock inference" }),
+  ).toHaveCount(0);
   await primaryWorkspace.getByRole("button", { name: "Task Catalog" }).click();
   await expect(
     primaryWorkspace.getByRole("heading", { name: "Tasks" }),
@@ -1930,8 +1941,8 @@ test("mock inference clears a prepared review when its bound input changes", asy
   await expect(
     primaryWorkspace.getByText("Review local task records"),
   ).toBeVisible();
-  await page
-    .getByRole("region", { name: "Fictional local mock workflow" })
+  await primaryWorkspace
+    .getByRole("region", { name: "Local fixture catalogue" })
     .getByRole("button", { name: "Fictional mock inference" })
     .click();
   await page.setViewportSize({ width: 640, height: 450 });
@@ -1994,7 +2005,7 @@ test("mock inference clears a prepared review when its bound input changes", asy
   await page.getByRole("button", { name: "Close", exact: true }).press("Enter");
   await expect(
     page
-      .getByRole("region", { name: "Fictional local mock workflow" })
+      .getByRole("region", { name: "Local fixture catalogue" })
       .getByRole("button", { name: "Fictional mock inference" }),
   ).toBeFocused();
 });
@@ -2079,7 +2090,7 @@ test("production New task creates one durable task for the fictional mock select
     }),
   ).toBeVisible();
   await page
-    .getByRole("region", { name: "Fictional local mock workflow" })
+    .getByRole("region", { name: "Local fixture catalogue" })
     .getByRole("button", { name: "Fictional mock inference" })
     .click();
   const selector = page.getByRole("combobox", { name: "Durable task" });
@@ -2185,7 +2196,11 @@ test("mock inference exposes an ambiguous result without automatic retry", async
   });
   await page.goto("/");
   await openWorkspace(page, "New task");
-  await page.getByRole("button", { name: "Fictional mock inference" }).click();
+  await (
+    await openFixtureCatalogue(page)
+  )
+    .getByRole("button", { name: "Fictional mock inference" })
+    .click();
   await expect(
     page.getByRole("combobox", { name: "Durable task" }),
   ).toHaveValue(taskCatalogFixture.selectedTask.id);

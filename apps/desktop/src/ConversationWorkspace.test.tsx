@@ -194,6 +194,20 @@ describe("ConversationWorkspace", () => {
     );
   });
 
+  it("keeps the composer style selector semantic and locked with an active task", () => {
+    renderWorkspace({ snapshot: runningConversation });
+
+    expect(
+      screen.getByRole("group", { name: "Conversation style" }),
+    ).toBeVisible();
+    expect(screen.getByRole("radio", { name: "Direct" })).toBeDisabled();
+    expect(
+      screen.getByRole("radio", { name: "Conversational" }),
+    ).toBeDisabled();
+    expect(screen.getByLabelText("Message")).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Stop task" })).toBeEnabled();
+  });
+
   it("keeps controls collapsed and places the submitted message in the chat transcript", async () => {
     renderWorkspace();
     const settings = screen.getByText("Controls").closest("details");
@@ -219,7 +233,6 @@ describe("ConversationWorkspace", () => {
 
   it("limits conversation style to assistant prose", () => {
     renderWorkspace();
-    fireEvent.click(screen.getByText("Controls"));
 
     expect(
       screen.getByText(

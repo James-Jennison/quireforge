@@ -313,6 +313,9 @@ export function TaskCatalog({
   onPlanDelete,
   onOpenTemplates,
   onOpenMockInference,
+  onOpenConnectorGovernance,
+  onOpenControlledBrowserVerification,
+  onOpenContextAssembly,
   mockInferenceTriggerRef,
 }: {
   snapshot: TaskCatalogSnapshot;
@@ -340,6 +343,9 @@ export function TaskCatalog({
   onPlanDelete: (taskId: string, planId: string) => SnapshotAction;
   onOpenTemplates?: () => void;
   onOpenMockInference?: () => void;
+  onOpenConnectorGovernance?: () => void;
+  onOpenControlledBrowserVerification?: () => void;
+  onOpenContextAssembly?: () => void;
   mockInferenceTriggerRef?: RefObject<HTMLButtonElement | null>;
 }) {
   const [query, setQuery] = useState("");
@@ -438,6 +444,25 @@ export function TaskCatalog({
           <button type="button" onClick={onOpenTemplates}>
             Task Templates
           </button>
+        </div>
+      </div>
+      <p className="context-note">
+        Titles and plans stay local. They do not contain or control
+        conversations, files, approvals, or execution.
+      </p>
+      <section
+        className="task-catalog__fixture-catalogue"
+        aria-labelledby="fixture-catalogue-title"
+      >
+        <div>
+          <span>Fixture-only</span>
+          <h3 id="fixture-catalogue-title">Local fixture catalogue</h3>
+        </div>
+        <p>
+          Deterministic local test workflows only. They do not contact a
+          provider, browser, connector, or external service.
+        </p>
+        <div className="task-catalog__actions">
           <button
             ref={mockInferenceTriggerRef}
             type="button"
@@ -445,12 +470,17 @@ export function TaskCatalog({
           >
             Fictional mock inference
           </button>
+          <button type="button" onClick={onOpenConnectorGovernance}>
+            Fictional connector governance
+          </button>
+          <button type="button" onClick={onOpenControlledBrowserVerification}>
+            Fictional browser verification
+          </button>
+          <button type="button" onClick={onOpenContextAssembly}>
+            Governed context review
+          </button>
         </div>
-      </div>
-      <p className="context-note">
-        Titles and plans stay local. They do not contain or control
-        conversations, files, approvals, or execution.
-      </p>
+      </section>
       {snapshot.state === "unavailable" ? (
         <div className="task-catalog__unavailable" role="status">
           <p>

@@ -14,11 +14,11 @@ The available profiles are deliberately limited to:
 - **Conversational** — warmer, more exploratory conversational prose.
 
 Appearance settings hold the default for future conversations. The project
-conversation and Advisor composer each show the profile used to begin that
-conversation, so a person can choose a different style before sending. The
-chosen closed value is sent only as the documented native runtime personality
-parameter; it does not add project context, a tool, a browser, a connector, or
-an external provider.
+conversation exposes the profile selector directly in its compact chat
+composer, so a person can choose a different style before sending without
+opening operational controls. The chosen closed value is sent only as the
+documented native runtime personality parameter; it does not add project
+context, a tool, a browser, a connector, or an external provider.
 
 ## Authority invariants
 
@@ -64,6 +64,10 @@ a real per-action-type owner tap mechanism. It must not present misleading
    tuple changes.
 6. Full validation, desktop E2E, clean package, installed-host launch, and
    owner acceptance pass before M87 is marked validated.
+7. The normal New task chat surface contains no fixture-workbench launchers.
+   The deterministic local-only fixture workflows remain explicitly labeled
+   and manually reachable from Task Catalog without gaining a provider,
+   browser, connector, or execution route.
 
 ## Implementation checkpoint
 
@@ -143,7 +147,18 @@ an explicit yes/no decision interrupts that flow with the existing semantic
 approval surface. Passive activity remains a lightweight, expandable timeline
 row; it is not an Action Card and conveys no authority.
 
-`0.1.0-beta.120` supersedes beta.119 as the current owner-acceptance candidate
+`0.1.0-beta.121` supersedes beta.120 as the current owner-acceptance candidate
+without replacing beta.120, beta.119, or beta.118's immutable acceptance
+evidence. It keeps the profile request and all M87 authority invariants intact
+while moving the native Direct/Conversational radio group into the compact New
+task composer, where it shares the same active-task disable boundary as the
+message box and send action. It removes the four deterministic fictional
+fixture launchers from the normal chat surface and places them under a clearly
+labeled local-only fixture catalogue in Task Catalog. The fixtures remain
+manual test workflows only; they do not contact a provider, browser,
+connector, or external service.
+
+`0.1.0-beta.120` supersedes beta.119 as the prior owner-acceptance candidate
 without replacing beta.119 or beta.118's immutable acceptance evidence. It
 contains the compact passive-status-strip repair from `559515e` and fixes the
 native Rust/TypeScript conversation-event wire contract so multiword event
@@ -157,13 +172,15 @@ mapping, protected-file ownership, permissions, and integrity, and
 `quireforge-installed-beta120` user service. Owner-acceptance evidence remains
 required before this candidate is accepted.
 
-## Owner acceptance procedure — beta.120
+## Owner acceptance procedure — beta.121
 
 This is a one-shot owner review, not a new capability or a new application
-surface. Use the installed `0.1.0-beta.120` application and its New task chat
+surface. Use the installed `0.1.0-beta.121` application and its New task chat
 workspace:
 
-1. Test both **Direct** and **Conversational** profiles. For each profile, the
+1. Test both **Direct** and **Conversational** profiles using the selector in
+   the compact bottom composer. The selector must disable while a task is
+   active, along with the message box and Send action. For each profile, the
    work area must remain the same chat-first transcript with a bottom composer;
    it must not become a split dashboard or operator-console layout. Observe at
    least three representative multi-fragment managed-assistant responses; each
@@ -185,6 +202,10 @@ workspace:
 5. Record one terminal owner decision in this report: **accepted** or
    **rejected**, with a concise defect note on rejection. A rejection reopens
    M87; it is not a partial pass and does not start M73.
+6. Confirm that the normal New task chat contains no fictional fixture
+   launchers. Open Task Catalog and verify its explicitly labeled local-only
+   fixture catalogue is still manually reachable and does not imply a live
+   provider, browser, connector, or external-service capability.
 
 No provider dispatch, browser access, connector call, context transmission,
 approval-policy change, sandbox change, or native execution expansion is part

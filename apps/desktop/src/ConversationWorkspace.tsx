@@ -724,6 +724,32 @@ export function ConversationWorkspace({
             onDrop={onAttachmentDrop}
             onCancel={onAttachmentCancel}
           />
+          <fieldset className="conversation-profile conversation-profile--composer">
+            <legend>Conversation style</legend>
+            <p
+              id="conversation-profile-note"
+              className="conversation-profile__note"
+            >
+              This changes assistant prose only. Action Cards, authority and
+              disclosure copy, lock labels, and failure messages stay exactly
+              the same.
+            </p>
+            <div aria-describedby="conversation-profile-note">
+              {interactionProfiles.map((profile) => (
+                <label key={profile.id}>
+                  <input
+                    type="radio"
+                    name="conversation-interaction-profile"
+                    value={profile.id}
+                    checked={selectedInteractionProfile === profile.id}
+                    disabled={active || busy}
+                    onChange={() => setSelectedInteractionProfile(profile.id)}
+                  />
+                  <span>{profile.label}</span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
           <details
             ref={controlsRef}
             className="conversation-options"
@@ -747,30 +773,9 @@ export function ConversationWorkspace({
               </button>
             )}
             <p>
-              The workspace stays a chat. Adjust style, tools, model, or access
-              only when this turn needs them.
+              The workspace stays a chat. Adjust tools, model, or access only
+              when this turn needs them.
             </p>
-            <fieldset className="conversation-profile">
-              <legend>Conversation style</legend>
-              <p>
-                This changes assistant prose only. Action Cards, authority and
-                disclosure copy, lock labels, and failure messages stay exactly
-                the same.
-              </p>
-              {interactionProfiles.map((profile) => (
-                <label key={profile.id}>
-                  <input
-                    type="radio"
-                    name="conversation-interaction-profile"
-                    value={profile.id}
-                    checked={selectedInteractionProfile === profile.id}
-                    disabled={active || busy}
-                    onChange={() => setSelectedInteractionProfile(profile.id)}
-                  />
-                  <span>{profile.label}</span>
-                </label>
-              ))}
-            </fieldset>
             <fieldset className="conversation-integrations">
               <legend>Connected integrations</legend>
               {availableConnectors.length ? (
