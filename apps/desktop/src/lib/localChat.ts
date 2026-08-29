@@ -1,11 +1,22 @@
 import { z } from "zod";
 
+import { interactionProfiles } from "../interactionProfiles";
+
 export const localChatRequestSchema = z
   .object({
     message: z
       .string()
       .min(1)
       .max(96 * 1024),
+    interactionProfile: z
+      .enum(
+        interactionProfiles.map((profile) => profile.id) as [
+          "direct",
+          "conversational",
+        ],
+      )
+      .optional()
+      .default("direct"),
   })
   .strict();
 

@@ -545,7 +545,11 @@ impl LocalRuntimeReservation {
     /// M69A's typed service owns validation and presents the resulting text
     /// only in the ephemeral chat view. This method deliberately accepts bytes
     /// alone, so no project/source/review authority can enter the runtime.
-    pub(crate) fn run_local_chat(self, text: &[u8]) -> LocalRuntimeSnapshot {
+    pub(crate) fn run_local_chat(
+        self,
+        text: &[u8],
+        interaction_profile_instruction: &str,
+    ) -> LocalRuntimeSnapshot {
         let Some(contract) = self.model_contract.as_ref() else {
             return LocalRuntimeService::unavailable_snapshot();
         };
@@ -553,20 +557,20 @@ impl LocalRuntimeReservation {
             text,
             &self.control,
             &contract.model_path,
-            &local_chat_system_prompt(),
+            &local_chat_system_prompt(interaction_profile_instruction),
             "local-chat-invalid",
             "local-chat-too-large",
         )
     }
 }
 
-fn local_chat_system_prompt() -> String {
+fn local_chat_system_prompt(interaction_profile_instruction: &str) -> String {
     match local_clock() {
         Some(clock) => format!(
-            "{LOCAL_CHAT_SYSTEM_PROMPT} The current local date and time is {clock}; use it for date or time questions. Never emit placeholder text or claim that you lack real-time capability."
+            "{LOCAL_CHAT_SYSTEM_PROMPT} {interaction_profile_instruction} The current local date and time is {clock}; use it for date or time questions. Never emit placeholder text or claim that you lack real-time capability."
         ),
         None => format!(
-            "{LOCAL_CHAT_SYSTEM_PROMPT} Do not invent a date or emit placeholder text when the calendar is unavailable."
+            "{LOCAL_CHAT_SYSTEM_PROMPT} {interaction_profile_instruction} Do not invent a date or emit placeholder text when the calendar is unavailable."
         ),
     }
 }
@@ -895,13 +899,27 @@ mod tests {
 
     #[test]
     fn local_chat_prompt_has_no_date_placeholder() {
-        let prompt = local_chat_system_prompt();
+        let prompt = local_chat_system_prompt("Keep the answer concise and pragmatic.");
         assert!(!prompt.contains("[insert current date]"));
         assert!(
             prompt.contains("Never emit placeholder text")
                 || prompt.contains("Do not invent a date")
         );
         assert!(prompt.contains("current local date and time"));
+    }
+
+    #[test]
+    fn local_chat_prompt_preserves_the_selected_style_instruction() {
+        let direct = local_chat_system_prompt("Keep the answer concise and pragmatic.");
+        let conversational = local_chat_system_prompt(
+            "Use a warmer, exploratory tone while remaining concise and factual.",
+        );
+
+        assert!(direct.contains("Keep the answer concise and pragmatic."));
+        assert!(conversational
+            .contains("Use a warmer, exploratory tone while remaining concise and factual."));
+        assert!(direct.contains(LOCAL_CHAT_SYSTEM_PROMPT));
+        assert!(conversational.contains(LOCAL_CHAT_SYSTEM_PROMPT));
     }
 
     #[test]

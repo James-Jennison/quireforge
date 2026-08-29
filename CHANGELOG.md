@@ -2,6 +2,25 @@
 
 ## Unreleased — M87 chat workspace refinement
 
+- Makes M87's shared conversation-shell correction explicit: Chat & Cowork and
+  Code now share a persistent chat-first reading flow and compact composer
+  mechanics, while their mode adapters retain separate authority and context
+  boundaries. Chat & Cowork gets no Code authority or automatic project or
+  transcript transfer; Code-only Task Catalog and Durable Sources are a
+  collapsed one-click shelf. Switching modes never aborts, pauses, or mutates
+  an active Code task, and legacy Advisor history remains separate from project
+  threads. Fresh source, package, installed-host, and owner-interaction
+  evidence is required; prior candidate evidence is not reused.
+
+- Beta.124 supersedes beta.123 as the next owner-acceptance candidate. A reply
+  to a completed or blocked native conversation now resumes that same native
+  conversation and keeps the rendered multi-turn transcript, rather than
+  starting a clean task view. Resumed native event sequences are translated
+  only in the display layer with one fixed per-turn offset, preventing the
+  native lifecycle's restarted local sequences from colliding with earlier
+  transcript events. This changes no provider, authority, approval, dispatch,
+  credential, or native payload boundary. Fresh source, package,
+  installed-host, and owner-interaction evidence is required.
 - Beta.123 supersedes beta.122 as the next owner-acceptance candidate. It
   corrects the installed-host validation-history ceiling: every committed
   summary is atomically identity-bound and therefore intentionally immutable,

@@ -4,10 +4,39 @@ import type { ConversationEvent } from "./conversation";
 import {
   buildConversationActivityViews,
   coalesceConversationMessageDeltas,
+  highestConversationEventSequence,
   mergeConversationEvents,
+  offsetConversationEventSequences,
 } from "./conversationView";
 
 describe("conversation event view", () => {
+  it("uses one fixed display offset for every poll in a resumed turn", () => {
+    const prior: ConversationEvent[] = [
+      {
+        type: "reasoning-summary-delta",
+        sequence: 9,
+        delta: "Earlier reply.",
+      },
+    ];
+    const offset = highestConversationEventSequence(prior);
+    const firstPoll = offsetConversationEventSequences(
+      [{ type: "agent-message-delta", sequence: 3, delta: "New" }],
+      offset,
+    );
+    const secondPoll = offsetConversationEventSequences(
+      [{ type: "agent-message-delta", sequence: 4, delta: " reply." }],
+      offset,
+    );
+
+    expect(
+      mergeConversationEvents(prior, firstPoll).map(({ sequence }) => sequence),
+    ).toEqual([9, 12]);
+    expect(
+      mergeConversationEvents([...prior, ...firstPoll], secondPoll).map(
+        ({ sequence }) => sequence,
+      ),
+    ).toEqual([9, 13]);
+  });
   it("deduplicates and orders batches by bounded sequence", () => {
     const current: ConversationEvent[] = [
       { type: "lifecycle", sequence: 1, phase: "starting" },

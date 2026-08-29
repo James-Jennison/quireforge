@@ -2006,7 +2006,12 @@ M70, M71, M76, and M72 are completed historical foundations. M72 is validated
 in `0.1.0-beta.107`: its project-first authority workspace passed full source
 validation, desktop/mobile E2E, clean packaging, installed-host launch, and
 owner acceptance of an inert draft-to-active-to-revoked lifecycle. M87 is now
-active in its `0.1.0-beta.123` candidate, which increases only the bounded,
+active in its `0.1.0-beta.124` candidate. It retains the native multi-turn
+conversation on a completed or blocked reply and uses a fixed display-only
+sequence offset for each resumed turn, so resumed native event numbering never
+collides with already rendered transcript events. It changes no provider,
+authority, approval, dispatch, credential, or native payload boundary. Beta.123
+remains immutable evidence. Beta.123 had increased only the bounded,
 immutable package-validation history allowance from 32 to 64 records so repeated
 installed-host validation remains fail-closed without blocking a healthy next run.
 Every later milestone remains separately scoped and must pass its native/unit,
@@ -2060,7 +2065,9 @@ agent, connector, or execution capability.
 - [M87 — Personality and Interaction Profiles](MILESTONE_87_PERSONALITY_AND_INTERACTION_PROFILES.md):
   user-selectable working styles that never change authority. It follows M72
   so a profile can never imply objective scope, a capability, or an approval
-  outcome.
+  outcome. Its explicit presentation correction gives Chat & Cowork and Code
+  one persistent chat-first shell while retaining strict mode adapters,
+  no implicit context transfer, and unchanged Code approval boundaries.
 - **M73 — Agent-Neutral Context Assembly:** relevant knowledge, evidence, and
   active authority assembled at the beginning of a capability-bearing task.
 - **M74 — Three-Part Completion Model:** independent implementation,

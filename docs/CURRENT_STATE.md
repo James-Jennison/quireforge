@@ -100,7 +100,28 @@ research, and M72 objective-scoped authority are completed foundations. M72
 is validated in `0.1.0-beta.107`: full validation, desktop/mobile E2E, clean
 package, installed-host launch, and owner acceptance of the inert
 draft-to-active-to-revoked lifecycle passed. The next product foundation is
-M87 interaction profiles. The `0.1.0-beta.123` candidate supersedes beta.122
+M87 interaction profiles. The `0.1.0-beta.124` candidate supersedes beta.123
+by resuming a completed or blocked native conversation in place and retaining
+its display transcript across turns. The native lifecycle may restart local
+event sequences on resume, so the desktop applies one fixed display-only
+offset for that resumed turn and its polls; no native payload, provider,
+authority, approval, dispatch, credential, or context boundary changes.
+
+M87 now explicitly corrects the presentation shell: Chat & Cowork and Code
+share the persistent chat-first reading flow and compact composer mechanics,
+while strict mode adapters retain their existing authority and context
+boundaries. Chat & Cowork receives no Code authority or automatic project or
+transcript transfer; Code-only Task Catalog and Durable Sources remain a
+collapsed one-click shelf. Mode changes must not abort, pause, or mutate an
+active Code task. Chat & Cowork local turns remain in memory through
+presentation-only mode switches within the current app session; they are never
+automatically transferred or persisted.
+Legacy Advisor retains its existing separate transient-state reset boundary.
+This correction requires fresh source, package, installed-host, and
+owner-interaction evidence; it does not reuse prior acceptance claims.
+
+Fresh source, package, installed-host, and owner-interaction evidence is
+required. Beta.123 remains immutable evidence. Beta.123 supersedes beta.122
 after beta.122's installed-host validation history reached its immutable
 32-record ceiling before the native completion receipt could be recorded.
 Beta.123 keeps the same atomic summary-and-identity record contract and raises

@@ -6,6 +6,29 @@ M87 gives a person a small, explicit choice over QuireForge's conversational
 style. It is not an authority setting, an objective, an approval preference,
 or a capability grant.
 
+## Shared conversation-shell correction
+
+M87 also owns this explicit presentation correction: **Chat & Cowork** and
+**Code** use one persistent, chat-first `ConversationShell` rather than two
+unrelated workspace forms. This is a scope amendment for M87, not an inference
+from the Direct/Conversational contract. The shared shell supplies only the
+reading flow, compact bottom composer, progressive-disclosure shelves, and
+passive status placement. Each mode adapter retains its own runtime, project,
+approval, and context boundaries.
+
+Chat & Cowork remains local and has no Code execution authority. Code remains
+the only mode that exposes the existing project controls and approvals. Advisor
+history stays accessible as legacy local history; it is not automatically
+merged into a project thread or used as implicit Code context. Code-only Task
+Catalog and Durable Sources remain one-click reachable from a collapsed shelf,
+not permanently mounted in the transcript.
+
+Switching modes is presentation-only: it must never abort, pause, or mutate a
+running Code task. A compact global return affordance may report that task while
+Chat & Cowork is selected, and returning to Code must restore its interaction.
+This is a new M87 acceptance criterion adopted for continuity; it was not
+claimed as pre-existing evidence from an earlier M87 candidate.
+
 ## Closed first contract
 
 The available profiles are deliberately limited to:
@@ -13,12 +36,12 @@ The available profiles are deliberately limited to:
 - **Direct** — concise, pragmatic conversational prose.
 - **Conversational** — warmer, more exploratory conversational prose.
 
-Appearance settings hold the default for future conversations. The project
-conversation exposes the profile selector directly in its compact chat
-composer, so a person can choose a different style before sending without
-opening operational controls. The chosen closed value is sent only as the
-documented native runtime personality parameter; it does not add project
-context, a tool, a browser, a connector, or an external provider.
+Appearance settings hold the default for future conversations. Chat & Cowork
+and the project conversation expose the same compact profile selector directly
+in their chat composers, so a person can choose a different style before
+sending without opening operational controls. The chosen closed value is sent
+only as the documented native runtime personality parameter; it does not add
+project context, a tool, a browser, a connector, or an external provider.
 
 ## Authority invariants
 
@@ -68,12 +91,22 @@ a real per-action-type owner tap mechanism. It must not present misleading
    The deterministic local-only fixture workflows remain explicitly labeled
    and manually reachable from Task Catalog without gaining a provider,
    browser, connector, or execution route.
+8. Chat & Cowork and Code use the same persistent chat-first reading flow and
+   compact composer mechanics. Their mode adapters remain strictly separated:
+   Chat & Cowork receives no Code authority or automatic project/transcript
+   context, while Code retains its existing authority and approval contract.
+9. Changing between those modes neither aborts nor mutates an active Code
+   task. A compact, globally visible return path preserves access to that task.
+   Chat & Cowork local turns remain in memory through presentation-only mode
+   switches within the current app session; they are never automatically
+   transferred or persisted. Legacy
+   Advisor retains its existing separate transient-state reset boundary.
 
 ## Implementation checkpoint
 
-The closed profile registry, Appearance default, project composer selector,
-Advisor selector, typed frontend contracts, and native personality mapping are
-implemented. The interaction style is visibly separate from access and
+The closed profile registry, Appearance default, Chat & Cowork and project
+composer selectors, typed frontend contracts, and native personality mapping
+are implemented. The interaction style is visibly separate from access and
 approval controls, and project conversations offer only approval policies that
 remain truthful.
 
@@ -147,7 +180,15 @@ an explicit yes/no decision interrupts that flow with the existing semantic
 approval surface. Passive activity remains a lightweight, expandable timeline
 row; it is not an Action Card and conveys no authority.
 
-`0.1.0-beta.123` supersedes beta.122 as the current owner-acceptance candidate
+`0.1.0-beta.124` supersedes beta.123 as the current owner-acceptance candidate
+without replacing beta.123's immutable evidence. A reply to a completed or
+blocked native conversation resumes that same conversation and retains the
+rendered multi-turn transcript. Because a native resume restarts its local
+event sequences, the desktop applies one fixed display-only offset for that
+resumed turn and all of its polls; native payloads and all M87 authority
+boundaries remain unchanged. Fresh source, package, installed-host, and owner
+interaction evidence is required. Beta.123 supersedes beta.122 as the prior
+owner-acceptance candidate
 without replacing beta.122, beta.121, beta.120, beta.119, or beta.118's immutable
 acceptance evidence. Beta.121 failed its installed-host validator because the
 native consumer read stale checkout artifacts instead of the builder's trusted
@@ -188,11 +229,11 @@ mapping, protected-file ownership, permissions, and integrity, and
 `quireforge-installed-beta120` user service. Owner-acceptance evidence remains
 required before this candidate is accepted.
 
-## Owner acceptance procedure — beta.123
+## Owner acceptance procedure — beta.124
 
 This is a one-shot owner review, not a new capability or a new application
-surface. Use the installed `0.1.0-beta.123` application and its New task chat
-workspace:
+surface. Use the installed `0.1.0-beta.124` application in both Chat & Cowork
+and Code:
 
 1. Test both **Direct** and **Conversational** profiles using the selector in
    the compact bottom composer. The selector must disable while a task is
@@ -202,26 +243,38 @@ workspace:
    least three representative multi-fragment managed-assistant responses; each
    must remain one bounded response bubble rather than a card for every
    fragment.
-2. For each profile, observe a transient polling failure and then a successful
+2. In each profile, ask a question, wait for its completed response, then reply
+   to that response. The same transcript must remain visible in chronological
+   order: first user prompt, first assistant response, reply, then the next
+   assistant response. It must not open or replace the chat with a clean task.
+3. For each profile, observe a transient polling failure and then a successful
    displayed-task poll. The diagnostic must remain until that success and then
    clear; a persistent failure must remain visible rather than being hidden.
-3. Confirm that changing profiles changes assistant conversational prose only:
+4. Confirm that changing profiles changes assistant conversational prose only:
    the layout, Action Card content, authority/disclosure copy, lock labels,
    failure messages, approval prompts, authority scope, and execution
    capability remain unchanged. Trigger one fixed confirm-tier Action Card in
    each profile and compare its content byte-for-byte.
-4. Confirm that ordinary responses, passive activity, and open clarifying
+5. Confirm that ordinary responses, passive activity, and open clarifying
    questions read as part of the transcript; activity may be expanded for
    evidence, but it must not resemble a permission prompt. A concrete pending
    approval must remain semantically and visually distinct, with its explicit
    decisions available.
-5. Record one terminal owner decision in this report: **accepted** or
+6. Record one terminal owner decision in this report: **accepted** or
    **rejected**, with a concise defect note on rejection. A rejection reopens
    M87; it is not a partial pass and does not start M73.
-6. Confirm that the normal New task chat contains no fictional fixture
+7. Confirm that the normal New task chat contains no fictional fixture
    launchers. Open Task Catalog and verify its explicitly labeled local-only
    fixture catalogue is still manually reachable and does not imply a live
    provider, browser, connector, or external-service capability.
+8. In Chat & Cowork, choose each profile from the compact composer and send a
+   local turn. Verify the profile changes only local response prose; Chat &
+   Cowork must not receive a project, Code authority, browser page content, or
+   automatic transcript transfer.
+9. Start a Code task, switch to Chat & Cowork without stopping it, and return
+   using the compact return affordance. The Code task must still be present and
+   interactive; neither its task state nor the legacy local-chat history may
+   have been merged or mutated by that route change.
 
 No provider dispatch, browser access, connector call, context transmission,
 approval-policy change, sandbox change, or native execution expansion is part

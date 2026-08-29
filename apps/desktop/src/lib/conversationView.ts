@@ -50,6 +50,31 @@ export function mergeConversationEvents(
 }
 
 /**
+ * Native conversation lifecycle streams restart their local sequence numbers
+ * when a completed conversation is resumed. Keep the on-screen transcript in
+ * one monotonic display namespace without changing the native payload.
+ */
+export function offsetConversationEventSequences(
+  events: ConversationEvent[],
+  offset: number,
+): ConversationEvent[] {
+  if (offset === 0) return events;
+  return events.map((event) => ({
+    ...event,
+    sequence: event.sequence + offset,
+  }));
+}
+
+export function highestConversationEventSequence(
+  events: ConversationEvent[],
+): number {
+  return events.reduce(
+    (highest, event) => Math.max(highest, event.sequence),
+    0,
+  );
+}
+
+/**
  * The app-server sends assistant text as small streaming deltas. Keep those
  * deltas intact in state so polling can still deduplicate by sequence, but
  * present contiguous assistant text as one bounded message to the user.

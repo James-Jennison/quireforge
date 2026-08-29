@@ -344,7 +344,7 @@ describe("QuireForge desktop shell", () => {
     );
   });
 
-  it("requires confirmation before switching to the separate local Chat mode", async () => {
+  it("requires confirmation before switching to Chat & Cowork", async () => {
     const { unmount } = render(
       <App
         loadBootstrap={() => Promise.resolve(scaffoldBootstrap)}
@@ -359,7 +359,9 @@ describe("QuireForge desktop shell", () => {
       name: "Code",
     });
     fireEvent.click(workspaceTrigger);
-    fireEvent.click(screen.getByRole("menuitemradio", { name: /Advisor/u }));
+    fireEvent.click(
+      screen.getByRole("menuitemradio", { name: /Chat & Cowork/u }),
+    );
     expect(screen.getByRole("dialog")).toHaveTextContent(/no project/i);
     expect(window.localStorage.getItem("quireforge-conversation-mode")).toBe(
       "codex",
@@ -389,8 +391,12 @@ describe("QuireForge desktop shell", () => {
     expect(workspaceTrigger).toHaveFocus();
 
     fireEvent.click(screen.getByRole("button", { name: "Code" }));
-    fireEvent.click(screen.getByRole("menuitemradio", { name: /Advisor/u }));
-    fireEvent.click(screen.getByRole("button", { name: "Confirm Advisor" }));
+    fireEvent.click(
+      screen.getByRole("menuitemradio", { name: /Chat & Cowork/u }),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Confirm Chat & Cowork" }),
+    );
     expect(
       await screen.findByRole("heading", {
         name: "Start a conversation.",
@@ -411,7 +417,7 @@ describe("QuireForge desktop shell", () => {
       acknowledged: true,
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Chat" }));
+    fireEvent.click(screen.getByRole("button", { name: "Chat & Cowork" }));
     fireEvent.click(screen.getByRole("menuitemradio", { name: /Code/u }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     await waitFor(() =>
@@ -421,7 +427,9 @@ describe("QuireForge desktop shell", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Code" }));
-    fireEvent.click(screen.getByRole("menuitemradio", { name: /Advisor/u }));
+    fireEvent.click(
+      screen.getByRole("menuitemradio", { name: /Chat & Cowork/u }),
+    );
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(
       await screen.findByRole("heading", { name: "Start a conversation." }),
@@ -493,7 +501,7 @@ describe("QuireForge desktop shell", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("renders the durable Task Catalog in the primary New task workspace", async () => {
+  it("keeps the durable Task Catalog in the collapsed Code tools shelf", async () => {
     render(
       <App
         loadBootstrap={() => Promise.resolve(scaffoldBootstrap)}
@@ -509,6 +517,9 @@ describe("QuireForge desktop shell", () => {
       '[data-workspace-view="conversation"]',
     );
     expect(workspace).not.toBeNull();
+    const shelf = within(workspace as HTMLElement).getByText("Code tools");
+    expect(shelf.parentElement).not.toHaveAttribute("open");
+    fireEvent.click(shelf);
     const catalogLauncher = within(workspace as HTMLElement).getByRole(
       "button",
       { name: "Task Catalog" },
@@ -566,6 +577,7 @@ describe("QuireForge desktop shell", () => {
       '[data-workspace-view="conversation"]',
     );
     expect(workspace).not.toHaveAttribute("hidden");
+    fireEvent.click(within(workspace as HTMLElement).getByText("Code tools"));
     expect(
       within(workspace as HTMLElement).getByRole("heading", { name: "Tasks" }),
     ).toBeVisible();
@@ -657,6 +669,132 @@ describe("QuireForge desktop shell", () => {
     ).toHaveAttribute("aria-expanded", "true");
   });
 
+  it("keeps a running Code task mounted and untouched while Chat & Cowork is selected", async () => {
+    const running = conversationSnapshotSchema.parse({
+      schemaVersion: 3,
+      state: "running",
+      conversationId: "018f0000-0000-7000-8000-000000000010",
+      projectId,
+      modelId: "gpt-5.6-sol",
+      reasoningEffort: "high",
+      modelSelection: modelSelection(),
+      sandboxMode: "workspace-write",
+      approvalPolicy: "on-request",
+      pendingApproval: null,
+      events: [],
+      diagnosticCode: null,
+    });
+    const interruptConversationTask = vi.fn();
+    window.localStorage.setItem(
+      "quireforge-workspace-boundary-acknowledgment",
+      JSON.stringify({
+        schemaVersion: 1,
+        boundaryPolicyVersion: "advisor-quireforge-boundary-v1",
+        acknowledged: true,
+      }),
+    );
+
+    render(
+      <App
+        loadBootstrap={() => Promise.resolve(scaffoldBootstrap)}
+        loadRuntime={() => Promise.resolve(scaffoldCodexRuntime)}
+        loadAuth={() => Promise.resolve(authenticatedAuth)}
+        loadProjects={() => Promise.resolve(attachedProject)}
+        loadConversation={() => Promise.resolve(running)}
+        interruptConversationTask={interruptConversationTask}
+      />,
+    );
+
+    await navigateTo("New task");
+    await screen.findByRole("button", { name: "Stop task" });
+    const codeView = document.querySelector(
+      '[data-workspace-view="conversation"]',
+    );
+    const codeComposer = within(codeView as HTMLElement).getByLabelText(
+      "Message",
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Code" }));
+    fireEvent.click(
+      screen.getByRole("menuitemradio", { name: /Chat & Cowork/u }),
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: "Start a conversation." }),
+    ).toBeInTheDocument();
+    expect(interruptConversationTask).not.toHaveBeenCalled();
+    expect(codeView).toHaveAttribute("hidden");
+    expect(document.querySelector('[data-workspace-view="conversation"]')).toBe(
+      codeView,
+    );
+    expect(codeComposer).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Code task is still running · Return to Code",
+      }),
+    );
+
+    await waitFor(() => expect(codeView).not.toHaveAttribute("hidden"));
+    expect(interruptConversationTask).not.toHaveBeenCalled();
+    expect(document.querySelector('[data-workspace-view="conversation"]')).toBe(
+      codeView,
+    );
+    expect(codeComposer).toBeInTheDocument();
+  });
+
+  it("keeps a Chat & Cowork draft session-local across a Code presentation switch", async () => {
+    window.localStorage.setItem(
+      "quireforge-workspace-boundary-acknowledgment",
+      JSON.stringify({
+        schemaVersion: 1,
+        boundaryPolicyVersion: "advisor-quireforge-boundary-v1",
+        acknowledged: true,
+      }),
+    );
+    render(
+      <App
+        loadBootstrap={() => Promise.resolve(scaffoldBootstrap)}
+        loadRuntime={() => Promise.resolve(scaffoldCodexRuntime)}
+        loadAuth={() => Promise.resolve(authenticatedAuth)}
+        loadProjects={() => Promise.resolve(attachedProject)}
+      />,
+    );
+
+    await navigateTo("New task");
+    fireEvent.click(screen.getByRole("button", { name: "Code" }));
+    fireEvent.click(
+      screen.getByRole("menuitemradio", { name: /Chat & Cowork/u }),
+    );
+    const chatDraft = await screen.findByRole("textbox", {
+      name: "Local chat message",
+    });
+    fireEvent.change(chatDraft, {
+      target: { value: "Keep this local draft." },
+    });
+    const chatSurface = document.querySelector(
+      '[data-conversation-surface="chat"]',
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Chat & Cowork" }));
+    fireEvent.click(screen.getByRole("menuitemradio", { name: /^Code/u }));
+    await screen.findByRole("heading", {
+      name: "Start a conversation with your project.",
+    });
+    expect(chatSurface).toHaveAttribute("hidden");
+    expect(chatDraft).toHaveValue("Keep this local draft.");
+
+    fireEvent.click(screen.getByRole("button", { name: "Code" }));
+    fireEvent.click(
+      screen.getByRole("menuitemradio", { name: /Chat & Cowork/u }),
+    );
+    await waitFor(() => expect(chatSurface).not.toHaveAttribute("hidden"));
+    expect(chatDraft).toHaveValue("Keep this local draft.");
+    expect(
+      document.querySelector('[data-workspace-view="conversation"]'),
+    ).toHaveAttribute("hidden");
+  });
+
   it("falls back safely to Codex when a persisted conversation mode is invalid", async () => {
     window.localStorage.setItem("quireforge-conversation-mode", "unsupported");
     render(
@@ -735,7 +873,9 @@ describe("QuireForge desktop shell", () => {
       );
       await navigateTo("New task");
       fireEvent.click(screen.getByRole("button", { name: "Code" }));
-      fireEvent.click(screen.getByRole("menuitemradio", { name: /Advisor/u }));
+      fireEvent.click(
+        screen.getByRole("menuitemradio", { name: /Chat & Cowork/u }),
+      );
       expect(screen.getByRole("dialog")).toBeInTheDocument();
     },
   );
@@ -846,7 +986,11 @@ describe("QuireForge desktop shell", () => {
       await screen.findByText("Remove temporary snapshot"),
     ).toBeInTheDocument();
     expect(
-      within(document.getElementById("advisor")!).queryByText(/main|\/mnt\//u),
+      within(
+        screen
+          .getByRole("textbox", { name: "Advisor message" })
+          .closest("section")!,
+      ).queryByText(/main|\/mnt\//u),
     ).not.toBeInTheDocument();
   });
 

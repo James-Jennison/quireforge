@@ -764,15 +764,28 @@ async function openWorkspace(
       .catch(() => false)
   ) {
     await confirmation
-      .getByRole("button", { name: /Confirm (Advisor|QuireForge)/u })
+      .getByRole("button", { name: /Confirm (Chat & Cowork|QuireForge)/u })
       .click();
   }
   await expect(destination).toHaveAttribute("aria-current", "page");
 }
 
 async function openFixtureCatalogue(page: import("@playwright/test").Page) {
-  await page.getByRole("button", { name: "Task Catalog" }).click();
+  await openTaskCatalog(page);
   return page.getByRole("region", { name: "Local fixture catalogue" });
+}
+
+async function openTaskCatalog(page: import("@playwright/test").Page) {
+  const shelf = page.locator("details.conversation-mode-shelf", {
+    hasText: "Code tools",
+  });
+  await expect(shelf).toBeVisible();
+  if (
+    !(await shelf.evaluate((element) => (element as HTMLDetailsElement).open))
+  ) {
+    await shelf.locator("summary").click();
+  }
+  await page.getByRole("button", { name: "Task Catalog" }).click();
 }
 
 async function openAccountSettings(page: import("@playwright/test").Page) {
@@ -1046,7 +1059,7 @@ test("M56 task-template application remains explicit and contained", async ({
   });
   await page.goto("/");
   await openWorkspace(page, "New task");
-  await page.getByRole("button", { name: "Task Catalog" }).click();
+  await openTaskCatalog(page);
   await page.getByRole("button", { name: "Task Templates" }).click();
   await page.getByRole("button", { name: /Feature implementation/ }).click();
   const apply = page.getByRole("button", { name: "Apply to task" });
@@ -1931,7 +1944,7 @@ test("mock inference clears a prepared review when its bound input changes", asy
   await expect(
     primaryWorkspace.getByRole("button", { name: "Fictional mock inference" }),
   ).toHaveCount(0);
-  await primaryWorkspace.getByRole("button", { name: "Task Catalog" }).click();
+  await openTaskCatalog(page);
   await expect(
     primaryWorkspace.getByRole("heading", { name: "Tasks" }),
   ).toBeVisible();
@@ -2080,7 +2093,7 @@ test("production New task creates one durable task for the fictional mock select
   });
   await page.goto("/");
   await openWorkspace(page, "New task");
-  await page.getByRole("button", { name: "Task Catalog" }).click();
+  await openTaskCatalog(page);
   await page.getByRole("button", { name: "New task" }).click();
   await page.getByRole("textbox", { name: "Task title" }).fill("Mock task");
   await page.getByRole("button", { name: "Create task" }).click();
@@ -2414,14 +2427,12 @@ test("Local Chat completes an ordinary no-project local-only turn", async ({
   await expect(
     chat.getByRole("heading", { name: "Start a conversation." }),
   ).toBeVisible();
+  await chat.getByText("About Chat & Cowork").click();
   await expect(
-    chat.getByText("Local runtime · Project context not attached · Ephemeral"),
+    chat.getByText(/Local runtime · Project context not attached · Ephemeral/u),
   ).toBeVisible();
   await expect(
-    chat.getByRole("button", { name: "Continue with linked project" }),
-  ).toBeVisible();
-  await expect(
-    chat.getByRole("button", { name: /attach|settings|tools/i }),
+    chat.getByText("Project authority", { exact: true }),
   ).toHaveCount(0);
   await chat
     .getByRole("textbox", { name: "Local chat message" })
@@ -2438,6 +2449,7 @@ test("Local Chat opens the separate Google research review", async ({
 
   await openWorkspace(page, "Advisor");
   const chat = page.locator('[data-workspace-view="advisor"]');
+  await chat.getByText("Chat options").click();
   await chat
     .getByRole("button", { name: "Research Google (read only)" })
     .click();
@@ -2604,10 +2616,10 @@ test("Advisor presents a bounded chat-first conversation with safe summaries", a
     "Enter a message to send.",
   );
   const sendButton = advisor.getByRole("button", { name: "Send to Advisor" });
-  await expect(advisor.locator(".conversation-composer")).toHaveCSS(
-    "position",
-    "relative",
-  );
+  const advisorComposer = advisor
+    .getByRole("textbox", { name: "Advisor message" })
+    .locator("xpath=ancestor::div[contains(@class, 'conversation-composer')]");
+  await expect(advisorComposer).toHaveCSS("position", "relative");
   await expect(sendButton).toBeDisabled();
   await advisor
     .getByRole("textbox", { name: "Advisor message" })
@@ -2715,7 +2727,9 @@ test("Advisor keeps a long transient reply reachable without forcing a reader to
   await expect(jump).toHaveCount(0);
 
   const reply = advisor.getByText("Bounded Advisor reply line 160:");
-  const composer = advisor.locator(".conversation-composer");
+  const composer = advisor
+    .getByRole("textbox", { name: "Advisor message" })
+    .locator("xpath=ancestor::div[contains(@class, 'conversation-composer')]");
   await expect(async () => {
     const replyBox = await reply.boundingBox();
     const composerBox = await composer.boundingBox();
@@ -2834,7 +2848,7 @@ test("QuireForge workbench controls remain optional, keyboard-operable, and boun
   await expect(
     page.getByRole("button", { name: "Open terminal dock" }),
   ).toHaveAttribute("aria-expanded", "false");
-  await page.getByRole("button", { name: "Task Catalog" }).click();
+  await openTaskCatalog(page);
   const taskList = page.getByRole("navigation", { name: "Task list" });
   await expect(taskList).toBeVisible();
   await expect(

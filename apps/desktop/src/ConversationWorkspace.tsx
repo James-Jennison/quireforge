@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { ConversationAttachmentTray } from "./ConversationAttachmentTray";
+import { ConversationShell } from "./ConversationShell";
 import {
   ModelSelectionPanel,
   ModelSelectionPolicyFields,
@@ -18,6 +19,7 @@ import {
   type ConversationSnapshot,
   type ConversationStartRequest,
 } from "./lib/conversation";
+import type { ConversationContinueRequest } from "./lib/session";
 import {
   buildConversationActivityViews,
   coalesceConversationMessageDeltas,
@@ -53,6 +55,9 @@ interface ConversationWorkspaceProps {
   attachmentActionError: boolean;
   interactionProfile?: InteractionProfileId;
   onStart: (request: ConversationStartRequest) => Promise<ConversationSnapshot>;
+  onResume: (
+    request: ConversationContinueRequest,
+  ) => Promise<ConversationSnapshot>;
   onRetryPoll: (conversationId: string) => Promise<ConversationSnapshot>;
   onInterrupt: (conversationId: string) => Promise<ConversationSnapshot>;
   onDecideApproval: (
@@ -71,6 +76,13 @@ interface ConversationWorkspaceProps {
   ) => Promise<void>;
   handoffBrief?: string | null;
   onReturnTaskReceipt?: (summary: string) => Promise<void>;
+  codeShelf?: ReactNode;
+}
+
+interface SubmittedConversationMessage {
+  id: number;
+  afterSequence: number;
+  text: string;
 }
 
 const sandboxOptions = [
@@ -400,6 +412,7 @@ export function ConversationWorkspace({
   attachmentActionError,
   interactionProfile = "direct",
   onStart,
+  onResume,
   onRetryPoll,
   onInterrupt,
   onDecideApproval,
@@ -409,13 +422,16 @@ export function ConversationWorkspace({
   onAttachmentCancel,
   handoffBrief = null,
   onReturnTaskReceipt,
+  codeShelf,
 }: ConversationWorkspaceProps) {
   const controlsRef = useRef<HTMLDetailsElement>(null);
   const [controlsOpen, setControlsOpen] = useState(false);
   const defaultModel =
     runtime.models.find((model) => model.isDefault) ?? runtime.models[0];
   const [prompt, setPrompt] = useState(handoffBrief ?? "");
-  const [submittedPrompt, setSubmittedPrompt] = useState<string | null>(null);
+  const [submittedPrompts, setSubmittedPrompts] = useState<
+    SubmittedConversationMessage[]
+  >([]);
   const [receiptSummary, setReceiptSummary] = useState("");
   const [modelId, setModelId] = useState(defaultModel?.id ?? "");
   const [reasoningEffort, setReasoningEffort] = useState(
@@ -470,6 +486,32 @@ export function ConversationWorkspace({
     () => coalesceConversationMessageDeltas(events),
     [events],
   );
+  const conversationTimeline = useMemo(() => {
+    const entries: Array<
+      | { kind: "event"; event: ConversationEvent }
+      | { kind: "user"; message: SubmittedConversationMessage }
+    > = [];
+    const prompts = [...submittedPrompts].sort(
+      (left, right) =>
+        left.afterSequence - right.afterSequence || left.id - right.id,
+    );
+    let promptIndex = 0;
+    for (const event of displayEvents) {
+      while (
+        promptIndex < prompts.length &&
+        prompts[promptIndex]!.afterSequence < event.sequence
+      ) {
+        entries.push({ kind: "user", message: prompts[promptIndex]! });
+        promptIndex += 1;
+      }
+      entries.push({ kind: "event", event });
+    }
+    while (promptIndex < prompts.length) {
+      entries.push({ kind: "user", message: prompts[promptIndex]! });
+      promptIndex += 1;
+    }
+    return entries;
+  }, [displayEvents, submittedPrompts]);
 
   const selectedModel =
     runtime.models.find((model) => model.id === modelId) ?? defaultModel;
@@ -569,14 +611,35 @@ export function ConversationWorkspace({
     !active &&
     !busy &&
     requestValid;
+  const canResume =
+    snapshot.conversationId !== null &&
+    !active &&
+    snapshot.state !== "unavailable" &&
+    canStart;
 
   async function beginTask() {
     if (!canStart || startInFlight.current) return;
     startInFlight.current = true;
     try {
-      const result = await onStart(request);
+      const result = canResume
+        ? await onResume({
+            conversationId: snapshot.conversationId!,
+            prompt,
+            attachmentIds,
+          })
+        : await onStart(request);
       if (result.state === "running") {
-        setSubmittedPrompt(prompt.trim());
+        setSubmittedPrompts((current) => [
+          ...current,
+          {
+            id: current.length,
+            afterSequence: events.reduce(
+              (highest, event) => Math.max(highest, event.sequence),
+              0,
+            ),
+            text: prompt.trim(),
+          },
+        ]);
         setPrompt("");
       }
     } catch {
@@ -639,18 +702,12 @@ export function ConversationWorkspace({
   }
 
   return (
-    <section
-      className="conversation-workspace"
-      id="conversation"
-      aria-labelledby="conversation-title"
-    >
-      <div className="conversation-workspace__intro">
-        <div>
-          <p className="eyebrow">Native conversation</p>
-          <h1 id="conversation-title" data-workspace-heading tabIndex={-1}>
-            Start a conversation with your project.
-          </h1>
-        </div>
+    <ConversationShell
+      mode="code"
+      titleId="conversation-title"
+      eyebrow="Code conversation"
+      title="Start a conversation with your project."
+      boundary={
         <details className="conversation-boundary-disclosure">
           <summary>About this workspace</summary>
           <p>
@@ -660,8 +717,9 @@ export function ConversationWorkspace({
             without project names, prompts, paths, or task output.
           </p>
         </details>
-      </div>
-
+      }
+      shelf={codeShelf}
+    >
       <div className="conversation-layout">
         {handoffBrief && onReturnTaskReceipt && (
           <section className="project-card" aria-label="Task handoff receipt">
@@ -1012,11 +1070,6 @@ export function ConversationWorkspace({
             aria-live="polite"
             aria-relevant="additions"
           >
-            {submittedPrompt && (
-              <article className="conversation-event conversation-event--user-message">
-                <p className="conversation-event__message">{submittedPrompt}</p>
-              </article>
-            )}
             {snapshot.pendingApproval && (
               <section
                 className="conversation-approval"
@@ -1063,13 +1116,26 @@ export function ConversationWorkspace({
                 </small>
               </section>
             )}
-            {displayEvents.length === 0 ? (
+            {conversationTimeline.length === 0 ? (
               <div className="conversation-empty">
                 <span aria-hidden="true">›</span>
                 <p>Normalized progress and response text will appear here.</p>
               </div>
             ) : (
-              displayEvents.map((event) => {
+              conversationTimeline.map((entry) => {
+                if (entry.kind === "user") {
+                  return (
+                    <article
+                      className="conversation-event conversation-event--user-message"
+                      key={`user-${entry.message.id}`}
+                    >
+                      <p className="conversation-event__message">
+                        {entry.message.text}
+                      </p>
+                    </article>
+                  );
+                }
+                const { event } = entry;
                 if (
                   event.type === "activity" ||
                   event.type === "activity-output-delta"
@@ -1119,6 +1185,6 @@ export function ConversationWorkspace({
           onToggleActivity={toggleActivity}
         />
       </div>
-    </section>
+    </ConversationShell>
   );
 }

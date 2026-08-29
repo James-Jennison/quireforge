@@ -14,6 +14,27 @@ const CHAT_TEXT_BYTE_LIMIT: usize = 96 * 1024;
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct LocalChatRequest {
     pub message: String,
+    #[serde(default)]
+    pub interaction_profile: LocalChatInteractionProfile,
+}
+
+#[derive(Clone, Debug, Default, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) enum LocalChatInteractionProfile {
+    #[default]
+    Direct,
+    Conversational,
+}
+
+impl LocalChatInteractionProfile {
+    fn system_prompt_suffix(&self) -> &'static str {
+        match self {
+            Self::Direct => "Keep the answer concise and pragmatic.",
+            Self::Conversational => {
+                "Use a warmer, exploratory tone while remaining concise and factual."
+            }
+        }
+    }
 }
 
 pub(crate) struct LocalChatService {
@@ -41,7 +62,10 @@ impl LocalChatService {
         let Ok(reservation) = self.runtime.reserve_local_chat() else {
             return failed("runtime-busy");
         };
-        reservation.run_local_chat(request.message.as_bytes())
+        reservation.run_local_chat(
+            request.message.as_bytes(),
+            request.interaction_profile.system_prompt_suffix(),
+        )
     }
 
     pub(crate) fn cancel(&self) -> bool {
@@ -112,7 +136,9 @@ fn failed(diagnostic: &str) -> LocalRuntimeSnapshot {
 
 #[cfg(test)]
 mod tests {
-    use super::{LocalChatRequest, LocalChatService, CHAT_TEXT_BYTE_LIMIT};
+    use super::{
+        LocalChatInteractionProfile, LocalChatRequest, LocalChatService, CHAT_TEXT_BYTE_LIMIT,
+    };
     use crate::local_runtime::LocalRuntimeService;
     use std::sync::Arc;
 
@@ -123,16 +149,32 @@ mod tests {
     #[test]
     fn local_chat_rejects_empty_and_nul_text_before_runtime_admission() {
         for message in ["   ".to_owned(), "hello\0world".to_owned()] {
-            let snapshot = service().run(LocalChatRequest { message });
+            let snapshot = service().run(LocalChatRequest {
+                message,
+                interaction_profile: LocalChatInteractionProfile::Direct,
+            });
             assert_eq!(snapshot.state, "failed");
             assert_eq!(snapshot.diagnostic.as_deref(), Some("invalid-request"));
         }
     }
 
     #[test]
+    fn interaction_profiles_change_only_the_local_response_style_instruction() {
+        assert_eq!(
+            LocalChatInteractionProfile::Direct.system_prompt_suffix(),
+            "Keep the answer concise and pragmatic."
+        );
+        assert_eq!(
+            LocalChatInteractionProfile::Conversational.system_prompt_suffix(),
+            "Use a warmer, exploratory tone while remaining concise and factual."
+        );
+    }
+
+    #[test]
     fn local_chat_rejects_oversized_text_without_runtime_admission() {
         let snapshot = service().run(LocalChatRequest {
             message: "x".repeat(CHAT_TEXT_BYTE_LIMIT + 1),
+            interaction_profile: LocalChatInteractionProfile::Direct,
         });
         assert_eq!(snapshot.state, "failed");
         assert_eq!(snapshot.diagnostic.as_deref(), Some("input-too-large"));
@@ -148,6 +190,7 @@ mod tests {
         for message in ["What time is it?", "What's the date today?"] {
             let snapshot = service().run(LocalChatRequest {
                 message: message.into(),
+                interaction_profile: LocalChatInteractionProfile::Direct,
             });
             assert_eq!(snapshot.state, "completed");
             assert!(snapshot
@@ -161,6 +204,7 @@ mod tests {
     fn ordinary_mentions_of_time_do_not_bypass_the_bounded_runtime() {
         let snapshot = service().run(LocalChatRequest {
             message: "Explain time complexity in one sentence.".into(),
+            interaction_profile: LocalChatInteractionProfile::Direct,
         });
         assert_eq!(snapshot.state, "failed");
         assert_eq!(snapshot.diagnostic.as_deref(), Some("model-unavailable"));

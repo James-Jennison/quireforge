@@ -79,6 +79,7 @@ function renderWorkspace(
   overrides: Partial<React.ComponentProps<typeof ConversationWorkspace>> = {},
 ) {
   const onStart = vi.fn().mockResolvedValue(runningConversation);
+  const onResume = vi.fn().mockResolvedValue(runningConversation);
   const onRetryPoll = vi.fn().mockResolvedValue(runningConversation);
   const onInterrupt = vi.fn().mockResolvedValue({
     ...runningConversation,
@@ -100,6 +101,7 @@ function renderWorkspace(
     actionError: null,
     attachmentActionError: false,
     onStart,
+    onResume,
     onRetryPoll,
     onInterrupt,
     onDecideApproval,
@@ -110,7 +112,7 @@ function renderWorkspace(
     ...overrides,
   };
   render(<ConversationWorkspace {...props} />);
-  return { onStart, onRetryPoll, onInterrupt, onDecideApproval };
+  return { onStart, onResume, onRetryPoll, onInterrupt, onDecideApproval };
 }
 
 describe("ConversationWorkspace", () => {
@@ -148,6 +150,28 @@ describe("ConversationWorkspace", () => {
     );
     expect(screen.getByLabelText("Message")).toHaveValue("");
   });
+
+  it.each(["completed", "blocked"] as const)(
+    "resumes a %s conversation instead of starting a clean task",
+    async (state) => {
+      const terminal = { ...runningConversation, state, events: [] };
+      const { onStart, onResume } = renderWorkspace({ snapshot: terminal });
+
+      fireEvent.change(screen.getByLabelText("Message"), {
+        target: { value: "Continue the prior discussion." },
+      });
+      fireEvent.click(screen.getByRole("button", { name: "Send" }));
+
+      await waitFor(() =>
+        expect(onResume).toHaveBeenCalledWith({
+          conversationId,
+          prompt: "Continue the prior discussion.",
+          attachmentIds: [],
+        }),
+      );
+      expect(onStart).not.toHaveBeenCalled();
+    },
+  );
 
   it("submits a multiline task once as one unchanged prompt", async () => {
     let resolveStart:

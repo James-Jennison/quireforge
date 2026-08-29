@@ -1,10 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 
+import { ConversationShell } from "./ConversationShell";
+import {
+  interactionProfiles,
+  type InteractionProfileId,
+} from "./interactionProfiles";
 import type { ActionCardAction, ActionCardSnapshot } from "./lib/actionCard";
 import type { LocalChatSnapshot } from "./lib/localChat";
 
 interface LocalChatWorkspaceProps {
-  onRun: (request: { message: string }) => Promise<LocalChatSnapshot>;
+  onRun: (request: {
+    message: string;
+    interactionProfile: InteractionProfileId;
+  }) => Promise<LocalChatSnapshot>;
   onCancel: () => Promise<boolean>;
   onPrepareActionCard: (request: {
     action: ActionCardAction;
@@ -17,6 +25,8 @@ interface LocalChatWorkspaceProps {
   }) => Promise<ActionCardSnapshot>;
   onOpenLinkedProjectChat: () => void;
   onOpenBrowserResearch?: () => void;
+  interactionProfile?: InteractionProfileId;
+  onInteractionProfileChange?: (profile: InteractionProfileId) => void;
 }
 
 interface LocalChatTurn {
@@ -50,6 +60,8 @@ export function LocalChatWorkspace({
   onRevokeActionCard,
   onOpenLinkedProjectChat,
   onOpenBrowserResearch,
+  interactionProfile = "direct",
+  onInteractionProfileChange,
 }: LocalChatWorkspaceProps) {
   const [message, setMessage] = useState("");
   const [snapshot, setSnapshot] = useState<LocalChatSnapshot | null>(null);
@@ -90,7 +102,10 @@ export function LocalChatWorkspace({
     ]);
     setMessage("");
     try {
-      const result = await onRun({ message: submittedMessage });
+      const result = await onRun({
+        message: submittedMessage,
+        interactionProfile,
+      });
       setSnapshot(result);
       if (result.state === "completed" && result.output) {
         setTurns((current) => [
@@ -141,173 +156,216 @@ export function LocalChatWorkspace({
   }
 
   return (
-    <section
-      className="conversation-workspace"
-      aria-labelledby="local-chat-title"
-    >
-      <header className="conversation-workspace__header">
-        <div>
-          <p className="eyebrow">Local Chat</p>
-          <h1 id="local-chat-title">Start a conversation.</h1>
-          <p>Local runtime · Project context not attached · Ephemeral</p>
-          <button type="button" onClick={onOpenLinkedProjectChat}>
-            Continue with linked project
-          </button>
+    <ConversationShell
+      mode="chat"
+      id="advisor"
+      titleId="local-chat-title"
+      eyebrow="Chat & Cowork"
+      title="Start a conversation."
+      boundary={
+        <details className="conversation-boundary-disclosure">
+          <summary>About Chat & Cowork</summary>
           <p>
-            Opens a separate managed project conversation. This Local Chat
-            transcript is not transferred automatically.
+            Local runtime · Project context not attached · Ephemeral. This chat
+            does not receive Code authority, browser content, or project context
+            automatically.
           </p>
-          {onOpenBrowserResearch && (
-            <button type="button" onClick={onOpenBrowserResearch}>
-              Research Google (read only)
+        </details>
+      }
+      shelf={
+        <details className="conversation-mode-shelf">
+          <summary>Chat options</summary>
+          <div>
+            <button type="button" onClick={onOpenLinkedProjectChat}>
+              Open Code conversation
             </button>
-          )}
-          {onOpenBrowserResearch && (
             <p>
-              Opens a separate, owner-approved Google review. Local Chat does
-              not receive browser access or page content.
+              Opens a separate project conversation. Local turns remain local
+              and are not transferred automatically.
             </p>
-          )}
-        </div>
-      </header>
-      {turns.length > 0 && (
-        <div
-          className="conversation-events conversation-events--local-chat"
-          aria-live="polite"
-          aria-relevant="additions"
-        >
-          {turns.map((turn, index) => (
-            <article
-              className={`local-chat-turn local-chat-turn--${turn.role}`}
-              key={`${turn.role}-${index}`}
-            >
-              <p className="local-chat-turn__role">
-                {turn.role === "user" ? "You" : "QuireForge"}
-              </p>
-              <p className="conversation-event__message">{turn.text}</p>
-            </article>
-          ))}
-        </div>
-      )}
-      {snapshot?.diagnostic && (
-        <p className="conversation-error" role="status">
-          {diagnosticMessage[snapshot.diagnostic] ??
-            "The local chat turn could not complete."}
-        </p>
-      )}
-      {actionCard && (
-        <section className="action-card" aria-label="Action Card">
-          <p className="eyebrow">Action Card</p>
-          <h2>{actionLabels[actionCard.action]}</h2>
-          <p>
-            No project, source, artifact, code, provider, or tool data is
-            selected or used by this card.
-          </p>
-          {actionCard.state === "prepared" ? (
-            <>
-              <p>
-                Review this proposed boundary before any later
-                capability-specific step.
-              </p>
-              <div className="action-card__actions">
-                <button
-                  type="button"
-                  disabled={actionBusy}
-                  onClick={() => void decideActionCard(true)}
-                >
-                  Approve for later
-                </button>
-                <button
-                  type="button"
-                  disabled={actionBusy}
-                  onClick={() => void decideActionCard(false)}
-                >
-                  Revoke
-                </button>
-              </div>
-            </>
-          ) : actionCard.state === "approved" ? (
-            <p>
-              Approved for a later capability-specific step. No action has run.
-            </p>
-          ) : (
-            <p>This Action Card is no longer available.</p>
-          )}
-        </section>
-      )}
-      <div className="conversation-composer">
-        <label className="sr-only" htmlFor="local-chat-message">
-          Local chat message
-        </label>
-        <textarea
-          id="local-chat-message"
-          aria-label="Local chat message"
-          value={message}
-          onChange={(event) => setMessage(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" && !event.shiftKey) {
-              event.preventDefault();
-              void run();
-            }
-          }}
-          disabled={busy}
-          placeholder="Ask QuireForge anything…"
-          rows={4}
-        />
-        <div className="conversation-composer__actions">
-          <span>
-            {busy
-              ? "QuireForge is responding"
-              : "Enter to send · Shift+Enter for a new line"}
-          </span>
-          {busy ? (
-            <button type="button" onClick={() => void onCancel()}>
-              Stop
-            </button>
-          ) : (
-            <>
-              <div className="action-card-picker" ref={actionPickerRef}>
-                <button
-                  type="button"
-                  aria-expanded={actionPickerOpen}
-                  aria-haspopup="menu"
-                  onClick={() => setActionPickerOpen((open) => !open)}
-                >
-                  Actions
-                </button>
-                {actionPickerOpen && (
-                  <div className="action-card-picker__menu" role="menu">
-                    <p>
-                      Prepare a visible proposal. Nothing will run from this
-                      menu.
-                    </p>
-                    {(Object.keys(actionLabels) as ActionCardAction[]).map(
-                      (action) => (
-                        <button
-                          type="button"
-                          role="menuitem"
-                          disabled={actionBusy}
-                          key={action}
-                          onClick={() => void prepareActionCard(action)}
-                        >
-                          {actionLabels[action]}
-                        </button>
-                      ),
-                    )}
-                  </div>
-                )}
-              </div>
-              <button
-                type="button"
-                disabled={!message.trim()}
-                onClick={() => void run()}
-              >
-                Send
+            {onOpenBrowserResearch && (
+              <button type="button" onClick={onOpenBrowserResearch}>
+                Research Google (read only)
               </button>
-            </>
+            )}
+            {onOpenBrowserResearch && (
+              <p>
+                Opens a separate, owner-approved Google review. Chat & Cowork
+                does not receive browser access or page content.
+              </p>
+            )}
+          </div>
+        </details>
+      }
+    >
+      <div className="conversation-layout">
+        <div className="conversation-stream" aria-live="polite">
+          <div className="conversation-stream__header">
+            <div>
+              <span>Conversation</span>
+              <strong role="status">
+                {busy ? "QuireForge is responding" : "Ready to chat"}
+              </strong>
+            </div>
+          </div>
+          <div className="conversation-events conversation-events--local-chat">
+            {turns.map((turn, index) => (
+              <article
+                className={`local-chat-turn local-chat-turn--${turn.role}`}
+                key={`${turn.role}-${index}`}
+              >
+                <p className="local-chat-turn__role">
+                  {turn.role === "user" ? "You" : "QuireForge"}
+                </p>
+                <p className="conversation-event__message">{turn.text}</p>
+              </article>
+            ))}
+          </div>
+          {snapshot?.diagnostic && (
+            <p className="conversation-error" role="status">
+              {diagnosticMessage[snapshot.diagnostic] ??
+                "The local chat turn could not complete."}
+            </p>
+          )}
+          {actionCard && (
+            <section className="action-card" aria-label="Action Card">
+              <p className="eyebrow">Action Card</p>
+              <h2>{actionLabels[actionCard.action]}</h2>
+              <p>
+                No project, source, artifact, code, provider, or tool data is
+                selected or used by this card.
+              </p>
+              {actionCard.state === "prepared" ? (
+                <>
+                  <p>
+                    Review this proposed boundary before any later
+                    capability-specific step.
+                  </p>
+                  <div className="action-card__actions">
+                    <button
+                      type="button"
+                      disabled={actionBusy}
+                      onClick={() => void decideActionCard(true)}
+                    >
+                      Approve for later
+                    </button>
+                    <button
+                      type="button"
+                      disabled={actionBusy}
+                      onClick={() => void decideActionCard(false)}
+                    >
+                      Revoke
+                    </button>
+                  </div>
+                </>
+              ) : actionCard.state === "approved" ? (
+                <p>
+                  Approved for a later capability-specific step. No action has
+                  run.
+                </p>
+              ) : (
+                <p>This Action Card is no longer available.</p>
+              )}
+            </section>
           )}
         </div>
+        <form
+          className="conversation-composer local-chat-composer"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void run();
+          }}
+        >
+          <label className="sr-only" htmlFor="local-chat-message">
+            Local chat message
+          </label>
+          <textarea
+            id="local-chat-message"
+            aria-label="Local chat message"
+            value={message}
+            onChange={(event) => setMessage(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && !event.shiftKey) {
+                event.preventDefault();
+                void run();
+              }
+            }}
+            disabled={busy}
+            placeholder="Ask QuireForge anything…"
+            rows={1}
+          />
+          <div className="conversation-prerequisite" aria-live="polite">
+            {busy ? "QuireForge is responding" : "Local and ephemeral"}
+          </div>
+          <div className="conversation-actions">
+            {busy ? (
+              <button type="button" onClick={() => void onCancel()}>
+                Stop
+              </button>
+            ) : (
+              <>
+                <div className="action-card-picker" ref={actionPickerRef}>
+                  <button
+                    type="button"
+                    aria-expanded={actionPickerOpen}
+                    aria-haspopup="menu"
+                    onClick={() => setActionPickerOpen((open) => !open)}
+                  >
+                    Actions
+                  </button>
+                  {actionPickerOpen && (
+                    <div className="action-card-picker__menu" role="menu">
+                      <p>
+                        Prepare a visible proposal. Nothing will run from this
+                        menu.
+                      </p>
+                      {(Object.keys(actionLabels) as ActionCardAction[]).map(
+                        (action) => (
+                          <button
+                            type="button"
+                            role="menuitem"
+                            disabled={actionBusy}
+                            key={action}
+                            onClick={() => void prepareActionCard(action)}
+                          >
+                            {actionLabels[action]}
+                          </button>
+                        ),
+                      )}
+                    </div>
+                  )}
+                </div>
+                <fieldset className="conversation-profile conversation-profile--compact">
+                  <legend>Conversation style</legend>
+                  <div>
+                    {interactionProfiles.map((profile) => (
+                      <label key={profile.id}>
+                        <input
+                          type="radio"
+                          name="local-chat-interaction-profile"
+                          value={profile.id}
+                          checked={interactionProfile === profile.id}
+                          onChange={() =>
+                            onInteractionProfileChange?.(profile.id)
+                          }
+                        />
+                        <span>{profile.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+                <button
+                  type="button"
+                  disabled={!message.trim()}
+                  onClick={() => void run()}
+                >
+                  Send
+                </button>
+              </>
+            )}
+          </div>
+        </form>
       </div>
-    </section>
+    </ConversationShell>
   );
 }

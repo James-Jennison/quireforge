@@ -1784,6 +1784,118 @@ button:disabled {
   letter-spacing: -0.025em;
 }
 
+.conversation-shell[data-conversation-mode="chat"]
+  .conversation-workspace__intro
+  h1,
+.conversation-shell[data-conversation-mode="code"]
+  .conversation-workspace__intro
+  h1 {
+  font-family: inherit;
+}
+
+.conversation-mode-shelf {
+  width: min(100%, 860px);
+  margin: 8px auto 0;
+}
+
+.conversation-mode-shelf > summary {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--tm);
+  cursor: pointer;
+  font-size: 10px;
+  list-style: none;
+}
+
+.conversation-mode-shelf > summary::-webkit-details-marker {
+  display: none;
+}
+
+.conversation-mode-shelf[open] {
+  padding: 10px 0 0;
+}
+
+.conversation-mode-shelf > div {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-raised);
+}
+
+.conversation-mode-shelf p {
+  margin: 0;
+  color: var(--ts);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.conversation-mode-shelf__actions {
+  display: flex !important;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.local-chat-composer .conversation-actions {
+  grid-column: 3 / -1;
+  grid-row: 1;
+  justify-content: flex-end;
+}
+
+.local-chat-composer .action-card-picker {
+  grid-column: auto;
+}
+
+.conversation-profile--compact {
+  display: inline-flex;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.conversation-profile--compact legend {
+  position: absolute;
+  overflow: hidden;
+  width: 1px;
+  height: 1px;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.conversation-profile--compact > div {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.conversation-profile--compact label {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--tm);
+  font-size: 10px;
+}
+
+.local-chat-composer .conversation-prerequisite {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+
+.active-code-return {
+  width: calc(100% - 24px);
+  margin: 0 12px 10px;
+  color: var(--tm);
+  font-size: 10px;
+  text-align: left;
+}
+
 .session-workspace__intro h1 {
   max-width: 560px;
 }

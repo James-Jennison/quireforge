@@ -48,12 +48,13 @@ describe("LocalChatWorkspace", () => {
       },
     );
     expect(await screen.findByText("Local answer.")).toBeVisible();
-    expect(onRun).toHaveBeenCalledWith({ message: "Hello" });
+    expect(onRun).toHaveBeenCalledWith({
+      message: "Hello",
+      interactionProfile: "direct",
+    });
     expect(screen.getByText("You")).toBeVisible();
     expect(screen.getByText("QuireForge")).toBeVisible();
-    expect(
-      screen.getByText("Enter to send · Shift+Enter for a new line"),
-    ).toBeVisible();
+    expect(screen.getByText("Local and ephemeral")).toBeVisible();
     expect(screen.getByRole("button", { name: "Actions" })).toBeVisible();
   });
 
@@ -76,6 +77,51 @@ describe("LocalChatWorkspace", () => {
     fireEvent.keyDown(composer, { key: "Enter", shiftKey: true });
 
     expect(onRun).not.toHaveBeenCalled();
+  });
+
+  it("sends the selected conversation style with the local-only turn", async () => {
+    const onRun = vi.fn().mockResolvedValue({
+      schemaVersion: 1,
+      localOnly: true,
+      state: "completed",
+      output: "A warmer answer.",
+      diagnostic: null,
+      inputTokenLimit: 4096,
+      outputTokenLimit: 512,
+      deadlineSeconds: 60,
+      memoryCeilingMib: 6144,
+    });
+    const onInteractionProfileChange = vi.fn();
+    render(
+      <LocalChatWorkspace
+        onRun={onRun}
+        onCancel={vi.fn()}
+        onPrepareActionCard={vi.fn()}
+        onApproveActionCard={vi.fn()}
+        onRevokeActionCard={vi.fn()}
+        onOpenLinkedProjectChat={vi.fn()}
+        interactionProfile="conversational"
+        onInteractionProfileChange={onInteractionProfileChange}
+      />,
+    );
+
+    expect(screen.getByRole("radio", { name: "Conversational" })).toBeChecked();
+    fireEvent.click(screen.getByRole("radio", { name: "Direct" }));
+    expect(onInteractionProfileChange).toHaveBeenCalledWith("direct");
+
+    fireEvent.change(
+      screen.getByRole("textbox", { name: "Local chat message" }),
+      {
+        target: { value: "Hello again" },
+      },
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+
+    await screen.findByText("A warmer answer.");
+    expect(onRun).toHaveBeenCalledWith({
+      message: "Hello again",
+      interactionProfile: "conversational",
+    });
   });
 
   it("prepares and approves a visible non-executing action card", async () => {
@@ -190,13 +236,13 @@ describe("LocalChatWorkspace", () => {
       />,
     );
 
+    fireEvent.click(screen.getByText("About Chat & Cowork"));
     expect(
-      screen.getByText(
-        "Local runtime · Project context not attached · Ephemeral",
-      ),
+      screen.getByText(/Local runtime · Project context not attached/u),
     ).toBeVisible();
+    fireEvent.click(screen.getByText("Chat options"));
     fireEvent.click(
-      screen.getByRole("button", { name: "Continue with linked project" }),
+      screen.getByRole("button", { name: "Open Code conversation" }),
     );
     expect(onOpenLinkedProjectChat).toHaveBeenCalledOnce();
   });
@@ -215,12 +261,13 @@ describe("LocalChatWorkspace", () => {
       />,
     );
 
+    fireEvent.click(screen.getByText("Chat options"));
     fireEvent.click(
       screen.getByRole("button", { name: "Research Google (read only)" }),
     );
     expect(onOpenBrowserResearch).toHaveBeenCalledOnce();
     expect(
-      screen.getByText(/Local Chat does not receive browser access/i),
+      screen.getByText(/Chat & Cowork does not receive browser access/i),
     ).toBeVisible();
   });
 });

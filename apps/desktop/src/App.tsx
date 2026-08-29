@@ -199,7 +199,11 @@ import {
   type AdvisorConversationStartRequest,
 } from "./lib/advisorConversation";
 import { type ConversationMode } from "./lib/conversationMode";
-import { mergeConversationEvents } from "./lib/conversationView";
+import {
+  highestConversationEventSequence,
+  mergeConversationEvents,
+  offsetConversationEventSequences,
+} from "./lib/conversationView";
 import {
   scaffoldGitWorkspace,
   type GitDiffRequest,
@@ -670,8 +674,8 @@ function WorkspaceSelector({
   }> = [
     {
       id: "advisor",
-      title: "Chat",
-      subtitle: "Advisor · read-only planning",
+      title: "Chat & Cowork",
+      subtitle: "Local, read-only conversation",
     },
     {
       id: "quireforge",
@@ -734,7 +738,7 @@ function WorkspaceSelector({
           }
         }}
       >
-        <span>{mode === "advisor" ? "Chat" : "Code"}</span>
+        <span>{mode === "advisor" ? "Chat & Cowork" : "Code"}</span>
         <span aria-hidden="true">⌄</span>
       </button>
       {open && (
@@ -1192,6 +1196,7 @@ export default function App({
   const [advisorConversationBusy, setAdvisorConversationBusy] = useState(false);
   const [advisorResetToken, setAdvisorResetToken] = useState(0);
   const conversationActionGenerations = useRef<Record<string, number>>({});
+  const conversationDisplayOffsets = useRef<Record<string, number>>({});
   const observedConversationStates = useRef<
     Record<string, ConversationSnapshot["state"]>
   >({});
@@ -2358,6 +2363,10 @@ export default function App({
   }
 
   function applyConversationModeChange(next: ConversationMode) {
+    // Route selection is presentation only. In particular, moving to Chat &
+    // Cowork never interrupts, pauses, or mutates an active Code task. Its
+    // local conversation stays mounted while hidden; the legacy Advisor keeps
+    // its existing explicit transient-state reset boundary.
     clearAdvisorTransientState();
     setConversationMode(next);
     setPendingConversationMode(null);
@@ -2811,6 +2820,7 @@ export default function App({
   function trackConversation(
     snapshot: ConversationSnapshot,
     replaceEvents: boolean,
+    events = snapshot.events,
   ) {
     if (!snapshot.projectId || !snapshot.conversationId) return;
     const projectId = snapshot.projectId;
@@ -2821,11 +2831,18 @@ export default function App({
         [projectId]: {
           snapshot,
           events: replaceEvents
-            ? snapshot.events
-            : mergeConversationEvents(previous?.events ?? [], snapshot.events),
+            ? events
+            : mergeConversationEvents(previous?.events ?? [], events),
         },
       };
     });
+  }
+
+  function displayConversationEvents(snapshot: ConversationSnapshot) {
+    const offset = snapshot.conversationId
+      ? (conversationDisplayOffsets.current[snapshot.conversationId] ?? 0)
+      : 0;
+    return offsetConversationEventSequences(snapshot.events, offset);
   }
 
   function selectProject(projectId: string) {
@@ -2964,9 +2981,43 @@ export default function App({
       });
       setConversationAttachments(scaffoldConversationAttachments);
       setConversationAttachmentActionError(false);
+      if (result.conversationId) {
+        conversationDisplayOffsets.current[result.conversationId] = 0;
+      }
       setConversation(result);
-      setConversationEvents(result.events);
-      trackConversation(result, true);
+      setConversationEvents(displayConversationEvents(result));
+      trackConversation(result, true, displayConversationEvents(result));
+      queueConversationDeliveryAck(result);
+      return result;
+    } catch (error) {
+      setConversationActionError(conversationActionFailureCode(error));
+      setConversationActionErrorDetail(
+        conversationActionFailureClassification(error),
+      );
+      throw error;
+    } finally {
+      setConversationBusy(false);
+    }
+  }
+
+  async function resumeCurrentConversation(
+    request: ConversationContinueRequest,
+  ): Promise<ConversationSnapshot> {
+    setConversationBusy(true);
+    setConversationActionError(null);
+    setConversationActionErrorDetail(null);
+    try {
+      const offset = highestConversationEventSequence(conversationEvents);
+      const result = await resumeConversationTask(request);
+      if (result.conversationId) {
+        conversationDisplayOffsets.current[result.conversationId] = offset;
+      }
+      const events = displayConversationEvents(result);
+      setConversation(result);
+      setConversationEvents((current) =>
+        mergeConversationEvents(current, events),
+      );
+      trackConversation(result, false, events);
       queueConversationDeliveryAck(result);
       return result;
     } catch (error) {
@@ -2988,11 +3039,12 @@ export default function App({
     setConversationActionErrorDetail(null);
     try {
       const result = await pollConversationTask(conversationId);
+      const events = displayConversationEvents(result);
       setConversation(result);
       setConversationEvents((current) =>
-        mergeConversationEvents(current, result.events),
+        mergeConversationEvents(current, events),
       );
-      trackConversation(result, false);
+      trackConversation(result, false, events);
       queueConversationDeliveryAck(result);
       return result;
     } catch (error) {
@@ -3030,11 +3082,12 @@ export default function App({
     setConversationActionError(null);
     try {
       const result = await interruptConversationTask(conversationId);
+      const events = displayConversationEvents(result);
       setConversation(result);
       setConversationEvents((current) =>
-        mergeConversationEvents(current, result.events),
+        mergeConversationEvents(current, events),
       );
-      trackConversation(result, false);
+      trackConversation(result, false, events);
       queueConversationDeliveryAck(result);
       return result;
     } catch (error) {
@@ -3093,11 +3146,12 @@ export default function App({
     setConversationActionError(null);
     try {
       const result = await decideConversationApprovalTask(request);
+      const events = displayConversationEvents(result);
       setConversation(result);
       setConversationEvents((current) =>
-        mergeConversationEvents(current, result.events),
+        mergeConversationEvents(current, events),
       );
-      trackConversation(result, false);
+      trackConversation(result, false, events);
       queueConversationDeliveryAck(result);
       return result;
     } catch (error) {
@@ -4006,6 +4060,15 @@ export default function App({
           mode={workspaceConversationMode(conversationMode)}
           onRequestChange={requestWorkspaceSelection}
         />
+        {conversationActive && conversationMode === "chat" && (
+          <button
+            className="active-code-return"
+            type="button"
+            onClick={() => navigateWorkspace("conversation")}
+          >
+            Code task is still running · Return to Code
+          </button>
+        )}
 
         <nav className="primary-nav" aria-label="Workspace navigation">
           <div className="navigation-lane navigation-lane--top-level">
@@ -4382,7 +4445,7 @@ export default function App({
                 <strong>Confirm mode change</strong>
                 <p>
                   {pendingConversationMode === "chat"
-                    ? "Advisor is read-only and has no project, terminal, Git, worktree, integration, native-action, approval, or dispatch capability."
+                    ? "Chat & Cowork is read-only and has no project, terminal, Git, worktree, integration, native-action, approval, or dispatch capability."
                     : "QuireForge requires an attached project and restores its visible execution and approval boundaries."}
                   No project, attachment, integration, approval, dispatch,
                   completion report, or transient transcript transfers
@@ -4394,7 +4457,7 @@ export default function App({
                 >
                   Confirm{" "}
                   {pendingConversationMode === "chat"
-                    ? "Advisor"
+                    ? "Chat & Cowork"
                     : "QuireForge"}
                 </button>
                 <button type="button" onClick={cancelConversationModeChange}>
@@ -4535,7 +4598,12 @@ export default function App({
               route="advisor"
               active={workspaceLocation.route === "advisor"}
             >
-              {conversationMode === "chat" ? (
+              <div
+                className="conversation-mode-surface"
+                data-conversation-surface="chat"
+                hidden={conversationMode !== "chat"}
+                aria-hidden={conversationMode !== "chat"}
+              >
                 <LocalChatWorkspace
                   onRun={runLocalChat}
                   onCancel={cancelLocalChat}
@@ -4546,8 +4614,11 @@ export default function App({
                     requestConversationWorkspace("conversation")
                   }
                   onOpenBrowserResearch={() => setBrowserResearchOpen(true)}
+                  interactionProfile={interactionProfile}
+                  onInteractionProfileChange={setInteractionProfile}
                 />
-              ) : (
+              </div>
+              {conversationMode === "codex" && (
                 <AdvisorWorkspace
                   resetToken={advisorResetToken}
                   availability={advisorViewState}
@@ -4771,97 +4842,6 @@ export default function App({
             >
               <section className="conversation-mode-workspace">
                 <>
-                  <section
-                    className="mock-inference-launcher"
-                    aria-label="Durable task catalog"
-                  >
-                    <button
-                      type="button"
-                      aria-expanded={taskCatalogOpen}
-                      onClick={() => setTaskCatalogOpen((current) => !current)}
-                    >
-                      {taskCatalogOpen ? "Hide Task Catalog" : "Task Catalog"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setDurableSourcesWorkbenchOpen(true)}
-                    >
-                      Durable Sources
-                    </button>
-                  </section>
-                  {taskCatalogOpen && (
-                    <TaskCatalog
-                      snapshot={taskCatalog}
-                      busy={taskCatalogBusy}
-                      projectId={currentProject?.id ?? null}
-                      onLoad={refreshTaskCatalog}
-                      onCreate={(title) =>
-                        applyTaskCatalogMutation(() =>
-                          createTaskRecord({
-                            projectId: currentProject?.id ?? "",
-                            title,
-                          }),
-                        )
-                      }
-                      onRename={(taskId, title) => () =>
-                        applyTaskCatalogMutation(() =>
-                          renameTaskRecord({ taskId, title }),
-                        )
-                      }
-                      onStatus={(taskId, status) => () =>
-                        applyTaskCatalogMutation(() =>
-                          setTaskRecordStatus({ taskId, status }),
-                        )
-                      }
-                      onArchive={(taskId) => () =>
-                        applyTaskCatalogMutation(() =>
-                          archiveTaskRecord({ taskId }),
-                        )
-                      }
-                      onRestore={(taskId) => () =>
-                        applyTaskCatalogMutation(() =>
-                          restoreTaskRecord({ taskId }),
-                        )
-                      }
-                      onDelete={(taskId) => () =>
-                        applyTaskCatalogMutation(() =>
-                          deleteTaskRecord({ taskId }),
-                        )
-                      }
-                      onPlanCreate={(taskId, copyPrimaryBody) => () =>
-                        applyTaskCatalogMutation(() =>
-                          createTaskPlan({ taskId, copyPrimaryBody }),
-                        )
-                      }
-                      onPlanSelect={(taskId, planId) => () =>
-                        selectDurableTaskPlan(taskId, planId)
-                      }
-                      onPlanEdit={(taskId, planId, label, body) => () =>
-                        applyTaskCatalogMutation(() =>
-                          editTaskPlan({ taskId, planId, label, body }),
-                        )
-                      }
-                      onPlanDelete={(taskId, planId) => () =>
-                        applyTaskCatalogMutation(() =>
-                          deleteTaskPlan({ taskId, planId }),
-                        )
-                      }
-                      onOpenTemplates={() => setTaskTemplateWorkbenchOpen(true)}
-                      onOpenMockInference={() =>
-                        setMockInferenceWorkbenchOpen(true)
-                      }
-                      onOpenConnectorGovernance={() =>
-                        setConnectorGovernanceWorkbenchOpen(true)
-                      }
-                      onOpenControlledBrowserVerification={() =>
-                        setControlledBrowserVerificationOpen(true)
-                      }
-                      onOpenContextAssembly={() =>
-                        setContextAssemblyWorkbenchOpen(true)
-                      }
-                      mockInferenceTriggerRef={mockInferenceLauncherRef}
-                    />
-                  )}
                   {taskTemplateWorkbenchOpen && (
                     <Suspense
                       fallback={
@@ -4990,6 +4970,7 @@ export default function App({
                     attachmentActionError={conversationAttachmentActionError}
                     interactionProfile={interactionProfile}
                     onStart={beginConversation}
+                    onResume={resumeCurrentConversation}
                     onRetryPoll={retryConversationPoll}
                     onInterrupt={stopConversation}
                     onDecideApproval={applyConversationApproval}
@@ -4999,6 +4980,105 @@ export default function App({
                     onAttachmentCancel={removeConversationAttachment}
                     handoffBrief={acceptedTaskHandoff?.brief ?? null}
                     onReturnTaskReceipt={returnTaskHandoffToAdvisor}
+                    codeShelf={
+                      <details className="conversation-mode-shelf">
+                        <summary>Code tools</summary>
+                        <div className="conversation-mode-shelf__actions">
+                          <button
+                            type="button"
+                            aria-expanded={taskCatalogOpen}
+                            onClick={() =>
+                              setTaskCatalogOpen((current) => !current)
+                            }
+                          >
+                            {taskCatalogOpen
+                              ? "Hide Task Catalog"
+                              : "Task Catalog"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDurableSourcesWorkbenchOpen(true)}
+                          >
+                            Durable Sources
+                          </button>
+                        </div>
+                        {taskCatalogOpen && (
+                          <TaskCatalog
+                            snapshot={taskCatalog}
+                            busy={taskCatalogBusy}
+                            projectId={currentProject?.id ?? null}
+                            onLoad={refreshTaskCatalog}
+                            onCreate={(title) =>
+                              applyTaskCatalogMutation(() =>
+                                createTaskRecord({
+                                  projectId: currentProject?.id ?? "",
+                                  title,
+                                }),
+                              )
+                            }
+                            onRename={(taskId, title) => () =>
+                              applyTaskCatalogMutation(() =>
+                                renameTaskRecord({ taskId, title }),
+                              )
+                            }
+                            onStatus={(taskId, status) => () =>
+                              applyTaskCatalogMutation(() =>
+                                setTaskRecordStatus({ taskId, status }),
+                              )
+                            }
+                            onArchive={(taskId) => () =>
+                              applyTaskCatalogMutation(() =>
+                                archiveTaskRecord({ taskId }),
+                              )
+                            }
+                            onRestore={(taskId) => () =>
+                              applyTaskCatalogMutation(() =>
+                                restoreTaskRecord({ taskId }),
+                              )
+                            }
+                            onDelete={(taskId) => () =>
+                              applyTaskCatalogMutation(() =>
+                                deleteTaskRecord({ taskId }),
+                              )
+                            }
+                            onPlanCreate={(taskId, copyPrimaryBody) => () =>
+                              applyTaskCatalogMutation(() =>
+                                createTaskPlan({ taskId, copyPrimaryBody }),
+                              )
+                            }
+                            onPlanSelect={(taskId, planId) => () =>
+                              selectDurableTaskPlan(taskId, planId)
+                            }
+                            onPlanEdit={(taskId, planId, label, body) => () =>
+                              applyTaskCatalogMutation(() =>
+                                editTaskPlan({ taskId, planId, label, body }),
+                              )
+                            }
+                            onPlanDelete={(taskId, planId) => () =>
+                              applyTaskCatalogMutation(() =>
+                                deleteTaskPlan({ taskId, planId }),
+                              )
+                            }
+                            onOpenTemplates={() =>
+                              setTaskTemplateWorkbenchOpen(true)
+                            }
+                            onOpenMockInference={() =>
+                              setMockInferenceWorkbenchOpen(true)
+                            }
+                            onOpenConnectorGovernance={() =>
+                              setConnectorGovernanceWorkbenchOpen(true)
+                            }
+                            onOpenControlledBrowserVerification={() =>
+                              setControlledBrowserVerificationOpen(true)
+                            }
+                            onOpenContextAssembly={() =>
+                              setContextAssemblyWorkbenchOpen(true)
+                            }
+                            mockInferenceTriggerRef={mockInferenceLauncherRef}
+                          />
+                        )}
+                      </details>
+                    }
                   />
                 </>
                 {conversationMode === "codex" && (
