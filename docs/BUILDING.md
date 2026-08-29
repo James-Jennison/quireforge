@@ -132,19 +132,31 @@ detached worktree packages without mounting its external Git directory. Direct
 container packaging without the supplied revision and `SOURCE_DATE_EPOCH`
 fails closed.
 
-The script builds the digest-pinned Ubuntu 22.04 image, uses isolated ignored
-caches, and reuses only checksum-verified immutable Linux-kernel and
-Firecracker source archives for the separately installed worker. It verifies
+The script builds the digest-pinned Ubuntu 22.04 image, uses isolated
+disk-backed caches at `/mnt/faststorage/quireforge-build`, and reuses only
+checksum-verified immutable Linux-kernel and Firecracker source archives for
+the separately installed worker. It verifies
 every cache hit before extraction and rebuilds all guest outputs in a disposable
-directory. The workflow fetches only checksum-reviewed Tauri Linux tools,
+directory. Rust linker scratch is created in a per-run disk-backed directory;
+the shared Cargo target remains disk-backed so incremental compilation survives
+between serialized release builds. A user timer reaps abandoned scratch
+directories after seven days and enforces a 30 GiB scratch-retention cap. The
+workflow fetches only checksum-reviewed Tauri Linux tools,
 builds both Tauri bundles, normalizes their identity and timestamps, and validates metadata,
 checksums, GLIBC 2.35 compatibility, disposable package lifecycle, and visible
 X11 launches. It does not install either package on the host.
 
-Successful candidates are written to:
+Install the user-scoped janitor once on a packaging workstation; it never
+touches `/tmp` or any unmarked directory:
+
+```bash
+scripts/setup_quireforge_package_build_cleanup_timer.sh
+```
+
+Successful candidates are written to the persistent disk-backed target:
 
 ```text
-target/ubuntu-22.04/release/packages/
+/mnt/faststorage/quireforge-build/target/ubuntu-22.04/release/packages/
 ├── quireforge_0.1.0.beta.2_amd64.deb
 ├── quireforge-sandboxd_0.1.0.beta.2_amd64.deb
 ├── release-manifest.json

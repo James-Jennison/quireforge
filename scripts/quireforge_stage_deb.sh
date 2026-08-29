@@ -20,7 +20,8 @@ readonly resolved_package=$(/usr/bin/readlink -f -- "$requested_path")
 readonly resolved_parent=$(/usr/bin/dirname -- "$resolved_package")
 readonly temporary_build_pattern='/tmp/quireforge-beta[0-9]+-package/target/ubuntu-22.04/release/packages'
 readonly workspace_build_pattern='/home/jjennison/.codex/worktrees/[0-9]+/quireforge/target/ubuntu-22.04/release/packages'
-if ! [[ "$resolved_parent" =~ ^${temporary_build_pattern}$ || "$resolved_parent" =~ ^${workspace_build_pattern}$ ]]; then
+readonly persistent_build_pattern='/mnt/faststorage/quireforge-build/target/ubuntu-22.04/release/packages'
+if ! [[ "$resolved_parent" =~ ^${temporary_build_pattern}$ || "$resolved_parent" =~ ^${workspace_build_pattern}$ || "$resolved_parent" =~ ^${persistent_build_pattern}$ ]]; then
   reject 'package is outside the trusted pinned build output directory'
 fi
 

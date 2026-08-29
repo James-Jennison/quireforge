@@ -362,6 +362,28 @@ class PackageContractTests(unittest.TestCase):
         self.assertNotIn("git rev-parse", guest_assets)
         self.assertNotIn(".git", guest_assets)
 
+    def test_container_packaging_uses_a_disk_backed_build_root(self) -> None:
+        builder = (ROOT / "scripts/run_linux_package_container.sh").read_text(encoding="utf-8")
+        cleanup = (ROOT / "scripts/cleanup_linux_package_build_cache.sh").read_text(encoding="utf-8")
+        stage_helper = (ROOT / "scripts/quireforge_stage_deb.sh").read_text(encoding="utf-8")
+        self.assertIn('build_root="/mnt/faststorage/quireforge-build"', builder)
+        self.assertIn('--volume "$target_root:/workspace/target"', builder)
+        self.assertIn('--volume "$temporary_build:/build-tmp"', builder)
+        self.assertIn('--env TMPDIR=/build-tmp', builder)
+        self.assertIn('flock -n 9', builder)
+        self.assertIn('minimum_free_bytes=', builder)
+        self.assertIn('minimum_free_inodes=', builder)
+        self.assertIn('maximum_retained_bytes', cleanup)
+        self.assertIn('maximum_age_seconds', cleanup)
+        self.assertIn('persistent_build_pattern=', stage_helper)
+        timer = ROOT / "packaging/systemd-user/quireforge-package-build-cleanup.timer"
+        self.assertTrue(timer.is_file())
+        self.assertIn("Persistent=true", timer.read_text(encoding="utf-8"))
+        artifact_validator = (ROOT / "scripts/validate_release_artifacts.py").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("except ValueError", artifact_validator)
+
     def test_authoritative_builder_uses_only_the_verified_sandbox_source_cache(self) -> None:
         builder = (ROOT / "scripts/run_linux_package_container.sh").read_text(
             encoding="utf-8"

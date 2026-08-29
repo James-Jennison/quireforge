@@ -434,7 +434,14 @@ def main() -> int:
         lifecycle(artifacts["deb"], debian_version(version))
     if arguments.smoke:
         smoke_packages(artifacts["deb"])
-    print(f"validated Linux release artifacts: {artifact_dir.relative_to(ROOT)}")
+    try:
+        rendered_artifact_dir = artifact_dir.relative_to(ROOT).as_posix()
+    except ValueError:
+        # The authoritative container mounts its persistent host target at
+        # /workspace/target, while a host-side verification receives the same
+        # artifact directory outside the source worktree.
+        rendered_artifact_dir = str(artifact_dir)
+    print(f"validated Linux release artifacts: {rendered_artifact_dir}")
     return 0
 
 

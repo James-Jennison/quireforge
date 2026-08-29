@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily QuireForge Linux packaging scratch cleanup
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+RandomizedDelaySec=15m
+Unit=quireforge-package-build-cleanup.service
+
+[Install]
+WantedBy=timers.target

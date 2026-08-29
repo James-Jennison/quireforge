@@ -1,0 +1,7 @@
+[Unit]
+Description=Reap abandoned QuireForge Linux packaging scratch directories
+
+[Service]
+Type=oneshot
+ExecStart=/mnt/faststorage/quireforge/scripts/cleanup_linux_package_build_cache.sh
+UMask=0077

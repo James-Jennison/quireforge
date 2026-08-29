@@ -59,10 +59,13 @@ then validates:
   credentials or a local development server; and
 - absence of a refused `127.0.0.1` launch path.
 
-Review `release-manifest.json` and verify the checksum file independently:
+Review `release-manifest.json` and verify the checksum file independently. The
+authoritative container mounts its persistent disk-backed target at
+`/workspace/target`; on the host it is available at
+`/mnt/faststorage/quireforge-build/target`:
 
 ```bash
-cd target/ubuntu-22.04/release/packages
+cd /mnt/faststorage/quireforge-build/target/ubuntu-22.04/release/packages
 sha256sum --check SHA256SUMS
 ```
 

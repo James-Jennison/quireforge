@@ -23,7 +23,7 @@ sg quireforge-install -c 'quireforge-install /opt/quireforge/packages/quireforge
 
 `quireforge-stage-deb` is the only narrow sudo entry used by this workflow. It
 accepts exactly one non-empty `.deb` directly from either the temporary
-`/tmp/quireforge-beta<N>-package/target/ubuntu-22.04/release/packages` output
+`/mnt/faststorage/quireforge-build/target/ubuntu-22.04/release/packages` output
 or the numbered Codex worktree's equivalent pinned output. It then installs a
 root-owned, non-writable copy directly into the staging root. It does not
 install packages and cannot accept other source locations.
@@ -39,6 +39,6 @@ sudo scripts/setup_quireforge_stage_deb.sh
 Then stage each package before asking the root-owned daemon to install it:
 
 ```bash
-sudo quireforge-stage-deb /tmp/quireforge-beta<N>-package/target/ubuntu-22.04/release/packages/quireforge_<version>_amd64.deb
-sudo quireforge-stage-deb /tmp/quireforge-beta<N>-package/target/ubuntu-22.04/release/packages/quireforge-sandboxd_<version>_amd64.deb
+sudo quireforge-stage-deb /mnt/faststorage/quireforge-build/target/ubuntu-22.04/release/packages/quireforge_<version>_amd64.deb
+sudo quireforge-stage-deb /mnt/faststorage/quireforge-build/target/ubuntu-22.04/release/packages/quireforge-sandboxd_<version>_amd64.deb
 ```
