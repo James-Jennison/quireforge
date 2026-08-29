@@ -143,18 +143,19 @@ an explicit yes/no decision interrupts that flow with the existing semantic
 approval surface. Passive activity remains a lightweight, expandable timeline
 row; it is not an Action Card and conveys no authority.
 
-`0.1.0-beta.119` supersedes beta.118 as the current owner-acceptance candidate
-without replacing beta.118's immutable failed-acceptance evidence. It fixes the
+`0.1.0-beta.120` supersedes beta.119 as the current owner-acceptance candidate
+without replacing beta.119 or beta.118's immutable acceptance evidence. It
+contains the compact passive-status-strip repair from `559515e` and fixes the
 native Rust/TypeScript conversation-event wire contract so multiword event
 fields serialize as the existing strict frontend camelCase keys, while event
 types remain kebab-case and consequential-event validation remains fail closed.
-Fresh package, installed-host, and owner-acceptance evidence is required before
-this candidate is accepted.
+Fresh source validation, package, installed-host, and owner-acceptance evidence
+is required before this candidate is accepted.
 
-## Owner acceptance procedure — beta.119
+## Owner acceptance procedure — beta.120
 
 This is a one-shot owner review, not a new capability or a new application
-surface. Use the installed `0.1.0-beta.119` application and its New task chat
+surface. Use the installed `0.1.0-beta.120` application and its New task chat
 workspace:
 
 1. Test both **Direct** and **Conversational** profiles. For each profile, the

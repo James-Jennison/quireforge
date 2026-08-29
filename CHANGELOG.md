@@ -2,6 +2,10 @@
 
 ## Unreleased — M87 chat workspace refinement
 
+- Beta.120 supersedes beta.119 as the next owner-acceptance candidate for the
+  compact passive-status-strip repair in `559515e`. Beta.119 and earlier
+  acceptance evidence remain immutable; this candidate requires fresh source,
+  package, installed-host, and owner-acceptance evidence.
 - Beta.119 supersedes beta.118 as the current candidate under test while
   preserving beta.118 as immutable failed owner-acceptance evidence. It aligns
   native `ConversationEvent` multiword fields with the existing strict

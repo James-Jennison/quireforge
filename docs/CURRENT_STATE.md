@@ -100,9 +100,9 @@ research, and M72 objective-scoped authority are completed foundations. M72
 is validated in `0.1.0-beta.107`: full validation, desktop/mobile E2E, clean
 package, installed-host launch, and owner acceptance of the inert
 draft-to-active-to-revoked lifecycle passed. The next product foundation is
-M87 interaction profiles. The `0.1.0-beta.119` candidate supersedes beta.118
-as the current candidate under test; beta.118 remains immutable failed
-owner-acceptance evidence. It makes the New task work area a single chat-first
+M87 interaction profiles. The `0.1.0-beta.120` candidate supersedes beta.119
+for the compact passive-status-strip repair in `559515e`; beta.119 and beta.118
+remain immutable prior owner-acceptance evidence. It makes the New task work area a single chat-first
 workspace for both Direct and Conversational profiles: a flexible transcript,
 submitted-message bubble, and a compact bottom composer. Attachment selection,
 controls, and policy copy are progressive disclosure rather than permanent
