@@ -142,8 +142,17 @@ explicitly acknowledged. A rejected batch is replayed instead of being
 replaced by newer notifications or an eventless terminal snapshot. Content-free
 classification records only contract scope, recovery class, issue code, and
 field path; it does not record response content or relax consequential-event
-validation. Beta.117 source, package, installed-host, and owner-acceptance gates
-remain pending until performed. Beta.116 is immutable failed acceptance
+validation. Beta.117 source validation passed with 465 desktop tests, 467
+native tests, two sandboxd tests, type-check, lint, format, build, and
+distribution checks; all 88 desktop/mobile and eight website E2E cases passed.
+The clean pinned Ubuntu 22.04 package gate at
+`87076a1511ade8853de6beb99ed9040854a1b57e` passed lifecycle, visible-launch,
+and final artifact validation. Both Debian packages were installed through the
+restricted local installer. The content-free installed-host validator passed
+package state, exact version mapping, protected-file ownership, permissions,
+and integrity, and `/usr/bin/quireforge` is running under the bounded
+`quireforge-installed-beta117` user service. Owner acceptance remains a
+separate pending gate. Beta.116 is immutable failed acceptance
 evidence despite its passing source/package/installed-host gates. Beta.115 is immutable failed acceptance evidence:
 the owner reproduced a poll failure followed by terminal completion with no
 assistant response because one invalid passive event caused the renderer to

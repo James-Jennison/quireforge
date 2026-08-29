@@ -123,9 +123,18 @@ event-bearing native snapshot under an opaque delivery token until the events
 have committed to the React conversation state and the renderer acknowledges
 that token. Rejected batches replay unchanged, including terminal batches with
 co-batched assistant text. Content-free validation classification preserves the
-strict consequential-event boundary without recording response values. The
-beta.117 source, package, installed-host, and owner-acceptance gates remain
-pending until performed.
+strict consequential-event boundary without recording response values.
+Beta.117 source validation passed with 465 desktop tests, 467 native tests, two
+sandboxd tests, type-check, lint, format, build, and distribution checks; all
+88 desktop/mobile and eight website E2E cases passed. The clean pinned Ubuntu
+22.04 package gate at `87076a1511ade8853de6beb99ed9040854a1b57e` passed
+lifecycle, visible-launch, and final artifact validation. Both Debian packages
+were installed through the restricted local installer. The content-free
+installed-host validator passed package state, exact version mapping,
+protected-file ownership, permissions, and integrity, and the installed
+`/usr/bin/quireforge` process is running under the bounded
+`quireforge-installed-beta117` user service. Owner acceptance remains a
+separate pending gate.
 
 The chat-first presentation has one functional visual boundary: ordinary
 assistant prose, passive progress/evidence, and open clarifying questions stay

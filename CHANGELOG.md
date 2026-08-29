@@ -56,9 +56,18 @@
 - Beta.116 source, package, and installed-host gates passed, but owner
   acceptance failed: the installed app rejected a consumed poll batch,
   displayed no assistant response, and later showed a clean terminal
-  completion. Beta.117 is the transactional-delivery correction; its source,
-  package, installed-host, and owner-acceptance gates remain distinct and are
-  recorded only when performed.
+  completion. Beta.117 is the transactional-delivery correction. Its source
+  gate passed with 465 desktop tests, 467 native tests, two sandboxd tests,
+  type-check, lint, format, build, and distribution checks; all 88
+  desktop/mobile and eight website E2E cases also passed. The clean pinned
+  Ubuntu 22.04 package gate at `87076a1511ade8853de6beb99ed9040854a1b57e`
+  passed lifecycle, visible-launch, and final artifact validation. Both Debian
+  packages were installed through the restricted local installer, the
+  content-free installed-host validator passed package state, exact version
+  mapping, protected-file ownership, permissions, and integrity, and
+  `/usr/bin/quireforge` is running under the bounded
+  `quireforge-installed-beta117` user service. Owner acceptance remains a
+  separate pending gate.
 
 ## Unreleased — authoritative feature-parity roadmap
 
