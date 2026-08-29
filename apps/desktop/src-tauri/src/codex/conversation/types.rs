@@ -190,7 +190,11 @@ impl ConversationSnapshot {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
-#[serde(tag = "type", rename_all = "kebab-case")]
+#[serde(
+    tag = "type",
+    rename_all = "kebab-case",
+    rename_all_fields = "camelCase"
+)]
 pub enum ConversationEvent {
     Lifecycle {
         sequence: u64,
@@ -373,4 +377,181 @@ pub enum ConversationStreamErrorCode {
     Sandbox,
     Server,
     Other,
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::BTreeSet;
+
+    use serde_json::Value;
+
+    use super::*;
+
+    const ID: &str = "018f0000-0000-7000-8000-000000000001";
+
+    fn assert_event_contract(
+        event: ConversationEvent,
+        expected_type: &str,
+        expected_fields: &[&str],
+        rejected_snake_case_fields: &[&str],
+    ) {
+        let value = serde_json::to_value(event).expect("conversation event must serialize");
+        let object = value
+            .as_object()
+            .expect("conversation event must serialize as an object");
+
+        assert_eq!(
+            object.get("type"),
+            Some(&Value::String(expected_type.to_owned()))
+        );
+        let actual_fields = object.keys().map(String::as_str).collect::<BTreeSet<_>>();
+        let expected_fields = std::iter::once("type")
+            .chain(expected_fields.iter().copied())
+            .collect::<BTreeSet<_>>();
+        assert_eq!(
+            actual_fields, expected_fields,
+            "conversation event wire fields must exactly match the frontend contract"
+        );
+        for field in expected_fields {
+            assert!(object.contains_key(field), "missing wire field {field}");
+        }
+        for field in rejected_snake_case_fields {
+            assert!(
+                !object.contains_key(*field),
+                "unexpected snake_case wire field {field}"
+            );
+        }
+    }
+
+    #[test]
+    fn conversation_events_serialize_the_frontend_camel_case_contract() {
+        assert_event_contract(
+            ConversationEvent::Lifecycle {
+                sequence: 1,
+                phase: ConversationLifecyclePhase::Running,
+            },
+            "lifecycle",
+            &["sequence", "phase"],
+            &[],
+        );
+        assert_event_contract(
+            ConversationEvent::AgentMessageDelta {
+                sequence: 2,
+                item_id: "message-1".to_owned(),
+                delta: "Partial response.".to_owned(),
+            },
+            "agent-message-delta",
+            &["sequence", "itemId", "delta"],
+            &["item_id"],
+        );
+        assert_event_contract(
+            ConversationEvent::AgentMessageCompleted {
+                sequence: 3,
+                item_id: "message-1".to_owned(),
+                text: "Complete response.".to_owned(),
+            },
+            "agent-message-completed",
+            &["sequence", "itemId", "text"],
+            &["item_id"],
+        );
+        assert_event_contract(
+            ConversationEvent::ReasoningSummaryDelta {
+                sequence: 4,
+                delta: "Reasoning summary.".to_owned(),
+            },
+            "reasoning-summary-delta",
+            &["sequence", "delta"],
+            &[],
+        );
+        assert_event_contract(
+            ConversationEvent::PlanUpdated {
+                sequence: 5,
+                explanation: Some("Plan updated.".to_owned()),
+                steps: vec![ConversationPlanStep {
+                    step: "Inspect.".to_owned(),
+                    status: ConversationPlanStepStatus::InProgress,
+                }],
+            },
+            "plan-updated",
+            &["sequence", "explanation", "steps"],
+            &[],
+        );
+        assert_event_contract(
+            ConversationEvent::Activity {
+                sequence: 6,
+                activity_id: ID.to_owned(),
+                kind: ConversationActivityKind::CommandExecution,
+                status: ConversationActivityStatus::Completed,
+                title: "Run command".to_owned(),
+                detail: Some("pnpm validate".to_owned()),
+                exit_code: Some(0),
+            },
+            "activity",
+            &[
+                "sequence",
+                "activityId",
+                "kind",
+                "status",
+                "title",
+                "detail",
+                "exitCode",
+            ],
+            &["activity_id", "exit_code"],
+        );
+        assert_event_contract(
+            ConversationEvent::ActivityOutputDelta {
+                sequence: 7,
+                activity_id: ID.to_owned(),
+                delta: "Output.".to_owned(),
+            },
+            "activity-output-delta",
+            &["sequence", "activityId", "delta"],
+            &["activity_id"],
+        );
+        assert_event_contract(
+            ConversationEvent::ApprovalRequested {
+                sequence: 8,
+                approval_id: ID.to_owned(),
+                activity_id: ID.to_owned(),
+                kind: ConversationApprovalKind::CommandExecution,
+            },
+            "approval-requested",
+            &["sequence", "approvalId", "activityId", "kind"],
+            &["approval_id", "activity_id"],
+        );
+        assert_event_contract(
+            ConversationEvent::ApprovalResolved {
+                sequence: 9,
+                approval_id: ID.to_owned(),
+                resolution: ConversationApprovalResolution::Approved,
+            },
+            "approval-resolved",
+            &["sequence", "approvalId", "resolution"],
+            &["approval_id"],
+        );
+        assert_event_contract(
+            ConversationEvent::ModelSelectionRequested {
+                sequence: 10,
+                choice: ModelSelectionChoice {
+                    model_id: "gpt-5.6-sol".to_owned(),
+                    reasoning_effort: "medium".to_owned(),
+                },
+                application: ModelSelectionApplication::Manual,
+                rationale: "Use the selected model.".to_owned(),
+            },
+            "model-selection-requested",
+            &["sequence", "choice", "application", "rationale"],
+            &[],
+        );
+        assert_event_contract(
+            ConversationEvent::Error {
+                sequence: 11,
+                code: ConversationStreamErrorCode::Other,
+                will_retry: true,
+            },
+            "error",
+            &["sequence", "code", "willRetry"],
+            &["will_retry"],
+        );
+    }
 }
