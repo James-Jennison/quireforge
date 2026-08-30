@@ -875,10 +875,9 @@ export async function startChatConversation(
   invokeFunction: InvokeFunction = invokeTauri,
 ): Promise<ChatConversationSnapshot> {
   return chatConversationSnapshotSchema.parse(
-    await invokeFunction(
-      CHAT_CONVERSATION_START_COMMAND,
-      { request: chatConversationStartRequestSchema.parse(request) },
-    ),
+    await invokeFunction(CHAT_CONVERSATION_START_COMMAND, {
+      request: chatConversationStartRequestSchema.parse(request),
+    }),
   );
 }
 

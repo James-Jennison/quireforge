@@ -733,9 +733,10 @@ mod tests {
     use crate::codex::{auth::types::AuthAccountKind, InteractionProfile};
 
     #[test]
-    fn rejects_empty_or_nul_prompt_without_starting_a_runtime() {
+    fn rejects_invalid_prompt_without_starting_a_runtime() {
         assert!(!valid_prompt("   "));
         assert!(!valid_prompt("a\0b"));
+        assert!(!valid_prompt(&"x".repeat(MAX_CHAT_PROMPT_BYTES + 1)));
         assert!(valid_prompt("Explain this error."));
     }
 
@@ -760,8 +761,7 @@ mod tests {
 
     #[tokio::test]
     async fn managed_chat_starts_without_project_or_tool_capabilities() {
-        let script = concat!(
-            r#"
+        let script = r#"
 read -r initialize
 case "$initialize" in
   *'"method":"initialize"'*'"clientInfo"'*) ;;
@@ -773,8 +773,7 @@ printf '%s\n' '{"id":2,"result":{"thread":{"id":"018f0000-0000-7000-8000-0000000
 read -r turn
 printf '%s\n' '{"id":3,"result":{"turn":{"id":"018f0000-0000-7000-8000-000000000030","status":"inProgress"}}}'
 printf '%s\n' '{"method":"turn/completed","params":{"threadId":"018f0000-0000-7000-8000-000000000020","turn":{"id":"018f0000-0000-7000-8000-000000000030","status":"completed"}}}'
-"#
-        );
+"#;
         let service =
             ChatConversationService::with_command(AppServerCommand::test("sh", &["-c", script]));
         let projects = ProjectService::in_memory();

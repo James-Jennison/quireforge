@@ -2417,9 +2417,7 @@ test("Chat & Cowork keeps the no-project composer inert until Managed Codex is s
   await expect(
     chat.getByText(/No project, Code tools, browser content, filesystem/u),
   ).toBeVisible();
-  await expect(
-    chat.getByText(/No provider connected/u),
-  ).toBeVisible();
+  await expect(chat.getByText(/No provider connected/u)).toBeVisible();
   await chat.getByRole("textbox", { name: "Chat message" }).fill("Hello.");
   await expect(chat.getByRole("button", { name: "Send" })).toBeDisabled();
   await expect(
@@ -2468,19 +2466,16 @@ test("Chat & Cowork dispatches a Managed Codex turn with Enter", async ({
   await chat.getByRole("textbox", { name: "Chat message" }).press("Enter");
   await expect
     .poll(() =>
-      page.evaluate(
-        () =>
-          (
-            window as Window & {
-              __quireforgeFixtureCommands?: string[];
-            }
-          ).__quireforgeFixtureCommands?.includes("chat_conversation_start"),
+      page.evaluate(() =>
+        (
+          window as Window & {
+            __quireforgeFixtureCommands?: string[];
+          }
+        ).__quireforgeFixtureCommands?.includes("chat_conversation_start"),
       ),
     )
     .toBe(true);
-  await expect(
-    chat.getByText("A managed response."),
-  ).toBeVisible();
+  await expect(chat.getByText("A managed response.")).toBeVisible();
 });
 
 test("Project authority is project-first and stays inert through draft, activation, and revocation", async ({
