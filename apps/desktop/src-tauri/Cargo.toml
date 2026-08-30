@@ -22,7 +22,7 @@ sha2 = "0.10.9"
 tauri-build = { version = "2.5.6", features = [] }
 
 [dependencies]
-base64 = "0.22.1"
+base64 = "0.23.1"
 dirs = "6.0.0"
 elf = "=0.8.0"
 libc = "0.2"
