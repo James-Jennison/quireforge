@@ -412,7 +412,9 @@ describe("desktop bridge", () => {
 
     expect(invoke).toHaveBeenNthCalledWith(1, CHAT_CONVERSATION_STATUS_COMMAND);
     expect(invoke).toHaveBeenNthCalledWith(2, CHAT_CONVERSATION_START_COMMAND, {
-      prompt: "Explain the failing test.",
+      request: {
+        prompt: "Explain the failing test.",
+      },
     });
     expect(invoke).toHaveBeenNthCalledWith(3, CHAT_CONVERSATION_POLL_COMMAND, {
       conversationId: active.conversationId,

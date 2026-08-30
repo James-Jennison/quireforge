@@ -877,7 +877,7 @@ export async function startChatConversation(
   return chatConversationSnapshotSchema.parse(
     await invokeFunction(
       CHAT_CONVERSATION_START_COMMAND,
-      chatConversationStartRequestSchema.parse(request),
+      { request: chatConversationStartRequestSchema.parse(request) },
     ),
   );
 }
