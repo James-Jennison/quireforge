@@ -16,12 +16,19 @@ reading flow, compact bottom composer, progressive-disclosure shelves, and
 passive status placement. Each mode adapter retains its own runtime, project,
 approval, and context boundaries.
 
-Chat & Cowork remains local and has no Code execution authority. Code remains
-the only mode that exposes the existing project controls and approvals. Advisor
-history stays accessible as legacy local history; it is not automatically
-merged into a project thread or used as implicit Code context. Code-only Task
-Catalog and Durable Sources remain one-click reachable from a collapsed shelf,
-not permanently mounted in the transcript.
+Chat & Cowork has no built-in local-model runtime and no Code execution
+authority. It begins with **No provider connected** and keeps a draft local to
+the visible composer until a person explicitly selects the one narrow M87
+adapter, **Managed Codex**. The adapter has no project, filesystem, browser,
+attachment, tool, or automatic-context route; it creates no provider thread
+before that selection and never falls back to `runLocalChat` or another
+provider. The resulting managed thread is ephemeral and may continue only
+within the current app session after a completed turn. Code remains the only
+mode that exposes the existing project controls and approvals. Advisor history
+stays accessible as legacy local history; it is not automatically merged into
+a project thread or used as implicit Code context. Code-only Task Catalog and
+Durable Sources remain one-click reachable from a collapsed shelf, not
+permanently mounted in the transcript.
 
 Switching modes is presentation-only: it must never abort, pause, or mutate a
 running Code task. A compact global return affordance may report that task while
@@ -97,18 +104,26 @@ a real per-action-type owner tap mechanism. It must not present misleading
    context, while Code retains its existing authority and approval contract.
 9. Changing between those modes neither aborts nor mutates an active Code
    task. A compact, globally visible return path preserves access to that task.
-   Chat & Cowork local turns remain in memory through presentation-only mode
-   switches within the current app session; they are never automatically
-   transferred or persisted. Legacy
+   Chat & Cowork transcript presentation remains in memory through
+   presentation-only mode switches within the current app session; it is never
+   automatically transferred or persisted. Legacy
    Advisor retains its existing separate transient-state reset boundary.
+10. Chat & Cowork initially shows **No provider connected**; selecting Managed
+    Codex is explicit, visible, and creates the managed adapter only then. A
+    disconnected draft is preserved, and no local-model or alternate-provider
+    fallback exists. The M87 adapter's no-project capability tuple remains
+    exact and no user project, files, attachments, integrations, or browser
+    content may reach it.
 
 ## Implementation checkpoint
 
-The closed profile registry, Appearance default, Chat & Cowork and project
-composer selectors, typed frontend contracts, and native personality mapping
-are implemented. The interaction style is visibly separate from access and
-approval controls, and project conversations offer only approval policies that
-remain truthful.
+The closed profile registry, Appearance default, project composer selector,
+typed frontend contracts, and native personality mapping are implemented. The
+interaction style is visibly separate from access and approval controls, and
+project conversations offer only approval policies that remain truthful. The
+M87 Chat & Cowork slice replaces the previous built-in local response path
+with one explicitly selected Managed Codex adapter; broader consented
+multi-provider connection remains M81 work.
 
 `0.1.0-beta.108` passed full validation (440 desktop unit tests, seven website
 unit tests, 463 Rust tests, and two sandbox tests), desktop and website E2E

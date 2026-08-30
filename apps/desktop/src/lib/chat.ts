@@ -1,5 +1,11 @@
 import { z } from "zod";
 
+// This intentionally names only the one explicit adapter available in the
+// current milestone. It is not a provider registry and must not grow into one
+// before M81's consented provider-connection boundary exists.
+export const chatProviderIdSchema = z.literal("managed-codex");
+export type ChatProviderId = z.infer<typeof chatProviderIdSchema>;
+
 export const chatConversationStateSchema = z.enum([
   "empty",
   "running",
@@ -75,6 +81,7 @@ export const chatConversationIdSchema = z.string().uuid();
 export type ChatConversationSnapshot = z.infer<
   typeof chatConversationSnapshotSchema
 >;
+export type ChatConversationEvent = z.infer<typeof chatConversationEventSchema>;
 export type ChatConversationStartRequest = z.infer<
   typeof chatConversationStartRequestSchema
 >;

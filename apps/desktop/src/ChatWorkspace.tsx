@@ -1,16 +1,24 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
+import { ConversationShell } from "./ConversationShell";
 import type { CodexAuthSnapshot } from "./lib/auth";
 import {
+  type ChatConversationEvent,
   type ChatConversationSnapshot,
   type ChatConversationStartRequest,
+  type ChatProviderId,
 } from "./lib/chat";
 import { managedChatAuthenticationState } from "./lib/conversationMode";
+import type { InteractionProfileId } from "./interactionProfiles";
 
 interface ChatWorkspaceProps {
   auth: CodexAuthSnapshot;
   snapshot: ChatConversationSnapshot;
   busy: boolean;
+  provider: ChatProviderId | null;
+  onProviderChange: (provider: ChatProviderId | null) => void;
+  interactionProfile: InteractionProfileId;
+  onInteractionProfileChange: (profile: InteractionProfileId) => void;
   onStart: (
     request: ChatConversationStartRequest,
   ) => Promise<ChatConversationSnapshot>;
@@ -18,40 +26,92 @@ interface ChatWorkspaceProps {
   onInterrupt: (conversationId: string) => Promise<ChatConversationSnapshot>;
 }
 
+interface ChatTurn {
+  role: "user" | "assistant" | "reasoning" | "error";
+  text: string;
+}
+
 const diagnosticMessage: Record<
   NonNullable<ChatConversationSnapshot["diagnosticCode"]>,
   string
 > = {
   "authentication-required":
-    "Sign in with the managed ChatGPT browser flow before starting Chat.",
+    "Managed Codex needs an existing Codex sign-in before it can be used.",
   "authentication-unavailable":
-    "Chat requires a managed ChatGPT account. API-key and external-token accounts cannot enable it.",
-  "conversation-not-found": "This Chat conversation is no longer available.",
-  "conversation-active":
-    "Finish or stop the active Chat conversation before starting another.",
+    "Managed Codex is unavailable for this account.",
+  "conversation-not-found":
+    "This Chat & Cowork conversation is no longer available.",
+  "conversation-active": "Chat & Cowork is already responding.",
   "invalid-request": "Enter a non-empty message and try again.",
-  "runtime-unavailable": "The native Codex runtime is unavailable.",
-  "protocol-invalid":
-    "The native Chat bridge returned a response QuireForge could not safely use.",
+  "runtime-unavailable": "The managed Codex runtime is unavailable.",
+  "protocol-invalid": "QuireForge could not safely read this response.",
   "capability-blocked":
-    "Chat blocked an attempted native tool or permission request.",
-  "metadata-unavailable":
-    "QuireForge could not record bounded local Chat metadata.",
+    "Chat & Cowork blocked a tool, permission, or context request.",
+  "metadata-unavailable": "QuireForge could not record bounded local metadata.",
 };
+
+function appendEvent(
+  turns: ChatTurn[],
+  event: ChatConversationEvent,
+): ChatTurn[] {
+  if (event.type === "agent-message-delta") {
+    const last = turns.at(-1);
+    if (last?.role === "assistant") {
+      return [
+        ...turns.slice(0, -1),
+        { ...last, text: last.text + event.delta },
+      ];
+    }
+    return [...turns, { role: "assistant", text: event.delta }];
+  }
+  if (event.type === "reasoning-summary-delta") {
+    const last = turns.at(-1);
+    if (last?.role === "reasoning") {
+      return [
+        ...turns.slice(0, -1),
+        { ...last, text: last.text + event.delta },
+      ];
+    }
+    return [...turns, { role: "reasoning", text: event.delta }];
+  }
+  return [
+    ...turns,
+    { role: "error", text: `Managed Codex reported ${event.code}.` },
+  ];
+}
 
 export function ChatWorkspace({
   auth,
   snapshot,
   busy,
+  provider,
+  onProviderChange,
+  interactionProfile,
+  onInteractionProfileChange,
   onStart,
   onPoll,
   onInterrupt,
 }: ChatWorkspaceProps) {
   const [prompt, setPrompt] = useState("");
   const [actionError, setActionError] = useState(false);
+  const [turns, setTurns] = useState<ChatTurn[]>([]);
+  const seenEventSequence = useRef(new Set<number>());
   const authentication = managedChatAuthenticationState(auth);
   const active =
     snapshot.state === "running" && snapshot.conversationId !== null;
+  const managedCodexReady =
+    provider === "managed-codex" && authentication === "ready";
+
+  useEffect(() => {
+    const unseen = snapshot.events.filter((event) => {
+      if (seenEventSequence.current.has(event.sequence)) return false;
+      seenEventSequence.current.add(event.sequence);
+      return true;
+    });
+    if (unseen.length) {
+      setTurns((current) => unseen.reduce(appendEvent, current));
+    }
+  }, [snapshot.events]);
 
   useEffect(() => {
     if (!active || !snapshot.conversationId) return undefined;
@@ -60,45 +120,99 @@ export function ChatWorkspace({
       void onPoll(conversationId).catch(() => setActionError(true));
     }, 300);
     return () => window.clearTimeout(timer);
-  }, [active, onPoll, snapshot.conversationId, snapshot.state]);
+  }, [active, onPoll, snapshot.conversationId]);
 
   async function submit() {
-    if (busy || active || authentication !== "ready") return;
+    if (busy || active || !managedCodexReady || !prompt.trim()) return;
+    const submittedPrompt = prompt;
     setActionError(false);
+    setTurns((current) => [
+      ...current,
+      { role: "user", text: submittedPrompt },
+    ]);
+    setPrompt("");
     try {
-      await onStart({ prompt });
-      setPrompt("");
+      await onStart({ prompt: submittedPrompt, interactionProfile });
     } catch {
       setActionError(true);
+      setPrompt(submittedPrompt);
     }
   }
 
   return (
-    <section className="conversation-workspace" aria-labelledby="chat-title">
-      <header className="conversation-workspace__header">
-        <div>
-          <p className="eyebrow">Chat</p>
-          <h1 id="chat-title">A no-project conversation.</h1>
+    <ConversationShell
+      mode="chat"
+      id="advisor"
+      titleId="chat-cowork-title"
+      eyebrow="Chat & Cowork"
+      title="Start a conversation."
+      boundary={
+        <details className="conversation-boundary-disclosure">
+          <summary>About Chat & Cowork</summary>
           <p>
-            Chat has no attached directory, terminal, Git, worktree,
-            integration, native-action, or approval capability.
+            No project, Code tools, browser content, filesystem, attachments, or
+            automatic context transfer are available here. A provider is used
+            only after you explicitly select it.
           </p>
+        </details>
+      }
+      shelf={
+        <div className="conversation-mode-shelf">
+          {provider === null ? (
+            <button
+              type="button"
+              onClick={() => onProviderChange("managed-codex")}
+            >
+              Use managed Codex
+            </button>
+          ) : (
+            <span role="status">Provider: Managed Codex</span>
+          )}
         </div>
-      </header>
+      }
+    >
+      <section className="conversation-transcript" aria-live="polite">
+        {turns.map((turn, index) =>
+          turn.role === "reasoning" ? (
+            <details
+              className="conversation-event__reasoning"
+              key={`${turn.role}-${index}`}
+            >
+              <summary>Reasoning summary</summary>
+              <p>{turn.text}</p>
+            </details>
+          ) : (
+            <p
+              className={
+                turn.role === "user"
+                  ? "conversation-turn conversation-turn--user"
+                  : turn.role === "error"
+                    ? "conversation-error"
+                    : "conversation-turn conversation-turn--assistant"
+              }
+              key={`${turn.role}-${index}`}
+            >
+              {turn.text}
+            </p>
+          ),
+        )}
+      </section>
 
-      <div className="conversation-boundary-note" role="note">
-        <strong>Managed ChatGPT browser sign-in only.</strong>
-        <p>
-          QuireForge never accepts passwords, API keys, browser cookies, or
-          external tokens for Chat.
+      {provider === null && (
+        <p className="conversation-boundary-note" role="status">
+          No provider connected. Choose a provider before sending; your draft
+          stays here until you do.
         </p>
-      </div>
-
-      {authentication !== "ready" && (
+      )}
+      {provider === "managed-codex" && authentication !== "ready" && (
         <p className="conversation-error" role="status">
-          {authentication === "sign-in-pending"
-            ? "Browser sign-in is pending. Finish it in the native flow, then refresh Settings → General."
-            : "Chat is unavailable until a managed ChatGPT browser sign-in is complete."}
+          {
+            diagnosticMessage[
+              authentication === "unavailable"
+                ? "authentication-unavailable"
+                : "authentication-required"
+            ]
+          }
         </p>
       )}
       {snapshot.diagnosticCode && (
@@ -108,31 +222,9 @@ export function ChatWorkspace({
       )}
       {actionError && (
         <p className="conversation-error" role="alert">
-          QuireForge could not reach the native Chat bridge.
+          QuireForge could not reach the managed Codex bridge.
         </p>
       )}
-
-      <div className="conversation-events" aria-live="polite">
-        {snapshot.events.map((event) =>
-          event.type === "agent-message-delta" ? (
-            <p className="conversation-event__message" key={event.sequence}>
-              {event.delta}
-            </p>
-          ) : event.type === "reasoning-summary-delta" ? (
-            <details
-              className="conversation-event__reasoning"
-              key={event.sequence}
-            >
-              <summary>Reasoning summary</summary>
-              <p>{event.delta}</p>
-            </details>
-          ) : (
-            <p className="conversation-error" key={event.sequence}>
-              Chat reported {event.code}.
-            </p>
-          ),
-        )}
-      </div>
 
       <label className="conversation-composer" htmlFor="chat-prompt">
         <span className="sr-only">Chat message</span>
@@ -141,12 +233,34 @@ export function ChatWorkspace({
           aria-label="Chat message"
           value={prompt}
           onChange={(event) => setPrompt(event.target.value)}
-          disabled={busy || active || authentication !== "ready"}
-          placeholder="Ask a question, explore an idea, or create a draft…"
-          rows={4}
+          disabled={busy || active}
+          placeholder="Ask QuireForge anything…"
+          rows={2}
         />
         <div className="conversation-composer__actions">
-          <span>{active ? "Chat is responding" : "No project context"}</span>
+          <span>
+            {active ? "Managed Codex is responding" : "No project context"}
+          </span>
+          <fieldset aria-label="Conversation style" disabled={busy || active}>
+            <label>
+              <input
+                type="radio"
+                name="chat-interaction-profile"
+                checked={interactionProfile === "direct"}
+                onChange={() => onInteractionProfileChange("direct")}
+              />
+              Direct
+            </label>
+            <label>
+              <input
+                type="radio"
+                name="chat-interaction-profile"
+                checked={interactionProfile === "conversational"}
+                onChange={() => onInteractionProfileChange("conversational")}
+              />
+              Conversational
+            </label>
+          </fieldset>
           {active ? (
             <button
               type="button"
@@ -161,7 +275,7 @@ export function ChatWorkspace({
           ) : (
             <button
               type="button"
-              disabled={busy || !prompt.trim() || authentication !== "ready"}
+              disabled={busy || !prompt.trim() || !managedCodexReady}
               onClick={() => void submit()}
             >
               Send
@@ -169,6 +283,6 @@ export function ChatWorkspace({
           )}
         </div>
       </label>
-    </section>
+    </ConversationShell>
   );
 }

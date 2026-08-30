@@ -115,7 +115,10 @@ struct ChatConversationServiceState {
 struct ActiveChatConversation {
     conversation_id: String,
     thread_id: String,
-    turn_id: String,
+    // A completed no-project Chat turn intentionally leaves only this bounded
+    // in-memory managed session alive so the next explicit send can continue
+    // the same provider thread. Nothing is persisted as transcript content.
+    turn_id: Option<String>,
     next_sequence: u64,
     process: AppServerProcess,
 }
@@ -199,10 +202,37 @@ impl ChatConversationService {
 
         {
             let mut state = self.state.lock().await;
-            if state.active.is_some() || state.starting {
+            if state.starting {
                 return ChatConversationSnapshot::unavailable(
                     ChatConversationDiagnosticCode::ConversationActive,
                 );
+            }
+            if let Some(active) = state.active.as_mut() {
+                if active.turn_id.is_some() {
+                    return ChatConversationSnapshot::unavailable(
+                        ChatConversationDiagnosticCode::ConversationActive,
+                    );
+                }
+                match start_chat_turn_on_thread(&mut active.process, &active.thread_id, &request)
+                    .await
+                {
+                    Ok(turn_id) => {
+                        active.turn_id = Some(turn_id);
+                        let snapshot = active.snapshot(Vec::new(), None);
+                        state.remember(snapshot.clone());
+                        return snapshot;
+                    }
+                    Err(diagnostic_code) => {
+                        let snapshot = ChatConversationSnapshot {
+                            state: ChatConversationState::Failed,
+                            ..active.snapshot(Vec::new(), Some(diagnostic_code))
+                        };
+                        let _ = active.process.shutdown().await;
+                        let _ = state.active.take();
+                        state.remember(snapshot.clone());
+                        return snapshot;
+                    }
+                }
             }
             state.starting = true;
         }
@@ -244,6 +274,17 @@ impl ChatConversationService {
                 });
         };
         if active.conversation_id != conversation_id {
+            return state
+                .recent
+                .get(&conversation_id)
+                .cloned()
+                .unwrap_or_else(|| {
+                    ChatConversationSnapshot::unavailable(
+                        ChatConversationDiagnosticCode::ConversationNotFound,
+                    )
+                });
+        }
+        if active.turn_id.is_none() {
             return state
                 .recent
                 .get(&conversation_id)
@@ -296,8 +337,12 @@ impl ChatConversationService {
                 state: terminal_state,
                 ..snapshot
             };
-            let _ = active.process.shutdown().await;
-            let _ = state.active.take();
+            if terminal_state == ChatConversationState::Completed {
+                active.turn_id = None;
+            } else {
+                let _ = active.process.shutdown().await;
+                let _ = state.active.take();
+            }
             state.remember(snapshot.clone());
             return snapshot;
         }
@@ -330,13 +375,24 @@ impl ChatConversationService {
                 ChatConversationDiagnosticCode::ConversationNotFound,
             );
         }
+        let Some(turn_id) = active.turn_id.clone() else {
+            return state
+                .recent
+                .get(&conversation_id)
+                .cloned()
+                .unwrap_or_else(|| {
+                    ChatConversationSnapshot::unavailable(
+                        ChatConversationDiagnosticCode::ConversationNotFound,
+                    )
+                });
+        };
         let interruption = active
             .process
             .request(
                 "turn/interrupt",
                 json!({
                     "threadId": active.thread_id.clone(),
-                    "turnId": active.turn_id.clone(),
+                    "turnId": turn_id,
                 }),
             )
             .await;
@@ -387,12 +443,12 @@ async fn start_chat_process(
 ) -> Result<ActiveChatConversation, ChatConversationDiagnosticCode> {
     let mut process = AppServerProcess::spawn(command.clone())
         .map_err(|_| ChatConversationDiagnosticCode::RuntimeUnavailable)?;
-    let started = start_chat_turn(&mut process, request, projects).await;
+    let started = start_chat_session(&mut process, request, projects).await;
     match started {
         Ok((conversation_id, thread_id, turn_id)) => Ok(ActiveChatConversation {
             conversation_id,
             thread_id,
-            turn_id,
+            turn_id: Some(turn_id),
             next_sequence: 1,
             process,
         }),
@@ -403,7 +459,7 @@ async fn start_chat_process(
     }
 }
 
-async fn start_chat_turn(
+async fn start_chat_session(
     process: &mut AppServerProcess,
     request: &ChatConversationStartRequest,
     projects: &ProjectService,
@@ -429,15 +485,23 @@ async fn start_chat_turn(
             codex_thread_id: &thread_id,
         })
         .map_err(|_| ChatConversationDiagnosticCode::MetadataUnavailable)?;
+    let turn_id = start_chat_turn_on_thread(process, &thread_id, request).await?;
+    Ok((conversation_id, thread_id, turn_id))
+}
+
+async fn start_chat_turn_on_thread(
+    process: &mut AppServerProcess,
+    thread_id: &str,
+    request: &ChatConversationStartRequest,
+) -> Result<String, ChatConversationDiagnosticCode> {
     let turn_result = process
         .request(
             "turn/start",
-            chat_turn_start_params(&thread_id, &request.prompt, request.interaction_profile),
+            chat_turn_start_params(thread_id, &request.prompt, request.interaction_profile),
         )
         .await
         .map_err(map_adapter_error)?;
-    let turn_id = parse_turn_start(turn_result)?;
-    Ok((conversation_id, thread_id, turn_id))
+    parse_turn_start(turn_result)
 }
 
 fn chat_thread_start_params(
@@ -643,7 +707,7 @@ fn ensure_turn(
     turn_id: &str,
 ) -> Result<(), ChatConversationDiagnosticCode> {
     ensure_thread(active, thread_id)?;
-    (active.turn_id == turn_id)
+    (active.turn_id.as_deref() == Some(turn_id))
         .then_some(())
         .ok_or(ChatConversationDiagnosticCode::ProtocolInvalid)
 }
@@ -735,6 +799,66 @@ printf '%s\n' '{"method":"turn/completed","params":{"threadId":"018f0000-0000-70
             .await;
         assert_eq!(completed.state, ChatConversationState::Completed);
         assert_eq!(completed.diagnostic_code, None);
+    }
+
+    #[tokio::test]
+    async fn completed_chat_turn_reuses_the_explicitly_selected_managed_thread() {
+        let script = r#"
+read -r initialize
+printf '%s\n' '{"id":1,"result":{}}'
+read -r thread
+case "$thread" in *'"method":"thread/start"'*) ;; *) exit 91 ;; esac
+printf '%s\n' '{"id":2,"result":{"thread":{"id":"018f0000-0000-7000-8000-000000000020"}}}'
+read -r first_turn
+case "$first_turn" in *'"method":"turn/start"'*) ;; *) exit 92 ;; esac
+printf '%s\n' '{"id":3,"result":{"turn":{"id":"018f0000-0000-7000-8000-000000000030","status":"inProgress"}}}'
+printf '%s\n' '{"method":"turn/completed","params":{"threadId":"018f0000-0000-7000-8000-000000000020","turn":{"id":"018f0000-0000-7000-8000-000000000030","status":"completed"}}}'
+read -r second_turn
+case "$second_turn" in *'"method":"turn/start"'*'"threadId":"018f0000-0000-7000-8000-000000000020"'*) ;; *) exit 93 ;; esac
+printf '%s\n' '{"id":4,"result":{"turn":{"id":"018f0000-0000-7000-8000-000000000040","status":"inProgress"}}}'
+printf '%s\n' '{"method":"turn/completed","params":{"threadId":"018f0000-0000-7000-8000-000000000020","turn":{"id":"018f0000-0000-7000-8000-000000000040","status":"completed"}}}'
+"#;
+        let service =
+            ChatConversationService::with_command(AppServerCommand::test("sh", &["-c", script]));
+        let projects = ProjectService::in_memory();
+        let authentication = CodexAuthSnapshot::authenticated(AuthAccountKind::Chatgpt);
+        let first = service
+            .start(
+                ChatConversationStartRequest {
+                    prompt: "First question".to_owned(),
+                    interaction_profile: InteractionProfile::Direct,
+                },
+                &authentication,
+                &projects,
+            )
+            .await;
+        let conversation_id = first.conversation_id.clone().expect("conversation ID");
+        let thread_id = first.thread_id.clone().expect("thread ID");
+        assert_eq!(
+            service.poll(conversation_id.clone()).await.state,
+            ChatConversationState::Completed
+        );
+
+        let second = service
+            .start(
+                ChatConversationStartRequest {
+                    prompt: "Follow-up question".to_owned(),
+                    interaction_profile: InteractionProfile::Conversational,
+                },
+                &authentication,
+                &projects,
+            )
+            .await;
+        assert_eq!(second.state, ChatConversationState::Running);
+        assert_eq!(
+            second.conversation_id.as_deref(),
+            Some(conversation_id.as_str())
+        );
+        assert_eq!(second.thread_id.as_deref(), Some(thread_id.as_str()));
+        assert_eq!(
+            service.poll(conversation_id).await.state,
+            ChatConversationState::Completed
+        );
     }
 
     #[tokio::test]

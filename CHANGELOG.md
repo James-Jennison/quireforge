@@ -2,6 +2,15 @@
 
 ## Unreleased — M87 chat workspace refinement
 
+- Retires the live Chat & Cowork built-in local response path. The shared
+  chat-first surface now begins with **No provider connected**, preserves an
+  unsent draft, and starts the narrow Managed Codex adapter only after an
+  explicit person-selected choice. There is no Ollama/local-model, alternate
+  provider, or silent fallback route. The adapter retains the fixed no-project,
+  no-tool, read-only/no-network contract; broad consented provider connection
+  remains M81 work. Fresh source, package, installed-host, and owner-interaction
+  evidence is required.
+
 - Makes M87's shared conversation-shell correction explicit: Chat & Cowork and
   Code now share a persistent chat-first reading flow and compact composer
   mechanics, while their mode adapters retain separate authority and context

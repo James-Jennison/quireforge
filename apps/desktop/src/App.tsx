@@ -33,7 +33,7 @@ import { DynamicAnalysisWorkspace } from "./DynamicAnalysisWorkspace";
 import { GitWorkspace } from "./GitWorkspace";
 import { HomeDashboard } from "./HomeDashboard";
 import { IntegrationCenter } from "./IntegrationCenter";
-import { LocalChatWorkspace } from "./LocalChatWorkspace";
+import { ChatWorkspace } from "./ChatWorkspace";
 import { ProjectWorkspace } from "./ProjectWorkspace";
 import { ProjectStateWorkspace } from "./ProjectStateWorkspace";
 import { ScheduledWorkspace } from "./ScheduledWorkspace";
@@ -60,7 +60,6 @@ import {
   cancelConversationAttachments,
   acknowledgeConversationDelivery,
   cancelCodexAuth,
-  cancelLocalChat,
   acceptTaskHandoff,
   cancelProjectAttachment,
   confirmProjectAttachment,
@@ -74,6 +73,7 @@ import {
   interruptAdvisorConversation,
   loadAdvisorGeneratedArtifacts,
   loadAdvisorConversation,
+  loadChatConversation,
   loadActiveConversations,
   loadCodexAuth,
   loadConversationStatus,
@@ -92,7 +92,6 @@ import {
   loadProjectWorkspace,
   readRepositoryState,
   revokeActionCard,
-  runLocalChat,
   logoutCodexAuth,
   openGitFile,
   pickConversationAttachments,
@@ -110,6 +109,7 @@ import {
   refreshIntegrationCatalog as refreshIntegrationCatalogNative,
   pollConversation,
   pollAdvisorConversation,
+  pollChatConversation,
   refreshCodexAuth,
   refreshCodexUsage,
   recoverGitMutation,
@@ -118,10 +118,12 @@ import {
   forkConversation,
   startConversation,
   startAdvisorConversation,
+  startChatConversation,
   startCodexAuth,
   stageDroppedConversationAttachments,
   updateModelSelection,
   cancelWorktree,
+  interruptChatConversation,
   closeTerminal,
   confirmWorktree,
   loadTerminalStatus,
@@ -198,6 +200,12 @@ import {
   type AdvisorConversationSnapshot,
   type AdvisorConversationStartRequest,
 } from "./lib/advisorConversation";
+import {
+  scaffoldChatConversation,
+  type ChatConversationSnapshot,
+  type ChatConversationStartRequest,
+  type ChatProviderId,
+} from "./lib/chat";
 import { type ConversationMode } from "./lib/conversationMode";
 import {
   highestConversationEventSequence,
@@ -503,6 +511,16 @@ interface AppProps {
   interruptAdvisorConversationTask?: (
     conversationId: string,
   ) => Promise<AdvisorConversationSnapshot>;
+  loadChatConversationTask?: () => Promise<ChatConversationSnapshot>;
+  startChatConversationTask?: (
+    request: ChatConversationStartRequest,
+  ) => Promise<ChatConversationSnapshot>;
+  pollChatConversationTask?: (
+    conversationId: string,
+  ) => Promise<ChatConversationSnapshot>;
+  interruptChatConversationTask?: (
+    conversationId: string,
+  ) => Promise<ChatConversationSnapshot>;
   decideConversationApprovalTask?: (
     request: ConversationApprovalDecisionRequest,
   ) => Promise<ConversationSnapshot>;
@@ -1065,6 +1083,10 @@ export default function App({
   startAdvisorConversationTask = startAdvisorConversation,
   pollAdvisorConversationTask = pollAdvisorConversation,
   interruptAdvisorConversationTask = interruptAdvisorConversation,
+  loadChatConversationTask = loadChatConversation,
+  startChatConversationTask = startChatConversation,
+  pollChatConversationTask = pollChatConversation,
+  interruptChatConversationTask = interruptChatConversation,
   decideConversationApprovalTask = decideConversationApproval,
   updateModelSelectionTask = updateModelSelection,
   loadSessions = loadConversationSessions,
@@ -1194,6 +1216,12 @@ export default function App({
   const [advisorConversation, setAdvisorConversation] =
     useState<AdvisorConversationSnapshot>(scaffoldAdvisorConversation);
   const [advisorConversationBusy, setAdvisorConversationBusy] = useState(false);
+  const [chatConversation, setChatConversation] =
+    useState<ChatConversationSnapshot>(scaffoldChatConversation);
+  const [chatConversationBusy, setChatConversationBusy] = useState(false);
+  // A provider is never selected, initialized, or used until this explicit
+  // in-memory choice. It intentionally does not persist across app launches.
+  const [chatProvider, setChatProvider] = useState<ChatProviderId | null>(null);
   const [advisorResetToken, setAdvisorResetToken] = useState(0);
   const conversationActionGenerations = useRef<Record<string, number>>({});
   const conversationDisplayOffsets = useRef<Record<string, number>>({});
@@ -1371,6 +1399,21 @@ export default function App({
       active = false;
     };
   }, [accessGranted, loadAdvisorConversationTask]);
+
+  useEffect(() => {
+    if (!accessGranted) return;
+    let active = true;
+    void loadChatConversationTask()
+      .then((result) => {
+        if (active) setChatConversation(result);
+      })
+      .catch(() => {
+        if (active) setChatConversation(scaffoldChatConversation);
+      });
+    return () => {
+      active = false;
+    };
+  }, [accessGranted, loadChatConversationTask]);
 
   useEffect(() => {
     if (!accessGranted) return;
@@ -3137,6 +3180,46 @@ export default function App({
     }
   }
 
+  async function beginChatConversation(
+    request: ChatConversationStartRequest,
+  ): Promise<ChatConversationSnapshot> {
+    if (chatProvider !== "managed-codex") {
+      return scaffoldChatConversation;
+    }
+    setChatConversationBusy(true);
+    try {
+      const result = await startChatConversationTask({
+        ...request,
+        interactionProfile: request.interactionProfile ?? interactionProfile,
+      });
+      setChatConversation(result);
+      return result;
+    } finally {
+      setChatConversationBusy(false);
+    }
+  }
+
+  async function pollChatConversationById(
+    conversationId: string,
+  ): Promise<ChatConversationSnapshot> {
+    const result = await pollChatConversationTask(conversationId);
+    setChatConversation(result);
+    return result;
+  }
+
+  async function stopChatConversation(
+    conversationId: string,
+  ): Promise<ChatConversationSnapshot> {
+    setChatConversationBusy(true);
+    try {
+      const result = await interruptChatConversationTask(conversationId);
+      setChatConversation(result);
+      return result;
+    } finally {
+      setChatConversationBusy(false);
+    }
+  }
+
   async function applyConversationApproval(
     request: ConversationApprovalDecisionRequest,
   ): Promise<ConversationSnapshot> {
@@ -4604,18 +4687,17 @@ export default function App({
                 hidden={conversationMode !== "chat"}
                 aria-hidden={conversationMode !== "chat"}
               >
-                <LocalChatWorkspace
-                  onRun={runLocalChat}
-                  onCancel={cancelLocalChat}
-                  onPrepareActionCard={prepareActionCard}
-                  onApproveActionCard={approveActionCard}
-                  onRevokeActionCard={revokeActionCard}
-                  onOpenLinkedProjectChat={() =>
-                    requestConversationWorkspace("conversation")
-                  }
-                  onOpenBrowserResearch={() => setBrowserResearchOpen(true)}
+                <ChatWorkspace
+                  auth={auth}
+                  snapshot={chatConversation}
+                  busy={chatConversationBusy}
+                  provider={chatProvider}
+                  onProviderChange={setChatProvider}
                   interactionProfile={interactionProfile}
                   onInteractionProfileChange={setInteractionProfile}
+                  onStart={beginChatConversation}
+                  onPoll={pollChatConversationById}
+                  onInterrupt={stopChatConversation}
                 />
               </div>
               {conversationMode === "codex" && (

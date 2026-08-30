@@ -767,7 +767,7 @@ describe("QuireForge desktop shell", () => {
       screen.getByRole("menuitemradio", { name: /Chat & Cowork/u }),
     );
     const chatDraft = await screen.findByRole("textbox", {
-      name: "Local chat message",
+      name: "Chat message",
     });
     fireEvent.change(chatDraft, {
       target: { value: "Keep this local draft." },

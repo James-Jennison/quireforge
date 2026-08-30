@@ -110,11 +110,14 @@ authority, approval, dispatch, credential, or context boundary changes.
 M87 now explicitly corrects the presentation shell: Chat & Cowork and Code
 share the persistent chat-first reading flow and compact composer mechanics,
 while strict mode adapters retain their existing authority and context
-boundaries. Chat & Cowork receives no Code authority or automatic project or
-transcript transfer; Code-only Task Catalog and Durable Sources remain a
-collapsed one-click shelf. Mode changes must not abort, pause, or mutate an
-active Code task. Chat & Cowork local turns remain in memory through
-presentation-only mode switches within the current app session; they are never
+boundaries. Chat & Cowork starts with no provider connected; the built-in local
+response path is retired from the live surface. A person may explicitly choose
+the narrow Managed Codex adapter, which keeps the fixed no-project, no-tool,
+read-only/no-network contract and has no local-model or alternate-provider
+fallback. Code-only Task Catalog and Durable Sources remain a collapsed
+one-click shelf. Mode changes must not abort, pause, or mutate an active Code
+task. Chat & Cowork transcript presentation remains in memory through
+presentation-only mode switches within the current app session; it is never
 automatically transferred or persisted.
 Legacy Advisor retains its existing separate transient-state reset boundary.
 This correction requires fresh source, package, installed-host, and

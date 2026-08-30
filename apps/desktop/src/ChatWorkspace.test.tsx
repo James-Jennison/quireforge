@@ -1,56 +1,80 @@
 import { fireEvent, render, screen } from "@testing-library/react";
+import type { ComponentProps } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import { ChatWorkspace } from "./ChatWorkspace";
 import { scaffoldCodexAuth } from "./lib/auth";
 import { scaffoldChatConversation } from "./lib/chat";
 
+function renderWorkspace(
+  overrides: Partial<ComponentProps<typeof ChatWorkspace>> = {},
+) {
+  const onStart = vi.fn().mockResolvedValue(scaffoldChatConversation);
+  const onProviderChange = vi.fn();
+  render(
+    <ChatWorkspace
+      auth={{
+        ...scaffoldCodexAuth,
+        state: "authenticated",
+        accountKind: "chatgpt",
+      }}
+      snapshot={scaffoldChatConversation}
+      busy={false}
+      provider={null}
+      onProviderChange={onProviderChange}
+      interactionProfile="direct"
+      onInteractionProfileChange={vi.fn()}
+      onStart={onStart}
+      onPoll={vi.fn()}
+      onInterrupt={vi.fn()}
+      {...overrides}
+    />,
+  );
+  return { onProviderChange, onStart };
+}
+
 describe("ChatWorkspace", () => {
-  it("submits only through a managed ChatGPT account", () => {
-    const onStart = vi.fn().mockResolvedValue(scaffoldChatConversation);
-    render(
-      <ChatWorkspace
-        auth={{
-          ...scaffoldCodexAuth,
-          state: "authenticated",
-          accountKind: "chatgpt",
-        }}
-        snapshot={scaffoldChatConversation}
-        busy={false}
-        onStart={onStart}
-        onPoll={vi.fn()}
-        onInterrupt={vi.fn()}
-      />,
-    );
+  it("keeps the draft and makes no provider call before explicit selection", () => {
+    const { onStart } = renderWorkspace();
 
     fireEvent.change(screen.getByRole("textbox", { name: "Chat message" }), {
       target: { value: "Explain this failure." },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Send" }));
 
-    expect(onStart).toHaveBeenCalledWith({ prompt: "Explain this failure." });
-    expect(screen.getByText(/no attached directory/i)).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Chat message" })).toHaveValue(
+      "Explain this failure.",
+    );
+    expect(screen.getByRole("button", { name: "Send" })).toBeDisabled();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      /no provider connected/i,
+    );
+    expect(onStart).not.toHaveBeenCalled();
+  });
+
+  it("uses managed Codex only after the explicit provider choice", () => {
+    const { onProviderChange } = renderWorkspace();
+
+    fireEvent.click(screen.getByRole("button", { name: "Use managed Codex" }));
+
+    expect(onProviderChange).toHaveBeenCalledWith("managed-codex");
   });
 
   it("does not offer an API-key fallback", () => {
-    render(
-      <ChatWorkspace
-        auth={{
-          ...scaffoldCodexAuth,
-          state: "authenticated",
-          accountKind: "api-key",
-        }}
-        snapshot={scaffoldChatConversation}
-        busy={false}
-        onStart={vi.fn()}
-        onPoll={vi.fn()}
-        onInterrupt={vi.fn()}
-      />,
-    );
+    renderWorkspace({
+      provider: "managed-codex",
+      auth: {
+        ...scaffoldCodexAuth,
+        state: "authenticated",
+        accountKind: "api-key",
+      },
+    });
 
+    fireEvent.change(screen.getByRole("textbox", { name: "Chat message" }), {
+      target: { value: "Explain this failure." },
+    });
     expect(screen.getByRole("button", { name: "Send" })).toBeDisabled();
-    expect(screen.getByRole("status")).toHaveTextContent(
-      /managed ChatGPT browser sign-in/i,
-    );
+    expect(
+      screen.getByText(/managed Codex is unavailable/i),
+    ).toBeInTheDocument();
   });
 });

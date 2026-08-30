@@ -2106,7 +2106,10 @@ agent, connector, or execution capability.
   work that can use only M79-proven mutations with outcome reconciliation.
   It follows M75 and may not invoke an M91 roundtable dispatch.
 - **M81 — Live Provider Connection:** consented, provider-neutral live-provider
-  boundary for approved capabilities.
+  boundary for approved capabilities. It generalizes, rather than retroactively
+  changes, M87's narrow no-project Managed Codex adapter: M87 has one explicit
+  user-selected adapter with no fallback or provider registry; M81 owns future
+  provider configuration, consent, and multi-provider selection.
 - **M89 — Image Generation and Visual Iteration:** provider-routed,
   single-provider generation, review, iteration history, and explicit asset
   adoption after M81. Its call path is not an authority or transport substrate
