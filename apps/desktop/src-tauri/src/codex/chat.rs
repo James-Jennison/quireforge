@@ -466,10 +466,12 @@ async fn start_chat_session(
 ) -> Result<(String, String, String), ChatConversationDiagnosticCode> {
     // This fixed profile has neither a filesystem root nor any enabled tool
     // environment. There is intentionally no permissive fallback request.
-    process
-        .request("initialize", json!({}))
-        .await
-        .map_err(map_adapter_error)?;
+    // Keep the chat adapter on the same documented app-server initialization
+    // contract as the managed Advisor adapter.  Current Codex app-server
+    // versions require clientInfo before they will accept any conversation
+    // request; an empty initialize payload leaves the visible composer unable
+    // to start a turn.
+    process.initialize().await.map_err(map_adapter_error)?;
     let thread_result = process
         .request(
             "thread/start",
@@ -758,16 +760,21 @@ mod tests {
 
     #[tokio::test]
     async fn managed_chat_starts_without_project_or_tool_capabilities() {
-        let script = r#"
+        let script = concat!(
+            r#"
 read -r initialize
-case "$initialize" in *'"method":"initialize"'*) ;; *) exit 91 ;; esac
+case "$initialize" in
+  *'"method":"initialize"'*'"clientInfo"'*) ;;
+  *) exit 91 ;;
+esac
 printf '%s\n' '{"id":1,"result":{}}'
 read -r thread
 printf '%s\n' '{"id":2,"result":{"thread":{"id":"018f0000-0000-7000-8000-000000000020"}}}'
 read -r turn
 printf '%s\n' '{"id":3,"result":{"turn":{"id":"018f0000-0000-7000-8000-000000000030","status":"inProgress"}}}'
 printf '%s\n' '{"method":"turn/completed","params":{"threadId":"018f0000-0000-7000-8000-000000000020","turn":{"id":"018f0000-0000-7000-8000-000000000030","status":"completed"}}}'
-"#;
+"#
+        );
         let service =
             ChatConversationService::with_command(AppServerCommand::test("sh", &["-c", script]));
         let projects = ProjectService::in_memory();
