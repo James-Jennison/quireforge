@@ -55,7 +55,6 @@ import {
 import {
   archiveConversation,
   archiveProject,
-  approveActionCard,
   cancelFilePreview,
   cancelConversationAttachments,
   acknowledgeConversationDelivery,
@@ -91,7 +90,6 @@ import {
   openIntegrationControlBrowser,
   loadProjectWorkspace,
   readRepositoryState,
-  revokeActionCard,
   logoutCodexAuth,
   openGitFile,
   pickConversationAttachments,
@@ -100,7 +98,6 @@ import {
   pickProjectDirectory,
   pickProjectRelink,
   preflightProject,
-  prepareActionCard,
   previewAdvisorGeneratedArtifact,
   previewGitMutation,
   previewIntegrationMutation,

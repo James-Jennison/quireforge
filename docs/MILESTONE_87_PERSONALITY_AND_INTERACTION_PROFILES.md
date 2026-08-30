@@ -195,7 +195,13 @@ an explicit yes/no decision interrupts that flow with the existing semantic
 approval surface. Passive activity remains a lightweight, expandable timeline
 row; it is not an Action Card and conveys no authority.
 
-`0.1.0-beta.124` supersedes beta.123 as the current owner-acceptance candidate
+`0.1.0-beta.125` supersedes beta.124 as the current owner-acceptance candidate.
+It restores plain **Enter** dispatch for an eligible Managed Codex Chat & Cowork
+turn while preserving **Shift+Enter** for a newline, and requires browser E2E
+to rebuild the production bundle before it tests that behavior. It changes no
+provider, authority, approval, dispatch, credential, context, or native payload
+boundary. Fresh source, package, installed-host, and owner interaction evidence
+is required. `0.1.0-beta.124` supersedes beta.123 as the prior candidate
 without replacing beta.123's immutable evidence. A reply to a completed or
 blocked native conversation resumes that same conversation and retains the
 rendered multi-turn transcript. Because a native resume restarts its local
@@ -244,10 +250,10 @@ mapping, protected-file ownership, permissions, and integrity, and
 `quireforge-installed-beta120` user service. Owner-acceptance evidence remains
 required before this candidate is accepted.
 
-## Owner acceptance procedure — beta.124
+## Owner acceptance procedure — beta.125
 
 This is a one-shot owner review, not a new capability or a new application
-surface. Use the installed `0.1.0-beta.124` application in both Chat & Cowork
+surface. Use the installed `0.1.0-beta.125` application in both Chat & Cowork
 and Code:
 
 1. Test both **Direct** and **Conversational** profiles using the selector in

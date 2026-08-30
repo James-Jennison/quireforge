@@ -59,6 +59,29 @@ describe("ChatWorkspace", () => {
     expect(onProviderChange).toHaveBeenCalledWith("managed-codex");
   });
 
+  it("sends a managed Codex turn with Enter", () => {
+    const { onStart } = renderWorkspace({ provider: "managed-codex" });
+    const composer = screen.getByRole("textbox", { name: "Chat message" });
+
+    fireEvent.change(composer, { target: { value: "Where are we?" } });
+    fireEvent.keyDown(composer, { key: "Enter" });
+
+    expect(onStart).toHaveBeenCalledWith({
+      prompt: "Where are we?",
+      interactionProfile: "direct",
+    });
+  });
+
+  it("keeps Shift+Enter available for a multiline chat message", () => {
+    const { onStart } = renderWorkspace({ provider: "managed-codex" });
+    const composer = screen.getByRole("textbox", { name: "Chat message" });
+
+    fireEvent.change(composer, { target: { value: "First line" } });
+    fireEvent.keyDown(composer, { key: "Enter", shiftKey: true });
+
+    expect(onStart).not.toHaveBeenCalled();
+  });
+
   it("does not offer an API-key fallback", () => {
     renderWorkspace({
       provider: "managed-codex",

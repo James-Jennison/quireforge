@@ -2006,7 +2006,7 @@ M70, M71, M76, and M72 are completed historical foundations. M72 is validated
 in `0.1.0-beta.107`: its project-first authority workspace passed full source
 validation, desktop/mobile E2E, clean packaging, installed-host launch, and
 owner acceptance of an inert draft-to-active-to-revoked lifecycle. M87 is now
-active in its `0.1.0-beta.124` candidate. It retains the native multi-turn
+active in its `0.1.0-beta.125` candidate. It retains the native multi-turn
 conversation on a completed or blocked reply and uses a fixed display-only
 sequence offset for each resumed turn, so resumed native event numbering never
 collides with already rendered transcript events. It changes no provider,

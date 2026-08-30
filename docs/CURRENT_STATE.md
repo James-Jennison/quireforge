@@ -100,7 +100,10 @@ research, and M72 objective-scoped authority are completed foundations. M72
 is validated in `0.1.0-beta.107`: full validation, desktop/mobile E2E, clean
 package, installed-host launch, and owner acceptance of the inert
 draft-to-active-to-revoked lifecycle passed. The next product foundation is
-M87 interaction profiles. The `0.1.0-beta.124` candidate supersedes beta.123
+M87 interaction profiles. The `0.1.0-beta.125` candidate supersedes beta.124
+with an Enter-to-send repair for the explicit Managed Codex Chat & Cowork
+composer and a browser-E2E build boundary that tests the current bundle rather
+than stale output. Beta.124 supersedes beta.123
 by resuming a completed or blocked native conversation in place and retaining
 its display transcript across turns. The native lifecycle may restart local
 event sequences on resume, so the desktop applies one fixed display-only

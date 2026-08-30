@@ -2,6 +2,13 @@
 
 ## Unreleased — M87 chat workspace refinement
 
+- Beta.125 corrects Chat & Cowork composer delivery: plain **Enter** sends an
+  eligible Managed Codex chat turn, while **Shift+Enter** remains a newline.
+  Its desktop browser suite now rebuilds the current production bundle before
+  exercising the UI, so source, browser, and installed-host evidence cannot
+  silently diverge. This changes no provider, authority, approval, dispatch,
+  credential, or context boundary.
+
 - Retires the live Chat & Cowork built-in local response path. The shared
   chat-first surface now begins with **No provider connected**, preserves an
   unsent draft, and starts the narrow Managed Codex adapter only after an

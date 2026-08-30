@@ -2402,24 +2402,10 @@ test("Ledger and Adapters keep local governance metadata and fixtures bounded", 
   expect(accessibility.violations).toEqual([]);
 });
 
-test("Local Chat completes an ordinary no-project local-only turn", async ({
+test("Chat & Cowork keeps the no-project composer inert until Managed Codex is selected", async ({
   page,
 }) => {
-  await installNativeFixture(page, {
-    ...nativeResponses,
-    local_chat_run: {
-      schemaVersion: 1,
-      localOnly: true,
-      state: "completed",
-      output: "A bounded local answer.",
-      diagnostic: null,
-      inputTokenLimit: 4096,
-      outputTokenLimit: 512,
-      deadlineSeconds: 60,
-      memoryCeilingMib: 6144,
-    },
-    local_chat_cancel: false,
-  });
+  await installNativeFixture(page);
   await page.goto("/");
 
   await openWorkspace(page, "Advisor");
@@ -2429,32 +2415,71 @@ test("Local Chat completes an ordinary no-project local-only turn", async ({
   ).toBeVisible();
   await chat.getByText("About Chat & Cowork").click();
   await expect(
-    chat.getByText(/Local runtime · Project context not attached · Ephemeral/u),
+    chat.getByText(/No project, Code tools, browser content, filesystem/u),
   ).toBeVisible();
   await expect(
-    chat.getByText("Project authority", { exact: true }),
+    chat.getByText(/No provider connected/u),
+  ).toBeVisible();
+  await chat.getByRole("textbox", { name: "Chat message" }).fill("Hello.");
+  await expect(chat.getByRole("button", { name: "Send" })).toBeDisabled();
+  await expect(
+    chat.getByRole("button", { name: "Research Google (read only)" }),
   ).toHaveCount(0);
-  await chat
-    .getByRole("textbox", { name: "Local chat message" })
-    .fill("Hello.");
-  await chat.getByRole("button", { name: "Send" }).click();
-  await expect(chat.getByText("A bounded local answer.")).toBeVisible();
 });
 
-test("Local Chat opens the separate Google research review", async ({
+test("Chat & Cowork dispatches a Managed Codex turn with Enter", async ({
   page,
 }) => {
-  await installNativeFixture(page);
+  await installNativeFixture(page, {
+    ...nativeResponses,
+    chat_conversation_status: {
+      schemaVersion: 1,
+      mode: "chat",
+      state: "empty",
+      conversationId: null,
+      threadId: null,
+      events: [],
+      diagnosticCode: null,
+    },
+    chat_conversation_start: {
+      schemaVersion: 1,
+      mode: "chat",
+      state: "completed",
+      conversationId: "018f0000-0000-7000-8000-000000000071",
+      threadId: "018f0000-0000-7000-8000-000000000072",
+      events: [
+        {
+          type: "agent-message-delta",
+          sequence: 0,
+          delta: "A managed response.",
+        },
+      ],
+      diagnosticCode: null,
+    },
+  });
   await page.goto("/");
 
   await openWorkspace(page, "Advisor");
   const chat = page.locator('[data-workspace-view="advisor"]');
-  await chat.getByText("Chat options").click();
-  await chat
-    .getByRole("button", { name: "Research Google (read only)" })
-    .click();
+  await chat.getByRole("button", { name: "Use managed Codex" }).click();
+  await expect(chat.getByRole("status")).toHaveText(/Provider: Managed Codex/u);
+  await chat.getByRole("textbox", { name: "Chat message" }).fill("Hello.");
+  await expect(chat.getByRole("button", { name: "Send" })).toBeEnabled();
+  await chat.getByRole("textbox", { name: "Chat message" }).press("Enter");
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (
+            window as Window & {
+              __quireforgeFixtureCommands?: string[];
+            }
+          ).__quireforgeFixtureCommands?.includes("chat_conversation_start"),
+      ),
+    )
+    .toBe(true);
   await expect(
-    chat.getByRole("heading", { name: "Google research review" }),
+    chat.getByText("A managed response."),
   ).toBeVisible();
 });
 

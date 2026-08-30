@@ -233,6 +233,12 @@ export function ChatWorkspace({
           aria-label="Chat message"
           value={prompt}
           onChange={(event) => setPrompt(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && !event.shiftKey) {
+              event.preventDefault();
+              void submit();
+            }
+          }}
           disabled={busy || active}
           placeholder="Ask QuireForge anything…"
           rows={2}
