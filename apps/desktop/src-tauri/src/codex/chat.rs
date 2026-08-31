@@ -736,6 +736,7 @@ mod tests {
     fn rejects_invalid_prompt_without_starting_a_runtime() {
         assert!(!valid_prompt("   "));
         assert!(!valid_prompt("a\0b"));
+        assert!(valid_prompt(&"x".repeat(MAX_CHAT_PROMPT_BYTES)));
         assert!(!valid_prompt(&"x".repeat(MAX_CHAT_PROMPT_BYTES + 1)));
         assert!(valid_prompt("Explain this error."));
     }
