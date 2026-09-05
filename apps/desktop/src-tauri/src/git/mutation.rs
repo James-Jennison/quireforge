@@ -783,7 +783,7 @@ async fn ensure_safe_attributes(
     if fields.len() != 6 {
         return Err(GitDiagnosticCode::MutationUnavailable);
     }
-    for chunk in fields.chunks_exact(3) {
+    for chunk in fields.as_chunks::<3>().0 {
         if chunk[0] != repo_path.as_bytes()
             || !matches!(chunk[1], b"filter" | b"working-tree-encoding")
             || !matches!(chunk[2], b"unspecified" | b"unset")

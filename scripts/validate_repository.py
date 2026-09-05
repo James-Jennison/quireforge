@@ -745,7 +745,8 @@ def validate() -> list[str]:
     if workspace_path.is_file():
         workspace_text = workspace_path.read_text(encoding="utf-8")
         reviewed_overrides = (
-            "fast-uri: 3.1.5",
+            "browserslist: 4.28.9",
+            "fast-uri: 3.1.7",
             "js-yaml: 4.3.1",
             "minimatch@3>brace-expansion: 1.1.18",
             "minimatch@10>brace-expansion: 5.0.9",

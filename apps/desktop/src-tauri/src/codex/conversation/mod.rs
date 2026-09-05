@@ -321,13 +321,13 @@ impl ConversationService {
     async fn active_slot(
         &self,
         conversation_id: &str,
-    ) -> Result<Arc<Mutex<ActiveConversation>>, ConversationSnapshot> {
+    ) -> Result<Arc<Mutex<ActiveConversation>>, Box<ConversationSnapshot>> {
         let state = self.state.lock().await;
         state
             .active
             .get(conversation_id)
             .cloned()
-            .ok_or_else(|| state.recent_or_not_found(conversation_id))
+            .ok_or_else(|| Box::new(state.recent_or_not_found(conversation_id)))
     }
 
     async fn remember_snapshot(&self, mut snapshot: ConversationSnapshot) -> ConversationSnapshot {
@@ -620,7 +620,7 @@ impl ConversationService {
         }
         let slot = match self.active_slot(&conversation_id).await {
             Ok(slot) => slot,
-            Err(snapshot) => return snapshot,
+            Err(snapshot) => return *snapshot,
         };
         let mut active = slot.lock().await;
         if active.finished {
@@ -718,7 +718,7 @@ impl ConversationService {
         }
         let slot = match self.active_slot(&conversation_id).await {
             Ok(slot) => slot,
-            Err(snapshot) => return snapshot,
+            Err(snapshot) => return *snapshot,
         };
         let mut active = slot.lock().await;
         if active.finished {
@@ -818,7 +818,7 @@ impl ConversationService {
         let conversation_id = request.conversation_id.clone();
         let slot = match self.active_slot(&conversation_id).await {
             Ok(slot) => slot,
-            Err(snapshot) => return snapshot,
+            Err(snapshot) => return *snapshot,
         };
         let mut active = slot.lock().await;
         if active.finished {
